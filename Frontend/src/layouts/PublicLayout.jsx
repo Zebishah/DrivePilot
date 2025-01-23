@@ -3,6 +3,7 @@ const PublicLayout = ({ children }) => {
     <>
       <div>navbar here</div>
       <main>{children}</main>
+      <div>footer</div>
     </>
   );
 };
