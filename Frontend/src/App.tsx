@@ -2,7 +2,6 @@ import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store";
-
 import Home from "./pages/public/Home";
 import PublicRoutes from "./routes/PublicRoutes";
 import NotFound from "./components/common/NotFound";

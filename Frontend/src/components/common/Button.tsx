@@ -9,7 +9,7 @@ const Button: React.FC<ButtonProps> = ({
   size = 'md',
   isLoading = false,
   className,
-  disabled,
+  disabled,    
   ...props
 }) => {
   const baseStyles = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
