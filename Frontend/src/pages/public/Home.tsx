@@ -11,11 +11,11 @@ import Testimonials from '../../components/testimonials';
 const Home: React.FC = () => {
   return (
     <div>
-    <Banner/>
-    <Process/>
+     <Banner/>
+     <Process/>
      <DrivingLessons/>
      <Instructor/>
-  <Testimonials/>
+    <Testimonials/>
     </div>
 
   );

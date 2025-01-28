@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useRef, useState } from "react";
 import { Button } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";

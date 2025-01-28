@@ -1,33 +1,14 @@
 
 import React from "react";
-import { Button } from "@mui/material";
-
 const Banner: React.FC = () => {
   return (
-    // <div className="relative  w-full min-h-screen"> {/* Set container height */}
-    //   {/* Background Image */}
-    //   <img
-    //     src="/images/banner.png" // Path to the image in the public folder
-    //     alt="Driving Training"
-    //     className="w-full h-full object-cover" // Ensure it covers the full width and height
-    //   />
-    //   {/* Overlay Text */}
-    //   <div className=" absolute top-0 left-0 w-full h-full flex flex-col justify-center items-left text-white">
-
-    //     <h2 className="ml-32  text-4xl font-bold ">Building Skilled Drivers for a Safer Tomorrow.</h2>
-    //     <p className=" ml-32  text-center max-w-md">
-    //       Lorem ipsum dolor sit amet consectetur. Eu faucibus felis fermentum nunc sit. Suspendisse vivamus ipsum
-    //       vestibulum morbi tortor faucibus lacus duis nunc. Vitae at metus sed.
-    //     </p>
-    //     </div>
-    //   </div>
 
     <div className="relative w-full min-h-screen">
   {/* Background Image */}
   <img
-    src="/images/banner.png" // Path to the image in the public folder
+    src="/images/banner.png" 
     alt="Driving Training"
-    className="w-full h-full object-cover" // Ensure it covers the full width and height
+    className="w-full h-full object-cover"
   />
   
   {/* Overlay Text */}
@@ -40,8 +21,8 @@ const Banner: React.FC = () => {
   src="/images/banner1.png"
   alt="Driving Training"
   style={{
-    width: "120px", // Set a fixed width
-    height: "auto" // Maintain aspect ratio
+    width: "120px", 
+    height: "auto" 
   }}
 />
     </div>   
