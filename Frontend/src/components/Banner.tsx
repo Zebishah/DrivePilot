@@ -11,19 +11,29 @@ const Banner: React.FC = () => {
 
       {/* Overlay Text */}
 
-      {/* Overlay Text */}
-
-      <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-end text-white px-8">
-        <div className=" mb-72 mr-52  max-w-xs">
-          <img
-            src="/images/banner1.png"
-            alt="Driving Training"
-            style={{
-              width: "120px",
-              height: "auto",
-            }}
-          />
+      <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-start text-white px-8">
+        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-end text-white px-8">
+          <div className=" mb-72 mr-52  max-w-xs">
+            <img
+              src="/images/banner1.png"
+              alt="Driving Training"
+              style={{
+                width: "120px",
+                height: "auto",
+              }}
+            />
+          </div>
         </div>
+
+        <h2 className="ml-40  text-4xl max-w-md font-bold">
+          Building Skilled Drivers for a Safer Tomorrow.
+        </h2>
+
+        <p className="ml-40 mb-72 text-justify max-w-md">
+          Lorem ipsum dolor sit amet consectetur. Eu faucibus felis fermentum
+          nunc sit. Suspendisse vivamus ipsum vestibulum morbi tortor faucibus
+          lacus duis nunc. Vitae at metus sed.
+        </p>
       </div>
     </div>
   );
