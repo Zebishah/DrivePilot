@@ -1,23 +1,20 @@
-import React from 'react';
+import React from "react";
 
-import Banner from '../../components/Banner';
-import Process from '../../components/Process';
-import DrivingLessons from '../../components/DrivingLessons';
-import Instructor from '../../components/Instructor';
-import Testimonials from '../../components/testimonials';
-
-
+import Banner from "../../components/Banner";
+import Process from "../../components/Process";
+import DrivingLessons from "../../components/DrivingLessons";
+import Instructor from "../../components/Instructor";
+import Testimonials from "../../components/testimonials";
 
 const Home: React.FC = () => {
   return (
     <div>
-     <Banner/>
-     <Process/>
-     <DrivingLessons/>
-     <Instructor/>
-    <Testimonials/>
+      <Banner />
+      <Process />
+      <DrivingLessons />
+      <Instructor />
+      <Testimonials />
     </div>
-
   );
 };
 

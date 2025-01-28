@@ -1,18 +1,13 @@
-
-import React from 'react';
-import { NavLink } from 'react-router-dom'; // Import NavLink from react-router-dom
-import { Button } from '@mui/material';
+import React from "react";
+import { NavLink } from "react-router-dom"; // Import NavLink from react-router-dom
+import { Button } from "@mui/material";
 
 const Navbar: React.FC = () => {
   return (
     <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
       {/* Logo Section */}
       <div className="flex items-center">
-        <img
-          src="/dsp.png"
-          alt="Logo"
-          className="h-10 w-auto ml-8"
-        />
+        <img src="/dsp.png" alt="Logo" className="h-10 w-auto ml-8" />
       </div>
 
       {/* Links Section */}
@@ -21,7 +16,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              isActive ? 'text-blue-400' : 'hover:text-gray-300'
+              isActive ? "text-blue-400" : "hover:text-gray-300"
             }
           >
             Home
@@ -31,7 +26,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/about"
             className={({ isActive }) =>
-              isActive ? 'text-blue-400' : 'hover:text-gray-300'
+              isActive ? "text-blue-400" : "hover:text-gray-300"
             }
           >
             About Us
@@ -41,7 +36,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/contact"
             className={({ isActive }) =>
-              isActive ? 'text-blue-400' : 'hover:text-gray-300'
+              isActive ? "text-blue-400" : "hover:text-gray-300"
             }
           >
             Contact Us
@@ -51,7 +46,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/instructors"
             className={({ isActive }) =>
-              isActive ? 'text-blue-400' : 'hover:text-gray-300'
+              isActive ? "text-blue-400" : "hover:text-gray-300"
             }
           >
             Our Instructors
@@ -64,14 +59,13 @@ const Navbar: React.FC = () => {
         <Button
           variant="contained"
           sx={{
-            paddingLeft: '2rem',
-            paddingRight: '2rem',
-            borderRadius:"10px",
-            backgroundColor: '#58B4AE',
-            '&:hover': { backgroundColor: '#479A93' },
-            textTransform: 'none',
-            color: '#000',
-          
+            paddingLeft: "2rem",
+            paddingRight: "2rem",
+            borderRadius: "10px",
+            backgroundColor: "#58B4AE",
+            "&:hover": { backgroundColor: "#479A93" },
+            textTransform: "none",
+            color: "#000",
           }}
         >
           Sign In
@@ -82,4 +76,3 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
-

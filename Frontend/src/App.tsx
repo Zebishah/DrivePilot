@@ -6,6 +6,8 @@ import Home from "./pages/public/Home";
 import PublicRoutes from "./routes/PublicRoutes";
 import OurInstructor from "./pages/public/OurInstructor";
 import NotFound from "./components/common/NotFound";
+import AboutUs from "./pages/public/AboutUs";
+import Contact from "./pages/public/Contact";
 
 // Define the router with type safety
 const router = createBrowserRouter([
@@ -13,8 +15,10 @@ const router = createBrowserRouter([
     path: "/",
     element: <PublicRoutes />,
     children: [
-      { path: "", element: <Home /> }, // Route for Home at "/"
-      { path: 'instructors', element: <OurInstructor /> },
+      { path: "instructors", element: <OurInstructor /> },
+      { path: "", element: <Home /> },
+      { path: "about", element: <AboutUs /> },
+      { path: "contact", element: <Contact /> },
     ],
   },
   {
