@@ -1,5 +1,3 @@
-
-
 import React, { useRef, useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
@@ -28,13 +26,13 @@ const steps: Step[] = [
     imageUrl: "/images/Carousel2.png",
   },
   {
-    title: "hhddddddddddd",
+    title: "hdd",
     description:
       "Lorem ipsum dolor sit amet consectetur. Ridiculus mattis dictum ultrices amet. Nulla lectus ut leo amet feugiat tristique vitae. Etiam nulla odio in arcu. Ut libero quam duis arcu nibh lorem sit.",
     imageUrl: "/images/Carousel3.png",
   },
   {
-    title: "6666666gggggggggggg",
+    title: "6g",
     description:
       "Lorem ipsum dolor sit amet consectetur. Ridiculus mattis dictum ultrices amet. Nulla lectus ut leo amet feugiat tristique vitae. Etiam nulla odio in arcu. Ut libero quam duis arcu nibh lorem sit.",
     imageUrl: "/images/Carousel4.png",
@@ -48,7 +46,7 @@ const Process: React.FC = () => {
   useEffect(() => {
     if (swiperRef.current) {
       const swiper = swiperRef.current;
-      swiper.on('slideChange', () => {
+      swiper.on("slideChange", () => {
         setCurrentIndex(swiper.activeIndex);
       });
     }
@@ -67,7 +65,7 @@ const Process: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col items-center py-8 bg-blue-100 relative">
+    <div className="flex flex-col items-center py-8 bg-blue-100 relative ">
       <h2 className="text-3xl font-bold mb-6">Our Process</h2>
       <div className="relative w-full max-w-4xl">
         <Swiper
@@ -98,7 +96,9 @@ const Process: React.FC = () => {
                     borderRadius: "10px",
                   }}
                 >
-                  <h3 className="font-bold text-xl text-blue-600">{step.title}</h3>
+                  <h3 className="font-bold text-xl text-blue-600">
+                    {step.title}
+                  </h3>
                   <p className="text-gray-600 mt-2">{step.description}</p>
                 </div>
               </div>
@@ -111,15 +111,21 @@ const Process: React.FC = () => {
             currentIndex === 0 ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
-          <TbNavigationFilled style={{ color: "#5FC2D3", transform: "rotate(270deg)" }} />
+          <TbNavigationFilled
+            style={{ color: "#5FC2D3", transform: "rotate(270deg)" }}
+          />
         </div>
         <div
           onClick={handleNext}
           className={`absolute top-1/3 -right-40 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10 ${
-            currentIndex === steps.length - 1 ? "opacity-50 cursor-not-allowed" : ""
+            currentIndex === steps.length - 1
+              ? "opacity-50 cursor-not-allowed"
+              : ""
           }`}
         >
-          <TbNavigationFilled style={{ color: "#5FC2D3", transform: "rotate(90deg)" }} />
+          <TbNavigationFilled
+            style={{ color: "#5FC2D3", transform: "rotate(90deg)" }}
+          />
         </div>
       </div>
     </div>
@@ -127,20 +133,6 @@ const Process: React.FC = () => {
 };
 
 export default Process;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // import React, { useRef, useState, useEffect } from "react";
 // import { Swiper, SwiperSlide } from "swiper/react";

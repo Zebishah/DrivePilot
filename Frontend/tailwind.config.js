@@ -8,15 +8,7 @@ export default {
         poppins: ["Poppins", "sans-serif"],
         inter: ["Inter", "sans-serif"],
       },
-      fontWeight: {
-        // harabara: {
-        //   600: "600",
-        //   700: "700",
-        // },
-        poppins: {
-          600: "600",
-        },
-      },
+
       colors: {
         primary: {
           DEFAULT: "#5EC2D2",
@@ -43,6 +35,9 @@ export default {
           DEFAULT: "#FCAD14",
           // 50: "#FFFBEB",
           // 100: "#FEF3C7",
+        },
+        input: {
+          DEFAULT: "#484848",
         },
         white: "#FFFFFF",
         black: "#000000",
