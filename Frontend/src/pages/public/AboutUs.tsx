@@ -7,7 +7,7 @@ type Props = {};
 
 const AboutUs = (props: Props) => {
   return (
-    <div>
+    <div className="">
       <Banner2
         header={"About Us"}
         paragraph={
@@ -38,7 +38,7 @@ const AboutUs = (props: Props) => {
               </div>
             </div>
             <div className=" lg:w-[45%] 2xl:mr-20">
-              <h1 className="font-poppins font-semibold text-xl  lg:text-2xl xl:text-[28px] 2xl:text-[32px] text-primary">
+              <h1 className="font-poppins font-semibold text-xl  lg:text-2xl xl:text-[28px] 2xl:text-[32px]  !leading-10">
                 Lorem ipsum TYVBDC GIU SEFD BFDVB
               </h1>
               <p className="font-poppins font-normal  text-base 2xl:text-xl">
