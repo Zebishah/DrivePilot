@@ -22,7 +22,7 @@ const Banner3: React.FC<Banner3Props> = ({ header, paragraph, image }) => {
   // h-[400px] lg:h-[500px]  xl:h-[660px] 2xl:h-[880px]
   return (
     <div
-      className={`bg-[url('/images/banner.png')] md:bg-contain bg-top bg-no-repeat  w-full  `}
+      className={`bg-[url('/images/banner.png')] bg-cover md:bg-contain bg-right-top md:bg-top bg-no-repeat  w-full  `}
       style={{
         height:
           window.innerWidth > 769
@@ -31,7 +31,7 @@ const Banner3: React.FC<Banner3Props> = ({ header, paragraph, image }) => {
       }}
     >
       <Container>
-        <div className="h-full w-full flex flex-col sm:flex-row sm:items-center pb-32 sm:justify-between justify-center gap-5 ">
+        <div className="h-full w-full flex flex-col sm:flex-row sm:items-center md:pb-32 sm:justify-between justify-center gap-5 ">
           <div className=" w-full sm:w-[60%]">
             <h1 className=" text-white  font-harabara sm:text-4xl lg:text-5xl  font-bold mb-3 lg:mb-6  text-center sm:text-left ">
               {header}

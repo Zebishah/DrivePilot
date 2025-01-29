@@ -18,7 +18,7 @@ const Navbar: React.FC = () => {
     <nav className="bg-gray-900 font-poppins text-white py-4 px-6 flex justify-between items-center relative">
       {/* Logo Section */}
       <div className="flex items-center">
-        <img src="/dsp.png" alt="Logo" className="h-10 w-auto ml-8" />
+        <img src="/dsp.png" alt="Logo" className="h-10 w-auto md:ml-8" />
       </div>
 
       {/* Hamburger Menu Icon */}
@@ -32,7 +32,7 @@ const Navbar: React.FC = () => {
 
       {/* Links Section */}
       <ul
-        className={`flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 absolute md:relative top-14 md:top-auto left-0 w-full md:w-auto bg-gray-900 md:bg-transparent transition-all duration-300 ease-in-out ${
+        className={`flex flex-col p-6 md:p-4 md:flex-row space-y-6 md:space-y-0 md:space-x-6 absolute md:relative top-14 md:top-auto left-0 w-full md:w-auto bg-gray-900 md:bg-transparent transition-all duration-300 ease-in-out ${
           isMenuOpen ? "block" : "hidden md:flex"
         }`}
       >

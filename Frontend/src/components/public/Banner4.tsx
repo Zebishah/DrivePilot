@@ -19,7 +19,7 @@ const Banner4: React.FC<Banner4Props> = ({ header, paragraph }) => {
 
   return (
     <div
-      className={`bg-[url('/images/map.png')] md:bg-contain bg-top bg-no-repeat w-full`}
+      className={`bg-[url('/images/map.png')] bg-cover md:bg-contain bg-top bg-no-repeat w-full`}
       style={{
         height: window.innerWidth > 769 ? `${getProportionalHeight(window.innerWidth)}px` : "500px",
       }}

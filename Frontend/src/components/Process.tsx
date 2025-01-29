@@ -111,7 +111,7 @@ const Process: React.FC = () => {
         </Swiper>
         <div
           onClick={handlePrev}
-          className="absolute top-1/3 -left-10 md:-left-20 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10"
+          className="absolute top-1/3 -left-4 md:-left-20 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10"
         >
           <TbNavigationFilled
             style={{
@@ -123,7 +123,7 @@ const Process: React.FC = () => {
         </div>
         <div
           onClick={handleNext}
-          className="absolute top-1/3 -right-10 md:-right-20 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10"
+          className="absolute top-1/3 -right-4 md:-right-20 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10"
         >
           <TbNavigationFilled
             style={{
