@@ -3,8 +3,11 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      boxShadow: {
+        custom: "0 0 10px rgba(0, 0, 0, 0.04)",
+      },
       fontFamily: {
-        harabara: ["Harabara", "sans-serif"],
+        harabara: ["Harabara Mais Demo", "sans-serif"],
         poppins: ["Poppins", "sans-serif"],
         inter: ["Inter", "sans-serif"],
       },

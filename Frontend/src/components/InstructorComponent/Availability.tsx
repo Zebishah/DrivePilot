@@ -73,7 +73,7 @@ const Availability: React.FC = () => {
       <Card
         sx={{
           marginTop: 2,
-          height: 600,
+          height: { xs: 'auto', md: 600 },
           borderRadius: '10px',
           marginBottom: '1rem',
           boxShadow: 2,
@@ -175,3 +175,14 @@ const Availability: React.FC = () => {
 };
 
 export default Availability;
+
+
+
+
+
+
+
+
+
+
+

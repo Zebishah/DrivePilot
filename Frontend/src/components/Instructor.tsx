@@ -9,6 +9,7 @@ import { MdNavigateBefore, MdNavigateNext } from "react-icons/md";
 import type { Swiper as SwiperClass } from "swiper/types"; // Import Swiper type
 import { FaBook, FaCar, FaCogs, FaMoneyBillWave, FaRegCheckCircle } from 'react-icons/fa';
 import { IoStarSharp } from "react-icons/io5";
+import { useNavigate } from 'react-router-dom';
 const steps = [
   {
     title: "Register Yourself",
@@ -76,6 +77,7 @@ const steps = [
 const Instructor = () => {
   const swiperRef = useRef<SwiperClass | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
 
   const handlePrev = () => {
     if (swiperRef.current) {
@@ -186,6 +188,10 @@ const Instructor = () => {
       width: "100%", // Adjust the button width
       textTransform:"none",
       color:"black"
+    }}
+    onClick={() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate('/instructors');
     }}
   >
     View Details

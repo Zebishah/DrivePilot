@@ -7,7 +7,7 @@ type Props = {
 
 const Card: React.FC<Props> = ({ imageUrl, text }) => {
   return (
-    <div className="max-w-[300px] sm:w-[285px] md:w-[320px] lg:w-[200px] xl:w-[243px] 2xl:w-[300px] h-[420px] lg:h-[300px]  xl:h-[400px]  2xl:h-[460px]  rounded-t-[80px] overflow-hidden shadow-lg relative">
+    <div className="max-w-[300px] sm:w-[285px] md:w-[320px] lg:w-[200px] xl:w-[243px] 2xl:w-[300px] h-[300px] lg:h-[420px]   2xl:h-[460px]  rounded-t-[80px] overflow-hidden shadow-lg relative">
       <img
         src={imageUrl}
         alt=""

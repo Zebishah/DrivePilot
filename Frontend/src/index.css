@@ -1,6 +1,33 @@
+@import url("https://fonts.cdnfonts.com/css/harabara-mais-demo");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+.MuiTextField-root .MuiInputBase-root {
+    border-radius: 10px; 
+    /* border: 1px solid; */
+  }
+  
+  .MuiTextField-root .MuiOutlinedInput-input {
+    padding: 6px 8px !important; 
+   
 
+  }
 
+  
+  .MuiTextField-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: black !important;
+  }
+  
+  .MuiTextField-root .Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: #484848 !important;
+  }
+  
+  .MuiTextField-root .MuiInputAdornment-root {
+    margin-right: 5px;
+  }
+  
+  .MuiTextField-root .MuiSvgIcon-root {
+    color: black;
+  }

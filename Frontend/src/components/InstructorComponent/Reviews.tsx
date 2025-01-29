@@ -40,7 +40,7 @@ const Reviews: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ padding: 2 }}>
+    <Box sx={{ }}>
       <Typography sx={{ fontWeight: '600',
          marginBottom: 2,
           fontFamily: 'Poppins, sans-serif',

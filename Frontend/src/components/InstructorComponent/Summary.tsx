@@ -9,7 +9,7 @@ const Summary: React.FC = () => {
     
     <Card sx={{ marginTop: 2,
         
-        height: 650 ,
+        height: { xs: 'auto', md: 650 },
         borderRadius: "10px",
         marginBottom:"1rem",
         boxShadow:2,

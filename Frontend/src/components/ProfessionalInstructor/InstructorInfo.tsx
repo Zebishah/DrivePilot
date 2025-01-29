@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Button, Box, Drawer, Typography, TextField, MenuItem, Slider, FormControlLabel, Checkbox, Divider, InputAdornment, IconButton, Popover, Grid } from "@mui/material";
+import { Button, Box, Typography, TextField, MenuItem, Slider, FormControlLabel, Checkbox, InputAdornment, IconButton, Popover, Grid } from "@mui/material";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { IoStarSharp } from "react-icons/io5";
@@ -10,23 +10,8 @@ import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { CalendarToday } from '@mui/icons-material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { MdDone } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 
-
-const marks = [
-    {
-      value: 100,
-      label: '$100',
-    },
-    {
-      value: 500,
-      label: '$500',
-    },
-    {
-      value: 1000,
-      label: '$1000',
-    },
-  ];
-  
 const instructors = [
   {
     title: "Register Yourself",
@@ -101,9 +86,8 @@ const instructors = [
 const InstructorsInfo: React.FC = () => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [filters, setFilters] = useState({ city: "", price: [100, 1000], transmission: "", rating: 0, areaRadius: "", availability: null });
-
   const [selectedRow, setSelectedRow] = useState(null);
-
+  const navigate = useNavigate();
   const handleCheckboxChange = (rowIndex) => {
     setSelectedRow(rowIndex);
   };
@@ -127,7 +111,7 @@ const InstructorsInfo: React.FC = () => {
 
     return (
     <div className="max-w-screen-xl mx-auto overflow-x-hidden">
-      <h1 className="text-3xl font-harabara font-bold mb-4 mt-8 text-center">All Instructors</h1>
+      <h1 className="text-3xl font-harabara font-bold mb-4  text-center">All Instructors</h1>
       <button className="bg-[#5FC2D3] text-black ml-4 p-2 pl-20 pr-20 rounded-md flex font-poppins items-center gap-3"
       onClick={handleClick}>
         <FaSliders /> Filters
@@ -146,7 +130,7 @@ const InstructorsInfo: React.FC = () => {
                 style={{
                   clipPath: "circle(100% at 100% 0)",
                   backgroundColor: "#5FC2D3",
-                  marginLeft: "30.7rem"
+                  marginLeft: "30.9rem"
                 }}
               />
               {/* Left Side */}
@@ -191,6 +175,10 @@ const InstructorsInfo: React.FC = () => {
                     width: "100%", // Adjust the button width
                     textTransform: "none",
                     color:"black"
+                  }}
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    navigate('/instructors');
                   }}
                 >
                   View Details
@@ -364,8 +352,11 @@ const InstructorsInfo: React.FC = () => {
 
           </Box>
 
-          <Box sx={{ mt: 2 }}>
-            <Typography sx={{ fontFamily: 'Poppins, sans-serif' }}>Availability</Typography>
+          <Box sx={{ mt: 2}}>
+            <Typography sx={{ fontFamily: 'Poppins, sans-serif',
+            marginBottom:"0.5rem"
+
+             }}>Availability</Typography>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 value={filters.availability}
@@ -374,30 +365,7 @@ const InstructorsInfo: React.FC = () => {
                   <TextField
                     {...params}
                     fullWidth
-                    margin="normal"
-                    placeholder="MM/DD/YYYY"
                     className="datepicker"
-                    sx={{
-                      "& .MuiInputBase-root": {
-                        borderRadius: "10px",
-                      },
-                      "& .MuiOutlinedInput-input": {
-                        padding: "6px 8px !important", // Apply padding here
-                      },
-                      "&:hover .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "black !important",
-                      },
-                      "& .Mui-focused .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#484848 !important",
-                        borderWidth: "1px",
-                      },
-                      "& .MuiInputAdornment-root": {
-                        marginRight: "5px",
-                      },
-                      "& .MuiSvgIcon-root": {
-                        color: "black",
-                      },
-                    }}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -504,6 +472,10 @@ const InstructorsInfo: React.FC = () => {
 
 
       </div>
+
+
+
+
 
   );
 };

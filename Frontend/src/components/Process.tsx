@@ -1,10 +1,11 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import { Navigation } from "swiper/modules";
 import { TbNavigationFilled } from "react-icons/tb";
-import type { Swiper as SwiperClass } from "swiper/types"; // Import Swiper type
+import type { Swiper as SwiperClass } from "swiper/types"; 
 
 interface Step {
   title: string;
@@ -65,10 +66,10 @@ const Process: React.FC = () => {
   };
 
   return (
-
-    <div className="flex flex-col items-center py-8 relative bg-no-repeat  p-6 bg-contain bg-center"
-    style={{ backgroundImage: "url(/images/process.png)" }}
-  >
+    <div
+      className="flex flex-col items-center py-8 relative bg-no-repeat p-6 bg-contain bg-center"
+      style={{ backgroundImage: "url(/images/process.png)" }}
+    >
       <h2 className="text-3xl font-harabara font-bold mb-6">Our Process</h2>
       <div className="relative w-full max-w-4xl">
         <Swiper
@@ -84,7 +85,7 @@ const Process: React.FC = () => {
             <SwiperSlide key={index}>
               <div className="flex gap-12 flex-col md:flex-row items-center">
                 {/* Left Side */}
-                <div>
+                <div className="w-full md:w-1/2 ">
                   <img
                     src={step.imageUrl}
                     alt={step.title}
@@ -93,16 +94,16 @@ const Process: React.FC = () => {
                 </div>
                 {/* Right Side */}
                 <div
-                  className="p-8 pr-12  text-justify"
+                  className="p-8 pr-12 text-justify w-full md:w-1/2"
                   style={{
                     background: "#5FC2D3",
                     borderRadius: "10px",
                   }}
                 >
-                  <h3 className=" font-poppins font-medium text-xl pl-4 border-l-2 border-black">
+                  <h3 className="font-poppins font-medium text-xl pl-4 border-l-2 border-black">
                     {step.title}
                   </h3>
-                  <p className=" font-poppins  mt-2">{step.description}</p>
+                  <p className="font-poppins mt-2">{step.description}</p>
                 </div>
               </div>
             </SwiperSlide>
@@ -110,24 +111,26 @@ const Process: React.FC = () => {
         </Swiper>
         <div
           onClick={handlePrev}
-          className={`absolute top-1/3 -left-40 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10 ${
-            currentIndex === 0 ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className="absolute top-1/3 -left-10 md:-left-20 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10"
         >
           <TbNavigationFilled
-            style={{ color: "#5FC2D3", transform: "rotate(270deg)", fontSize:"2rem"  }}
+            style={{
+              color: "#5FC2D3",
+              transform: "rotate(270deg)",
+              fontSize: "2rem",
+            }}
           />
         </div>
         <div
           onClick={handleNext}
-          className={`absolute top-1/3 -right-40 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10 ${
-            currentIndex === steps.length - 1
-              ? "opacity-50 cursor-not-allowed"
-              : ""
-          }`}
+          className="absolute top-1/3 -right-10 md:-right-20 bg-white text-#5FC2D3 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer z-10"
         >
           <TbNavigationFilled
-            style={{ color: "#5FC2D3", transform: "rotate(90deg)" , fontSize:"2rem"}}
+            style={{
+              color: "#5FC2D3",
+              transform: "rotate(90deg)",
+              fontSize: "2rem",
+            }}
           />
         </div>
       </div>
