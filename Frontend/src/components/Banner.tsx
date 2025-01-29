@@ -25,11 +25,11 @@ const Banner: React.FC = () => {
           </div>
         </div>
 
-        <h2 className="ml-40  text-4xl max-w-md font-bold">
+        <h2 className="ml-40  font-harabara  text-5xl max-w-2xl font-bold">
           Building Skilled Drivers for a Safer Tomorrow.
         </h2>
 
-        <p className="ml-40 mb-72 text-justify max-w-md">
+        <p className="ml-40 font-poppins mt-4  text-2xl mb-60 text-justify max-w-md">
           Lorem ipsum dolor sit amet consectetur. Eu faucibus felis fermentum
           nunc sit. Suspendisse vivamus ipsum vestibulum morbi tortor faucibus
           lacus duis nunc. Vitae at metus sed.

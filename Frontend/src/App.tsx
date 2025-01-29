@@ -8,6 +8,7 @@ import OurInstructor from "./pages/public/OurInstructor";
 import NotFound from "./components/common/NotFound";
 import AboutUs from "./pages/public/AboutUs";
 import Contact from "./pages/public/Contact";
+import Professional from "./pages/public/Professional";
 
 // Define the router with type safety
 const router = createBrowserRouter([
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: "", element: <Home /> },
       { path: "about", element: <AboutUs /> },
       { path: "contact", element: <Contact /> },
+      { path: "professional", element: <Professional/> },
     ],
   },
   {

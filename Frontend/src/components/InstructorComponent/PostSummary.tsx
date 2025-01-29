@@ -27,6 +27,7 @@ const ProfileSummary = () => {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
+            
           }}
         >
           <Box
@@ -34,8 +35,14 @@ const ProfileSummary = () => {
               marginTop: '2rem',
             }}
           >
-            <Typography variant="h5">Tom Watson</Typography>
-            <Typography variant="subtitle1" color="textSecondary">
+            <Typography
+             sx={{
+              fontFamily: 'Poppins, sans-serif'
+       }} variant="h5">Tom Watson</Typography>
+            <Typography
+             sx={{
+              fontFamily: 'Poppins, sans-serif'
+       }}  variant="subtitle1" color="textSecondary">
               Bern, SWI
             </Typography>
           </Box>
@@ -46,10 +53,17 @@ const ProfileSummary = () => {
                 borderRight: '1px solid #ccc',
               }}
             >
-              <Typography variant="body2">
+              <Typography variant="body2"
+              // sx={{
+              //        fontFamily: 'Poppins, sans-serif'
+              // }}
+              >
                 <strong>234</strong>
               </Typography>
-              <Typography>Trips</Typography>
+              <Typography
+               sx={{
+                     fontFamily: 'Poppins, sans-serif'
+              }}>Trips</Typography>
             </Box>
             <Box
               sx={{
@@ -58,16 +72,30 @@ const ProfileSummary = () => {
                 borderRight: '1px solid #ccc',
               }}
             >
-              <Typography variant="body2">
+              <Typography variant="body2"
+        //        sx={{
+        //         fontFamily: 'Poppins, sans-serif'
+        //  }}
+         >
                 <strong>4.8</strong>
               </Typography>
-              <Typography>Ratings</Typography>
+              <Typography
+               sx={{
+                fontFamily: 'Poppins, sans-serif'
+         }}>Ratings</Typography>
             </Box>
             <Box sx={{ paddingLeft: '2rem' }}>
-              <Typography variant="body2">
+              <Typography 
+              //  sx={{
+              //        fontFamily: 'Poppins, sans-serif'
+              // }}
+              variant="body2">
                 <strong>$30/lesson</strong>
               </Typography>
-              <Typography>Fair</Typography>
+              <Typography
+               sx={{
+                fontFamily: 'Poppins, sans-serif'
+         }}>Fair</Typography>
             </Box>
           </Box>
         </Box>
@@ -81,6 +109,9 @@ const ProfileSummary = () => {
             width: '14rem',
             height: '3rem',
             textTransform: 'none',
+          
+              fontFamily: 'Poppins, sans-serif'
+    
           }}
         >
           Book Now
@@ -93,7 +124,9 @@ const ProfileSummary = () => {
     marginTop: '1rem',
     '& .MuiTabs-indicator': {
       backgroundColor: 'black', 
-      height: '3px', 
+      fontWeight:'500',
+      height: '2px', 
+      
     },
   }}
   value={activeTab}
@@ -102,24 +135,28 @@ const ProfileSummary = () => {
   <Tab
     sx={{
       textTransform: 'none',
-      fontWeight: activeTab === 0 ? 'bold' : 'normal', 
-      color: activeTab === 0 ? 'black !important' : 'inherit', 
+      fontWeight: activeTab === 0 ? '600' : '400', 
+      color: activeTab === 0 ? 'black !important' : 'inherit',
+      fontFamily: 'Poppins, sans-serif' 
     }}
     label="Profile Summary"
   />
   <Tab
     sx={{
       textTransform: 'none',
-      fontWeight: activeTab === 1 ? 'bold' : 'normal', 
+      fontWeight: activeTab === 1 ? '600' : '400', 
       color: activeTab === 1 ? 'black !important' : 'inherit', 
+           fontFamily: 'Poppins, sans-serif',
+           
     }}
     label="Availability"
   />
   <Tab
     sx={{
       textTransform: 'none',
-      fontWeight: activeTab === 2 ? 'bold' : 'normal', 
-      color: activeTab === 2 ? 'black !important' : 'inherit', 
+      fontWeight: activeTab === 2 ? '600' : '400', 
+      color: activeTab === 2 ? 'black !important' : 'inherit',
+      fontFamily: 'Poppins, sans-serif' 
     }}
     label="Reviews"
   />

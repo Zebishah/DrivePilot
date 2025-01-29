@@ -17,20 +17,30 @@ const Summary: React.FC = () => {
           <CardContent>
             <Typography 
             sx={{
-                fontWeight:"bold"
+                fontWeight:"600",
+                  fontFamily: 'Poppins, sans-serif'
+          
             }}
             variant="h6">Summary</Typography>
             <Typography
             sx={{
-                marginBottom:"0.5rem"
+                marginBottom:"0.5rem",
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight:"600",
+
+          
             }} 
-            variant="subtitle1" marginTop={2} fontWeight="bold">
+            variant="subtitle1" marginTop={2} >
               About Me
             </Typography>
             <Typography  sx={{
-                textJustify:"1"
+                textJustify:"1",
+                fontFamily: 'Poppins, sans-serif',
+
             }}
-            variant="body2" color="textSecondary">
+            variant="body2"
+            
+            color="textSecondary">
               Lorem ipsum dolor sit amet consectetur. Sed etiam amet ornare ullamcorper enim habitant hac risus lacus. Erat leo pulvinar sed sit
                enim gravida id nulla. Eget tempor nibh tellus nunc nec sit blandit. At tempus neque ultrices mi. Tellus urna nullam orci duis sed
                nunc. Amet nisl nisl ornare suspendisse diam tempus ut dignissim. Tempus lobortis morbi elit tortor sagittis mi faucibus neque
@@ -39,14 +49,18 @@ const Summary: React.FC = () => {
 
             <Typography 
              sx={{
-                marginBottom:"0.5rem"
+                marginBottom:"0.5rem",
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight:"600"
             }} 
-            variant="subtitle1" marginTop={2} fontWeight="bold">
+            variant="subtitle1" marginTop={2} >
               Why Choose Me?
             </Typography>
 <Typography
       sx={{
-        marginBottom:"-0.5rem"
+        marginBottom:"-0.5rem",
+        fontFamily: 'Poppins, sans-serif',
+
     }} 
 
 variant="body2" color="textSecondary" component="div">
@@ -86,41 +100,73 @@ variant="body2" color="textSecondary" component="div">
 
             <Typography 
              sx={{
-                marginBottom:"0.5rem"
+                marginBottom:"0.5rem",
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight:"600"
             }} 
-            variant="subtitle1" marginTop={2} fontWeight="bold">
+            variant="subtitle1" marginTop={2} >
               Language Spoken
             </Typography>
-            <Typography variant="body2" color="textSecondary">
+            <Typography
+            sx={{
+              
+              fontFamily: 'Poppins, sans-serif',
+           
+          }} 
+            
+            variant="body2" color="textSecondary">
               English
             </Typography>
 
             <Typography
              sx={{
-                marginBottom:"0.5rem"
+                marginBottom:"0.5rem",
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight:"600"
+           
+
             }} 
-             variant="subtitle1" marginTop={2} fontWeight="bold">
+             variant="subtitle1" marginTop={2} >
               Certifications
             </Typography>
-            <Typography variant="body2" color="textSecondary">
+            <Typography
+            sx={{
+              marginBottom:"0.5rem",
+              fontFamily: 'Poppins, sans-serif'
+          }} 
+           variant="body2" color="textSecondary">
               Certified Child Care Provider
             </Typography>
 
             <Typography 
              sx={{
-                marginBottom:"0.5rem"
+                marginBottom:"0.5rem",
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight:"600"
+              
             }} 
-            variant="subtitle1" marginTop={2} fontWeight="bold">
+            variant="subtitle1"
+             marginTop={2} >
               Verification
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
-  <Typography variant="body2" color="textSecondary" sx={{ marginRight: "0.5rem" }}>
+            <Box sx={{ display: "flex", 
+              alignItems: "center",
+               marginBottom: "0.5rem",
+          
+  
+             }}>
+  <Typography variant="body2" color="textSecondary"
+   sx={{ marginRight: "0.5rem",
+    fontFamily: 'Poppins, sans-serif',
+    }}>
     Criminal Record Check
   </Typography>
   <FaRegCheckCircle   style={{ color: '#25D422' }}/>
 </Box>
 <Box sx={{ display: "flex", alignItems: "center" }}>
-  <Typography variant="body2" color="textSecondary" sx={{ marginRight: "0.5rem" }}>
+  <Typography variant="body2" color="textSecondary" sx={{
+     marginRight: "0.5rem",
+     fontFamily: 'Poppins, sans-serif', }}>
     Reference Check
   </Typography>
   <FaRegCheckCircle  style={{ color: '#25D422' }} />

@@ -4,7 +4,7 @@ import { Button } from "@mui/material";
 
 const Navbar: React.FC = () => {
   return (
-    <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
+    <nav className="bg-gray-900 font-poppins text-white py-4 px-6 flex justify-between items-center">
       {/* Logo Section */}
       <div className="flex items-center">
         <img src="/dsp.png" alt="Logo" className="h-10 w-auto ml-8" />
@@ -44,7 +44,7 @@ const Navbar: React.FC = () => {
         </li>
         <li>
           <NavLink
-            to="/instructors"
+            to="/professional"
             className={({ isActive }) =>
               isActive ? "text-blue-400" : "hover:text-gray-300"
             }
@@ -56,8 +56,9 @@ const Navbar: React.FC = () => {
 
       {/* Button Section */}
       <div className="mr-8">
-        <Button
+        <Button 
           variant="contained"
+        
           sx={{
             paddingLeft: "2rem",
             paddingRight: "2rem",
@@ -66,6 +67,8 @@ const Navbar: React.FC = () => {
             "&:hover": { backgroundColor: "#479A93" },
             textTransform: "none",
             color: "#000",
+             fontFamily: 'Poppins, sans-serif'
+           
           }}
         >
           Sign In

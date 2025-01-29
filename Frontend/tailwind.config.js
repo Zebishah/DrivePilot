@@ -42,13 +42,47 @@ export default {
         white: "#FFFFFF",
         black: "#000000",
       },
+            scrollbar: {
+        width: '8px',
+        backgroundColor: 'transparent',
+        thumb: {
+          backgroundColor: '#5FC2D3',
+          borderRadius: '4px'
+        }
+      }
+
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }) {
+      addUtilities({
+        '.custom-scrollbar': {
+          'scrollbar-width': 'thin',
+          'scrollbar-color': '#D9D9D9 transparent'
+
+        },
+        '.custom-scrollbar::-webkit-scrollbar': {
+          width: '6px'
+        },
+        '.custom-scrollbar::-webkit-scrollbar-thumb': {
+          backgroundColor: 'transparent',
+       
+        },
+        '.custom-scrollbar::-webkit-scrollbar-track': {
+          backgroundColor: 'transparent'
+        },
+        '.checkbox-size': {
+          width: '20px',
+          height: '20px',
+        },
+       
+      
+
+      }, ['responsive'])
+    }
+
+  ],
 };
-
-
-
 
 
 

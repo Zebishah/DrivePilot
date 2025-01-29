@@ -29,82 +29,55 @@ const testimonials = [
 
 const Testimonials: React.FC = () => {
   return (
-    <Container style={{ textAlign: "center", padding: "2rem 0" }}>
-      <Typography
-        variant="h4"
-        gutterBottom
-        sx={{
-          marginTop: "1rem",
-        }}
-      >
-        Testimonials
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Lorem ipsum dolor sit amet consectetur. Ultricies sed id nulla ornare.{" "}
-      </Typography>
-      <Typography
-        sx={{
-          marginBottom: "2rem",
-        }}
-      >
-        {" "}
-        Arcu nunc tincidunt cursus convallis diam
-      </Typography>
+     <Container style={{ textAlign: "center", padding: "2rem 0",
+    }}>
+    <h4 className="mt-4 text-3xl font-bold font-harabara">
+      Testimonials
+    </h4>
+    <p className="mt-2 text-base">
+      Lorem ipsum dolor sit amet consectetur. Ultricies sed id nulla ornare.
+    </p>
+    <p className="mb-8 text-base">
+      Arcu nunc tincidunt cursus convallis diam
+    </p>
 
-      <Grid container spacing={4} justifyContent="center">
-        {testimonials.map((testimonial, index) => (
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            md={4}
-            key={index}
-            style={
-              testimonial.highlighted
-                ? { marginTop: "3rem" }
-                : { marginBottom: "3rem" }
-            }
-          >
-            <Card
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-center">
+      {testimonials.map((testimonial, index) => (
+        <div
+          key={index}
+          className={`p-2 min-h-[400px] rounded-lg shadow-md ${
+            testimonial.highlighted ? 'bg-[#5FC2D3]' : 'bg-white border border-gray-600'
+          }`}
+          style={
+            testimonial.highlighted
+              ? { marginTop: "3rem" }
+              : { marginBottom: "3rem" }
+          }
+        >
+          <div className="text-center p-2 ">
+            <img
+              src={testimonial.image}
+              alt={testimonial.name}
+              className="w-36 h-36 rounded-full mt-4 mx-auto mb-4 border-2"
               style={{
-                padding: "2rem",
-                minHeight: "400px",
-                backgroundColor: testimonial.highlighted ? "#5FC2D3" : "white",
-                border: testimonial.highlighted ? "none" : "1px solid #6A6A6A",
-                borderRadius: "10px",
-                boxShadow: testimonial.highlighted ? "none" : "none", // Remove shadow from white cards
+                borderColor: testimonial.highlighted ? 'white' : '#5FC2D3',
               }}
+            />
+            <h6
+              className={`text-3xl font-bold mb-4 ${
+                testimonial.highlighted ? 'text-black' : 'text-[#5FC2D3]'
+              }`}
             >
-              <CardContent style={{ textAlign: "center" }}>
-                <Avatar
-                  src={testimonial.image}
-                  alt={testimonial.name}
-                  style={{
-                    width: 150,
-                    height: 150,
-                    margin: "0 auto 1rem",
-                    border: `2px solid ${
-                      testimonial.highlighted ? "white" : "#5FC2D3"
-                    }`,
-                  }}
-                />
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  style={{
-                    color: testimonial.highlighted ? "black" : "#5FC2D3",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {testimonial.name}
-                </Typography>
-                <Typography variant="body2">{testimonial.text}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Container>
+              {testimonial.name}
+            </h6>
+            <p className="text-base font-normal text-xl">
+              {testimonial.text}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </Container>
   );
 };
 

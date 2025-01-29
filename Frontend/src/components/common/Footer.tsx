@@ -8,7 +8,7 @@ import { FaLinkedinIn } from "react-icons/fa";
 const Footer: React.FC = () => {
   return (
     <footer
-      className="bg-gray-900 text-white flex items-center justify-between px-8 py-8"
+      className="bg-gray-900 font-poppins text-white flex items-center justify-between px-8 py-8"
       style={{ height: "300px" }}
     >
       {/* Left Section: Logo */}
@@ -76,6 +76,7 @@ const Footer: React.FC = () => {
            paddingBottom:"0.5rem",
             borderRadius:"10px",
             "&:hover": { backgroundColor: "#479A93" },
+                 fontFamily: 'Poppins, sans-serif'
           }}
         >
           Sign In
