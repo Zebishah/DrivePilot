@@ -1,8 +1,7 @@
-
 import React, { useState } from "react";
-import { NavLink,useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@mui/material";
-import { FaBars, FaTimes } from "react-icons/fa"; 
+import { FaBars, FaTimes } from "react-icons/fa";
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
@@ -40,7 +39,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             Home
@@ -50,7 +49,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/about"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             About Us
@@ -60,7 +59,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/contact"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             Contact Us
@@ -70,7 +69,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/professional"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             Our Instructors
@@ -86,11 +85,11 @@ const Navbar: React.FC = () => {
             paddingLeft: "2rem",
             paddingRight: "2rem",
             borderRadius: "10px",
-            backgroundColor: "#58B4AE",
+            backgroundColor: "#5EC2D2",
             "&:hover": { backgroundColor: "#479A93" },
             textTransform: "none",
             color: "#000",
-            fontFamily: 'Poppins, sans-serif',
+            fontFamily: "Poppins, sans-serif",
           }}
         >
           Sign In
@@ -101,12 +100,3 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
-
-
-
-
-
-
-
-
-
