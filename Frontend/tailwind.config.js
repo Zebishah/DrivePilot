@@ -3,6 +3,9 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      screens: {
+        xxl: "1920px",
+      },
       boxShadow: {
         custom: "0 0 10px rgba(0, 0, 0, 0.04)",
       },
@@ -45,50 +48,40 @@ export default {
         white: "#FFFFFF",
         black: "#000000",
       },
-            scrollbar: {
-        width: '8px',
-        backgroundColor: 'transparent',
+      scrollbar: {
+        width: "8px",
+        backgroundColor: "transparent",
         thumb: {
-          backgroundColor: '#5FC2D3',
-          borderRadius: '4px'
-        }
-      }
-
+          backgroundColor: "#5FC2D3",
+          borderRadius: "4px",
+        },
+      },
     },
   },
   plugins: [
     function ({ addUtilities }) {
-      addUtilities({
-        '.custom-scrollbar': {
-          'scrollbar-width': 'thin',
-          'scrollbar-color': '#D9D9D9 transparent'
-
+      addUtilities(
+        {
+          ".custom-scrollbar": {
+            "scrollbar-width": "thin",
+            "scrollbar-color": "#D9D9D9 transparent",
+          },
+          ".custom-scrollbar::-webkit-scrollbar": {
+            width: "6px",
+          },
+          ".custom-scrollbar::-webkit-scrollbar-thumb": {
+            backgroundColor: "transparent",
+          },
+          ".custom-scrollbar::-webkit-scrollbar-track": {
+            backgroundColor: "transparent",
+          },
+          ".checkbox-size": {
+            width: "20px",
+            height: "20px",
+          },
         },
-        '.custom-scrollbar::-webkit-scrollbar': {
-          width: '6px'
-        },
-        '.custom-scrollbar::-webkit-scrollbar-thumb': {
-          backgroundColor: 'transparent',
-       
-        },
-        '.custom-scrollbar::-webkit-scrollbar-track': {
-          backgroundColor: 'transparent'
-        },
-        '.checkbox-size': {
-          width: '20px',
-          height: '20px',
-        },
-       
-      
-
-      }, ['responsive'])
-    }
-
+        ["responsive"]
+      );
+    },
   ],
 };
-
-
-
-
-
-

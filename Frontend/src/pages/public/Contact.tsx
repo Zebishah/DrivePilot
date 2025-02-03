@@ -34,7 +34,7 @@ const Contact: React.FC<Props> = () => {
               />
               <textarea
                 placeholder="Message"
-                rows="1"
+                rows="6"
                 className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] focus:outline-none focus:ring-2 focus:ring-primary"
               ></textarea>
               <select className="w-full  border-input border px-[22px] py-[13px]   rounded-[10px] text-[14px] text-input  focus:outline-none focus:ring-2 focus:ring-primary ">
