@@ -223,7 +223,7 @@ const Process: React.FC = () => {
           >
             <TbNavigationFilled className="text-primary rotate-90 text-2xl" />
           </button>
-          <div className="mt-6 text-center text-secondary font-semibold">
+          <div className=" text-center text-secondary font-semibold mt-[-20px]">
             Step {currentIndex + 1} of {steps.length}
           </div>
         </div>

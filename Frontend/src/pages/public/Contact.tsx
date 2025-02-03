@@ -17,7 +17,7 @@ const Contact: React.FC<Props> = () => {
       />
       <Container>
         <div className="flex flex-col  lg:flex-row w-full xl:w-[100%] lg:items-start  lg:justify-between gap-20  my-12 md:my-24 ">
-          <div className="  lg:w-[50%] sm:px-10 md:px-20 lg:px-5 xl:px-20 h-[400px] w-full ">
+          <div className="  lg:w-[50%] sm:px-10 md:px-20 lg:px-5 xl:px-20 h-[400px] h-full w-full ">
             <h2 className=" font-harabara text-[28px] font-bold mb-4">
               Send us message now
             </h2>
@@ -52,7 +52,7 @@ const Contact: React.FC<Props> = () => {
               </button>
             </form>
           </div>
-          <div className=" lg:w-[50%] sm:px-10  md:px-20 lg:px-5 xl:px-20 min-h-[400px] w-full ">
+          <div className=" lg:w-[50%] sm:px-10  md:px-20 lg:px-5 xl:px-20 min-h-[400px] h-full w-full ">
             <div className="space-y-6">
               {/* Phone Number Section */}
               <div className="flex items-center gap-3">
