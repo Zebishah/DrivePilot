@@ -28,6 +28,11 @@ const Contact: React.FC<Props> = () => {
                 className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
+                type="email"
+                placeholder="Email"
+                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <input
                 type="text"
                 placeholder="Phone Number"
                 className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px]  focus:outline-none focus:ring-2 focus:ring-primary"

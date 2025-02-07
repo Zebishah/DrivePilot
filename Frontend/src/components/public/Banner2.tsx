@@ -41,11 +41,12 @@ const Banner2: React.FC<Banner2Props> = ({ header, paragraph, image }) => {
             </p>
           </div>
           <div className="w-full sm:w-[30%] flex  items-center justify-center ">
-            <img
-              src={image}
-              alt="Driving Training"
-              className="h-auto w-[120px] lg:w-[160px] xxl:w-[200px]"
-            />
+            {image ? (
+              <img
+                src={image}
+                className="h-auto w-[120px] lg:w-[160px] xxl:w-[200px]"
+              />
+            ) : null}
           </div>
         </div>
       </Container>

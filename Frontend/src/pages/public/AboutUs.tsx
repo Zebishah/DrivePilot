@@ -13,7 +13,7 @@ const AboutUs = (props: Props) => {
         paragraph={
           "Driving School Platform (DSP) is an innovative digital solution dedicated to modernizing and simplifying driver training in Switzerland. DSP offers a web and mobile platform that puts learner drivers in direct contact with instructors approved by the Federal Roads Ofce (FEDRO), or with private instructors authorized to teach. By introducing DSP to the Swiss market, our ambition is to transform access to driving lessons by facilitating organization and exibility for both students and instructors."
         }
-        image={"/images/about.png"}
+        image={""}
       />
       <Container>
         <AboutCards />
