@@ -32,7 +32,9 @@ const Banner2: React.FC<Banner2Props> = ({ header, paragraph, image }) => {
     >
       <Container>
         <div className=" h-full  w-full  flex sm:items-center sm:justify-between justify-center gap-5 flex-col sm:flex-row   ">
-          <div className=" w-full sm:w-[60%] ">
+          <div
+            className={`w-full  sm:w-[60%]  ${image ? null : "sm:w-full "} `}
+          >
             <h1 className=" text-white font-harabara sm:text-4xl lg:text-5xl  xxl:text-6xl  font-bold mb-3 lg:mb-6 text-center sm:text-left ">
               {header}
             </h1>
@@ -40,14 +42,14 @@ const Banner2: React.FC<Banner2Props> = ({ header, paragraph, image }) => {
               {paragraph}
             </p>
           </div>
-          <div className="w-full sm:w-[30%] flex  items-center justify-center ">
-            {image ? (
+          {image ? (
+            <div className="w-full sm:w-[30%] flex  items-center justify-center ">
               <img
                 src={image}
                 className="h-auto w-[120px] lg:w-[160px] xxl:w-[200px]"
               />
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </Container>
     </div>

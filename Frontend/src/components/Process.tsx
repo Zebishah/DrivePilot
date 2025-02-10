@@ -193,7 +193,7 @@ const Process: React.FC = () => {
                     <img
                       src={step.imageUrl}
                       alt={step.title}
-                      className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg object-contain"
+                      className="w-full  h-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg object-contain p-2 "
                     />
                   </div>
 
@@ -223,7 +223,7 @@ const Process: React.FC = () => {
           >
             <TbNavigationFilled className="text-primary rotate-90 text-2xl" />
           </button>
-          <div className=" text-center text-secondary font-semibold mt-[-20px]">
+          <div className=" text-center text-secondary font-semibold mt-[20px] lg:mt-[-20px]">
             Step {currentIndex + 1} of {steps.length}
           </div>
         </div>
