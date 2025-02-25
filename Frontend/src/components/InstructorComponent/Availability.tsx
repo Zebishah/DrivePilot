@@ -73,7 +73,7 @@ const Availability: React.FC = () => {
       <Card
         sx={{
           marginTop: 2,
-          height: 600,
+          height: { xs: 'auto', md: 600 },
           borderRadius: '10px',
           marginBottom: '1rem',
           boxShadow: 2,
@@ -84,7 +84,8 @@ const Availability: React.FC = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', position: 'relative', alignItems: 'center' }}>
             <Typography
               sx={{
-                fontWeight: 'bold',
+                fontWeight: '600',
+                fontFamily: 'Poppins, sans-serif',
               }}
               variant="h6"
             >
@@ -101,7 +102,11 @@ const Availability: React.FC = () => {
               />
             </CalendarIconWrapper>
           </Box>
-          <Typography variant="subtitle1" marginTop={2} fontWeight="bold">
+          <Typography
+          sx={{
+            fontFamily: 'Poppins, sans-serif',
+            fontWeight: '600',
+          }} variant="subtitle1" marginTop={2}>
             Select Available Time Slots
           </Typography>
 
@@ -123,19 +128,38 @@ const Availability: React.FC = () => {
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
                       <FaRegCheckCircle style={{ color: '#25D422' }} />
-                      <Typography variant="body1" fontWeight="bold">
+                      <Typography variant="body1" 
+                      sx={{
+                           fontWeight: '500',
+                           fontFamily: 'Poppins, sans-serif',
+
+                      }}
+                      >
                         {slot.time}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
                       <IoMdTime />
-                      <Typography variant="body2" fontWeight="bold">
+                      <Typography
+                       sx={{
+                        fontWeight: '500',
+                        fontFamily: 'Poppins, sans-serif',
+
+                   }}
+
+                      variant="body2" fontWeight="bold">
                         {slot.duration}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
                       <TiLocationOutline />
-                      <Typography variant="body2" fontWeight="bold">
+                      <Typography
+                         sx={{
+                          fontWeight: '500',
+                          fontFamily: 'Poppins, sans-serif',
+
+                     }}
+                      variant="body2" fontWeight="bold">
                         {slot.location}
                       </Typography>
                     </Box>
@@ -151,3 +175,14 @@ const Availability: React.FC = () => {
 };
 
 export default Availability;
+
+
+
+
+
+
+
+
+
+
+

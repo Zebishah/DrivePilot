@@ -14,7 +14,7 @@ function SetView({ center, zoom }: { center: [number, number]; zoom: number }) {
 
 const MapComponent: React.FC = () => {
   return (
-    <MapContainer className="h-[400px] w-full">
+    <MapContainer className="h-[400px] w-full ">
       <SetView center={position} zoom={13} />
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <Marker position={position}>

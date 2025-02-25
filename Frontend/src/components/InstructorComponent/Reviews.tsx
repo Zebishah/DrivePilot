@@ -40,8 +40,11 @@ const Reviews: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ padding: 2 }}>
-      <Typography sx={{ fontWeight: 'bold', marginBottom: 2 }} variant="h6">
+    <Box sx={{ }}>
+      <Typography sx={{ fontWeight: '600',
+         marginBottom: 2,
+          fontFamily: 'Poppins, sans-serif',
+         }} variant="h6">
         Reviews
       </Typography>
       <Divider
@@ -77,18 +80,41 @@ const Reviews: React.FC = () => {
                   alignItems: 'center',
                 }}
               >
-                <Typography variant="subtitle1" fontWeight="bold">
+                <Typography
+                   sx={{
+                    fontWeight: '500',
+                    fontFamily: 'Poppins, sans-serif',
+
+               }}
+                variant="subtitle1" >
                   {review.name}
                 </Typography>
-                <Typography variant="caption" sx={{ marginTop: 1, display: 'block' }}>
+                <Typography
+                  sx={{
+                    fontWeight: '500',
+                    fontFamily: 'Poppins, sans-serif',
+                     marginTop: 1, display: 'block'
+
+               }}
+                 variant="caption" >
                   {review.date}
                 </Typography>
               </Box>
 
-              <Typography variant="body2" color="text.secondary">
+              <Typography 
+               sx={{
+                fontFamily: 'Poppins, sans-serif',
+           }}
+              variant="body2" color="text.secondary">
                 <strong>{review.rating} </strong> Excellence
               </Typography>
-              <Typography variant="body2" sx={{ marginTop: 1 }}>
+              <Typography 
+               sx={{
+                fontWeight: '400',
+                fontFamily: 'Poppins, sans-serif',
+                 marginTop: 1
+
+           }}variant="body2" >
                 {review.comment}
               </Typography>
             </Grid>
@@ -102,13 +128,34 @@ const Reviews: React.FC = () => {
                   <Avatar src={review.responderimage} alt={review.responder} sx={{ width: 62, height: 80 }} />
                 </Grid>
                 <Grid item xs>
-                  <Typography variant="subtitle1" fontWeight="bold">
+                  <Typography 
+                   sx={{
+                    fontWeight: '500',
+                    fontFamily: 'Poppins, sans-serif',
+                     
+
+               }}
+                  variant="subtitle1">
                     {review.responder}
                   </Typography>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography
+                   sx={{
+                    fontWeight: '400',
+                    fontFamily: 'Poppins, sans-serif',
+                  
+
+               }}
+                  variant="subtitle2" color="text.secondary">
                     {review.responderName}
                   </Typography>
-                  <Typography variant="body2">{review.response}</Typography>
+                  <Typography
+                   sx={{
+                    fontWeight: '400',
+                    fontFamily: 'Poppins, sans-serif',
+                    
+
+               }}
+                  variant="body2">{review.response}</Typography>
                 </Grid>
               </Grid>
             </Box>

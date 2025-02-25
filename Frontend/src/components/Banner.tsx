@@ -1,42 +1,33 @@
-import React from "react";
-const Banner: React.FC = () => {
+
+import Banner3 from "./public/Banner3";
+
+type Props = {};
+
+const Banner = (props: Props) => {
   return (
-    <div className="relative w-full min-h-screen">
-      {/* Background Image */}
-      <img
-        src="/images/banner.png"
-        alt="Driving Training"
-        className="w-full h-full object-cover"
+    <div className="">
+      <Banner3
+        header={"  Building Skilled Drivers for a Safer Tomorrow."}
+        paragraph={
+          "Driving School Platform is an innovative digital solution dedicated to modernizing and simplifying driver t that puts learner drivers in direct contact with instructors approved by the Federal Roads  or with private instructors authorized to teach. By introducing DSP to the Swiss market, our ambition and instructors."
+        }
+        image={"/images/banner1.png"}
       />
-
-      {/* Overlay Text */}
-
-      <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-start text-white px-8">
-        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center items-end text-white px-8">
-          <div className=" mb-72 mr-52  max-w-xs">
-            <img
-              src="/images/banner1.png"
-              alt="Driving Training"
-              style={{
-                width: "120px",
-                height: "auto",
-              }}
-            />
-          </div>
-        </div>
-
-        <h2 className="ml-40  text-4xl max-w-md font-bold">
-          Building Skilled Drivers for a Safer Tomorrow.
-        </h2>
-
-        <p className="ml-40 mb-72 text-justify max-w-md">
-          Lorem ipsum dolor sit amet consectetur. Eu faucibus felis fermentum
-          nunc sit. Suspendisse vivamus ipsum vestibulum morbi tortor faucibus
-          lacus duis nunc. Vitae at metus sed.
-        </p>
       </div>
-    </div>
   );
 };
-
 export default Banner;
+
+
+
+
+
+
+
+
+
+
+
+
+
+

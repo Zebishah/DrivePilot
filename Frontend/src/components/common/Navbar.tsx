@@ -1,22 +1,45 @@
-import React from "react";
-import { NavLink } from "react-router-dom"; // Import NavLink from react-router-dom
+import React, { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@mui/material";
-
+import { FaBars, FaTimes } from "react-icons/fa";
 const Navbar: React.FC = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+  React.useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location]);
+
   return (
-    <nav className="bg-gray-900 text-white py-4 px-6 flex justify-between items-center">
+    <nav className="bg-gray-900 font-poppins text-white py-4 px-6 flex justify-between items-center relative">
       {/* Logo Section */}
       <div className="flex items-center">
-        <img src="/dsp.png" alt="Logo" className="h-10 w-auto ml-8" />
+        <img src="/dsp.png" alt="Logo" className="h-10 w-auto md:ml-8" />
+      </div>
+
+      {/* Hamburger Menu Icon */}
+      <div className="md:hidden" onClick={toggleMenu}>
+        {isMenuOpen ? (
+          <FaTimes className="h-6 w-6 cursor-pointer" />
+        ) : (
+          <FaBars className="h-6 w-6 cursor-pointer" />
+        )}
       </div>
 
       {/* Links Section */}
-      <ul className="flex space-x-6">
+      <ul
+        className={`flex flex-col p-6 md:p-4 md:flex-row space-y-6 md:space-y-0 md:space-x-6 absolute md:relative top-14 md:top-auto left-0 w-full md:w-auto bg-gray-900 md:bg-transparent transition-all duration-300 ease-in-out ${
+          isMenuOpen ? "block" : "hidden md:flex"
+        }`}
+      >
         <li>
           <NavLink
             to="/"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             Home
@@ -26,7 +49,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/about"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             About Us
@@ -36,7 +59,7 @@ const Navbar: React.FC = () => {
           <NavLink
             to="/contact"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             Contact Us
@@ -44,9 +67,9 @@ const Navbar: React.FC = () => {
         </li>
         <li>
           <NavLink
-            to="/instructors"
+            to="/professional"
             className={({ isActive }) =>
-              isActive ? "text-blue-400" : "hover:text-gray-300"
+              isActive ? "text-primary" : "hover:text-gray-300"
             }
           >
             Our Instructors
@@ -55,7 +78,7 @@ const Navbar: React.FC = () => {
       </ul>
 
       {/* Button Section */}
-      <div className="mr-8">
+      <div className="hidden md:block mr-8">
         <Button
           onClick={() => {
             window.location.href = "/auth/signin";
@@ -65,10 +88,11 @@ const Navbar: React.FC = () => {
             paddingLeft: "2rem",
             paddingRight: "2rem",
             borderRadius: "10px",
-            backgroundColor: "#58B4AE",
+            backgroundColor: "#5EC2D2",
             "&:hover": { backgroundColor: "#479A93" },
             textTransform: "none",
             color: "#000",
+            fontFamily: "Poppins, sans-serif",
           }}
         >
           Sign In

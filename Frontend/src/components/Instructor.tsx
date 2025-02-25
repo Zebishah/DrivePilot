@@ -1,14 +1,15 @@
 
 import React, { useRef, useState } from "react";
-import { Button } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import { Navigation } from "swiper/modules";
 import { MdNavigateBefore, MdNavigateNext } from "react-icons/md";
 import type { Swiper as SwiperClass } from "swiper/types"; // Import Swiper type
-import { FaBook, FaCar, FaCogs, FaMoneyBillWave } from 'react-icons/fa';
-
+import { FaBook, FaCar, FaCogs, FaMoneyBillWave, FaRegCheckCircle } from 'react-icons/fa';
+import { IoStarSharp } from "react-icons/io5";
+import { useNavigate } from 'react-router-dom';
 const steps = [
   {
     title: "Register Yourself",
@@ -17,6 +18,7 @@ const steps = [
     imageUrl: "/images/Instructor1.png",
     name: "Seb Goldin",
     location: "Houston, UK",
+    rating:"3.9",
     details: {
       degree: "Bachelor in Driving",
       car: "Suzuki Alto",
@@ -31,6 +33,7 @@ const steps = [
     imageUrl: "/images/Instructor1.png",
     name: "John Doe",
     location: "New York, USA",
+    rating:"3.9",
     details: {
       degree: "Master in Driving",
       car: "Honda Civic",
@@ -44,7 +47,8 @@ const steps = [
       "Lorem ipsum dolor sit amet consectetur. Ultricies sed id nulla ornare. Arcu nunc tincidunt cursus convallis diam tortor.",
     imageUrl: "/images/Instructor1.png",
     name: "Jane Smith",
-    location: "Los Angeles, USA",
+    location: "Chicago, USA",
+    rating:"3.9",
     details: {
       degree: "PhD in Driving",
       car: "Toyota Corolla",
@@ -57,8 +61,9 @@ const steps = [
     description:
       "Lorem ipsum dolor sit amet consectetur. Ultricies sed id nulla ornare. Arcu nunc tincidunt cursus convallis diam tortor.",
     imageUrl: "/images/Instructor1.png",
-    name: "Mike Johnson",
+    name: "Mike John",
     location: "Chicago, USA",
+    rating:"3.9",
     details: {
       degree: "Bachelor in Driving",
       car: "Ford Focus",
@@ -72,6 +77,7 @@ const steps = [
 const Instructor = () => {
   const swiperRef = useRef<SwiperClass | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
 
   const handlePrev = () => {
     if (swiperRef.current) {
@@ -91,16 +97,16 @@ const Instructor = () => {
       style={{ backgroundImage: "url(/images/background.png)" }}
     >
       {/* Overlay for opacity */}
-      <div className="absolute inset-0 bg-black opacity-50 z-0"></div>
+      <div className="absolute inset-0 bg-white opacity-50 z-0"></div>
 
       {/* Content */}
-      <div className="z-10 w-full">
+      <div className="z-10 w-full font-poppins">
         {/* Header Section */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4 mt-8 text-white">Our Professional Instructors</h1>
-          <p className="text-gray-300 text-lg">
+          <h1 className="text-3xl font-harabara font-bold mb-4 mt-8">Our Professional Instructors</h1>
+          <p className=" font-poppins text-lg rounded-tl-lg">
             Lorem ipsum dolor sit amet consectetur. Ultricies sed id nulla ornare.</p>
-            <p className="text-gray-300 text-lg"> Arcu nunc tincidunt cursus convallis diam tortor.
+            <p className=" text-lg font-poppins"> Arcu nunc tincidunt cursus convallis diam tortor.
           </p>
         </div>
 
@@ -124,7 +130,18 @@ const Instructor = () => {
           {steps.map((step, index) => (
 
 <SwiperSlide key={index}>
-  <div className="p-4 mt-24 bg-white rounded-lg flex flex-col md:flex-row items-center md:items-start text-left ">
+  <div className="pl-4  mt-12 bg-white rounded-lg flex flex-col md:flex-row items-center md:items-start text-left ">
+    
+    
+        {/* Quarter Circle */}
+        <div
+      className="absolute top-12 -right-0.5 w-24 h-24 bg-#5FC2D3"
+      style={{
+      clipPath: "circle(100% at 100% 0)",
+        backgroundColor: "#5FC2D3",
+      }}
+    />
+    
     {/* Left Side */}
     <div className="flex flex-col items-center md:items-start md:w-1/3">
       <img
@@ -132,8 +149,17 @@ const Instructor = () => {
         alt="Instructor"
         className="w-24 h-24 rounded-full mb-4 object-cover"
       />
-      <h2 className="text-lg font-bold">{step.name}</h2>
-      <p className="text-gray-500">{step.location}</p>
+      <h2 className="text-lg font-bold mb-1">{step.name}</h2>
+      <p className="text-gray-500 mb-2">{step.location}</p>
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+     {/* <Typography variant="body2" color="textSecondary" sx={{ marginRight: "0.5rem" }}>
+      Reference Check
+     </Typography> */}
+     <IoStarSharp  style={{ color: '#FFDB20' ,marginRight:"0.5rem" }} />
+     < IoStarSharp style={{ color: '#FFDB20' ,marginRight:"0.5rem" }} />
+     <IoStarSharp  style={{ color: '#FFDB20',marginRight:"0.8rem" }} />
+     <p className="mr-0.5"> {step.rating}</p>
+      </Box>
     </div>
     {/* Right Side */}
   
@@ -160,6 +186,12 @@ const Instructor = () => {
       borderRadius: "10px",
       marginTop: "2rem",
       width: "100%", // Adjust the button width
+      textTransform:"none",
+      color:"black"
+    }}
+    onClick={() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate('/instructors');
     }}
   >
     View Details
@@ -175,7 +207,7 @@ const Instructor = () => {
         </Swiper>
 
         {/* Slider Navigation */}
-        <div className="mt-44 flex justify-center gap-2">
+        <div className="mt-16 flex justify-center gap-2">
           <button
             onClick={handlePrev}
             className={`p-2 bg-gray-200 rounded ${currentIndex === 0 ? "opacity-50 cursor-not-allowed" : ""}`}

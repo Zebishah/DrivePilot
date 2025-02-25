@@ -7,13 +7,13 @@ type Props = {};
 
 const AboutUs = (props: Props) => {
   return (
-    <div>
+    <div className="">
       <Banner2
         header={"About Us"}
         paragraph={
           "Driving School Platform (DSP) is an innovative digital solution dedicated to modernizing and simplifying driver training in Switzerland. DSP offers a web and mobile platform that puts learner drivers in direct contact with instructors approved by the Federal Roads Ofce (FEDRO), or with private instructors authorized to teach. By introducing DSP to the Swiss market, our ambition is to transform access to driving lessons by facilitating organization and exibility for both students and instructors."
         }
-        image={"/images/about.png"}
+        image={""}
       />
       <Container>
         <AboutCards />
@@ -38,7 +38,7 @@ const AboutUs = (props: Props) => {
               </div>
             </div>
             <div className=" lg:w-[45%] 2xl:mr-20">
-              <h1 className="font-poppins font-semibold text-xl  lg:text-2xl xl:text-[28px] 2xl:text-[32px] text-primary">
+              <h1 className="font-poppins font-semibold text-xl  lg:text-2xl xl:text-[28px] 2xl:text-[32px]  !leading-10">
                 Lorem ipsum TYVBDC GIU SEFD BFDVB
               </h1>
               <p className="font-poppins font-normal  text-base 2xl:text-xl">
