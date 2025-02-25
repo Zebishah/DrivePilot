@@ -1,37 +1,32 @@
-import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import type React from "react";
+import { RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store";
-import Home from "./pages/public/Home";
-import PublicRoutes from "./routes/PublicRoutes";
-import OurInstructor from "./pages/public/OurInstructor";
-import NotFound from "./components/common/NotFound";
-import AboutUs from "./pages/public/AboutUs";
-import Contact from "./pages/public/Contact";
-
-// Define the router with type safety
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <PublicRoutes />,
-    children: [
-      { path: "instructors", element: <OurInstructor /> },
-      { path: "", element: <Home /> },
-      { path: "about", element: <AboutUs /> },
-      { path: "contact", element: <Contact /> },
-    ],
-  },
-  {
-    path: "*",
-    element: <NotFound />,
-  },
-]);
+import { ThemeProvider } from "@mui/material";
+import theme from "./themes/theme";
+import router from "./routes";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ApolloProvider } from "@apollo/client";
+import { Toaster } from 'react-hot-toast';
+const AppContent: React.FC = () => {
+  const { client } = useAuth();
+  return (
+    <ApolloProvider client={client}>
+      <ThemeProvider theme={theme}>
+        <Provider store={store}>
+          <Toaster />
+          <RouterProvider router={router} />
+        </Provider>
+      </ThemeProvider>
+    </ApolloProvider>
+  );
+};
 
 const App: React.FC = () => {
   return (
-    <Provider store={store}>
-      <RouterProvider router={router} />
-    </Provider>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

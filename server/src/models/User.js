@@ -1,0 +1,75 @@
+const mongoose = require("mongoose");
+
+const baseOptions = {
+  discriminatorKey: "role", // Keeps track of the user type
+  collection: "users",
+};
+
+const baseSchema = new mongoose.Schema(
+  {
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["Student", "Instructor", "Admin", "UserBase"],
+      default: "UserBase",
+      required: false,
+    },
+    isProfileComplete: { type: Boolean, default: false },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local",
+    },
+    providerId: String,
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  baseOptions
+);
+
+const User = mongoose.model("User", baseSchema);
+
+const StudentSchema = new mongoose.Schema({
+  homeAddress: String,
+  location: String,
+  zipCode: String,
+  documentType: String,
+  documentUrl: String,
+  paymentInfo: {
+    isPaid: { type: Boolean, default: false },
+    paymentDate: Date,
+  },
+});
+
+const InstructorSchema = new mongoose.Schema({
+  address: String,
+  location: String,
+  zipCode: String,
+  description: String,
+  experience: String,
+  documentType: String,
+  documentUrl: String,
+  phone: String,
+});
+
+const AdminSchema = new mongoose.Schema({
+  adminLevel: {
+    type: String,
+    enum: ["super", "regular"],
+    default: "regular",
+  },
+});
+
+const Student = User.discriminator("Student", StudentSchema);
+const Instructor = User.discriminator("Instructor", InstructorSchema);
+const Admin = User.discriminator("Admin", AdminSchema);
+
+module.exports = {
+  User,
+  Student,
+  Instructor,
+  Admin,
+};

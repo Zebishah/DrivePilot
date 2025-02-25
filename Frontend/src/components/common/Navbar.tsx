@@ -57,6 +57,9 @@ const Navbar: React.FC = () => {
       {/* Button Section */}
       <div className="mr-8">
         <Button
+          onClick={() => {
+            window.location.href = "/auth/signin";
+          }}
           variant="contained"
           sx={{
             paddingLeft: "2rem",
