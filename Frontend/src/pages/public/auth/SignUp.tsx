@@ -49,7 +49,7 @@ const signUpSchema = z.object({
 });
 
 const backendAuth = import.meta.env.VITE_APP_AUTH_URL;
-console.log("backendAuth", backendAuth);
+
 
 
 type SignUpFormValues = z.infer<typeof signUpSchema>;

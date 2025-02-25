@@ -47,10 +47,10 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({ children }) => {
 
                 <Box
                     sx={{
-                        overflowY: 'auto',
-                        p: 4,
                         width: '100%',
                         height: '100vh',
+                        p: 4,
+                        // Removed overflowY: 'auto'
                     }}
                 >
                     <Container>

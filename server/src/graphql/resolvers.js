@@ -227,7 +227,7 @@ const resolvers = {
       const fileKey = `${folder}/${userId}/${Date.now()}-${fileName}`;
 
       const s3Params = {
-        Bucket: process.env.BUCKET_NAME,
+        Bucket: "dspbucket918",
         Key: fileKey,
         Expires: 60,
         ContentType: fileType,

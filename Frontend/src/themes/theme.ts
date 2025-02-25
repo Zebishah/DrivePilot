@@ -99,8 +99,8 @@ const theme = createTheme({
             height: "54px",
           },
           "& .MuiInputBase-input:-webkit-autofill": {
-            boxShadow: "0 0 0px 1000px white inset",
-            height: "54px",
+            boxShadow: "0 0 0px 1000px #FFFFFF inset",
+            height: "41.2px",
           },
         },
       },

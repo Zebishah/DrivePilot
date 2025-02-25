@@ -14,6 +14,7 @@ export interface AuthPayload {
     firstName: string;
     lastName: string;
     role: string;
+    isProfileComplete: string;
   };
 }
 

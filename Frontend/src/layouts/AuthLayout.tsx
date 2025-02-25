@@ -18,7 +18,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
     const { isAuthenticated, user } = useAuth();
     const nav = useNavigate()
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && user?.isProfileComplete) {
             if (user?.role === "Student") nav("/student-dashboard/overview");
             else if (user?.role === "Instructor") nav("/teacher-dashboard/overview");
         }

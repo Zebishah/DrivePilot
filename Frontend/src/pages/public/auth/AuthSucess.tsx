@@ -31,6 +31,7 @@ const AuthSuccess = () => {
                         firstName: decodedToken.firstName,
                         lastName: decodedToken.lastName,
                         role: decodedToken.role,
+                        isProfileComplete,
                     },
                 };
 

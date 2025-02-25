@@ -53,7 +53,7 @@ const StudentProfileSetup = () => {
         }
     });
 
-    const [setupProfile, { loading }] = useMutation(SETUP_STUDENT_PROFILE, {
+    const [setupProfile] = useMutation(SETUP_STUDENT_PROFILE, {
         onCompleted: (data) => {
             console.log("Profile setup successful:", data);
             toast.success("Profile setup successfully");
@@ -65,22 +65,28 @@ const StudentProfileSetup = () => {
         }
     });
 
+    const [loading, setLoading] = useState(false);
+
     const handleNext = async (data) => {
         if (activeStep === steps.length - 1) {
             try {
+                setLoading(true); // Start loading
+
                 let fileUrl: string | undefined = undefined;
+
                 if (!selectedFile) {
                     toast.error("Please upload a document");
-                    return
+                    return;
                 }
-                if (selectedFile) {
-                    const uploadResult = await uploadFile(selectedFile, user?.id, user?.role);
-                    if (!uploadResult.success) {
-                        throw new Error(`File upload failed: ${uploadResult.message}`);
-                    }
-                    fileUrl = uploadResult.fileUrl;
+
+                const uploadResult = await uploadFile(selectedFile, user?.id, user?.role);
+                if (!uploadResult.success) {
+                    throw new Error(`File upload failed: ${uploadResult.message}`);
                 }
+                fileUrl = uploadResult.fileUrl;
+
                 const finalData = { ...data, documentUrl: fileUrl };
+
                 await setupProfile({
                     variables: {
                         input: {
@@ -88,14 +94,19 @@ const StudentProfileSetup = () => {
                         }
                     }
                 });
+
+                toast.success("Profile setup successfully");
+
             } catch (error) {
                 toast.error(`Profile setup failed: ${error?.message}`);
-                return;
+            } finally {
+                setLoading(false); // Stop loading
             }
         } else {
             setActiveStep((prevStep) => prevStep + 1);
         }
     };
+
     const handleBack = () => {
         setActiveStep((prevStep) => prevStep - 1);
     };
@@ -109,7 +120,7 @@ const StudentProfileSetup = () => {
     };
 
     const renderMoreInfo = () => (
-        <Box component="form" sx={{ mt: 4 }}>
+        <Box component="form" sx={{}}>
             <Box sx={{ mb: 3 }}>
                 <InputLabel htmlFor="homeAddress" sx={{ mb: 1 }}>Home Address</InputLabel>
                 <Controller
@@ -228,7 +239,7 @@ const StudentProfileSetup = () => {
     return (
         <Box sx={{ width: '100%', maxWidth: 'md', mx: 'auto', p: 3 }}>
             <Box component="img"
-                alt="Cricles"
+                alt="Circles"
                 src="/auth/decorative-circles.png"
                 sx={{
                     position: 'absolute',
@@ -250,7 +261,17 @@ const StudentProfileSetup = () => {
                 ))}
             </Stepper>
 
-            {renderStepContent()}
+            {/* Scrollable content container with custom scrollbar */}
+            <Box
+                sx={{
+                    maxHeight: '50vh', // Adjust this value as needed
+                    overflowY: 'auto',
+                    // pr: 1.5,
+
+                }}
+            >
+                {renderStepContent()}
+            </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
                 <Button

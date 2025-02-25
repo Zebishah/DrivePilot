@@ -45,7 +45,7 @@ const schema = z.object({
 const steps = ["Personal Information", "More Information", "Payment Information"];
 
 const InstructorProfileSetup: React.FC = () => {
-    const [setupInstructorProfile, { loading, error }] = useMutation(SETUP_INSTRUCTOR_PROFILE);
+    const [setupInstructorProfile, { error }] = useMutation(SETUP_INSTRUCTOR_PROFILE);
 
     const [activeStep, setActiveStep] = useState(0);
     const { user, login } = useAuth();
@@ -93,21 +93,31 @@ const InstructorProfileSetup: React.FC = () => {
         setActiveStep((prevStep) => prevStep - 1);
     };
 
+    const [loading, setLoading] = useState(false);
+
     const handleNext = async (data) => {
-        const { email, ...mutationData } = data
+        const { email, ...mutationData } = data;
+
         if (activeStep === steps.length - 1) {
             try {
+                setLoading(true); // Start loading
+
                 let fileUrl: string | undefined = undefined;
-                if (!selectedFile) {
-                    toast.error("Please Select Document type and upload a document");
-                    return
+
+                if (!selectedFile || !data?.documentType) {
+                    console.log("acas");
+                    toast.error("Please select a document type and upload a document");
+                    return;
                 }
+
                 const uploadResult = await uploadFile(selectedFile, user?.id, user?.role);
                 if (!uploadResult.success) {
                     throw new Error(`File upload failed: ${uploadResult.message}`);
                 }
+
                 fileUrl = uploadResult.fileUrl;
                 const finalData = { ...mutationData, documentUrl: fileUrl };
+
                 await setupInstructorProfile({
                     variables: {
                         input: {
@@ -115,12 +125,15 @@ const InstructorProfileSetup: React.FC = () => {
                         }
                     },
                 });
-                toast.success("Profile setup successfully")
-                navigate("/teacher-dashboard/overview")
+
+                toast.success("Profile setup successfully");
+                navigate("/teacher-dashboard/overview");
 
             } catch (err) {
                 console.error("Error setting up instructor profile:", err);
-                toast.error(`Profile setup failed :${err?.message}`);
+                toast.error(`Profile setup failed: ${err?.message}`);
+            } finally {
+                setLoading(false); // Stop loading
             }
         } else {
             setActiveStep((prevStep) => prevStep + 1);
@@ -128,8 +141,8 @@ const InstructorProfileSetup: React.FC = () => {
     };
 
     const renderPersonalInfo = () => (
-        <Box component="form" sx={{ mt: 4 }}>
-            <Box sx={{ mt: 4 }}>
+        <Box component="form">
+            <Box  >
                 <Box sx={{ mb: 1 }}>
                     <InputLabel htmlFor="firstName" sx={{ mb: 1 }}>First Name</InputLabel>
                     <Controller
@@ -282,8 +295,8 @@ const InstructorProfileSetup: React.FC = () => {
 
     );
     const renderMoreInfo = () => (
-        <Box component="form" onSubmit={handleSubmit(handleNext)} sx={{ mt: 4 }}>
-            <Box sx={{ mt: 4 }}>
+        <Box component="form" onSubmit={handleSubmit(handleNext)} >
+            <Box sx={{ mt: 2 }}>
                 <FormControl fullWidth margin="normal" error={!!errors.experience}>
                     <InputLabel>Experience</InputLabel>
                     <Controller
@@ -308,7 +321,7 @@ const InstructorProfileSetup: React.FC = () => {
                     )}
                 </FormControl>
 
-                <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+                <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>
                     Upload Documents
                 </Typography>
 
@@ -336,39 +349,7 @@ const InstructorProfileSetup: React.FC = () => {
                         </Typography>
                     )}
                 </FormControl>
-
                 <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} />
-
-                {/* <Paper
-                    variant="outlined"
-                    sx={{
-                        p: 3,
-                        mt: 2,
-                        border: '2px dashed',
-                        borderColor: 'primary.main',
-                        textAlign: 'center'
-                    }}
-                >
-                    <Button
-                        component="label"
-                        startIcon={<Upload />}
-                        variant="contained"
-                    >
-                        Upload Document
-                        <input
-                            type="file"
-                            hidden
-                            onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                    setDocuments([...documents, e.target.files[0]]);
-                                }
-                            }}
-                        />
-                    </Button>
-                    <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                        Please upload your driving license, ID card, certificates, or criminal record
-                    </Typography>
-                </Paper> */}
             </Box>
         </Box>
     );
@@ -428,15 +409,24 @@ const InstructorProfileSetup: React.FC = () => {
                 </Typography>
             </Box>
 
-            <Stepper activeStep={activeStep} sx={{ mb: 4, mt: 2 }}>
+            <Stepper activeStep={activeStep} sx={{ mt: 2, mb: 4 }}>
                 {steps.map((label) => (
                     <Step key={label}>
                         <StepLabel>{label}</StepLabel>
                     </Step>
                 ))}
             </Stepper>
+            <Box
+                sx={{
+                    maxHeight: '50vh', // Adjust this value as needed
+                    overflowY: 'auto',
+                    // pr: 1.5,
 
-            {renderStepContent()}
+                }}
+            >
+                {renderStepContent()}
+            </Box>
+
 
             <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
                 <Button

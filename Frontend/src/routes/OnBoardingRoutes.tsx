@@ -10,7 +10,6 @@ const OnboardingRoutes: React.FC = () => {
             <TempPrivateRoute >
                 <Outlet />
             </TempPrivateRoute>
-
         </OnboardingLayout>
     );
 };

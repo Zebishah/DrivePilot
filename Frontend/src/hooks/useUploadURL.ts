@@ -8,7 +8,7 @@ interface UploadResponse {
 }
 
 export const useFileUpload = () => {
-  const [generateUploadUrl] = useMutation(GENERATE_UPLOAD_URL);
+  const [generateUploadUrl, { loading }] = useMutation(GENERATE_UPLOAD_URL);
 
   const uploadFile = async (
     file: File,
@@ -53,5 +53,5 @@ export const useFileUpload = () => {
     }
   };
 
-  return { uploadFile };
+  return { uploadFile, isUploading: loading };
 };
