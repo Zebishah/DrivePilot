@@ -19,6 +19,7 @@ const {
   createAuthToken,
   verifyResetToken,
 } = require("../services/tokenService");
+require("dotenv").config();
 
 const createToken = (user) => {
   return jwt.sign(
@@ -231,6 +232,8 @@ const resolvers = {
         Expires: 60,
         ContentType: fileType,
       };
+
+      console.log("s3params", s3Params);
 
       const uploadUrl = await s3.getSignedUrlPromise("putObject", s3Params);
 

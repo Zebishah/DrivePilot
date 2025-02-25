@@ -27,7 +27,6 @@ router.get(
 
     // Ensure proper formatting of the frontend URL
     const frontendURL = process.env.Frontend_URL;
-    // Use an absolute URL (res.redirect automatically appends relative paths if not formatted correctly)
     res
       .status(307)
       .redirect(
