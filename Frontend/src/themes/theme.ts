@@ -80,11 +80,28 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           "& .MuiOutlinedInput-root": {
-            borderRadius: 8,
+            height: "54px",
+            borderRadius: 6,
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#5FC2D3",
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#5FC2D3",
+              borderWidth: "2px",
+            },
+          },
+          "& .MuiOutlinedInput-input": {
+            height: "100%",
+            padding: "12px",
+          },
+          "& .MuiInputBase-input:-webkit-autofill": {
+            boxShadow: "0 0 0px 1000px white inset",
+            height: "54px",
           },
         },
       },
     },
+
     MuiCard: {
       styleOverrides: {
         root: {

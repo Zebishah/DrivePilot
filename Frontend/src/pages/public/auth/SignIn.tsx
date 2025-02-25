@@ -1,19 +1,16 @@
 // src/pages/Public/SignIn.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
     Box,
     Button,
-    Divider,
     TextField,
     Typography,
     IconButton,
     InputAdornment,
     Link as MuiLink,
-    Checkbox,
-    FormControlLabel,
     CircularProgress,
     InputLabel,
 } from '@mui/material';
@@ -178,8 +175,8 @@ const SignIn: React.FC = () => {
                     )}
                 />
 
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                    <Controller
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 1 }}>
+                    {/* <Controller
                         name="rememberMe"
                         control={control}
                         render={({ field }) => (
@@ -188,7 +185,7 @@ const SignIn: React.FC = () => {
                                 label="Remember me"
                             />
                         )}
-                    />
+                    /> */}
                     <MuiLink component={Link} to="/auth/forgot-password" variant="body2">
                         Forgot Password?
                     </MuiLink>
