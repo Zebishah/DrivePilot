@@ -2,6 +2,7 @@ import type React from 'react';
 import { Box, Container, Grid, useMediaQuery, useTheme } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 interface AuthLayoutProps {
     children: React.ReactNode;
@@ -14,12 +15,16 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const nav = useNavigate()
+    useEffect(() => {
 
-    // if (isAuthenticated) {
-    //     nav("/student-dashboard/overview")
-    // }
+
+        if (isAuthenticated) {
+            if (user?.role === "Student") nav("/student-dashboard/overview");
+            else if (user?.role === "Instructor") nav("/teacher-dashboard/overview");
+        }
+    }, [user, isAuthenticated, nav]);
 
     return (
         <Container maxWidth={false} disableGutters sx={{ height: '100vh' }}>

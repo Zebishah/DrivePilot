@@ -9,12 +9,10 @@ export const TempPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const StudentPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, user } = useAuth();
-
     return isAuthenticated && user?.role === "Student" ? <>{children}</> : <Navigate to="/auth/signin" />;
 };
 
 export const TeacherPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, user } = useAuth();
-
     return isAuthenticated && user?.role === "Instructor" ? <>{children}</> : <Navigate to="/auth/signin" />;
 };

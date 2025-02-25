@@ -7,6 +7,7 @@ import { useMutation } from '@apollo/client';
 import { SELECT_ROLE_MUTATION } from '../../../graphql/mutations/auth';
 import { useAuth } from '../../../context/AuthContext';
 import { UserRole } from '../../../types/auth';
+import toast from 'react-hot-toast';
 
 interface RoleCardProps {
     title: string;
@@ -100,7 +101,7 @@ const RoleSelection: React.FC = () => {
 
     const [selectRole, { loading }] = useMutation(SELECT_ROLE_MUTATION, {
         onCompleted: (data) => {
-            // Update auth context with new token and user data
+
             login(data.selectRole);
 
             if (data.selectRole.user.role === UserRole.Student) {
@@ -108,10 +109,12 @@ const RoleSelection: React.FC = () => {
             } else if (data.selectRole.user.role === UserRole.Instructor) {
                 navigate('/onboarding/instructor-profile');
             }
+            toast.success("Role Selected , Please complete Profile Setup")
         },
         onError: (error) => {
+            toast.error(`Role selection error: ${error?.message}`)
             console.error('Role selection error:', error);
-            // You might want to add a Snackbar or Alert component here to show the error
+
         }
     });
 

@@ -30,6 +30,8 @@ const Logo: React.FC<LogoProps> = ({ variant = 'default', size = 'medium' }) => 
                 display: 'flex',
                 alignItems: 'center',
                 textDecoration: 'none',
+                width,
+
             }}
         >
             <Box
@@ -39,7 +41,7 @@ const Logo: React.FC<LogoProps> = ({ variant = 'default', size = 'medium' }) => 
                 sx={{
 
                     objectFit: 'contain',
-                    alignSelf: 'flex-start', // Ensures it starts at the top
+                    alignSelf: 'flex-start',
                 }}
             />
         </Box>

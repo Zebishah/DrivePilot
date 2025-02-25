@@ -5,29 +5,37 @@
 @tailwind utilities;
 
 .MuiTextField-root .MuiInputBase-root {
-    border-radius: 10px; 
-    /* border: 1px solid; */
-  }
-  
-  .MuiTextField-root .MuiOutlinedInput-input {
-    padding: 6px 8px !important; 
-   
+  border-radius: 10px;
+  /* border: 1px solid; */
+}
 
-  }
+.MuiTextField-root .MuiOutlinedInput-input {
+  padding: 6px 8px !important;
+}
 
-  
-  .MuiTextField-root:hover .MuiOutlinedInput-notchedOutline {
-    border-color: black !important;
-  }
-  
-  .MuiTextField-root .Mui-focused .MuiOutlinedInput-notchedOutline {
-    border-color: #484848 !important;
-  }
-  
-  .MuiTextField-root .MuiInputAdornment-root {
-    margin-right: 5px;
-  }
-  
-  .MuiTextField-root .MuiSvgIcon-root {
-    color: black;
-  }
+.MuiTextField-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: black !important;
+}
+
+.MuiTextField-root .Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #484848 !important;
+}
+
+.MuiTextField-root .MuiInputAdornment-root {
+  margin-right: 5px;
+}
+
+.MuiTextField-root .MuiSvgIcon-root {
+  color: black;
+}
+
+/* For Webkit Browsers (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 6px; /* Thin scrollbar */
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #5fc2d3; /* Custom color */
+  border-radius: 6px;
+}

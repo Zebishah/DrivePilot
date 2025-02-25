@@ -103,10 +103,8 @@ const StudentProfileSetup = () => {
 
     const handleFileUpload = (file: File | null) => {
         if (file) {
-            console.log('File uploaded:', file);
+
             setSelectedFile(file);
-        } else {
-            console.log('File removed');
         }
     };
 

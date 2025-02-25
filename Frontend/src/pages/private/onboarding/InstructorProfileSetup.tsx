@@ -48,7 +48,7 @@ const InstructorProfileSetup: React.FC = () => {
     const [setupInstructorProfile, { loading, error }] = useMutation(SETUP_INSTRUCTOR_PROFILE);
 
     const [activeStep, setActiveStep] = useState(0);
-    const { user } = useAuth();
+    const { user, login } = useAuth();
     const navigate = useNavigate();
     const { uploadFile } = useFileUpload();
 
@@ -116,12 +116,11 @@ const InstructorProfileSetup: React.FC = () => {
                     },
                 });
                 toast.success("Profile setup successfully")
-                navigate("/student-dashboard/overview")
+                navigate("/teacher-dashboard/overview")
 
             } catch (err) {
                 console.error("Error setting up instructor profile:", err);
                 toast.error(`Profile setup failed :${err?.message}`);
-
             }
         } else {
             setActiveStep((prevStep) => prevStep + 1);
@@ -405,7 +404,7 @@ const InstructorProfileSetup: React.FC = () => {
     };
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 'md', mx: "auto" }}>
+        <Box sx={{ width: '100%', maxWidth: 'md', mx: "auto", overflowY: "scroll" }}>
             <Box component="img"
                 alt="Cricles"
                 src="/auth/decorative-circles.png"

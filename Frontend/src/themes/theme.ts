@@ -80,7 +80,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           "& .MuiOutlinedInput-root": {
-            height: "54px",
+            // height: "54px",
             borderRadius: 6,
             "&:hover .MuiOutlinedInput-notchedOutline": {
               borderColor: "#5FC2D3",
@@ -94,6 +94,10 @@ const theme = createTheme({
             height: "100%",
             padding: "12px",
           },
+          "& .MuiOutlinedInput-root:not(.MuiInputBase-multiline)": {
+            // Apply height only for single-line
+            height: "54px",
+          },
           "& .MuiInputBase-input:-webkit-autofill": {
             boxShadow: "0 0 0px 1000px white inset",
             height: "54px",
@@ -102,6 +106,29 @@ const theme = createTheme({
       },
     },
 
+    // MuiTextField: {
+    //   styleOverrides: {
+    //     root: {
+    //       "& .MuiOutlinedInput-root": {
+    //         borderRadius: 6,
+    //         "&:hover .MuiOutlinedInput-notchedOutline": {
+    //           borderColor: "#5FC2D3",
+    //         },
+    //         "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+    //           borderColor: "#5FC2D3",
+    //           borderWidth: "2px",
+    //         },
+    //       },
+    //       "& .MuiOutlinedInput-root:not(.MuiInputBase-multiline)": {
+    //         // Apply height only for single-line
+    //         height: "54px",
+    //       },
+    //       "& .MuiOutlinedInput-input": {
+    //         padding: "12px",
+    //       },
+    //     },
+    //   },
+    // },
     MuiCard: {
       styleOverrides: {
         root: {

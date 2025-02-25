@@ -9,7 +9,6 @@ const TeacherRoutes: React.FC = () => {
             <TeacherPrivateRoute>
                 <Outlet />
             </TeacherPrivateRoute>
-
         </TeacherLayout>
     );
 };
