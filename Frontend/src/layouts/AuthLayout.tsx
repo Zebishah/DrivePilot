@@ -61,7 +61,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
                         sx={{
                             height: '100%',
                             width: '100%',
-                            maxWidth: '80%',
+                            maxWidth: '70%',
                             display: 'flex',
                             flexDirection: 'column',
                         }}
