@@ -58,7 +58,7 @@ const SignUp: React.FC = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const nav = useNavigate()
-    const { login } = useAuth();
+    const { login, tempUser } = useAuth();
     const [signUp, { loading }] = useMutation(SIGN_UP_MUTATION);
 
     const {
@@ -92,7 +92,7 @@ const SignUp: React.FC = () => {
                 },
             });
 
-            login(authData.signUp);
+            tempUser(authData.signUp);
             nav('/onboarding/role-selection');
         } catch (error) {
             console.error('Registration error:', error);

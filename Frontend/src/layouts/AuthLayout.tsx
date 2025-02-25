@@ -17,9 +17,9 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
     const { isAuthenticated } = useAuth();
     const nav = useNavigate()
 
-    if (isAuthenticated) {
-        nav("/student-dashboard/overview")
-    }
+    // if (isAuthenticated) {
+    //     nav("/student-dashboard/overview")
+    // }
 
     return (
         <Container maxWidth={false} disableGutters sx={{ height: '100vh' }}>

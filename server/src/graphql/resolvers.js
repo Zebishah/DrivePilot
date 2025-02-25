@@ -5,12 +5,20 @@ const {
   signUpSchema,
   studentProfileSchema,
   instructorProfileSchema,
+  resetPasswordSchema,
 } = require("../schemas/validation");
 const {
   AuthenticationError,
   UserInputError,
 } = require("apollo-server-express");
 const s3 = require("../config/awsConfig");
+const { sendTemplateEmail } = require("../services/emailService");
+const {
+  generateResetToken,
+  clearResetToken,
+  createAuthToken,
+  verifyResetToken,
+} = require("../services/tokenService");
 
 const createToken = (user) => {
   return jwt.sign(
@@ -167,7 +175,6 @@ const resolvers = {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
       }
-      console.log("user", user);
 
       if (user.role !== "Instructor") {
         throw new UserInputError("User is not an instructor");
@@ -230,6 +237,132 @@ const resolvers = {
       const fileUrl = `https://${process.env.BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
 
       return { uploadUrl, fileUrl };
+    },
+
+    forgotPassword: async (_, { email }) => {
+      // Check if user exists
+      const user = await User.findOne({ email });
+      if (!user) {
+        throw new UserInputError("No account with that email exists");
+      }
+      if (
+        user?.authProvider === "google" ||
+        user?.authProvider === "facebook"
+      ) {
+        throw new UserInputError("No account with that email exists");
+      }
+
+      // Generate reset token
+      const { resetToken, resetTokenExpiry } = generateResetToken();
+
+      // Save token to user document
+      await User.findByIdAndUpdate(user.id, {
+        resetToken,
+        resetTokenExpiry,
+      });
+
+      // Create reset URL
+      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password/${resetToken}`;
+
+      // Send email using the email service
+      try {
+        await sendTemplateEmail(user.email, "passwordReset", resetUrl);
+
+        return {
+          success: true,
+          message: "Password reset email sent",
+        };
+      } catch (error) {
+        console.error("Email sending error:", error);
+        throw new Error("Failed to send reset email");
+      }
+    },
+
+    resetPassword: async (_, { token, newPassword }) => {
+      try {
+        // Validate password
+        resetPasswordSchema.parse({ newPassword });
+
+        // Verify token and get user
+        const user = await verifyResetToken(token);
+
+        if (!user) {
+          throw new UserInputError("Invalid or expired reset token");
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        // Update user password and clear reset token
+        await User.findByIdAndUpdate(user.id, {
+          password: hashedPassword,
+        });
+
+        // Clear the reset token
+        await clearResetToken(user.id);
+
+        // Generate new JWT for auto login
+        const authToken = createToken(user);
+
+        return {
+          success: true,
+          message: "Password successfully reset",
+          token: authToken,
+        };
+      } catch (error) {
+        if (error.errors) {
+          throw new UserInputError("Validation error", {
+            errors: error.errors,
+          });
+        }
+        throw error;
+      }
+    },
+
+    changePassword: async (_, { currentPassword, newPassword }, { user }) => {
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
+      try {
+        // Validate new password
+        resetPasswordSchema.parse({ newPassword });
+
+        // Find the user
+        const userRecord = await User.findById(user.id);
+        if (!userRecord) {
+          throw new Error("User not found");
+        }
+
+        // Check current password
+        const isValid = await bcrypt.compare(
+          currentPassword,
+          userRecord.password
+        );
+        if (!isValid) {
+          throw new UserInputError("Current password is incorrect");
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        // Update password
+        await User.findByIdAndUpdate(user.id, {
+          password: hashedPassword,
+        });
+
+        return {
+          success: true,
+          message: "Password successfully changed",
+        };
+      } catch (error) {
+        if (error.errors) {
+          throw new UserInputError("Validation error", {
+            errors: error.errors,
+          });
+        }
+        throw error;
+      }
     },
   },
 };

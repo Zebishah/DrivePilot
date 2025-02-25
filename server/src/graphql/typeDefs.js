@@ -123,6 +123,12 @@ const typeDefs = gql`
     me: User
   }
 
+  type PasswordResetResponse {
+    success: Boolean!
+    message: String!
+    token: String
+  }
+
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
     selectRole(role: UserRole!): AuthPayload!
@@ -135,6 +141,13 @@ const typeDefs = gql`
       fileName: String!
       fileType: String!
     ): FileUploadResponse!
+
+    forgotPassword(email: String!): PasswordResetResponse!
+    resetPassword(token: String!, newPassword: String!): PasswordResetResponse!
+    changePassword(
+      currentPassword: String!
+      newPassword: String!
+    ): PasswordResetResponse!
   }
 `;
 

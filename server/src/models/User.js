@@ -26,7 +26,16 @@ const baseSchema = new mongoose.Schema(
     providerId: String,
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
+    resetToken: {
+      type: String,
+      default: null,
+    },
+    resetTokenExpiry: {
+      type: Date,
+      default: null,
+    },
   },
+
   baseOptions
 );
 

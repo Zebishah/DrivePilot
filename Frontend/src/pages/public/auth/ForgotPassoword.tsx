@@ -13,6 +13,9 @@ import {
 import AuthLayout from '../../../layouts/AuthLayout';
 import Logo from '../../../components/Logo';
 import { useNavigate } from 'react-router-dom';
+import { FORGOT_PASSWORD } from '../../../graphql/mutations/auth';
+import { useMutation } from '@apollo/client';
+import toast from 'react-hot-toast';
 
 const forgotPasswordSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
@@ -21,7 +24,7 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 const ForgotPassword: React.FC = () => {
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
+
     const nav = useNavigate();
     const {
         control,
@@ -34,16 +37,22 @@ const ForgotPassword: React.FC = () => {
         },
     });
 
+    const [forgotPassword, { loading }] = useMutation(FORGOT_PASSWORD);
+
     const onSubmit = async (data: ForgotPasswordFormValues) => {
         try {
-            setIsSubmitting(true);
-            console.log('Forgot Password Request:', data);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            nav('/auth/reset-password');
-        } catch (error) {
+            const response = await forgotPassword({
+                variables: { email: data.email }
+            });
+
+            if (response.data?.forgotPassword.success) {
+                toast.success(response.data.forgotPassword.message || 'Password reset email sent! Please check your inbox.');
+            } else {
+                toast.error('Failed to send reset email. Please try again.');
+            }
+        } catch (error: any) {
             console.error('Error:', error);
-        } finally {
-            setIsSubmitting(false);
+            toast.error(error.message || 'An error occurred. Please try again.');
         }
     };
 
@@ -95,10 +104,10 @@ const ForgotPassword: React.FC = () => {
                     type="submit"
                     fullWidth
                     variant="contained"
-                    disabled={isSubmitting}
+                    disabled={loading}
                     sx={{ mt: 3, mb: 2, py: 1.5, bgcolor: '#4CC9F0', '&:hover': { bgcolor: '#3AB7E0' } }}
                 >
-                    {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Change Password'}
+                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Change Password'}
                 </Button>
             </Box>
         </AuthLayout>
