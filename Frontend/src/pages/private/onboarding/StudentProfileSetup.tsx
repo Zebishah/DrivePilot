@@ -36,7 +36,7 @@ const schema = z.object({
 const steps = ["More Information", "Payment Method"];
 
 const StudentProfileSetup = () => {
-    const { user } = useAuth();
+    const { user, login, markUserProfileComplete } = useAuth();
     const { uploadFile } = useFileUpload();
     const navigate = useNavigate();
     const [activeStep, setActiveStep] = useState(0);
@@ -55,7 +55,6 @@ const StudentProfileSetup = () => {
 
     const [setupProfile] = useMutation(SETUP_STUDENT_PROFILE, {
         onCompleted: (data) => {
-            console.log("Profile setup successful:", data);
             toast.success("Profile setup successfully");
             navigate("/student-dashboard/overview")
         },
@@ -78,6 +77,7 @@ const StudentProfileSetup = () => {
                     toast.error("Please upload a document");
                     return;
                 }
+                console.log("user", user)
 
                 const uploadResult = await uploadFile(selectedFile, user?.id, user?.role);
                 if (!uploadResult.success) {
@@ -94,8 +94,8 @@ const StudentProfileSetup = () => {
                         }
                     }
                 });
+                markUserProfileComplete()
 
-                toast.success("Profile setup successfully");
 
             } catch (error) {
                 toast.error(`Profile setup failed: ${error?.message}`);

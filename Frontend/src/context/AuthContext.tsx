@@ -22,6 +22,7 @@ interface AuthContextType {
     tempUser: (authPayload: AuthPayload) => void;
     logout: () => void;
     client: ApolloClient<any>;
+    markUserProfileComplete: () => void;
 }
 
 // Encryption utilities
@@ -102,6 +103,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsTempAuthenticated(true)
         setUser(authPayload.user);
     }
+    const markUserProfileComplete = () => {
+        if (user) {
+
+            const updatedUser = { ...user, isProfileComplete: true };
+
+            const encryptedUser = encrypt(updatedUser);
+
+            Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
+            setUser(updatedUser);
+        }
+    };
 
     const logout = () => {
         Cookies.remove(COOKIE_TOKEN_KEY);
@@ -132,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, client, tempUser, isTempAuthenticated }}>
+        <AuthContext.Provider value={{ isAuthenticated, user, login, logout, client, tempUser, isTempAuthenticated, markUserProfileComplete }}>
             {children}
         </AuthContext.Provider>
     );

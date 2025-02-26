@@ -48,7 +48,7 @@ const InstructorProfileSetup: React.FC = () => {
     const [setupInstructorProfile, { error }] = useMutation(SETUP_INSTRUCTOR_PROFILE);
 
     const [activeStep, setActiveStep] = useState(0);
-    const { user, login } = useAuth();
+    const { user, login, markUserProfileComplete } = useAuth();
     const navigate = useNavigate();
     const { uploadFile } = useFileUpload();
 
@@ -125,6 +125,7 @@ const InstructorProfileSetup: React.FC = () => {
                         }
                     },
                 });
+                markUserProfileComplete()
 
                 toast.success("Profile setup successfully");
                 navigate("/teacher-dashboard/overview");

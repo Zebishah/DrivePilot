@@ -16,9 +16,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { isAuthenticated, user } = useAuth();
+    console.log("isAuthenticated", user, isAuthenticated)
     const nav = useNavigate()
     useEffect(() => {
         if (isAuthenticated && user?.isProfileComplete) {
+
             if (user?.role === "Student") nav("/student-dashboard/overview");
             else if (user?.role === "Instructor") nav("/teacher-dashboard/overview");
         }

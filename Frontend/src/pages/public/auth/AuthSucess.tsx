@@ -20,7 +20,7 @@ const AuthSuccess = () => {
                     throw new Error('No token provided');
                 }
 
-                const decodedToken = jwtDecode<{ id: string, email: string, firstName: string, lastName: string, role: string, isProfileComplete: string }>(token);
+                const decodedToken = jwtDecode<{ id: string, email: string, firstName: string, lastName: string, role: string, isProfileComplete: boolean }>(token);
                 const isProfileComplete = decodedToken.isProfileComplete;
 
                 const authPayload: AuthPayload = {
