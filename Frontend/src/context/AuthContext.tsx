@@ -105,9 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const markUserProfileComplete = () => {
         if (user) {
-
             const updatedUser = { ...user, isProfileComplete: true };
-
             const encryptedUser = encrypt(updatedUser);
 
             Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });

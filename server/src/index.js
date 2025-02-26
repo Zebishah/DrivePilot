@@ -8,7 +8,7 @@ const authMiddleware = require("./middleware/auth");
 const connectDB = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const app = express();
-
+const cors = require("cors");
 // Passport middleware
 app.use(passport.initialize());
 
@@ -25,6 +25,28 @@ const server = new ApolloServer({
     };
   },
 });
+
+const allowedOrigins = [
+  "https://dsp-client.onrender.com",
+  "https://dsp-server.onrender.com",
+  "http://localhost:5173",
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (allowedOrigins.includes(origin) || !origin) {
+      // !origin allows requests without an origin header.
+      console.log("not");
+      callback(null, true);
+    } else {
+      console.log("not allowed");
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(authRoutes);
 
