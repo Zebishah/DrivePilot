@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import Banner2 from "../../components/public/Banner2";
 import Container from "../../components/common/Container";
 import MapComponent from "./map/ContactMap";
@@ -25,24 +25,24 @@ const Contact: React.FC<Props> = () => {
               <input
                 type="text"
                 placeholder="Name"
-                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] "
               />
               <input
                 type="email"
                 placeholder="Email"
-                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] "
               />
               <input
                 type="text"
                 placeholder="Phone Number"
-                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px]  focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px]  "
               />
               <textarea
                 placeholder="Message"
                 rows="6"
-                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full  border-input border px-[22px] py-[11.2px]  rounded-[10px]  placeholder:text-input placeholder:text-[14px] "
               ></textarea>
-              <select className="w-full  border-input border px-[22px] py-[13px]   rounded-[10px] text-[14px] text-input  focus:outline-none focus:ring-2 focus:ring-primary ">
+              <select className="w-full  border-input border px-[22px] py-[13px]   rounded-[10px] text-[14px] text-input  ">
                 <option>Select City</option>
                 <option>New York</option>
                 <option>Los Angeles</option>

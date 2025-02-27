@@ -1,11 +1,11 @@
-import React from 'react';
+import type React from 'react';
 import Allinstructor from '../../components/ProfessionalInstructor/Allinstructor';
 
 
 const Professional: React.FC = () => {
   return (
     <div>
-<Allinstructor/>
+      <Allinstructor />
     </div>
 
   );
