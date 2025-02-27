@@ -37,13 +37,19 @@ const SignIn: React.FC = () => {
     const { login, tempUser } = useAuth();
     const [showPassword, setShowPassword] = React.useState(false);
     const [searchParams] = useSearchParams();
-    const error = searchParams.get("error");
+
 
     useEffect(() => {
+        const error = searchParams.get("error");
         if (error) {
             toast.error(decodeURIComponent(error));
+
+            // Remove error param from URL after showing toast
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete("error");
+            navigate(`?${newParams.toString()}`, { replace: true });
         }
-    }, [error]);
+    }, [searchParams, navigate]);
 
     const {
         control,
