@@ -12,6 +12,14 @@ router.get(
   "/auth/google/callback",
   passport.authenticate("google", { session: false }),
   (req, res) => {
+    if (req?.user.authProvider !== "google") {
+      return res.redirect(
+        `${process.env.Frontend_URL}/auth/signin?error=${encodeURIComponent(
+          "Email already registered with a different method."
+        )}`
+      );
+    }
+
     const token = jwt.sign(
       {
         id: req.user.id,

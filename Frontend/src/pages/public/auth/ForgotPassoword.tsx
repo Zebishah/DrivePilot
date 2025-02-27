@@ -58,57 +58,79 @@ const ForgotPassword: React.FC = () => {
 
     return (
         <AuthLayout>
-            <Box component="img"
-                alt="Cricles"
-                src="/auth/decorative-circles.png"
+            <Box
                 sx={{
-                    position: 'absolute',
-                    top: 1,
-                    right: 1
-                }}>
-            </Box>
-            <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <Logo />
-                <Typography variant="h4" component="h1" sx={{ mt: 4, fontWeight: 'bold' }}>
-                    Forgot Password?
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'nowrap' }}>
-                    Enter your email address and we'll send you a link to reset your password.
-                </Typography>
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: 'background.paper',
+                    height: '100vh',
+                    overflowY: 'auto',
+                }}
+            >
+                <Box component="img"
+                    alt="Cricles"
+                    src="/auth/decorative-circles.png"
+                    sx={{
+                        position: 'absolute',
+                        top: 1,
+                        right: 1
+                    }}>
+                </Box>
+                <Box
+                    sx={{
+                        mb: 4,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        alignSelf: 'flex-start',
+                        width: '100%',
 
-            </Box>
-
-            <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%' }}>
-                <InputLabel htmlFor="email">E-mail address</InputLabel>
-                <Controller
-                    name="email"
-                    control={control}
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            margin="normal"
-                            required
-                            fullWidth
-                            id="email"
-                            placeholder="E-mail address"
-                            autoComplete="email"
-                            autoFocus
-                            error={!!errors.email}
-                            helperText={errors.email?.message}
-                            sx={{ mb: 2 }}
-                        />
-                    )}
-                />
-
-                <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    disabled={loading}
-                    sx={{ mt: 3, mb: 2, py: 1.5, bgcolor: '#4CC9F0', '&:hover': { bgcolor: '#3AB7E0' } }}
+                    }}
                 >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Change Password'}
-                </Button>
+                    <Logo />
+                    <Typography variant="h4" component="h1" sx={{ mt: 4, fontWeight: 'bold' }}>
+                        Forgot Password?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'nowrap' }}>
+                        Enter your email address and we'll send you a link to reset your password.
+                    </Typography>
+                </Box>
+
+
+                <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%' }}>
+                    <InputLabel htmlFor="email">E-mail address</InputLabel>
+                    <Controller
+                        name="email"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                margin="normal"
+                                required
+                                fullWidth
+                                id="email"
+                                placeholder="E-mail address"
+                                autoComplete="email"
+                                autoFocus
+                                error={!!errors.email}
+                                helperText={errors.email?.message}
+                                sx={{ mb: 2 }}
+                            />
+                        )}
+                    />
+
+                    <Button
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        disabled={loading}
+                        sx={{ mt: 3, mb: 2, py: 1.5, bgcolor: '#4CC9F0', '&:hover': { bgcolor: '#3AB7E0' } }}
+                    >
+                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Change Password'}
+                    </Button>
+                </Box>
             </Box>
         </AuthLayout>
     );

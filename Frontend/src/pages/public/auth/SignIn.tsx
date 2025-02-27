@@ -1,5 +1,5 @@
 // src/pages/Public/SignIn.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,7 +15,7 @@ import {
     InputLabel,
 } from '@mui/material';
 import { Eye, EyeOff, Facebook } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AuthLayout from '../../../layouts/AuthLayout';
 import Logo from '../../../components/Logo';
 import { useAuth } from '../../../context/AuthContext';
@@ -36,6 +36,14 @@ const SignIn: React.FC = () => {
     const navigate = useNavigate();
     const { login, tempUser } = useAuth();
     const [showPassword, setShowPassword] = React.useState(false);
+    const [searchParams] = useSearchParams();
+    const error = searchParams.get("error");
+
+    useEffect(() => {
+        if (error) {
+            toast.error(decodeURIComponent(error));
+        }
+    }, [error]);
 
     const {
         control,
