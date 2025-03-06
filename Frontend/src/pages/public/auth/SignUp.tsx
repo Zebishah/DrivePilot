@@ -99,7 +99,6 @@ const SignUp: React.FC = () => {
         } catch (error) {
             console.error('Registration error:', error);
             toast.error(`${error?.message}`)
-
         } finally {
             setIsSubmitting(false);
         }

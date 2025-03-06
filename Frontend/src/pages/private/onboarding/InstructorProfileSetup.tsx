@@ -39,10 +39,13 @@ const schema = z.object({
     zipCode: z.string().min(1, "ZIP code is required"),
     description: z.string().optional(),
     experience: z.string().optional(),
-    documentType: z.string().optional(),
-    documentUrl: z.string().optional(),
+    documents: z.array(
+        z.object({
+            documentType: z.string().optional(),
+            documentUrl: z.string().optional(),
+        })
+    ).optional(),
 });
-
 const steps = ["Personal Information", "More Information", "Payment Information"];
 
 const InstructorProfileSetup: React.FC = () => {
@@ -65,9 +68,15 @@ const InstructorProfileSetup: React.FC = () => {
             zipCode: "",
             description: "",
             experience: "",
-            documentUrl: "",
+            documents: []
         }
     });
+    const requiredDocuments = [
+        "Driving License",
+        "ID Card",
+        "Certificates",
+        "Criminal Record"
+    ];
 
     useEffect(() => {
         if (user) {
@@ -77,12 +86,13 @@ const InstructorProfileSetup: React.FC = () => {
         }
     }, [user, setValue]);
 
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<{ file: File; documentType: string }[]>([]);
 
-    const handleFileUpload = (file: File | null) => {
+    const handleFileUpload = (file: File | null, documentType: string) => {
         if (file) {
-            console.log('File uploaded:', file);
-            setSelectedFile(file);
+            setSelectedFiles((prev) => [...prev, { file, documentType }]);
+        } else {
+            setSelectedFiles((prev) => prev.filter((doc) => doc.documentType !== documentType));
         }
     };
 
@@ -98,53 +108,57 @@ const InstructorProfileSetup: React.FC = () => {
 
     const handleNext = async (data) => {
         const { email, ...mutationData } = data;
+
         if (activeStep === 1) {
             if (!data?.experience) {
                 toast.error("Experience is required.");
                 return; // Stop progression
             }
-            if (!data?.documentType) {
-                toast.error("Document type is required.");
-                return; // Stop progression
-            }
-            if (!selectedFile) {
-                toast.error("Please upload a document.");
+            const missingDocuments = requiredDocuments.filter((docType) => {
+                return !selectedFiles.some((file) => file.documentType === docType);
+            });
+
+            if (missingDocuments.length > 0) {
+                toast.error(`Please upload the following documents: ${missingDocuments.join(", ")}`);
                 return; // Stop progression
             }
         }
+
 
         if (activeStep === steps.length - 1) {
             try {
                 setLoading(true); // Start loading
 
-                let fileUrl: string | undefined = undefined;
+                // Upload all files and collect their URLs
+                const documentUploads = await Promise.all(
+                    selectedFiles.map(async (file) => {
+                        const uploadResult = await uploadFile(file.file, user?.id, user?.role);
+                        if (!uploadResult.success) {
+                            throw new Error(`File upload failed: ${uploadResult.message}`);
+                        }
+                        return {
+                            documentType: file.documentType,
+                            documentUrl: uploadResult.fileUrl,
+                        };
+                    })
+                );
 
-                if (!selectedFile || !data?.documentType) {
-                    console.log("acas");
-                    toast.error("Please select a document type and upload a document");
-                    return;
-                }
+                // Prepare the final data for the mutation
+                const finalData = {
+                    ...mutationData,
+                    documents: documentUploads, // Array of documents with type and URL
+                };
 
-                const uploadResult = await uploadFile(selectedFile, user?.id, user?.role);
-                if (!uploadResult.success) {
-                    throw new Error(`File upload failed: ${uploadResult.message}`);
-                }
-
-                fileUrl = uploadResult.fileUrl;
-                const finalData = { ...mutationData, documentUrl: fileUrl };
-
+                // Call the mutation
                 await setupInstructorProfile({
                     variables: {
-                        input: {
-                            ...finalData,
-                        }
+                        input: finalData,
                     },
                 });
-                markUserProfileComplete()
 
+                markUserProfileComplete();
                 toast.success("Profile setup successfully");
                 navigate("/teacher-dashboard/overview");
-
             } catch (err) {
                 console.error("Error setting up instructor profile:", err);
                 toast.error(`Profile setup failed: ${err?.message}`);
@@ -311,7 +325,7 @@ const InstructorProfileSetup: React.FC = () => {
 
     );
     const renderMoreInfo = () => (
-        <Box component="form" onSubmit={handleSubmit(handleNext)} >
+        <Box component="form" onSubmit={handleSubmit(handleNext)}>
             <Box sx={{ mt: 2 }}>
                 <FormControl fullWidth margin="normal" error={!!errors.experience}>
                     <InputLabel>Experience</InputLabel>
@@ -319,10 +333,7 @@ const InstructorProfileSetup: React.FC = () => {
                         name="experience"
                         control={control}
                         render={({ field }) => (
-                            <Select
-                                {...field}
-                                label="Experience"
-                            >
+                            <Select {...field} label="Experience">
                                 <MenuItem value="0-1">0-1 years</MenuItem>
                                 <MenuItem value="1-3">1-3 years</MenuItem>
                                 <MenuItem value="3-5">3-5 years</MenuItem>
@@ -341,31 +352,31 @@ const InstructorProfileSetup: React.FC = () => {
                     Upload Documents
                 </Typography>
 
-                <FormControl fullWidth margin="normal" error={!!errors.documentType}>
-                    <InputLabel>Document Type</InputLabel>
-                    <Controller
-                        name="documentType"
-                        control={control}
-                        render={({ field }) => (
-                            <Select
-                                {...field}
-                                label="Document Type"
-                            >
-                                <MenuItem value="Driving License">Driving License</MenuItem>
-                                <MenuItem value="ID Card">ID Card</MenuItem>
-                                <MenuItem value="Certificates">Certificates</MenuItem>
-                                <MenuItem value="Criminal Record">Criminal Record</MenuItem>
-                                <MenuItem value="Other Document">Other Document</MenuItem>
-                            </Select>
-                        )}
-                    />
-                    {errors.documentType && (
-                        <Typography variant="body2" color="error">
-                            {errors.documentType.message}
-                        </Typography>
-                    )}
-                </FormControl>
-                <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} setValue={setValue} />
+                {requiredDocuments.map((docType, index) => (
+                    <Box key={index} sx={{ mb: 2 }}>
+                        <FormControl fullWidth margin="normal">
+                            <InputLabel>{docType}</InputLabel>
+                            <Controller
+                                name={`documents.${index}.documentType`}
+                                control={control}
+                                defaultValue={docType}
+                                render={({ field }) => (
+                                    <Select {...field} label={docType} disabled>
+                                        <MenuItem value={docType}>{docType}</MenuItem>
+                                    </Select>
+                                )}
+                            />
+                        </FormControl>
+                        <DocumentUploader
+                            key={docType}
+                            onFileUpload={handleFileUpload}
+                            selectedFile={selectedFiles.find((doc) => doc.documentType === docType)?.file || null}
+                            setSelectedFile={(file) => handleFileUpload(file, docType)}
+                            setValue={setValue}
+                            documentType={docType}
+                        />
+                    </Box>
+                ))}
             </Box>
         </Box>
     );

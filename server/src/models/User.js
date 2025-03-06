@@ -53,14 +53,18 @@ const StudentSchema = new mongoose.Schema({
   },
 });
 
+const DocumentSchema = new mongoose.Schema({
+  documentType: String,
+  documentUrl: String,
+});
+
 const InstructorSchema = new mongoose.Schema({
   address: String,
   location: String,
   zipCode: String,
   description: String,
   experience: String,
-  documentType: String,
-  documentUrl: String,
+  documents: [DocumentSchema], // Array of documents
   phone: String,
 });
 

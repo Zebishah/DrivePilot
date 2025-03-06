@@ -69,10 +69,13 @@ const typeDefs = gql`
     zipCode: String
     description: String
     experience: String
-    documentType: String
-    documentUrl: String
+    phone: String
+    documents: [Document!]
   }
-
+  type Document {
+    documentType: String!
+    documentUrl: String!
+  }
   type UserBase implements User {
     id: ID!
     firstName: String!
@@ -114,11 +117,14 @@ const typeDefs = gql`
     zipCode: String!
     description: String
     experience: String
-    documentType: String!
+    documents: [DocumentInput!]!
     phone: String
     documentUrl: String
   }
-
+  input DocumentInput {
+    documentType: String!
+    documentUrl: String!
+  }
   type Query {
     me: User
   }

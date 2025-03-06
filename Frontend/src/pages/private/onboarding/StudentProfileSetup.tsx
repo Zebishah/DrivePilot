@@ -115,7 +115,10 @@ const StudentProfileSetup = () => {
     const handleFileUpload = (file: File | null) => {
         if (file) {
             setSelectedFile(file);
-            setValue("documentUrl", "uploaded", { shouldValidate: true });
+            setValue("documentUrl", "uploaded", { shouldValidate: true }); // Mark as uploaded
+        } else {
+            setSelectedFile(null);
+            setValue("documentUrl", "", { shouldValidate: true }); // Reset if file is removed
         }
     };
 
@@ -199,7 +202,7 @@ const StudentProfileSetup = () => {
                 />
             </FormControl>
 
-            <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} setValue={setValue} />
+            <DocumentUploader documentType={"Document"} onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} setValue={setValue} />
 
         </Box>
     );

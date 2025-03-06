@@ -14,13 +14,20 @@ type Document = {
 
 // Define the props for the DocumentUploader component
 type DocumentUploaderProps = {
-    onFileUpload: (file: File | null) => void; // Callback to return the file to the parent
+    onFileUpload: (file: File | null, documentType: string) => void; // Callback to return the file to the parent
     selectedFile: File | null; // Accept file from parent
     setSelectedFile: (file: File | null) => void; // Callback to return the file to the parent
     setValue: UseFormSetValue<any>;
+    documentType: string; // The type of document being uploaded (e.g., "Driving License", "ID Card")
 };
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selectedFile, setSelectedFile, setValue }) => {
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({
+    onFileUpload,
+    selectedFile,
+    setSelectedFile,
+    setValue,
+    documentType,
+}) => {
     const [document, setDocument] = useState<Document | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -49,15 +56,15 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selec
                 type: file.type,
             };
             setDocument(newDocument);
-            onFileUpload(file); // Return the file to the parent
+            onFileUpload(file, documentType); // Return the file and document type to the parent
         }
     };
 
     // Handle deselect (remove) the document
     const handleDeselect = () => {
         setDocument(null);
-        setSelectedFile(null)
-        onFileUpload(null); // Notify the parent that the file is removed
+        setSelectedFile(null);
+        onFileUpload(null, documentType); // Notify the parent that the file is removed
         setValue("documentUrl", "", { shouldValidate: true });
         // Reset the file input value
         if (fileInputRef.current) {
@@ -77,7 +84,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selec
             }}
         >
             <Typography variant="body1" sx={{ mb: 2 }}>
-                Please upload your document
+                Please upload your {documentType}
             </Typography>
             <Button
                 component="label"
@@ -85,7 +92,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selec
                 startIcon={<Upload />}
                 sx={{ mb: 2 }}
             >
-                Upload Document
+                Upload {documentType}
                 <input
                     ref={fileInputRef} // Reference the input
                     type="file"

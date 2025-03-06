@@ -77,8 +77,11 @@ export const SETUP_INSTRUCTOR_PROFILE = gql`
       zipCode
       description
       experience
-      documentType
-      documentUrl
+      documents {
+        documentType
+        documentUrl
+      }
+      phone
     }
   }
 `;
