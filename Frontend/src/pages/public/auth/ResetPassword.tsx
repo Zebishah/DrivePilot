@@ -97,8 +97,37 @@ const ResetPassword: React.FC = () => {
 
     return (
         <AuthLayout>
-            <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'background.paper',
+                height: '100vh',
+                overflowY: 'auto',
+            }}>
+                <Box component="img"
+                    alt="Cricles"
+                    src="/auth/decorative-circles.png"
+                    sx={{
+                        position: 'absolute',
+                        top: 1,
+                        right: 1
+                    }}>
+                </Box>
+
+
+                <Box
+                    sx={{
+                        mb: 4,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        alignSelf: 'flex-start',
+                        width: '100%',
+
+                    }}
+                >
                     <Logo />
                     <Typography variant="h4" component="h1" sx={{ mt: 4, fontWeight: 'bold' }}>
                         Reset Password
@@ -106,8 +135,8 @@ const ResetPassword: React.FC = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'nowrap' }}>
                         Enter your new password below to reset your account access.
                     </Typography>
-
                 </Box>
+
 
                 <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%' }}>
                     <InputLabel htmlFor="password">New Password</InputLabel>
