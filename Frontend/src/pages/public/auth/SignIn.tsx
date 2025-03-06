@@ -246,32 +246,31 @@ const SignIn: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
                         <IconButton
                             sx={{
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: '50%',
-                                p: 1.5,
+                                p: 0,
+                                width: 54,
+                                height: 54,
+                                borderRadius: 0,
                             }}
                             href={`${backendAuth}auth/facebook`}
                         >
-                            <Facebook color="#1877F2" size={24} />
+                            <img src="/auth/facebook_logo.png" alt="Facebook" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </IconButton>
                         <IconButton
                             sx={{
                                 border: '1px solid',
                                 borderColor: 'divider',
                                 borderRadius: '50%',
-                                p: 1.5,
+                                p: 1.2,
+                                width: 54,
+                                height: 54,
                             }}
                             href={`${backendAuth}auth/google`}
                         >
-                            <svg width="24" height="24" viewBox="0 0 24 24">
-                                <path
-                                    fill="#DB4437"
-                                    d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z"
-                                />
-                            </svg>
+                            <img src="/auth/google_logo.png" alt="Google" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </IconButton>
                     </Box>
+
+
 
                     <Box sx={{ textAlign: 'center', mt: 2 }}>
                         <Typography variant="body2">

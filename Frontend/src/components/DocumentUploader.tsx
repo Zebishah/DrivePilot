@@ -2,6 +2,7 @@ import type React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Paper, Typography, Button, Box, IconButton } from '@mui/material';
 import { Upload, Delete } from '@mui/icons-material';
+import type { UseFormSetValue } from 'react-hook-form';
 
 // Define the type for a single document
 type Document = {
@@ -16,9 +17,10 @@ type DocumentUploaderProps = {
     onFileUpload: (file: File | null) => void; // Callback to return the file to the parent
     selectedFile: File | null; // Accept file from parent
     setSelectedFile: (file: File | null) => void; // Callback to return the file to the parent
+    setValue: UseFormSetValue<any>;
 };
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selectedFile, setSelectedFile }) => {
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selectedFile, setSelectedFile, setValue }) => {
     const [document, setDocument] = useState<Document | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -56,7 +58,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFileUpload, selec
         setDocument(null);
         setSelectedFile(null)
         onFileUpload(null); // Notify the parent that the file is removed
-
+        setValue("documentUrl", "", { shouldValidate: true });
         // Reset the file input value
         if (fileInputRef.current) {
             fileInputRef.current.value = "";

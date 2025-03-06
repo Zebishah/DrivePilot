@@ -60,7 +60,8 @@ const resolvers = {
         // Check if user exists
         const existingUser = await User.findOne({ email: input.email });
         if (existingUser) {
-          throw new UserInputError("Email already exists");
+          throw new UserInputError(`This email is already linked to a ${existingUser?.authProvider} account. Please sign in with ${existingUser?.authProvider}
+instead.`);
         }
 
         // Hash password
@@ -233,8 +234,6 @@ const resolvers = {
         ContentType: fileType,
       };
 
-      console.log("s3params", s3Params);
-
       const uploadUrl = await s3.getSignedUrlPromise("putObject", s3Params);
 
       const fileUrl = `https://dspbucket918.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
@@ -265,7 +264,7 @@ const resolvers = {
       });
 
       // Create reset URL
-      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password/${resetToken}`;
+      const resetUrl = `${process.env.Frontend_URL}/auth/reset-password/${resetToken}`;
 
       // Send email using the email service
       try {

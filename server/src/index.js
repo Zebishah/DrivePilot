@@ -36,10 +36,9 @@ const corsOptions = {
   origin: (origin, callback) => {
     if (allowedOrigins.includes(origin) || !origin) {
       // !origin allows requests without an origin header.
-      console.log("not");
+
       callback(null, true);
     } else {
-      console.log("not allowed");
       callback(new Error("Not allowed by CORS"));
     }
   },

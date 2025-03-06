@@ -28,13 +28,14 @@ import DocumentUploader from "../../../components/DocumentUploader";
 import toast from "react-hot-toast";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 
+
 const schema = z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email"),
     phone: z.string().min(1, "Phone number is required"),
     address: z.string().min(1, "Address is required"),
-    location: z.string().min(1, "Location is required"),
+    location: z.string().min(1, "City is required"),
     zipCode: z.string().min(1, "ZIP code is required"),
     description: z.string().optional(),
     experience: z.string().optional(),
@@ -97,6 +98,20 @@ const InstructorProfileSetup: React.FC = () => {
 
     const handleNext = async (data) => {
         const { email, ...mutationData } = data;
+        if (activeStep === 1) {
+            if (!data?.experience) {
+                toast.error("Experience is required.");
+                return; // Stop progression
+            }
+            if (!data?.documentType) {
+                toast.error("Document type is required.");
+                return; // Stop progression
+            }
+            if (!selectedFile) {
+                toast.error("Please upload a document.");
+                return; // Stop progression
+            }
+        }
 
         if (activeStep === steps.length - 1) {
             try {
@@ -238,7 +253,7 @@ const InstructorProfileSetup: React.FC = () => {
 
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <InputLabel htmlFor="location" sx={{ mb: 1 }}>Location</InputLabel>
+                        <InputLabel htmlFor="location" sx={{ mb: 1 }}>City</InputLabel>
                         <Controller
                             name="location"
                             control={control}
@@ -246,7 +261,7 @@ const InstructorProfileSetup: React.FC = () => {
                                 <TextField
                                     {...field}
                                     id="location"
-                                    placeholder="Location"
+                                    placeholder="City"
                                     error={!!errors.location}
                                     helperText={errors.location?.message}
                                 />
@@ -350,7 +365,7 @@ const InstructorProfileSetup: React.FC = () => {
                         </Typography>
                     )}
                 </FormControl>
-                <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} />
+                <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} setValue={setValue} />
             </Box>
         </Box>
     );
@@ -387,21 +402,24 @@ const InstructorProfileSetup: React.FC = () => {
 
     return (
         <Box sx={{ width: '100%', maxWidth: 'md', mx: "auto", overflowY: "scroll" }}>
-            <Box component="img"
-                alt="Cricles"
+            <Box
+                component="img"
+                alt="Circles"
                 src="/auth/decorative-circles.png"
                 sx={{
                     position: 'absolute',
                     top: 1,
-                    right: 1
-                }}>
-            </Box>
+                    right: 1,
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                }}
+            />
+
             <Box
                 sx={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
-
                 }}
             >
                 <Logo />
@@ -421,6 +439,7 @@ const InstructorProfileSetup: React.FC = () => {
                 sx={{
                     maxHeight: '50vh', // Adjust this value as needed
                     overflowY: 'auto',
+                    paddingRight: "12px",
                     // pr: 1.5,
 
                 }}

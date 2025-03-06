@@ -27,22 +27,22 @@ import toast from "react-hot-toast";
 
 const schema = z.object({
     homeAddress: z.string().min(1, "Home address is required"),
-    location: z.string().min(1, "Location is required"),
+    location: z.string().min(1, "City is required"),
     zipCode: z.string().min(1, "ZIP code is required"),
     documentType: z.string().min(1, "Document type is required"),
-    documentUrl: z.string().optional(),
+    documentUrl: z.string().min(1, "Please upload a document")
 });
 
 const steps = ["More Information", "Payment Method"];
 
 const StudentProfileSetup = () => {
-    const { user, login, markUserProfileComplete } = useAuth();
+    const { user, markUserProfileComplete } = useAuth();
     const { uploadFile } = useFileUpload();
     const navigate = useNavigate();
     const [activeStep, setActiveStep] = useState(0);
 
 
-    const { control, handleSubmit, formState: { errors } } = useForm({
+    const { control, handleSubmit, setValue, formState: { errors } } = useForm({
         resolver: zodResolver(schema),
         defaultValues: {
             homeAddress: "",
@@ -114,8 +114,8 @@ const StudentProfileSetup = () => {
 
     const handleFileUpload = (file: File | null) => {
         if (file) {
-
             setSelectedFile(file);
+            setValue("documentUrl", "uploaded", { shouldValidate: true });
         }
     };
 
@@ -141,7 +141,7 @@ const StudentProfileSetup = () => {
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
                 <Box>
-                    <InputLabel htmlFor="location" sx={{ mb: 1 }}>Location</InputLabel>
+                    <InputLabel htmlFor="location" sx={{ mb: 1 }}>City</InputLabel>
                     <Controller
                         name="location"
                         control={control}
@@ -150,7 +150,7 @@ const StudentProfileSetup = () => {
                                 {...field}
                                 fullWidth
                                 id="location"
-                                placeholder="Enter Location"
+                                placeholder="Enter City"
                                 error={!!errors.location}
                                 helperText={errors.location?.message}
                             />
@@ -199,7 +199,7 @@ const StudentProfileSetup = () => {
                 />
             </FormControl>
 
-            <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} />
+            <DocumentUploader onFileUpload={handleFileUpload} selectedFile={selectedFile} setSelectedFile={setSelectedFile} setValue={setValue} />
 
         </Box>
     );
@@ -244,7 +244,9 @@ const StudentProfileSetup = () => {
                 sx={{
                     position: 'absolute',
                     top: 1,
-                    right: 1
+                    right: 1,
+                    pointerEvents: 'none', // Prevents clicks
+                    userSelect: 'none'
                 }}>
             </Box>
             <Logo />
@@ -266,6 +268,7 @@ const StudentProfileSetup = () => {
                 sx={{
                     maxHeight: '50vh', // Adjust this value as needed
                     overflowY: 'auto',
+                    paddingRight: "12px",
                     // pr: 1.5,
 
                 }}
