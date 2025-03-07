@@ -15,3 +15,8 @@ export const TeacherPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ c
     const { isAuthenticated, user } = useAuth();
     return isAuthenticated && user?.role === "Instructor" && user?.isProfileComplete ? <>{children}</> : <Navigate to="/auth/signin" />;
 };
+
+export const AdminPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { isAuthenticated, user } = useAuth();
+    return isAuthenticated && user?.role === "Admin" ? <>{children}</> : <Navigate to="/auth/signin" />;
+};

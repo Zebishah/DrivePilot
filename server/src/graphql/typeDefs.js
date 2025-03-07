@@ -72,6 +72,18 @@ const typeDefs = gql`
     phone: String
     documents: [Document!]
   }
+  type Admin implements User {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    role: UserRole!
+    isProfileComplete: Boolean!
+    authProvider: AuthProvider!
+    createdAt: String!
+    updatedAt: String!
+    adminLevel: String! # Either "super" or "regular"
+  }
   type Document {
     documentType: String!
     documentUrl: String!

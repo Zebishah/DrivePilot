@@ -19,6 +19,8 @@ import TeacherRoutes from "./TeacherRoutes";
 import AuthSuccess from "../pages/public/auth/AuthSucess";
 import TeacherOverview from "../pages/private/teacher-dashboard/teacher0verview";
 import StudentOverview from "../pages/private/student-dashboard/studentOverview";
+import AdminRoutes from "./AdminRoutes";
+import AdminOverview from "../pages/private/admin-dashboard/adminOverview";
 
 const router = createBrowserRouter([
     {
@@ -62,6 +64,13 @@ const router = createBrowserRouter([
         element: <TeacherRoutes />,
         children: [
             { path: "overview", element: <TeacherOverview /> },
+        ],
+    },
+    {
+        path: "/admin-dashboard",
+        element: <AdminRoutes />,
+        children: [
+            { path: "overview", element: <AdminOverview /> },
         ],
     },
     {

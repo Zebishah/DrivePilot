@@ -44,6 +44,7 @@ const resolvers = {
   },
   User: {
     __resolveType(obj) {
+      console.log("object", obj);
       if (obj.role === "Student") return "Student";
       if (obj.role === "Instructor") return "Instructor";
       if (obj.role === "Admin") return "Admin";

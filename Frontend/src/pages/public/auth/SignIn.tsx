@@ -70,8 +70,10 @@ const SignIn: React.FC = () => {
             const { signIn } = data;
             if (signIn?.user?.isProfileComplete) {
                 login(signIn);
+
                 if (signIn?.user?.role === "Student") navigate("/student-dashboard/overview");
                 else if (signIn?.user?.role === "Instructor") navigate("/teacher-dashboard/overview");
+                else if (signIn?.user?.role === "Admin") navigate("/admin-dashboard/overview");
                 toast.success("Login Successfully");
             } else {
                 toast.success("Please Complete your Profile");
