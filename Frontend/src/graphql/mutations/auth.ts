@@ -135,3 +135,74 @@ export const CHANGE_PASSWORD = gql`
     }
   }
 `;
+
+export const CREATE_SIGNUP_LINK = gql`
+  mutation CreateSignUpLink(
+    $firstName: String!
+    $lastName: String!
+    $email: String!
+  ) {
+    createSignUpLink(
+      firstName: $firstName
+      lastName: $lastName
+      email: $email
+    ) {
+      id
+      signupLink
+      email
+      firstName
+      lastName
+      token
+      signupDate
+      pending
+    }
+  }
+`;
+
+export const DELETE_SIGNUP_LINK = gql`
+  mutation DeleteSignUpLink($id: ID!) {
+    deleteSignUpLink(id: $id) {
+      success
+      message
+    }
+  }
+`;
+
+export const GET_ALL_SIGNUP_LINKS = gql`
+  query GetAllSignupLinks {
+    getAllSignupLinks {
+      id
+      firstName
+      lastName
+      email
+      token
+      signupDate
+      pending
+      signupLink
+    }
+  }
+`;
+
+export const GET_SIGNUP_TOKEN_DETAILS = gql`
+  query GetSignupTokenDetails($token: String!) {
+    getSignupTokenDetails(token: $token) {
+      email
+      firstName
+      lastName
+      token
+      signupDate
+      pending
+      error
+      id
+    }
+  }
+`;
+
+export const UPDATE_SIGNUP_LINK_STATUS = gql`
+  mutation UpdateSignupLinkStatus($id: ID!, $pending: Boolean!) {
+    updateSignupLinkStatus(id: $id, pending: $pending) {
+      id
+      pending
+    }
+  }
+`;

@@ -87,7 +87,7 @@ instead.`);
 
         return {
           token,
-          user: userObj, // Ensure `id` is always present
+          user: userObj,
         };
       } catch (error) {
         if (error.errors) {
