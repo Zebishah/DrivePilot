@@ -115,10 +115,6 @@ const InstructorProfileSetup: React.FC = () => {
     }
   };
 
-  // const handleNext = () => {
-  //     setActiveStep((prevStep) => prevStep + 1);
-  // };
-
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
@@ -225,7 +221,7 @@ const InstructorProfileSetup: React.FC = () => {
   };
 
   const handleSelectSuggestion = (address) => {
-    setValue("homeAddress", address, { shouldValidate: true });
+    setValue("address", address, { shouldValidate: true });
     setShowSuggestions(false);
   };
 
@@ -314,7 +310,7 @@ const InstructorProfileSetup: React.FC = () => {
           />
         </Box>
 
-        {/* <Box sx={{ mb: 1 }}>
+        <Box sx={{ mb: 3, position: "relative" }}>
           <InputLabel htmlFor="address" sx={{ mb: 1 }}>
             Home Address
           </InputLabel>
@@ -325,28 +321,9 @@ const InstructorProfileSetup: React.FC = () => {
               <TextField
                 {...field}
                 fullWidth
-                id="address"
-                placeholder="Home Address"
+                placeholder="Enter Address"
                 error={!!errors.address}
                 helperText={errors.address?.message}
-              />
-            )}
-          />
-        </Box> */}
-        <Box sx={{ mb: 3, position: "relative" }}>
-          <InputLabel htmlFor="address" sx={{ mb: 1 }}>
-            Home Address
-          </InputLabel>
-          <Controller
-            name="homeAddress"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                placeholder="Enter Home Address"
-                error={!!errors.homeAddress}
-                helperText={errors.homeAddress?.message}
                 onChange={(e) => {
                   field.onChange(e);
                   fetchLocations(e.target.value);
