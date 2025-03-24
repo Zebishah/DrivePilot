@@ -107,7 +107,7 @@ export default function Sidebar({
 
             <List>
                 {menuItems.map((item, index) => {
-                    const isActive = router.pathname === item.path;
+                    const isActive = router.pathname.startsWith(item.path); // Updated to handle nested routes
                     const isLogout = item.text.toLowerCase() === "logout";
 
                     return (
@@ -148,7 +148,7 @@ export default function Sidebar({
                                 </ListItemButton>
                             ) : (
 
-                                <Link to={item.path} passHref style={{ textDecoration: 'none', width: '100%', color: 'inherit' }}>
+                                <Link to={item.path} style={{ textDecoration: 'none', width: '100%', color: 'inherit' }}>
                                     <ListItemButton
                                         component={motion.div}
                                         whileHover={{ x: 5 }}

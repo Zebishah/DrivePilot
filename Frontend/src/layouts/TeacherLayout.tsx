@@ -87,7 +87,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                         // ml: { sm: `${DRAWER_WIDTH}px` },
                     }}
                 >
-                    <Navbar handleDrawerToggle={handleDrawerToggle} />
+                    <Navbar handleDrawerToggle={handleDrawerToggle} menuItems={menuItems} /> {/* Pass menuItems */}
                     {children}
                 </Box>
             </Box>

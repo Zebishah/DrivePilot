@@ -22,6 +22,8 @@ import StudentOverview from "../pages/private/student-dashboard/studentOverview"
 import AdminRoutes from "./AdminRoutes";
 import AdminOverview from "../pages/private/admin-dashboard/adminOverview";
 import AdminAccess from "../pages/private/admin-dashboard/AdminAccess";
+import ProfileSetting from "../pages/private/teacher-dashboard/profileSetting";
+import EditProfile from "../pages/private/teacher-dashboard/editProfile";
 
 const router = createBrowserRouter([
   {
@@ -62,7 +64,16 @@ const router = createBrowserRouter([
   {
     path: "/teacher-dashboard",
     element: <TeacherRoutes />,
-    children: [{ path: "overview", element: <TeacherOverview /> }],
+    children: [
+      { path: "overview", element: <TeacherOverview /> },
+      {
+        path: "settings",
+        element: <ProfileSetting />,
+        children: [
+          { path: "edit-profile", element: <EditProfile /> }, // Nested under settings
+        ],
+      },
+    ],
   },
   {
     path: "/admin-dashboard",
