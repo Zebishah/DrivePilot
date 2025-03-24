@@ -88,6 +88,22 @@ const typeDefs = gql`
     documentType: String!
     documentUrl: String!
   }
+  type InstructorProfile {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String
+    location: String
+    experience: String
+    description: String
+    address: String
+    zipCode: String
+    documents: [Document!]
+    fatherName: String
+    dateOfBirth: String
+    languagePreference: String
+  }
   type UserBase implements User {
     id: ID!
     firstName: String!
@@ -133,12 +149,30 @@ const typeDefs = gql`
     phone: String
     documentUrl: String
   }
+
+  input UpdateInstructorProfileInput {
+    firstName: String
+    lastName: String
+    address: String
+    location: String
+    zipCode: String
+    description: String
+    experience: String
+    documents: [DocumentInput!]
+    phone: String
+    documentUrl: String
+    fatherName: String
+    dateOfBirth: String
+    languagePreference: String
+  }
+
   input DocumentInput {
     documentType: String!
     documentUrl: String!
   }
   type Query {
     me: User
+    teacherProfile: InstructorProfile
   }
 
   type PasswordResetResponse {
@@ -152,6 +186,7 @@ const typeDefs = gql`
     selectRole(role: UserRole!): AuthPayload!
     setupStudentProfile(input: StudentProfileInput!): Student!
     setupInstructorProfile(input: InstructorProfileInput!): Instructor!
+    updateTeacherProfile(input: UpdateInstructorProfileInput!): InstructorProfile!
     signIn(email: String!, password: String!): AuthPayload!
     generateUploadUrl(
       userId: String!

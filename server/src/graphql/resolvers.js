@@ -41,10 +41,38 @@ const resolvers = {
       }
       return await User.findById(user.id);
     },
+    teacherProfile: async (_, __, { user }) => {
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+      try {
+        const instructor = await Instructor.findById(user.id);
+        if (!instructor) {
+          return null;
+        }
+        return {
+          id: instructor.id,
+          firstName: instructor.firstName,
+          lastName: instructor.lastName,
+          email: instructor.email,
+          phone: instructor.phone,
+          location: instructor.location,
+          experience: instructor.experience,
+          description: instructor.description,
+          address: instructor.address,
+          zipCode: instructor.zipCode,
+          documents: instructor.documents,
+          fatherName: instructor.fatherName,
+          dateOfBirth: instructor.dateOfBirth,
+          languagePreference: instructor.languagePreference
+        };
+      } catch (error) {
+        return null;
+      }
+    },
   },
   User: {
     __resolveType(obj) {
-      console.log("object", obj);
       if (obj.role === "Student") return "Student";
       if (obj.role === "Instructor") return "Instructor";
       if (obj.role === "Admin") return "Admin";
@@ -276,7 +304,6 @@ instead.`);
           message: "Password reset email sent",
         };
       } catch (error) {
-        console.error("Email sending error:", error);
         throw new Error("Failed to send reset email");
       }
     },

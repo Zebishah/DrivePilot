@@ -59,13 +59,16 @@ const DocumentSchema = new mongoose.Schema({
 });
 
 const InstructorSchema = new mongoose.Schema({
-  address: String,
-  location: String,
-  zipCode: String,
-  description: String,
-  experience: String,
+  address: { type: String, required: false },
+  location: { type: String, required: false },
+  zipCode: { type: String, required: false },
+  description: { type: String, required: false },
+  experience: { type: String, required: false },
   documents: [DocumentSchema], // Array of documents
-  phone: String,
+  phone: { type: String, required: false },
+  fatherName: { type: String, required: false },
+  dateOfBirth: { type: String, required: false },
+  languagePreference: { type: String, required: false }
 });
 
 const AdminSchema = new mongoose.Schema({
