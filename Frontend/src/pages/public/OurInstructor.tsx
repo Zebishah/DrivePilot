@@ -1,10 +1,10 @@
-import React from 'react';
+import type React from 'react';
 import PostSummary from '../../components/InstructorComponent/PostSummary';
 
 const OurInstructor: React.FC = () => {
   return (
     <div>
-    <PostSummary/>
+      <PostSummary />
     </div>
 
   );

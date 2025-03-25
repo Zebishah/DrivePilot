@@ -24,6 +24,7 @@ import AdminOverview from "../pages/private/admin-dashboard/adminOverview";
 import AdminAccess from "../pages/private/admin-dashboard/AdminAccess";
 import ProfileSetting from "../pages/private/teacher-dashboard/profileSetting";
 import EditProfile from "../pages/private/teacher-dashboard/editProfile";
+import AllInstructor from "../components/ProfessionalInstructor/Allinstructor";
 
 const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
       { path: "", element: <Home /> },
       { path: "about", element: <AboutUs /> },
       { path: "contact", element: <Contact /> },
+      { path: "professional", element: <AllInstructor /> }
     ],
   },
   { path: "signup/:token", element: <SignUp /> },
