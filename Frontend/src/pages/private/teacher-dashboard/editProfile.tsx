@@ -9,6 +9,12 @@ import {
   TextField,
   Button,
   CircularProgress,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Paper,
+  ClickAwayListener,
 } from "@mui/material";
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client';
@@ -19,6 +25,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { startOfDay } from 'date-fns';
 import { ApolloError } from '@apollo/client';
+import axios from 'axios';
 
 // Define the interfaces for the data
 interface ProfileData {
@@ -36,10 +43,22 @@ interface ProfileData {
   languagePreference?: string;
 }
 
+interface LocationSuggestion {
+  display_name: string;
+  address: {
+    road?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+}
+
 export default function EditProfile() {
   const navigate = useNavigate();
   const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
   const [updateProfile] = useMutation(UPDATE_TEACHER_PROFILE);
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
     firstName: "",
     lastName: "",
@@ -86,6 +105,42 @@ export default function EditProfile() {
   // Handle date of birth change
   const handleDateOfBirthChange = (newValue: Date | null) => {
     handleInputChange('dateOfBirth', newValue ? newValue.toISOString() : '');
+  };
+
+  const fetchLocations = async (inputValue: string) => {
+    if (!inputValue) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search`,
+        {
+          params: {
+            q: inputValue,
+            format: "json",
+            addressdetails: 1,
+            limit: 5,
+          },
+        }
+      );
+      setSuggestions(response.data);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      setSuggestions([]);
+    }
+  };
+
+  const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    handleInputChange('location', value);
+    fetchLocations(value);
+  };
+
+  const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
+    handleInputChange('location', suggestion.display_name);
+    setShowSuggestions(false);
   };
 
   const handleSaveChanges = async () => {
@@ -211,12 +266,62 @@ export default function EditProfile() {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Location"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  fullWidth
-                />
+                <Box sx={{ position: 'relative' }}>
+                  <TextField
+                    label="Location"
+                    value={formData.location}
+                    onChange={handleLocationChange}
+                    fullWidth
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <ClickAwayListener onClickAway={() => setShowSuggestions(false)}>
+                      <Paper 
+                        sx={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          zIndex: 1000,
+                          mt: 1,
+                          maxHeight: '200px',
+                          overflow: 'auto',
+                          borderRadius: 2,
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        <List>
+                          {suggestions.map((suggestion, index) => (
+                            <ListItem key={index} disablePadding>
+                              <ListItemButton 
+                                onClick={() => handleSelectSuggestion(suggestion)}
+                                sx={{
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(94, 194, 210, 0.08)',
+                                  }
+                                }}
+                              >
+                                <ListItemText 
+                                  primary={suggestion.display_name}
+                                  sx={{
+                                    '& .MuiTypography-root': {
+                                      fontSize: '0.875rem',
+                                      color: '#2c3e50',
+                                    }
+                                  }}
+                                />
+                              </ListItemButton>
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Paper>
+                    </ClickAwayListener>
+                  )}
+                </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
