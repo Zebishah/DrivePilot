@@ -16,8 +16,10 @@ import {
   CircularProgress,
   List,
   ListItem,
+  FormHelperText,
+  IconButton,
 } from "@mui/material";
-import { Upload } from "lucide-react";
+import { DeleteIcon, Upload } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
@@ -49,6 +51,9 @@ const schema = z.object({
       })
     )
     .optional(),
+  carName: z.string().min(2, "Car model must be at least 2 characters").max(50),
+  transmissionType: z.enum(["Automatic", "Manual"]),
+  gender: z.enum(["Male", "Female", "Other"]),
 });
 const steps = [
   "Personal Information",
@@ -84,6 +89,9 @@ const InstructorProfileSetup: React.FC = () => {
       description: "",
       experience: "",
       documents: [],
+      carName: "",
+      transmissionType: "Manual",
+      gender: "Male",
     },
   });
   const requiredDocuments = [
@@ -91,6 +99,7 @@ const InstructorProfileSetup: React.FC = () => {
     "ID Card",
     "Certificates",
     "Criminal Record",
+    "Other Documents"
   ];
 
   useEffect(() => {
@@ -123,6 +132,7 @@ const InstructorProfileSetup: React.FC = () => {
 
   const handleNext = async (data) => {
     const { email, ...mutationData } = data;
+
 
     if (activeStep === 1) {
       if (!data?.experience) {
@@ -169,6 +179,7 @@ const InstructorProfileSetup: React.FC = () => {
         const finalData = {
           ...mutationData,
           documents: documentUploads, // Array of documents with type and URL
+          coordinates: coordinates
         };
 
         // Call the mutation
@@ -212,6 +223,7 @@ const InstructorProfileSetup: React.FC = () => {
           },
         }
       );
+
       setSuggestions(response.data);
       setShowSuggestions(true);
     } catch (error) {
@@ -219,12 +231,22 @@ const InstructorProfileSetup: React.FC = () => {
       setSuggestions([]);
     }
   };
-
+  const [coordinates, setCoordinates] = useState({
+    type: "Point",
+    coordinates: [0, 0]
+  });
   const handleSelectSuggestion = (address) => {
-    setValue("address", address, { shouldValidate: true });
+    setValue("address", address?.display_name, { shouldValidate: true });
     setShowSuggestions(false);
-  };
 
+    // Update coordinates state
+    if (address?.lat && address?.lon) {
+      setCoordinates({
+        type: "Point",
+        coordinates: [Number.parseFloat(address.lon), Number.parseFloat(address.lat)]
+      });
+    }
+  };
   const renderPersonalInfo = () => (
     <Box component="form">
       <Box>
@@ -309,6 +331,89 @@ const InstructorProfileSetup: React.FC = () => {
             )}
           />
         </Box>
+        {/* Car Name Field */}
+        <Box sx={{ mb: 1 }}>
+          <InputLabel htmlFor="carName" sx={{ mb: 1 }}>
+            Car
+          </InputLabel>
+          <Controller
+            name="carName"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                id="carName"
+                placeholder="Enter your car name"
+                error={!!errors.carName}
+                helperText={errors.carName?.message}
+              />
+            )}
+          />
+        </Box>
+
+        {/* Transmission Type Field */}
+        <Box sx={{ mb: 1 }}>
+          <InputLabel htmlFor="transmissionType" sx={{ mb: 1 }}>
+            Transmission Type
+          </InputLabel>
+          <Controller
+            name="transmissionType"
+            control={control}
+            render={({ field }) => (
+              <Select
+                {...field}
+                fullWidth
+                id="transmissionType"
+                error={!!errors.transmissionType}
+                displayEmpty
+              >
+                <MenuItem value="" disabled>
+                  Select transmission type
+                </MenuItem>
+                <MenuItem value="Automatic">Automatic</MenuItem>
+                <MenuItem value="Manual">Manual</MenuItem>
+              </Select>
+            )}
+          />
+          {errors.transmissionType && (
+            <FormHelperText error>
+              {errors.transmissionType.message}
+            </FormHelperText>
+          )}
+        </Box>
+
+        {/* Gender Field */}
+        <Box sx={{ mb: 1 }}>
+          <InputLabel htmlFor="gender" sx={{ mb: 1 }}>
+            Gender
+          </InputLabel>
+          <Controller
+            name="gender"
+            control={control}
+            render={({ field }) => (
+              <Select
+                {...field}
+                fullWidth
+                id="gender"
+                error={!!errors.gender}
+                displayEmpty
+              >
+                <MenuItem value="" disabled>
+                  Select your gender
+                </MenuItem>
+                <MenuItem value="Male">Male</MenuItem>
+                <MenuItem value="Female">Female</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            )}
+          />
+          {errors.gender && (
+            <FormHelperText error>
+              {errors.gender.message}
+            </FormHelperText>
+          )}
+        </Box>
 
         <Box sx={{ mb: 3, position: "relative" }}>
           <InputLabel htmlFor="address" sx={{ mb: 1 }}>
@@ -348,7 +453,7 @@ const InstructorProfileSetup: React.FC = () => {
                   <ListItem
                     button
                     key={place.place_id}
-                    onClick={() => handleSelectSuggestion(place.display_name)}
+                    onClick={() => handleSelectSuggestion(place)}
                   >
                     {place.display_name}
                   </ListItem>
@@ -431,6 +536,7 @@ const InstructorProfileSetup: React.FC = () => {
   const renderMoreInfo = () => (
     <Box component="form" onSubmit={handleSubmit(handleNext)}>
       <Box sx={{ mt: 2 }}>
+        {/* Experience Selector (unchanged) */}
         <FormControl fullWidth margin="normal" error={!!errors.experience}>
           <InputLabel>Experience</InputLabel>
           <Controller
@@ -459,35 +565,133 @@ const InstructorProfileSetup: React.FC = () => {
         {requiredDocuments.map((docType, index) => (
           <Box key={index} sx={{ mb: 2 }}>
             <FormControl fullWidth margin="normal">
-              <InputLabel>{docType}</InputLabel>
               <Controller
                 name={`documents.${index}.documentType`}
                 control={control}
                 defaultValue={docType}
                 render={({ field }) => (
-                  <Select {...field} label={docType} disabled>
+                  <Select {...field} disabled>
                     <MenuItem value={docType}>{docType}</MenuItem>
                   </Select>
                 )}
               />
             </FormControl>
-            <DocumentUploader
-              key={docType}
-              onFileUpload={handleFileUpload}
-              selectedFile={
-                selectedFiles.find((doc) => doc.documentType === docType)
-                  ?.file || null
-              }
-              setSelectedFile={(file) => handleFileUpload(file, docType)}
-              setValue={setValue}
-              documentType={docType}
-            />
+
+            {/* Special handling for Other Documents */}
+            {docType === "Other Documents" ? (
+              <Box sx={{ mt: 1 }}>
+                <input
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  style={{ display: 'none' }}
+                  id={`other-docs-upload`}
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    files.forEach((file) => {
+                      handleFileUpload(file, "Other Documents");
+                    });
+                  }}
+                />
+                <label htmlFor={`other-docs-upload`}>
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    sx={{ mr: 2 }}
+                  >
+                    Upload Multiple
+                  </Button>
+                </label>
+                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                  You can upload multiple files for Other Documents
+                </Typography>
+
+                {/* Display uploaded other documents with previews */}
+                {selectedFiles
+                  .filter(doc => doc.documentType === "Other Documents")
+                  .map((doc, idx) => (
+                    <Box key={idx} sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      mt: 2,
+                      p: 2,
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1
+                    }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+                          {doc.file.name}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            const updatedFiles = selectedFiles.filter(
+                              (f, i) => !(f.documentType === "Other Documents" && f?.file?.name === doc?.file?.name)
+                            );
+                            setSelectedFiles(updatedFiles);
+                            setValue('documents', updatedFiles);
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+
+                      {/* File Preview Section */}
+                      {doc.file.type.startsWith('image/') ? (
+                        <Box sx={{
+                          mt: 1,
+                          maxHeight: 200,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          justifyContent: 'center'
+                        }}>
+                          <img
+                            src={URL.createObjectURL(doc.file)}
+                            alt="Preview"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        </Box>
+                      ) : (
+                        <Box sx={{
+                          mt: 1,
+                          p: 2,
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <DescriptionIcon sx={{ mr: 1, color: 'primary.main' }} />
+                          <Typography variant="body2">
+                            PDF Document (Preview not available)
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  ))}
+              </Box>
+            ) : (
+              <DocumentUploader
+                key={docType}
+                onFileUpload={handleFileUpload}
+                selectedFile={
+                  selectedFiles.find((doc) => doc.documentType === docType)
+                    ?.file || null
+                }
+                setSelectedFile={(file) => handleFileUpload(file, docType)}
+                setValue={setValue}
+                documentType={docType}
+              />
+            )}
           </Box>
         ))}
       </Box>
     </Box>
   );
-
   const renderPaymentInfo = () => (
     <Box sx={{ mt: 4 }}>
       <Box sx={{ mt: 4 }}>

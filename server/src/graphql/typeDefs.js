@@ -23,6 +23,15 @@ const typeDefs = gql`
     token: String!
     user: User!
   }
+  type Coordinates {
+    type: String!
+    coordinates: [Float!]!
+  }
+
+  input CoordinatesInput {
+    type: String!
+    coordinates: [Float!]!
+  }
 
   interface User {
     id: ID!
@@ -71,6 +80,10 @@ const typeDefs = gql`
     experience: String
     phone: String
     documents: [Document!]
+    coordinates: Coordinates
+    carName: String
+    transmissionType: String
+    gender: String
   }
   type Admin implements User {
     id: ID!
@@ -148,6 +161,10 @@ const typeDefs = gql`
     documents: [DocumentInput!]!
     phone: String
     documentUrl: String
+    coordinates: CoordinatesInput
+    carName: String
+    transmissionType: String
+    gender: String
   }
 
   input UpdateInstructorProfileInput {
@@ -186,7 +203,9 @@ const typeDefs = gql`
     selectRole(role: UserRole!): AuthPayload!
     setupStudentProfile(input: StudentProfileInput!): Student!
     setupInstructorProfile(input: InstructorProfileInput!): Instructor!
-    updateTeacherProfile(input: UpdateInstructorProfileInput!): InstructorProfile!
+    updateTeacherProfile(
+      input: UpdateInstructorProfileInput!
+    ): InstructorProfile!
     signIn(email: String!, password: String!): AuthPayload!
     generateUploadUrl(
       userId: String!

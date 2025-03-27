@@ -68,7 +68,29 @@ const InstructorSchema = new mongoose.Schema({
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },
   dateOfBirth: { type: String, required: false },
-  languagePreference: { type: String, required: false }
+  languagePreference: { type: String, required: false },
+  coordinates: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0],
+    },
+  },
+  carName: { type: String, required: false },
+  transmissionType: {
+    type: String,
+    enum: ["Automatic", "Manual"],
+    required: false,
+  },
+  gender: {
+    type: String,
+    enum: ["Male", "Female", "Other"],
+    required: false,
+  },
 });
 
 const AdminSchema = new mongoose.Schema({
@@ -78,6 +100,8 @@ const AdminSchema = new mongoose.Schema({
     default: "regular",
   },
 });
+
+InstructorSchema.index({ coordinates: "2dsphere" });
 
 const Student = User.discriminator("Student", StudentSchema);
 const Instructor = User.discriminator("Instructor", InstructorSchema);

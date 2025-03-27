@@ -1,23 +1,80 @@
-
 import React from 'react';
-import { Box, Card, Avatar, Button, Typography, Tabs, Tab } from '@mui/material';
+import { useQuery } from '@apollo/client';
+import { useParams } from 'react-router-dom';
+import { Box, Card, Avatar, Button, Typography, Tabs, Tab, Skeleton } from '@mui/material';
 import Availability from './Availability';
 import Summary from './Summary';
 import Reviews from './Reviews';
+import { GET_INSTRUCTOR_PROFILE } from '../../graphql/mutations/instructorPublic';
 
-const ProfileSummary = () => {
+// GraphQL Query remains the same as previous implementation
+
+const ProfileSummary: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = React.useState(0);
+
+  const { loading, error, data } = useQuery(GET_INSTRUCTOR_PROFILE, {
+    variables: { id: id || '' },
+    errorPolicy: 'all', // Allows partial data retrieval even if there's an error
+  });
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
 
+  // Fallback data for when no data is available
+  const fallbackInstructor = {
+    firstName: 'Instructor',
+    lastName: 'Not Found',
+    location: 'N/A',
+    imageUrl: "/images/instructorprofile.png",
+    experience: 0,
+    rating: 0,
+  };
+
+  const fallbackTariff = {
+    lessonFee: 0,
+    bulkPackages: [],
+    packageDiscount: 0,
+  };
+
+  const fallbackAvailability = [];
+
+  // Determine the actual data to use
+  const instructor = data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
+  const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
+  const availability = data?.getInstructorPublicProfile?.availability || fallbackAvailability;
+
+  // Render loading state with skeleton loaders
+  if (loading) {
+    return (
+      <Box sx={{ maxWidth: 1400, margin: 'auto', marginTop: '3rem', padding: { xs: '0 1rem', sm: '0 2rem', md: '0 3rem', lg: '0 4rem', xl: '0 5rem' } }}>
+        <Card sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+          <Skeleton variant="rectangular" width={250} height={250} />
+          <Box sx={{ flex: 1, padding: 2 }}>
+            <Skeleton variant="text" width="60%" height={40} />
+            <Skeleton variant="text" width="40%" height={30} />
+            <Box sx={{ display: 'flex', marginTop: 2 }}>
+              {[1, 2, 3].map((item) => (
+                <Box key={item} sx={{ flex: 1, marginRight: 2 }}>
+                  <Skeleton variant="text" width="50%" />
+                  <Skeleton variant="text" width="30%" />
+                </Box>
+              ))}
+            </Box>
+          </Box>
+          <Skeleton variant="rectangular" width={150} height={50} sx={{ margin: 2 }} />
+        </Card>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: 1400, margin: 'auto', marginTop: '3rem', padding: { xs: '0 1rem', sm: '0 2rem', md: '0 3rem', lg: '0 4rem', xl: '0 5rem' } }}>
       <Card sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
         <Avatar
-          src="/images/instructorprofile.png"
-          alt="Tom Watson"
+          src={instructor.imageUrl || "/images/instructorprofile.png"}
+          alt={`${instructor.firstName} ${instructor.lastName}`}
           sx={{ width: { xs: 200, sm: 250 }, height: { xs: 200, sm: 250, md: '100%' }, borderRadius: 0 }}
         />
         <Box
@@ -31,28 +88,28 @@ const ProfileSummary = () => {
         >
           <Box sx={{ marginTop: { xs: '1rem', sm: '1.5rem', md: '2rem' } }}>
             <Typography sx={{ fontFamily: 'Poppins, sans-serif' }} variant="h5">
-              Tom Watson
+              {`${instructor.firstName} ${instructor.lastName}`}
             </Typography>
             <Typography sx={{ fontFamily: 'Poppins, sans-serif' }} variant="subtitle1" color="textSecondary">
-              Bern, SWI
+              {`${instructor?.address} , ${instructor.location} ` || 'Location Not Available'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
             <Box sx={{ paddingRight: { md: '2rem' }, borderRight: { md: '1px solid #ccc' }, marginBottom: { xs: '1rem', md: '0' } }}>
               <Typography variant="body2">
-                <strong>234</strong>
+                <strong>{instructor.experience || 0}</strong>
               </Typography>
               <Typography sx={{ fontFamily: 'Poppins, sans-serif' }}>Trips</Typography>
             </Box>
             <Box sx={{ paddingLeft: '2rem', paddingRight: '2rem', borderRight: { md: '1px solid #ccc' }, marginBottom: { xs: '1rem', md: '0' } }}>
               <Typography variant="body2">
-                <strong>4.8</strong>
+                <strong>{instructor.rating?.toFixed(1) || 'N/A'}</strong>
               </Typography>
               <Typography sx={{ fontFamily: 'Poppins, sans-serif' }}>Ratings</Typography>
             </Box>
             <Box sx={{ paddingLeft: '2rem' }}>
               <Typography variant="body2">
-                <strong>$30/lesson</strong>
+                <strong>${tariff.lessonFee || 0}/lesson</strong>
               </Typography>
               <Typography sx={{ fontFamily: 'Poppins, sans-serif' }}>Fair</Typography>
             </Box>
@@ -60,6 +117,7 @@ const ProfileSummary = () => {
         </Box>
         <Button
           variant="contained"
+          disabled={loading}
           sx={{
             margin: 2,
             marginTop: { xs: 2, md: 8 },
@@ -69,10 +127,11 @@ const ProfileSummary = () => {
             height: '3rem',
             textTransform: 'none',
             fontFamily: 'Poppins, sans-serif',
-            color:"black"
+            color: "black",
+            opacity: loading ? 0.5 : 1
           }}
         >
-          Book Now
+          {loading ? 'Loading...' : 'Book Now'}
         </Button>
       </Card>
 
@@ -119,9 +178,9 @@ const ProfileSummary = () => {
         />
       </Tabs>
 
-      {activeTab === 0 && <Summary />}
-      {activeTab === 1 && <Availability />}
-      {activeTab === 2 && <Reviews />}
+      {activeTab === 0 && <Summary instructorData={instructor} tariffData={tariff} loading={loading} />}
+      {activeTab === 1 && <Availability availabilityData={availability} loading={loading} />}
+      {activeTab === 2 && <Reviews loading={loading} />}
     </Box>
   );
 };

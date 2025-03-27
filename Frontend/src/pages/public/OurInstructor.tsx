@@ -1,12 +1,14 @@
 import type React from 'react';
-import PostSummary from '../../components/InstructorComponent/PostSummary';
+import { useParams } from 'react-router-dom';
+import ProfileSummary from '../../components/InstructorComponent/PostSummary';
 
 const OurInstructor: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+
   return (
     <div>
-      <PostSummary />
+      <ProfileSummary />
     </div>
-
   );
 };
 

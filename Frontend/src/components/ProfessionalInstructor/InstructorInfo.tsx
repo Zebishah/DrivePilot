@@ -1,37 +1,94 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from '@apollo/client';
-import { Button, Box, Popover } from "@mui/material";
+import { Button, Box, Typography, TextField, MenuItem, Slider, FormControlLabel, Checkbox, InputAdornment, IconButton, Popover, Grid, CircularProgress } from "@mui/material";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { IoStarSharp } from "react-icons/io5";
-import { FaBook, FaCar, FaCogs, FaMoneyBillWave, FaSliders } from "react-icons/fa";
+import { FaBook, FaCar, FaCogs, FaMoneyBillWave, FaSlidersH, FaStar } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { GET_NEARBY_INSTRUCTORS, getUserLocation } from "../../graphql/mutations/instructorPublic";
-
-
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { MdDone } from "react-icons/md";
+import { CalendarToday } from "@mui/icons-material";
+import { getMapCenterAndMarkers } from "../../utils/mapUtils";
 const InstructorsInfo: React.FC = () => {
-  const [anchorEl, setAnchorEl] = useState(null);
   const [filters, setFilters] = useState({
-    city: "",
-    price: [100, 1000],
-    transmission: "",
-    rating: 0,
-    areaRadius: "",
     coordinates: null,
-    availability: null
+    areaRadius: 50, // default radius
+    rating: 0,
+    transmission: null,
+    gender: null,
+    price: [1000, 10000], // default price range
+    activeFilters: {} // track which filters are active
   });
   const [offset, setOffset] = useState(0);
+  const [selectedRow, setSelectedRow] = useState(null);
   const navigate = useNavigate();
+  const handleCheckboxChange = (rowIndex) => {
+    setSelectedRow(rowIndex);
+  };
+  const [anchorEl, setAnchorEl] = useState(null);
+  const rows = [
+    { stars: 5 },
+    { stars: 4 },
+    { stars: 3 },
+    { stars: 2 },
+    { stars: 1 },
+  ];
 
-  // Fetch user's location on component mount
+  const [showFilters, setShowFilters] = useState(false);
+
+  const handleApplyFilters = () => {
+    // Prepare only the active filters
+    const activeFilters = {};
+    if (filters?.transmission) activeFilters.transmission = filters.transmission;
+    if (filters?.gender?.length) activeFilters.gender = filters.gender;
+    if (filters?.rating > 0) activeFilters.minRating = filters.rating;
+    if (filters?.price[0] > 0 || filters?.price[1] < 1000) {
+      activeFilters.priceMin = filters.price[0];
+      activeFilters.priceMax = filters.price[1];
+    }
+    if (filters?.coordinates) {
+      activeFilters.coordinates = filters.coordinates;
+      activeFilters.areaRadius = filters.areaRadius;
+    }
+
+    setFilters(prev => ({
+      ...prev,
+      activeFilters // Save active filters
+    }));
+    setShowFilters(false); // Close filter panel
+  };
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+  const handleResetFilters = () => {
+    setFilters({
+      coordinates: filters.coordinates, // keep location
+      areaRadius: 50,
+      rating: 0,
+      transmission: null,
+      gender: null,
+      price: [1000, 10000],
+      activeFilters: {}
+    });
+    setShowFilters(false);
+  };
+  const open = Boolean(anchorEl);
+  const id = open ? 'simple-popover' : undefined;
+
+
   useEffect(() => {
     const fetchUserLocation = async () => {
       try {
-        const coordinates = await getUserLocation();
+        const coords = await getUserLocation();
         setFilters(prev => ({
           ...prev,
-          coordinates,
-          areaRadius: 50 // default 50 miles radius
+          coordinates: coords
         }));
       } catch (error) {
         console.error('Error fetching user location:', error);
@@ -42,29 +99,63 @@ const InstructorsInfo: React.FC = () => {
   }, []);
 
   // Apollo Query for instructors
-  const { loading, error, data, fetchMore } = useQuery(GET_NEARBY_INSTRUCTORS, {
+  const { loading, error, data, fetchMore, refetch } = useQuery(GET_NEARBY_INSTRUCTORS, {
     variables: {
-      // filter: {
-      //   city: filters.city,
-      //   priceMin: filters.price[0],
-      //   priceMax: filters.price[1],
-      //   transmission: filters.transmission,
-      //   minRating: filters.rating,
-      //   areaRadius: filters.areaRadius,
-      //   coordinates: filters.coordinates
-      // },
+      filter: {
+        ...filters.activeFilters,
+        // Only include coordinates if filters.coordinates exists and the first element is not 0
+        ...(filters.coordinates && filters.coordinates[0] !== 0 && { coordinates: filters.coordinates })
+      },
       limit: 5,
       offset: 0
     },
-    skip: !filters.coordinates // Skip query until coordinates are available
   });
+
+  if (data?.getNearbyInstructors?.instructors.length === 0) {
+    return (
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="60vh"
+        textAlign="center"
+        p={3}
+      >
+        <img
+          src="/images/no-instructors.svg"
+          alt="No instructors found"
+          style={{ width: 200, marginBottom: 20 }}
+        />
+        <Typography variant="h5" gutterBottom>
+          No Instructors Found
+        </Typography>
+        <Typography variant="body1" color="textSecondary" paragraph>
+          {filters.coordinates
+            ? "We couldn't find any instructors near your location."
+            : "Try adjusting your filters or search in a different area."}
+        </Typography>
+        <Button
+          variant="contained"
+          style={{ backgroundColor: "#5FC2D3", color: "black" }}
+          onClick={handleResetFilters}
+        >
+          Show All Instructors
+        </Button>
+      </Box>
+    );
+  }
 
   // Load more instructors
   const loadMoreInstructors = () => {
     const currentLength = data?.getNearbyInstructors?.instructors?.length || 0;
     fetchMore({
       variables: {
-        offset: currentLength
+        offset: currentLength,
+        filter: filters.coordinates ? {
+          coordinates: filters.coordinates,
+          areaRadius: filters.areaRadius
+        } : null
       },
       updateQuery: (prev, { fetchMoreResult }) => {
         if (!fetchMoreResult) return prev;
@@ -80,33 +171,41 @@ const InstructorsInfo: React.FC = () => {
       }
     });
   };
+  if (loading) return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      minHeight="60vh"
+    >
+      <CircularProgress size={60} style={{ color: "#5FC2D3" }} />
+    </Box>
+  );
 
-  // Render loading state
-  if (loading) return <div>Loading instructors...</div>;
-
-  // Render error state
-  if (error) return <div>Error loading instructors: {error.message}</div>;
-
-  // Get instructors from query result
   const instructors = data?.getNearbyInstructors?.instructors || [];
   const hasMore = data?.getNearbyInstructors?.hasMore || false;
+
+  const { mapCenter, markers } = getMapCenterAndMarkers(filters?.coordinates, instructors);
 
   return (
     <div className="max-w-screen-xl mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
         Nearby Instructors
       </h1>
+      <button type="button" className="bg-[#5FC2D3] text-black ml-4 p-2 pl-20 pr-20 rounded-md flex font-poppins items-center gap-3"
+        onClick={handleClick}>
+        <FaSlidersH /> Filters
+      </button>
 
-      {/* Existing filter button and layout */}
       <div className="flex flex-col md:flex-row p-4 font-poppins">
         {/* Instructor List */}
-        <div className="w-full md:w-1/2 space-y-4 relative max-h-[900px] overflow-y-auto overflow-x-hidden pr-2 custom-scrollbar">
-          {instructors.map((instructor, index) => (
+        <div className="w-full md:w-1/2 space-y-4 relative max-h-[900px] overflow-y-auto pr-2">
+          {instructors.map((instructor) => (
             <div
               key={instructor._id}
               className="pl-4 drop-shadow-md mt-4 bg-white rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative"
             >
-              {/* Instructor card content remains the same */}
+              {/* Instructor card content */}
               <div className="flex flex-col items-center md:items-start md:w-1/3">
                 <img
                   src={instructor.imageUrl || "/images/Instructor1.png"}
@@ -132,7 +231,7 @@ const InstructorsInfo: React.FC = () => {
               <div className="w-full p-6">
                 <div className="text-left">
                   <p className="flex items-center gap-2 mb-2">
-                    <FaBook /> {instructor.details?.degree || 'N/A'}
+                    <FaBook /> {`${instructor.details?.degree} Years` || 'N/A'}
                   </p>
                   <p className="flex items-center gap-2 mb-2">
                     <FaCar /> {instructor.details?.car || 'N/A'}
@@ -154,10 +253,7 @@ const InstructorsInfo: React.FC = () => {
                     textTransform: "none",
                     color: "black"
                   }}
-                  onClick={() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    navigate(`/instructors/${instructor._id}`);
-                  }}
+                  onClick={() => navigate(`/instructors/${instructor._id}`)}
                 >
                   View Details
                 </Button>
@@ -165,7 +261,6 @@ const InstructorsInfo: React.FC = () => {
             </div>
           ))}
 
-          {/* Load More Button */}
           {hasMore && (
             <div className="text-center mt-4">
               <Button
@@ -179,23 +274,22 @@ const InstructorsInfo: React.FC = () => {
           )}
         </div>
 
-        {/* Map Section */}
+
         <div className="w-full md:w-1/2 mt-4 h-96 md:h-auto pl-4">
           <MapContainer
-            center={filters.coordinates || [12.9716, 77.5946]}
+            center={mapCenter}
             zoom={10}
             className="h-full w-full rounded-lg"
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {instructors.map((instructor) => (
+            {markers.map((marker) => (
               <Marker
-                key={instructor._id}
-                position={instructor.coordinates || [12.9716, 77.5946]}
+                key={marker.id}
+                position={marker.position}
               />
             ))}
           </MapContainer>
         </div>
-        {/* 
         <Popover
           id={id}
           open={open}
@@ -387,7 +481,7 @@ const InstructorsInfo: React.FC = () => {
                 select
                 fullWidth
                 margin="dense"
-                value={filters.transmission}
+                value={filters.transmission || ''}
                 onChange={(e) => setFilters({ ...filters, transmission: e.target.value })}
                 sx={{
                   fontFamily: 'Poppins, sans-serif',
@@ -403,25 +497,27 @@ const InstructorsInfo: React.FC = () => {
                     '&.Mui-focused fieldset': {
                       borderColor: '#484848',
                       border: '1px solid',
-
                     },
                     '& .MuiSelect-select': {
-                      padding: '6px 8px', // Adjust the padding to reduce the inner size for select
+                      padding: '6px 8px',
                     },
                   },
-                }}>
-                <MenuItem sx={{ fontFamily: 'Poppins, sans-serif' }} value="Manual Car">Manual Car</MenuItem>
-                <MenuItem sx={{ fontFamily: 'Poppins, sans-serif' }} value="Automatic Car">Automatic Car</MenuItem>
+                }}
+              >
+                <MenuItem value="">All Types</MenuItem>
+                <MenuItem sx={{ fontFamily: 'Poppins, sans-serif' }} value="Manual">Manual</MenuItem>
+                <MenuItem sx={{ fontFamily: 'Poppins, sans-serif' }} value="Automatic">Automatic</MenuItem>
               </TextField>
             </Box>
+
             <Box sx={{ mt: 2 }}>
               <Typography sx={{ fontFamily: 'Poppins, sans-serif' }}>Price Per Lesson</Typography>
               <Slider
                 value={filters.price}
                 onChange={(e, newValue) => setFilters({ ...filters, price: newValue as number[] })}
                 valueLabelDisplay="auto"
-                min={100}
-                max={1000}
+                min={1000}
+                max={10000}
                 sx={{
                   position: 'relative', // Ensures the Typography elements are positioned relative to the Slider
                   '& .MuiSlider-thumb': {
@@ -440,21 +536,50 @@ const InstructorsInfo: React.FC = () => {
               />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '12px', color: '#000000' }}>
-                  $100
-                </Typography>
-                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '12px', color: '#000000' }}>
-                  $500
-                </Typography>
-                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '12px', color: '#000000' }}>
                   $1000
+                </Typography>
+                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '12px', color: '#000000' }}>
+                  $5000
+                </Typography>
+                <Typography sx={{ fontFamily: 'Poppins, sans-serif', fontSize: '12px', color: '#000000' }}>
+                  $10000
                 </Typography>
               </Box>
             </Box>
 
             <Box sx={{ mt: 2 }}>
+              <Typography sx={{ fontFamily: 'Poppins, sans-serif', mb: 1 }}>Gender</Typography>
               <div className="font-poppins">
-                <FormControlLabel control={<Checkbox />} label="Male" />
-                <FormControlLabel control={<Checkbox />} label="Female" />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={filters.gender?.includes('Male') || false}
+                      onChange={(e) => {
+                        const genders = filters.gender || [];
+                        const newGenders = e.target.checked
+                          ? [...genders, 'Male']
+                          : genders.filter(g => g !== 'Male');
+                        setFilters({ ...filters, gender: newGenders.length ? newGenders : null });
+                      }}
+                    />
+                  }
+                  label="Male"
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={filters.gender?.includes('Female') || false}
+                      onChange={(e) => {
+                        const genders = filters.gender || [];
+                        const newGenders = e.target.checked
+                          ? [...genders, 'Female']
+                          : genders.filter(g => g !== 'Female');
+                        setFilters({ ...filters, gender: newGenders.length ? newGenders : null });
+                      }}
+                    />
+                  }
+                  label="Female"
+                />
               </div>
             </Box>
 
@@ -464,10 +589,20 @@ const InstructorsInfo: React.FC = () => {
                 variant="outlined" onClick={handleClose}>Cancel</Button>
               <Button
                 sx={{ fontFamily: 'Poppins, sans-serif', paddingLeft: "1.5rem", paddingRight: "1.5rem", borderRadius: "10px", textTransform: "none", backgroundColor: "#5FC2D3", color: "black" }}
-                variant="contained" onClick={handleClose}>Apply</Button>
+                variant="contained" onClick={handleApplyFilters}>Apply</Button>
+              <Button
+
+                onClick={handleResetFilters}
+                sx={{ fontFamily: 'Poppins, sans-serif', paddingLeft: "1.5rem", paddingRight: "1.5rem", borderRadius: "10px", textTransform: "none", backgroundColor: "#5FC2D3", color: "black" }}
+
+              >
+                Reset Filters
+              </Button>
             </div>
           </div>
-        </Popover> */}
+        </Popover>
+
+
       </div>
     </div>
   );

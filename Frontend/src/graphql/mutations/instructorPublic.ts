@@ -15,7 +15,10 @@ export const GET_NEARBY_INSTRUCTORS = gql`
         location
         rating
         imageUrl
-        coordinates
+        description
+        coordinates {
+          coordinates
+        }
         details {
           degree
           car
@@ -29,23 +32,75 @@ export const GET_NEARBY_INSTRUCTORS = gql`
   }
 `;
 
-// Utility function to get user's current location
-export const getUserLocation = () => {
-  return new Promise((resolve, reject) => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve([position.coords.longitude, position.coords.latitude]);
-        },
-        (error) => {
-          console.warn("Geolocation error:", error);
-          // Fallback to a default location (e.g., New York City)
-          resolve([-74.006, 40.7128]);
+export const GET_INSTRUCTOR_PROFILE = gql`
+  query GetInstructorPublicProfile($id: ID!) {
+    getInstructorPublicProfile(id: $id) {
+      instructor {
+        _id
+        firstName
+        lastName
+        email
+        phone
+        address
+        location
+        coordinates {
+          coordinates
         }
-      );
-    } else {
-      // Fallback to a default location if geolocation is not supported
-      resolve([-74.006, 40.7128]);
+        description
+        experience
+        rating
+        imageUrl
+        carName
+        transmissionType
+        gender
+      }
+      tariff {
+        lessonFee
+        bulkPackages {
+          hours
+          price
+        }
+        packageDiscount
+        discountStartDate
+        discountEndDate
+      }
+      availability {
+        _id
+        date
+        startTime
+        endTime
+      }
     }
+  }
+`;
+
+// Utility function to get user's current location
+export const getUserLocation = (): Promise<[number, number] | null> => {
+  return new Promise((resolve) => {
+    if (!("geolocation" in navigator)) {
+      console.warn("Geolocation not supported");
+      resolve([0, 0]);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Return coordinates as [latitude, longitude]
+        resolve([position.coords.latitude, position.coords.longitude]);
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          console.log("User denied location access");
+          resolve([0, 0]);
+        } else {
+          console.warn("Geolocation error:", error);
+          resolve([0, 0]);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      }
+    );
   });
 };

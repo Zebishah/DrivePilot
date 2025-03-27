@@ -31,7 +31,7 @@ const router = createBrowserRouter([
     path: "/",
     element: <PublicRoutes />,
     children: [
-      { path: "instructors", element: <OurInstructor /> },
+      { path: "instructors/:id", element: <OurInstructor /> },
       { path: "", element: <Home /> },
       { path: "about", element: <AboutUs /> },
       { path: "contact", element: <Contact /> },

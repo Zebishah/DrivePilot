@@ -21,8 +21,11 @@ const instructorTypeDefs = gql`
     phone: String
     rating: Float
     imageUrl: String
-    coordinates: [Float]
+    coordinates: Coordinates
     details: InstructorDetails
+    carName: String
+    transmissionType: String
+    gender: String
   }
 
   type InstructorPaginationResult {
@@ -39,6 +42,35 @@ const instructorTypeDefs = gql`
     minRating: Float
     areaRadius: Float
     coordinates: [Float]
+    gender: [String]
+    transmissionType: String
+  }
+
+  type InstructorAvailability {
+    _id: ID!
+    date: String!
+    startTime: String!
+    endTime: String!
+  }
+
+  type InstructorTariff {
+    _id: ID!
+    lessonFee: Float!
+    bulkPackages: [BulkLessonPackage]
+    packageDiscount: Float
+    discountStartDate: String
+    discountEndDate: String
+  }
+
+  type BulkLessonPackage {
+    hours: Int
+    price: Float
+  }
+
+  type InstructorPublicProfile {
+    instructor: Instructor!
+    tariff: InstructorTariff
+    availability: [InstructorAvailability!]
   }
 
   type Query {
@@ -47,6 +79,7 @@ const instructorTypeDefs = gql`
       limit: Int = 5
       offset: Int = 0
     ): InstructorPaginationResult
+    getInstructorPublicProfile(id: ID!): InstructorPublicProfile
   }
 `;
 

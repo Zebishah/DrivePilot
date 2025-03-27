@@ -82,6 +82,13 @@ export const SETUP_INSTRUCTOR_PROFILE = gql`
         documentUrl
       }
       phone
+      coordinates {
+        type
+        coordinates
+      }
+      carName
+      transmissionType
+      gender
     }
   }
 `;
