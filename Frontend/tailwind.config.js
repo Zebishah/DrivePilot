@@ -4,7 +4,6 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        harabara: ["Harabara", "sans-serif"],
         poppins: ["Poppins", "sans-serif"],
         inter: ["Inter", "sans-serif"],
       },

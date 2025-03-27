@@ -7,6 +7,7 @@ import { SlCalender } from 'react-icons/sl';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import styled from 'styled-components';
+import { CalendarCheck2 } from 'lucide-react';
 
 // Types for Availability
 interface AvailabilitySlot {
@@ -193,6 +194,18 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData = [], load
                 >
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
+                      <CalendarCheck2 size={18} style={{ color: '#25D422' }} />
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: '500',
+                          fontFamily: 'Poppins, sans-serif',
+                        }}
+                      >
+                        {slot.date}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
                       <FaRegCheckCircle style={{ color: '#25D422' }} />
                       <Typography
                         variant="body1"
@@ -217,7 +230,7 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData = [], load
                         {slot.duration}
                       </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
+                    {/* <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
                       <TiLocationOutline />
                       <Typography
                         sx={{
@@ -229,7 +242,7 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData = [], load
                       >
                         {slot.location}
                       </Typography>
-                    </Box>
+                    </Box> */}
                   </CardContent>
                 </Card>
               </Grid>
