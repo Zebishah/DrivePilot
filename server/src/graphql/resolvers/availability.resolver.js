@@ -1,10 +1,10 @@
-const TeacherAvailability = require('../../models/teacherAvailability.model');
-const { startOfMonth, endOfMonth } = require('date-fns');
+const TeacherAvailability = require("../../models/teacherAvailability.model");
+const { startOfMonth, endOfMonth } = require("date-fns");
 
 const resolvers = {
   Query: {
     teacherAvailability: async (_, { month }, { user }) => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error("Not authenticated");
 
       try {
         const monthDate = new Date(month);
@@ -13,62 +13,58 @@ const resolvers = {
 
         const slots = await TeacherAvailability.find({
           teacherId: user.id,
-          date: {
-            $gte: startDate,
-            $lte: endDate
-          }
-        }).sort({ date: 1 });
+        }).sort({ date: -1 });
 
-        return slots.map(slot => ({
-          id: slot._id,
+        return slots.map((slot) => ({
+          id: slot.id,
           date: slot.date.toISOString(),
           startTime: slot.startTime,
-          endTime: slot.endTime
+          endTime: slot.endTime,
         }));
       } catch (error) {
-        throw new Error('Error fetching availability slots');
+        throw new Error("Error fetching availability slots");
       }
-    }
+    },
   },
 
   Mutation: {
     addAvailabilitySlot: async (_, { input }, { user }) => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error("Not authenticated");
 
       try {
         const slot = await TeacherAvailability.create({
           teacherId: user.id,
           date: new Date(input.date),
           startTime: input.startTime,
-          endTime: input.endTime
+          endTime: input.endTime,
         });
 
         return {
           id: slot._id,
           date: slot.date.toISOString(),
           startTime: slot.startTime,
-          endTime: slot.endTime
+          endTime: slot.endTime,
         };
       } catch (error) {
-        throw new Error('Error adding availability slot');
+        throw new Error("Error adding availability slot");
       }
     },
 
     deleteAvailabilitySlot: async (_, { id }, { user }) => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error("Not authenticated");
 
       try {
         const result = await TeacherAvailability.deleteOne({
           _id: id,
-          teacherId: user.id
+          teacherId: user.id,
         });
 
         return result.deletedCount > 0;
       } catch (error) {
-        throw new Error('Error deleting availability slot');
+        throw new Error("Error deleting availability slot");
       }
-    }
-  }
+    },
+  },
 };
 
-module.exports = resolvers; 
+module.exports = resolvers;

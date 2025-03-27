@@ -64,7 +64,7 @@ const resolvers = {
           documents: instructor.documents,
           fatherName: instructor.fatherName,
           dateOfBirth: instructor.dateOfBirth,
-          languagePreference: instructor.languagePreference
+          languagePreference: instructor.languagePreference,
         };
       } catch (error) {
         return null;

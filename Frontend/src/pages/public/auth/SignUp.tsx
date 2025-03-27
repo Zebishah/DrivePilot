@@ -328,7 +328,7 @@ const SignUp: React.FC = () => {
             )}
           />
 
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ mt: 1, display: "flex ", flexDirection: "column", mb: 1 }}>
             <Controller
               name="agreeToTerms"
               control={control}
