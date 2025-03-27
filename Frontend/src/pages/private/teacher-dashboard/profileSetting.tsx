@@ -11,30 +11,45 @@ import {
   Tab,
 } from "@mui/material";
 import { Star, Edit } from "lucide-react";
-import { useQuery } from '@apollo/client';
+import { useQuery } from "@apollo/client";
 import { GET_TEACHER_PROFILE } from "../../../graphql/mutations/profile";
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { DocumentsTab } from "./tabs/DocumentsTab";
 import { TariffTab } from "./tabs/TariffTab";
 import { AvailabilityTab } from "./tabs/AvailabilityTab";
 import { RatingsTab } from "./tabs/RatingsTab";
 import { PaymentTab } from "./tabs/PaymentTab";
-
-type TabValue = 'documents' | 'tariff' | 'availability' | 'ratings' | 'payment';
+import { LuMapPin } from "react-icons/lu";
+type TabValue = "documents" | "tariff" | "availability" | "ratings" | "payment";
 
 export default function ProfileSetting() {
-  const [tabValue, setTabValue] = React.useState<TabValue>('documents');
+  const [tabValue, setTabValue] = React.useState<TabValue>("documents");
   const navigate = useNavigate();
   const location = useLocation();
 
   const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
 
-  if (loading) return <Box sx={{ p: 3 }}><Typography>Loading...</Typography></Box>;
-  if (error) return <Box sx={{ p: 3 }}><Typography>Error: {error.message}</Typography></Box>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen loading-spinner">
+        {/* Spinner */}
+        <div className="w-16 h-16 border-4 rounded-full border-t-transparent border-blue-600 animate-spin"></div>
+      </div>
+    );
+  if (error)
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography>Error: {error.message}</Typography>
+      </Box>
+    );
 
   const teacherData = data?.teacherProfile;
-  if (!teacherData) return <Box sx={{ p: 3 }}><Typography>No profile data found</Typography></Box>;
-
+  if (!teacherData)
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography>No profile data found</Typography>
+      </Box>
+    );
 
   interface Document {
     documentType: string;
@@ -58,11 +73,11 @@ export default function ProfileSetting() {
   const profileData: ProfileData = {
     fullName: `${teacherData.firstName} ${teacherData.lastName}`,
     fatherName: teacherData.fatherName || "Not Provided",
-    dateOfBirth: teacherData.dateOfBirth 
-      ? new Date(teacherData.dateOfBirth).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
+    dateOfBirth: teacherData.dateOfBirth
+      ? new Date(teacherData.dateOfBirth).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
         })
       : "Not Provided",
     email: teacherData.email,
@@ -72,47 +87,91 @@ export default function ProfileSetting() {
     experience: teacherData.experience,
     rating: 4, // This field isn't in your API response
     introduction: teacherData.description,
-    documents: teacherData.documents.map((doc: { documentType: string; documentUrl: string }) => ({
-      documentType: doc.documentType,
-      documentUrl: doc.documentUrl
-    })) || [] // Ensure documents is an array even if empty
+    documents:
+      teacherData.documents.map(
+        (doc: { documentType: string; documentUrl: string }) => ({
+          documentType: doc.documentType,
+          documentUrl: doc.documentUrl,
+        })
+      ) || [], // Ensure documents is an array even if empty
   };
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: TabValue) => {
+  const handleTabChange = (
+    _event: React.SyntheticEvent,
+    newValue: TabValue
+  ) => {
     setTabValue(newValue);
   };
 
   const handleEditProfile = () => {
-    navigate('/teacher-dashboard/settings/edit-profile'); // Updated path
+    navigate("/teacher-dashboard/settings/edit-profile"); // Updated path
   };
 
   // Render EditProfile if the current path is /teacher-dashboard/settings/edit-profile
-  if (location.pathname.includes('edit-profile')) {
+  if (location.pathname.includes("edit-profile")) {
     return <Outlet />; // Render the EditProfile component
   }
 
-
   return (
     <Box sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
-
       {/* Profile and Personal Information Section */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* My Profile Card */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2 }}>
-            <CardContent>
+        <Grid item xs={12} md={4}>
+          <Card sx={{}}>
+            <Box
+              sx={{
+                mb: 2,
+                pb: 2,
+                px: 2,
+                pt: 1.5,
+                width: "100%",
+                borderBottom: 1,
+                borderBottomColor: "gray",
+              }}
+            >
+              <Typography variant="h6">My Profile</Typography>
+            </Box>
+            <CardContent sx={{ p: 1 }}>
               <Box
-                sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2,
+                  mb: 2,
+                }}
               >
                 <Avatar
                   src="path/to/profile-image.jpg"
-                  sx={{ width: 100, height: 100 }}
+                  sx={{ width: 130, height: 130 }}
                 />
-                <Box>
-                  <Typography variant="h6">{profileData.fullName}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {profileData.location}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Typography variant="h6" color="black">
+                    {profileData.fullName}
                   </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 0.5,
+                    }}
+                  >
+                    <LuMapPin color="gray" />{" "}
+                    <Typography variant="body2" color="text.secondary">
+                      {profileData.location}
+                    </Typography>
+                  </Box>
+
                   <Box sx={{ display: "flex", gap: 0.5, mt: 1 }}>
                     {[...Array(5)].map((_, index) => (
                       <Star
@@ -125,10 +184,17 @@ export default function ProfileSetting() {
                   </Box>
                 </Box>
               </Box>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body1"
+                color="black"
+                sx={{ textAlign: "center" }}
+              >
                 <strong>Introduction</strong>
               </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
+              <Typography
+                variant="body2"
+                sx={{ mt: 1, textAlign: "center", px: 2 }}
+              >
                 {profileData.introduction}
               </Typography>
             </CardContent>
@@ -136,15 +202,21 @@ export default function ProfileSetting() {
         </Grid>
 
         {/* Personal Information Card */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 2, height: "100%" }}>
-            <CardContent>
+        <Grid item xs={12} md={8}>
+          <Card sx={{ height: "100%", p: "0px !important" }}>
+            <CardContent sx={{ p: "0px !important" }}>
               <Box
                 sx={{
+                  mb: 2,
+                  pb: 1.6,
+                  px: 2,
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  mb: 2,
+                  pt: 1.3,
+                  width: "100%",
+                  borderBottom: 1,
+                  borderBottomColor: "gray",
                 }}
               >
                 <Typography variant="h6">Personal Information</Typography>
@@ -157,64 +229,133 @@ export default function ProfileSetting() {
                   Edit Profile
                 </Button>
               </Box>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+
+              <Grid container spacing={4} sx={{ p: 2 }}>
+                <Grid item xs={6} spacing={5}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Full Name
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
                     {profileData.fullName}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Location
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
                     {profileData.location}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Father Name
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
                     {profileData.fatherName}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Language Preference
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
                     {profileData.languagePreference}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Date of Birth
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
                     {profileData.dateOfBirth}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Phone Number
                   </Typography>
-                  <Typography variant="body1">{profileData.phone}</Typography>
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
+                    {profileData.phone}
+                  </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Email Address
                   </Typography>
-                  <Typography variant="body1">{profileData.email}</Typography>
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
+                    {profileData.email}
+                  </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 0.6 }}
+                  >
                     Experience
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography
+                    variant="body1"
+                    color="black"
+                    sx={{ fontSize: "18px" }}
+                  >
                     {profileData.experience}
                   </Typography>
                 </Grid>
@@ -240,11 +381,13 @@ export default function ProfileSetting() {
       </Tabs>
 
       {/* Tab Content */}
-      {tabValue === 'documents' && <DocumentsTab documents={profileData.documents} />}
-      {tabValue === 'tariff' && <TariffTab />}
-      {tabValue === 'availability' && <AvailabilityTab />}
-      {tabValue === 'ratings' && <RatingsTab />}
-      {tabValue === 'payment' && <PaymentTab />}
+      {tabValue === "documents" && (
+        <DocumentsTab documents={profileData.documents} />
+      )}
+      {tabValue === "tariff" && <TariffTab />}
+      {tabValue === "availability" && <AvailabilityTab />}
+      {tabValue === "ratings" && <RatingsTab />}
+      {tabValue === "payment" && <PaymentTab />}
     </Box>
   );
 }
