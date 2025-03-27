@@ -26,6 +26,7 @@ const instructorTypeDefs = gql`
     carName: String
     transmissionType: String
     gender: String
+    availability: [InstructorAvailability!]
   }
 
   type InstructorPaginationResult {
@@ -44,6 +45,7 @@ const instructorTypeDefs = gql`
     coordinates: [Float]
     gender: [String]
     transmissionType: String
+    availableDates: [String!]
   }
 
   type InstructorAvailability {

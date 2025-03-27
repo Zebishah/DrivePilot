@@ -18,25 +18,11 @@ const instructorResolver = {
         };
 
         // Apply text filters
-        if (filter.city) {
+        if (filter.city)
           query.location = { $regex: new RegExp(filter.city, "i") };
-        }
-
-        // Transmission type filter
-        if (filter.transmission) {
-          query.transmissionType = filter.transmission;
-        }
-
-        // Gender filter (handles multiple selections)
-        if (filter.gender?.length) {
-          console.log("filter", filter?.gender);
-          query.gender = { $in: filter.gender };
-        }
-
-        // Rating filter
-        if (filter.minRating) {
-          query.rating = { $gte: filter.minRating };
-        }
+        if (filter.transmission) query.transmissionType = filter.transmission;
+        if (filter.gender?.length) query.gender = { $in: filter.gender };
+        if (filter.minRating) query.rating = { $gte: filter.minRating };
 
         // Price filter
         if (filter.priceMin !== undefined && filter.priceMax !== undefined) {
@@ -45,6 +31,49 @@ const instructorResolver = {
           });
           const instructorIds = tariffs.map((t) => t.teacherId);
           query._id = { $in: instructorIds };
+        }
+
+        // Date availability filter
+        let instructorIdsWithAvailability = [];
+        if (filter.availableDates?.length) {
+          // Create date ranges for each requested date
+          const dateRanges = filter.availableDates.map((dateStr) => {
+            const date = new Date(dateStr);
+            const start = new Date(date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(date);
+            end.setHours(23, 59, 59, 999);
+            return { $gte: start, $lte: end };
+          });
+
+          // Find instructors with availability on ANY of the requested dates
+          const availabilityResults = await teacherAvailabilityModel
+            .find({
+              $or: dateRanges.map((range) => ({ date: range })),
+            })
+            .distinct("teacherId");
+
+          instructorIdsWithAvailability = availabilityResults.map((id) =>
+            id.toString()
+          );
+
+          // Add to our query
+          if (instructorIdsWithAvailability.length) {
+            query._id = query._id
+              ? {
+                  $in: instructorIdsWithAvailability.filter((id) =>
+                    query._id.$in.includes(id)
+                  ),
+                }
+              : { $in: instructorIdsWithAvailability };
+          } else {
+            // If no instructors available on these dates, return empty
+            return {
+              instructors: [],
+              totalCount: 0,
+              hasMore: false,
+            };
+          }
         }
 
         let instructors = [];
@@ -82,20 +111,34 @@ const instructorResolver = {
           totalCount = await User.Instructor.countDocuments(query);
         }
 
-        // Get tariffs for price display
+        // Get tariffs and availability for the found instructors
         const instructorIds = instructors.map((i) => i._id);
-        const tariffs = await teacherTariffModel.find({
-          teacherId: { $in: instructorIds },
-        });
+        const [tariffs, availability] = await Promise.all([
+          teacherTariffModel.find({ teacherId: { $in: instructorIds } }),
+          teacherAvailabilityModel.find({
+            teacherId: { $in: instructorIds },
+            ...(filter.availableDates?.length && {
+              date: { $in: filter.availableDates.map((d) => new Date(d)) },
+            }),
+          }),
+        ]);
+
         const tariffMap = new Map(
           tariffs.map((t) => [t.teacherId.toString(), t])
         );
+        const availabilityMap = availability.reduce((map, slot) => {
+          if (!map.has(slot.teacherId.toString())) {
+            map.set(slot.teacherId.toString(), []);
+          }
+          map.get(slot.teacherId.toString()).push(slot);
+          return map;
+        }, new Map());
 
         return {
           instructors: instructors.map((instructor) => {
-            const tariff = tariffMap.get(instructor._id.toString());
+            const instructorId = instructor._id.toString();
             return {
-              _id: instructor._id.toString(),
+              _id: instructorId,
               firstName: instructor.firstName,
               lastName: instructor.lastName,
               email: instructor.email,
@@ -113,8 +156,12 @@ const instructorResolver = {
                 degree: instructor.experience,
                 car: instructor.carName,
                 type: instructor.transmissionType,
-                rate: tariff ? `$${tariff.lessonFee}/hr` : "Not specified",
+                rate: tariffMap.has(instructorId)
+                  ? `$${tariffMap.get(instructorId).lessonFee}/hr`
+                  : "Not specified",
               },
+              // Add availability slots for the requested dates
+              availability: availabilityMap.get(instructorId) || [],
             };
           }),
           totalCount,
