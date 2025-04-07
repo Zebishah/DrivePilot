@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { User, Student, Instructor } = require("../models/User");
+const { User, Student, Instructor, otpSchema, Otp } = require("../models/User");
 const {
   signUpSchema,
   studentProfileSchema,
@@ -19,6 +19,7 @@ const {
   createAuthToken,
   verifyResetToken,
 } = require("../services/tokenService");
+const { generateOTP, sendOtpEmail } = require("../utils/SendOtpEmail");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -111,10 +112,21 @@ instead.`);
         // Ensure ID is included explicitly
         userObj.id = user._id.toString(); // MongoDB uses `_id`, so convert it to a string
 
-        const token = createToken(user);
+        // Save OTP to DB
+        const otp = generateOTP();
+        await Otp.create({
+          email: user.email,
+          otp,
+          type: "email_verification",
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        });
+
+        await sendOtpEmail(user.email, otp, "email_verification");
+        // const token = createToken(user);
 
         return {
-          token,
+          // token,
+          success: true,
           user: userObj,
         };
       } catch (error) {
@@ -126,7 +138,160 @@ instead.`);
         throw error;
       }
     },
+    verifyUser: async (_, { input }) => {
+      try {
+        const { email, otp, type } = input;
 
+        const otpEntry = await Otp.findOne({
+          email,
+          otp,
+          status: "unused",
+        });
+
+        if (!otpEntry) {
+          throw new UserInputError("Invalid or expired OTP.");
+        }
+
+        if (otpEntry.expiresAt < new Date()) {
+          otpEntry.status = "expired";
+          await otpEntry.save();
+          throw new UserInputError("OTP has expired.");
+        }
+
+        // Mark OTP as used
+        otpEntry.status = "used";
+        await otpEntry.save();
+
+        const user = await User.findOne({ email });
+        if (!user) {
+          throw new Error("User not found.");
+        }
+
+        if (type === "email_verification") {
+          user.isUserVerified = true;
+        } else if (type === "two_factor_auth") {
+          user.isUserAuthenticated = true;
+        }
+
+        await user.save();
+
+        const token = createToken(user);
+
+        const userObj = user.toObject();
+        delete userObj.password;
+        userObj.id = user._id.toString();
+
+        return {
+          success: true,
+          token,
+          user: userObj,
+        };
+      } catch (error) {
+        console.error("Error in verifyUser:", error);
+        if (error instanceof UserInputError) {
+          throw error;
+        }
+        throw new Error("Failed to verify user. Please try again.");
+      }
+    },
+    resendOtp: async (_, { input }) => {
+      try {
+        const { email, type } = input;
+
+        await Otp.deleteMany({ email, type });
+
+        const otp = generateOTP();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await Otp.create({
+          email,
+          otp,
+          type,
+          status: "unused",
+          expiresAt,
+        });
+
+        await sendOtpEmail(email, otp, type);
+
+        return {
+          success: true,
+          message: `OTP for ${type} has been resent to ${email}`,
+          email,
+        };
+      } catch (error) {
+        console.error("Error in resendOtp:", error);
+        throw new UserInputError(
+          "Failed to resend OTP. Please try again later."
+        );
+      }
+    },
+    signIn: async (_, { email, password }) => {
+      try {
+        const user = await User.findOne({ email });
+        if (!user) {
+          throw new UserInputError("Invalid credentials");
+        }
+
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) {
+          throw new UserInputError("Invalid credentials");
+        }
+
+        const userObj = user.toObject();
+        delete userObj.password;
+        userObj.id = user._id.toString();
+
+        // If user is not verified, send verification OTP instead of 2FA
+        if (!user.isUserVerified) {
+          // Delete any existing unused OTPs of type email_verification
+          await Otp.deleteMany({
+            email: user.email,
+            type: "email_verification",
+          });
+
+          const otp = generateOTP();
+          await Otp.create({
+            email: user.email,
+            otp,
+            type: "email_verification",
+            status: "unused",
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          });
+
+          await sendOtpEmail(user.email, otp, "email_verification");
+
+          return {
+            success: true,
+            message: "Email not verified. Verification OTP has been sent.",
+            user: userObj,
+          };
+        }
+
+        // If verified, proceed with two-factor authentication OTP
+        const otp = generateOTP();
+        await Otp.create({
+          email: user.email,
+          otp,
+          type: "two_factor_auth",
+          status: "unused",
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        });
+
+        await sendOtpEmail(user.email, otp, "two_factor_auth");
+
+        return {
+          success: true,
+          message: "OTP sent for two-factor authentication",
+          user: userObj,
+        };
+      } catch (error) {
+        console.error("Error in signIn:", error);
+        if (error instanceof UserInputError) {
+          throw error;
+        }
+        throw new Error("Failed to sign in. Please try again.");
+      }
+    },
     selectRole: async (_, { role }, { user }) => {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
@@ -234,24 +399,6 @@ instead.`);
       }
     },
 
-    signIn: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new UserInputError("Invalid credentials");
-      }
-
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) {
-        throw new UserInputError("Invalid credentials");
-      }
-
-      const token = createToken(user);
-
-      return {
-        token,
-        user,
-      };
-    },
     generateUploadUrl: async (_, { userId, role, fileName, fileType }) => {
       const folder = role === "Student" ? "students" : "teachers";
       const fileKey = `${folder}/${userId}/${Date.now()}-${fileName}`;

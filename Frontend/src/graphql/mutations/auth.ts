@@ -3,12 +3,14 @@ import { gql } from "@apollo/client";
 export const SIGN_UP_MUTATION = gql`
   mutation SignUp($input: SignUpInput!) {
     signUp(input: $input) {
-      token
+      success
       user {
         id
         email
         firstName
         lastName
+        isUserVerified
+        isUserAuthenticated
       }
     }
   }
@@ -17,13 +19,14 @@ export const SIGN_UP_MUTATION = gql`
 export const SELECT_ROLE_MUTATION = gql`
   mutation SelectRole($role: UserRole!) {
     selectRole(role: $role) {
-      token
       user {
         id
         email
         firstName
         lastName
         role
+        isUserVerified
+        isUserAuthenticated
       }
     }
   }
@@ -50,6 +53,7 @@ export const SETUP_STUDENT_PROFILE = gql`
 export const SIGN_IN = gql`
   mutation SignIn($email: String!, $password: String!) {
     signIn(email: $email, password: $password) {
+      success
       token
       user {
         id
@@ -58,6 +62,8 @@ export const SIGN_IN = gql`
         lastName
         role
         isProfileComplete
+        isUserVerified
+        isUserAuthenticated
       }
     }
   }
@@ -210,6 +216,33 @@ export const UPDATE_SIGNUP_LINK_STATUS = gql`
     updateSignupLinkStatus(id: $id, pending: $pending) {
       id
       pending
+    }
+  }
+`;
+export const VERIFY_OTP = gql`
+  mutation VerifyUserOtp($input: userVerifyInput!) {
+    verifyUser(input: $input) {
+      success
+      token
+      user {
+        id
+        email
+        firstName
+        lastName
+        isUserVerified
+        isUserAuthenticated
+        isProfileComplete
+        role
+      }
+    }
+  }
+`;
+export const RESEND_OTP = gql`
+  mutation ResendOtp($input: resendOtpInput!) {
+    resendOtp(input: $input) {
+      success
+      message
+      email
     }
   }
 `;

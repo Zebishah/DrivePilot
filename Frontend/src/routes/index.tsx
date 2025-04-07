@@ -25,6 +25,8 @@ import AdminAccess from "../pages/private/admin-dashboard/AdminAccess";
 import ProfileSetting from "../pages/private/teacher-dashboard/profileSetting";
 import EditProfile from "../pages/private/teacher-dashboard/editProfile";
 import AllInstructor from "../components/ProfessionalInstructor/Allinstructor";
+import OtpVerification from "../pages/public/auth/OtpVerify";
+import TwoFactorAuth from "../pages/public/auth/TwoFactorAuth";
 
 const router = createBrowserRouter([
   {
@@ -35,7 +37,7 @@ const router = createBrowserRouter([
       { path: "", element: <Home /> },
       { path: "about", element: <AboutUs /> },
       { path: "contact", element: <Contact /> },
-      { path: "professional", element: <AllInstructor /> }
+      { path: "professional", element: <AllInstructor /> },
     ],
   },
   { path: "signup/:token", element: <SignUp /> },
@@ -47,6 +49,8 @@ const router = createBrowserRouter([
       { path: "forgot-password", element: <ForgotPassword /> },
       { path: "reset-password/:token", element: <ResetPassword /> },
       { path: "auth-success", element: <AuthSuccess /> },
+      { path: "verificationPage/:email", element: <OtpVerification /> },
+      { path: "twoFactorAuthPage/:email", element: <TwoFactorAuth /> },
     ],
   },
   {

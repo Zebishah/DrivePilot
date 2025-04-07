@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 import { ApolloClient, createHttpLink, InMemoryCache } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import CryptoJS from "crypto-js";
-import type { AuthPayload } from "../types/auth";
+import type { AuthPayload, TempAuthPayload } from "../types/auth";
 
 // Constants
 const COOKIE_TOKEN_KEY = "token_dsp";
@@ -18,9 +18,12 @@ const ENCRYPTION_KEY =
 interface AuthContextType {
   isAuthenticated: boolean;
   isTempAuthenticated: boolean;
+  isVerified: boolean; // Added isVerified property
   user: AuthPayload["user"] | null;
+  tempUserData: TempAuthPayload["tempUserData"] | null;
   login: (authPayload: AuthPayload) => void;
   tempUser: (authPayload: AuthPayload) => void;
+  verifyUser: (authPayload: TempAuthPayload) => void;
   logout: () => void;
   client: ApolloClient<any>;
   markUserProfileComplete: () => void;
@@ -81,10 +84,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthPayload["user"] | null>(null);
+  const [tempUserData, setTempUserData] = useState<
+    TempAuthPayload["tempUserData"] | null
+  >(null);
   const [client] = useState(() => createApolloClient());
   const [isTempAuthenticated, setIsTempAuthenticated] = useState(false);
-
+  const [isVerified, setIsVerified] = useState(false);
   const login = (authPayload: AuthPayload) => {
+    console.log("Temp User Payload111:", authPayload);
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -96,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const tempUser = (authPayload: AuthPayload) => {
+    console.log("Temp User Payload222:", authPayload);
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -103,7 +111,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
     setIsTempAuthenticated(true);
+    setIsVerified(authPayload.user.isUserVerified);
     setUser(authPayload.user);
+  };
+  const verifyUser = (authPayload: TempAuthPayload) => {
+    const encryptedUser = encrypt(authPayload.tempUserData);
+    localStorage.setItem(COOKIE_USER_KEY, encryptedUser);
+    setTempUserData(authPayload.tempUserData);
   };
   const markUserProfileComplete = () => {
     if (user) {
@@ -132,11 +146,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const encryptedToken = Cookies.get(COOKIE_TOKEN_KEY);
     const encryptedUser = Cookies.get(COOKIE_USER_KEY);
-
+    console.log("Temp User Payload222:", encryptedUser);
     if (encryptedToken && encryptedUser) {
       try {
         const decryptedUser = decrypt(encryptedUser);
-        setIsAuthenticated(true);
+        console.log("decryptedUser", decryptedUser);
+        setIsAuthenticated(decryptedUser.isUserVerified);
         setUser(decryptedUser);
       } catch (error) {
         console.error("Error decrypting auth data:", error);
@@ -165,6 +180,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         client,
         tempUser,
+        verifyUser,
+        isVerified,
+        tempUserData,
         isTempAuthenticated,
         markUserProfileComplete,
       }}

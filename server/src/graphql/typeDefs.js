@@ -20,8 +20,19 @@ const typeDefs = gql`
   }
 
   type AuthPayload {
+    success: Boolean!
+    token: String
+    user: User!
+  }
+  type verifiedAuthPayload {
+    success: Boolean!
     token: String!
     user: User!
+  }
+  type resendOtpPayload {
+    success: Boolean!
+    message: String!
+    email: String!
   }
   type Coordinates {
     type: String!
@@ -40,6 +51,8 @@ const typeDefs = gql`
     email: String!
     role: UserRole
     isProfileComplete: Boolean!
+    isUserVerified: Boolean
+    isUserAuthenticated: Boolean
     authProvider: AuthProvider!
     createdAt: String!
     updatedAt: String!
@@ -61,6 +74,8 @@ const typeDefs = gql`
     documentType: String
     documentUrl: String
     paymentInfo: PaymentInfo
+    isUserVerified: Boolean
+    isUserAuthenticated: Boolean
   }
 
   type Instructor implements User {
@@ -84,6 +99,8 @@ const typeDefs = gql`
     carName: String
     transmissionType: String
     gender: String
+    isUserVerified: Boolean
+    isUserAuthenticated: Boolean
   }
   type Admin implements User {
     id: ID!
@@ -94,6 +111,8 @@ const typeDefs = gql`
     isProfileComplete: Boolean!
     authProvider: AuthProvider!
     createdAt: String!
+    isUserVerified: Boolean
+    isUserAuthenticated: Boolean
     updatedAt: String!
     adminLevel: String! # Either "super" or "regular"
   }
@@ -127,6 +146,8 @@ const typeDefs = gql`
     authProvider: AuthProvider!
     createdAt: String!
     updatedAt: String!
+    isUserVerified: Boolean
+    isUserAuthenticated: Boolean
   }
 
   type PaymentInfo {
@@ -141,7 +162,15 @@ const typeDefs = gql`
     password: String!
     agreeToTerms: Boolean!
   }
-
+  input userVerifyInput {
+    email: String!
+    otp: String!
+    type: String!
+  }
+  input resendOtpInput {
+    email: String!
+    type: String!
+  }
   input StudentProfileInput {
     homeAddress: String!
     location: String!
@@ -200,6 +229,8 @@ const typeDefs = gql`
 
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
+    verifyUser(input: userVerifyInput!): verifiedAuthPayload!
+    resendOtp(input: resendOtpInput!): resendOtpPayload!
     selectRole(role: UserRole!): AuthPayload!
     setupStudentProfile(input: StudentProfileInput!): Student!
     setupInstructorProfile(input: InstructorProfileInput!): Instructor!

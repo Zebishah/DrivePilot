@@ -8,6 +8,7 @@ const baseOptions = {
 const baseSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
+
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -18,6 +19,8 @@ const baseSchema = new mongoose.Schema(
       required: false,
     },
     isProfileComplete: { type: Boolean, default: false },
+    isUserVerified: { type: Boolean, default: false },
+    isUserAuthenticated: { type: Boolean, default: false },
     authProvider: {
       type: String,
       enum: ["local", "google", "facebook"],
@@ -35,12 +38,27 @@ const baseSchema = new mongoose.Schema(
       default: null,
     },
   },
-
   baseOptions
 );
 
 const User = mongoose.model("User", baseSchema);
-
+const otpSchema = new mongoose.Schema({
+  email: { type: String, required: true },
+  otp: { type: Number, required: true },
+  status: {
+    type: String,
+    enum: ["unused", "used", "expired"],
+    default: "unused",
+  },
+  type: {
+    type: String,
+    enum: ["email_verification", "two_factor_auth"],
+    required: true,
+  },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true },
+});
+const Otp = mongoose.model("Otp", otpSchema);
 const StudentSchema = new mongoose.Schema({
   homeAddress: String,
   location: String,
@@ -112,4 +130,5 @@ module.exports = {
   Student,
   Instructor,
   Admin,
+  Otp,
 };

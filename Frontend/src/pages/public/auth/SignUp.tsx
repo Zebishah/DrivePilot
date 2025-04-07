@@ -17,7 +17,7 @@ import {
   Checkbox,
   InputLabel,
 } from "@mui/material";
-import { Eye, EyeOff, Facebook } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
@@ -26,6 +26,7 @@ import {
   GET_SIGNUP_TOKEN_DETAILS,
   SIGN_UP_MUTATION,
   UPDATE_SIGNUP_LINK_STATUS,
+  VERIFY_OTP,
 } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
@@ -59,15 +60,12 @@ type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 const SignUp: React.FC = () => {
   const { token } = useParams();
-
-  console.log("Token:", token);
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkID, setLinkID] = useState(null);
   const nav = useNavigate();
-  const { login, tempUser } = useAuth();
+  const { login, tempUser, verifyUser } = useAuth();
   const [updateSignupLinkStatus] = useMutation(UPDATE_SIGNUP_LINK_STATUS);
   const [signUp, { loading }] = useMutation(SIGN_UP_MUTATION);
   const {
@@ -127,9 +125,15 @@ const SignUp: React.FC = () => {
           variables: { id: linkID, pending },
         });
       }
-      tempUser(authData.signUp);
-      toast.success("Sign Up Successfull .Please Select Role");
-      nav("/onboarding/role-selection");
+      console.log("authData", authData);
+      console.log("authData", authData.signUp);
+      // tempUser(authData.signUp);
+      verifyUser(authData.signUp);
+
+      if (authData.signUp.success) {
+        nav(`/auth/verificationPage/${authData.signUp.user.email}`);
+      }
+      // nav("/onboarding/role-selection");
     } catch (error) {
       console.error("Registration error:", error);
       toast.error(`${error?.message}`);

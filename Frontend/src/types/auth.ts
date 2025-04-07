@@ -7,6 +7,7 @@ export interface SignUpInput {
 }
 
 export interface AuthPayload {
+  success: boolean;
   token: string;
   user: {
     id: string;
@@ -14,6 +15,22 @@ export interface AuthPayload {
     firstName: string;
     lastName: string;
     role: string;
+    isProfileComplete: boolean;
+    isUserVerified: boolean;
+    isUserAuthenticated: boolean;
+  };
+}
+export interface TempAuthPayload {
+  success: boolean;
+  token: string;
+  tempUserData: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    isUserVerified: boolean;
+    isUserAuthenticated: boolean;
     isProfileComplete: boolean;
   };
 }
