@@ -18,6 +18,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
+import toast from "react-hot-toast";
 
 // Styled OTP input for consistent sizing and spacing
 const OtpInput = styled(TextField)(({ theme }) => ({
@@ -48,17 +49,9 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
     Array(digits).fill(null)
   );
-  const { login, tempUser, user } = useAuth();
+  const { login, tempUser } = useAuth();
   // State for toast messages
-  const [toast, setToast] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info" | "warning";
-  }>({
-    open: false,
-    message: "",
-    severity: "info",
-  });
+
   const navigate = useNavigate();
   // GraphQL mutations
   const [verifyUser, { loading: verifying }] = useMutation(VERIFY_OTP);
@@ -134,15 +127,10 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
 
       if (data && data.verifyUser) {
         await tempUser(data.verifyUser);
+        toast.success(
+          "OTP verified successfully!Sign Up Successful .Please Select Role"
+        );
 
-        setToast({
-          open: true,
-          message:
-            "OTP verified successfully!Sign Up Successful .Please Select Role",
-          severity: "success",
-        });
-        console.log("data123", data);
-        console.log("data", data.verifyUser);
         if (data.verifyUser.success) {
           if (data.verifyUser?.user?.isProfileComplete) {
             login(data.verifyUser);
@@ -153,17 +141,9 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
               navigate("/teacher-dashboard/overview");
             else if (data.verifyUser?.user?.role === "Admin")
               navigate("/admin-dashboard/overview");
-            setToast({
-              open: true,
-              message: "Login Successfully",
-              severity: "success",
-            });
+            toast.success("Login Successfully");
           } else {
-            setToast({
-              open: true,
-              message: "lease Complete your Profile",
-              severity: "success",
-            });
+            toast.error("Profile not complete. Please complete your profile.");
 
             const userRole = data.verifyUser?.user?.role.toLowerCase();
             tempUser(data.verifyUser);
@@ -178,11 +158,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
         }
       } else {
         setError("Invalid OTP. Please try again.");
-        setToast({
-          open: true,
-          message: "Invalid OTP. Please try again.",
-          severity: "error",
-        });
+        toast.error("Invalid OTP. Please try again.");
       }
     } catch (err) {
       const errorMessage =
@@ -190,11 +166,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
           ? err.message
           : "Verification failed. Please try again.";
       setError(errorMessage);
-      setToast({
-        open: true,
-        message: errorMessage,
-        severity: "error",
-      });
+      toast.error(errorMessage);
     }
   };
 
@@ -209,22 +181,14 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
       });
 
       if (data && data.resendOtp.success) {
-        setToast({
-          open: true,
-          message: "Verification code resent successfully!",
-          severity: "success",
-        });
+        toast.success("Verification code resent successfully!");
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error
           ? err.message
           : "Failed to resend code. Please try again.";
-      setToast({
-        open: true,
-        message: errorMessage,
-        severity: "error",
-      });
+      toast.error(errorMessage);
     }
   };
 
@@ -253,9 +217,6 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
   };
 
   // Close toast notification
-  const handleCloseToast = () => {
-    setToast({ ...toast, open: false });
-  };
 
   // Check if OTP is complete to enable verification
   const isOtpComplete = otp.every((digit) => digit !== "");

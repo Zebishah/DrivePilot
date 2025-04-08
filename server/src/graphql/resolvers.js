@@ -145,6 +145,7 @@ instead.`);
         const otpEntry = await Otp.findOne({
           email,
           otp,
+          type, // Add this to ensure you're matching the correct OTP type
           status: "unused",
         });
 
@@ -153,14 +154,12 @@ instead.`);
         }
 
         if (otpEntry.expiresAt < new Date()) {
-          otpEntry.status = "expired";
-          await otpEntry.save();
+          await Otp.findByIdAndUpdate(otpEntry._id, { status: "expired" });
           throw new UserInputError("OTP has expired.");
         }
 
-        // Mark OTP as used
-        otpEntry.status = "used";
-        await otpEntry.save();
+        // Delete OTP after successful verification instead of just marking as "used"
+        await Otp.findByIdAndDelete(otpEntry._id);
 
         const user = await User.findOne({ email });
         if (!user) {
