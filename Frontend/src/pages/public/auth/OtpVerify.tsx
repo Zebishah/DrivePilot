@@ -181,7 +181,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
       const { data } = await resendOtp({
         variables: {
           input: {
-            email,
+            email: email,
             type: "email_verification", // or "two_factor_auth"
           },
         },

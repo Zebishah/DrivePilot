@@ -175,9 +175,11 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
     try {
       const { data } = await resendOtp({
         variables: {
-          email: email,
-          type: "email_verification", // Adjust based on your API requirements
-        },
+          input: {
+            email: email,
+            type: "two_factor_auth", // or "two_factor_auth"
+          },
+        }
       });
 
       if (data && data.resendOtp.success) {

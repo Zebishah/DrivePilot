@@ -235,7 +235,10 @@ instead.`);
         if (!isValid) {
           throw new UserInputError("Invalid credentials");
         }
-
+        let token = null;
+        if (user?.role === "Admin") {
+          token = createToken(user);
+        }
         const userObj = user.toObject();
         delete userObj.password;
         userObj.id = user._id.toString();
@@ -282,6 +285,7 @@ instead.`);
           success: true,
           message: "OTP sent for two-factor authentication",
           user: userObj,
+          token,
         };
       } catch (error) {
         console.error("Error in signIn:", error);
