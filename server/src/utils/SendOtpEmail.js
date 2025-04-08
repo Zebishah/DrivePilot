@@ -1,7 +1,7 @@
-import nodemailer from "nodemailer";
-export const generateOTP = () => Math.floor(1000 + Math.random() * 9000);
+const nodemailer = require("nodemailer");
+const generateOTP = () => Math.floor(1000 + Math.random() * 9000);
 
-export const sendOtpEmail = async (email, otp, type) => {
+const sendOtpEmail = async (email, otp, type) => {
   let subject = "";
   let message = "";
 
@@ -68,3 +68,4 @@ export const sendOtpEmail = async (email, otp, type) => {
 
   await transporter.sendMail(mailOptions);
 };
+module.exports = { generateOTP, sendOtpEmail };

@@ -37,7 +37,7 @@ export default function SignIn() {
     const onSubmit = async (data: SignInFormData) => {
         try {
             // TODO: Implement GraphQL mutation
-            console.log('Form data:', data);
+
         } catch (error) {
             console.error('Sign in error:', error);
         }

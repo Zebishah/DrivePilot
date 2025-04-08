@@ -66,7 +66,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
 
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  console.log("user details", tempUser, user);
+
   // Handle OTP input change
   const handleChange = (index: number, value: string) => {
     if (isVerified) return;
@@ -133,6 +133,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
       });
 
       if (data?.verifyUser?.success) {
+
         // Update the user state first
         await tempUser(data.verifyUser);
 
@@ -145,7 +146,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
 
         // Don't set isVerified if you want to navigate immediately
         // Instead, navigate right away
-        console.log("user details", data.verifyUser.user);
+
         if (data?.verifyUser.user.isProfileComplete) {
           navigate("/auth/signin");
         } else {
@@ -176,7 +177,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   // Handle resend OTP
   const handleResendOtp = async () => {
     try {
-      console.log("email", email);
+
       const { data } = await resendOtp({
         variables: {
           input: {

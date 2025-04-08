@@ -19,6 +19,7 @@ export const SIGN_UP_MUTATION = gql`
 export const SELECT_ROLE_MUTATION = gql`
   mutation SelectRole($role: UserRole!) {
     selectRole(role: $role) {
+      token
       user {
         id
         email

@@ -85,7 +85,7 @@ const StudentProfileSetup = () => {
           toast.error("Please upload a document");
           return;
         }
-        console.log("user", user);
+
 
         const uploadResult = await uploadFile(
           selectedFile,
@@ -373,7 +373,7 @@ const StudentProfileSetup = () => {
   };
 
   const onError = (errors) => {
-    console.log("Form errors:", errors);
+
 
     Object.values(errors).forEach((error) => {
       toast.error(error.message);

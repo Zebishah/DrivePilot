@@ -49,7 +49,7 @@ const AdminAccess = () => {
   const [lastName, setLastName] = useState("");
 
   const { data, loading, error, refetch } = useQuery(GET_ALL_SIGNUP_LINKS);
-  console.log("Data", data);
+
   const [deleteSignupLink] = useMutation(DELETE_SIGNUP_LINK, {
     onCompleted: () => refetch(),
   });
@@ -456,12 +456,12 @@ const AdminAccess = () => {
                     >
                       {admin?.signupDate
                         ? new Date(
-                            parseInt(admin.signupDate)
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })
+                          parseInt(admin.signupDate)
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })
                         : "N/A"}
                     </TableCell>
                     <TableCell

@@ -36,14 +36,19 @@ const encrypt = (data: any): string => {
 
 const decrypt = (encryptedData: string): any => {
   try {
+    if (!encryptedData || typeof encryptedData !== "string") return null;
+
     const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
-    return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+    const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
+    if (!decryptedText) return null; // Avoid parsing empty string
+
+    return JSON.parse(decryptedText);
   } catch (error) {
     console.error("Decryption error:", error);
     return null;
   }
 };
-
 // Create Apollo Client
 const createApolloClient = () => {
   const httpLink = createHttpLink({
@@ -90,8 +95,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [client] = useState(() => createApolloClient());
   const [isTempAuthenticated, setIsTempAuthenticated] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+
   const login = (authPayload: AuthPayload) => {
-    console.log("Temp User Payload111:", authPayload);
+
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -103,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const tempUser = (authPayload: AuthPayload) => {
-    console.log("Temp User Payload222:", authPayload);
+
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -146,11 +152,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const encryptedToken = Cookies.get(COOKIE_TOKEN_KEY);
     const encryptedUser = Cookies.get(COOKIE_USER_KEY);
-    console.log("Temp User Payload222:", encryptedUser);
+
     if (encryptedToken && encryptedUser) {
       try {
         const decryptedUser = decrypt(encryptedUser);
-        console.log("decryptedUser", decryptedUser);
+
         setIsAuthenticated(decryptedUser.isUserVerified);
         setUser(decryptedUser);
       } catch (error) {

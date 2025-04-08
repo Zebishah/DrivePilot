@@ -66,7 +66,7 @@ const SignIn: React.FC = () => {
   const [signIn, { loading }] = useMutation(SIGN_IN, {
     onCompleted: (data) => {
       const { signIn } = data;
-      console.log("SignIn response:", signIn);
+
       if (!signIn?.user?.isUserVerified) {
         navigate(`/auth/verificationPage/${signIn?.user.email}`);
       } else {

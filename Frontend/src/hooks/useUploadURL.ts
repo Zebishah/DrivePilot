@@ -33,7 +33,6 @@ export const useFileUpload = () => {
       }
 
       const { uploadUrl, fileUrl } = data.generateUploadUrl;
-      console.log(uploadUrl, fileUrl);
 
       // Step 2: Upload the file to S3
       const uploadResponse = await fetch(uploadUrl, {
@@ -41,7 +40,6 @@ export const useFileUpload = () => {
         body: file,
         headers: { "Content-Type": file.type },
       });
-      console.log("upload", uploadResponse);
 
       if (!uploadResponse.ok) {
         throw new Error("File upload failed");

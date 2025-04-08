@@ -29,7 +29,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
   const location = useLocation();
 
   // Find the menu item that matches the current route or its parent route
-  const currentMenuItem = menuItems.find((item) =>
+  const currentMenuItem = menuItems?.find((item) =>
     location.pathname.startsWith(item.path)
   );
   const pageTitle = currentMenuItem ? currentMenuItem.text : "Dashboard"; // Fallback title

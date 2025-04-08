@@ -96,8 +96,8 @@ const SignUp: React.FC = () => {
   useEffect(() => {
     if (token && data) {
       if (data.getSignupTokenDetails.pending === true)
-        console.log("token data", data.getSignupTokenDetails);
-      setValue("firstName", data.getSignupTokenDetails.firstName);
+
+        setValue("firstName", data.getSignupTokenDetails.firstName);
       setValue("lastName", data.getSignupTokenDetails.lastName);
       setValue("email", data.getSignupTokenDetails.email);
       setLinkID(data.getSignupTokenDetails.id);
@@ -119,14 +119,13 @@ const SignUp: React.FC = () => {
         },
       });
       if (token && linkID) {
-        console.log("data", token, linkID);
+
         const pending = false;
         await updateSignupLinkStatus({
           variables: { id: linkID, pending },
         });
       }
-      console.log("authData", authData);
-      console.log("authData", authData.signUp);
+
       // tempUser(authData.signUp);
       verifyUser(authData.signUp);
 

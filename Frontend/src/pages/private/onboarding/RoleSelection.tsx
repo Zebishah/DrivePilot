@@ -107,9 +107,9 @@ const RoleSelection: React.FC = () => {
 
   const [selectRole, { loading }] = useMutation(SELECT_ROLE_MUTATION, {
     onCompleted: (data) => {
-      console.log("Role Selection Page123213", data);
+
       login(data.selectRole);
-      console.log("Role Selection Page5678", UserRole);
+
       if (data.selectRole.user.role === UserRole.Student) {
         navigate("/onboarding/student-profile");
       } else if (data.selectRole.user.role === UserRole.Instructor) {

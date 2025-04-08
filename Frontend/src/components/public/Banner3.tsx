@@ -17,7 +17,7 @@ const Banner3: React.FC<Banner3Props> = ({ header, paragraph, image }) => {
 
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-  console.log(height);
+
 
   // h-[400px] lg:h-[500px]  xl:h-[660px] 2xl:h-[880px]
   return (
