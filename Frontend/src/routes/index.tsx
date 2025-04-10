@@ -82,10 +82,9 @@ const router = createBrowserRouter([
       {
         path: "search",
         element: <SearchInstructor />,
-        children: [
-          { path: "instructors/:id", element: <StudentInstructorInfo /> }
-        ]
+
       },
+      { path: "search/instructors/:id", element: <OurInstructor /> }
     ],
   },
   {
