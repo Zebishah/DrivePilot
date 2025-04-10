@@ -28,6 +28,7 @@ import AllInstructor from "../components/ProfessionalInstructor/Allinstructor";
 import OtpVerification from "../pages/public/auth/OtpVerify";
 import TwoFactorAuth from "../pages/public/auth/TwoFactorAuth";
 import StudentProfileSetting from "../pages/private/student-dashboard/profileSetting";
+import StudentBookings from "../pages/private/student-dashboard/bookLesson";
 
 const router = createBrowserRouter([
   {
@@ -71,6 +72,11 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <StudentProfileSetting />,
+        //children: [{ path: "edit-profile", element: <EditProfile /> }],
+      },
+      {
+        path: "book",
+        element: <StudentBookings />,
         //children: [{ path: "edit-profile", element: <EditProfile /> }],
       },
     ],
