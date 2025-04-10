@@ -5,6 +5,7 @@ const SignupLinkResolver = require("../graphql/SignupLink/SignupLinkResolver");
 const tariffResolvers = require("../graphql/resolvers/tariff.resolver");
 const availabilityResolvers = require("../graphql/resolvers/availability.resolver");
 const instructorResolver = require("../graphql/resolvers/instructorPublic.resolver");
+const studentResolver = require("../graphql/resolvers/student.resolver");
 
 const resolvers = mergeResolvers([
   userResolvers,
@@ -12,6 +13,7 @@ const resolvers = mergeResolvers([
   tariffResolvers,
   availabilityResolvers,
   instructorResolver,
+  studentResolver,
 ]);
 
 module.exports = resolvers;
