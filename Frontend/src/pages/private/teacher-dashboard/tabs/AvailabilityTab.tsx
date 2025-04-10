@@ -425,7 +425,7 @@ export const AvailabilityTab: React.FC = () => {
         >
           <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
             Add Availability Slot
-          </Typography>
+    </Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 3, mt: 2 }}>
           <Box>
