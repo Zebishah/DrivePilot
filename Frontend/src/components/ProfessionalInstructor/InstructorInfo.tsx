@@ -213,6 +213,15 @@ const InstructorsInfo: React.FC = () => {
   };
   const filterChips = generateFilterChips();
 
+
+  const handleViewDetails = (instructorId: string) => {
+    if (location.pathname.includes('/student-dashboard/search')) {
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
+    } else {
+      navigate(`/instructors/${instructorId}`);
+    }
+  };
+
   return (
     <div className="max-w-screen-xl mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
@@ -376,7 +385,8 @@ const InstructorsInfo: React.FC = () => {
                       textTransform: "none",
                       color: "black"
                     }}
-                    onClick={() => navigate(`/instructors/${instructor._id}`)}
+                    onClick={() => handleViewDetails(instructor._id)}
+
                   >
                     View Details
                   </Button>
