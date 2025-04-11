@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@apollo/client';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Card, Avatar, Button, Typography, Tabs, Tab, Skeleton } from '@mui/material';
 import Availability from './Availability';
 import Summary from './Summary';
@@ -11,12 +11,16 @@ import { GET_INSTRUCTOR_PROFILE } from '../../graphql/mutations/instructorPublic
 
 const ProfileSummary: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = React.useState(0);
+  const [selectedAvailability, setSelectedAvailability] = React.useState<any>(null);
 
   const { loading, error, data } = useQuery(GET_INSTRUCTOR_PROFILE, {
     variables: { id: id || '' },
     errorPolicy: 'all', // Allows partial data retrieval even if there's an error
   });
+
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -29,6 +33,7 @@ const ProfileSummary: React.FC = () => {
     location: 'N/A',
     imageUrl: "/images/instructorprofile.png",
     experience: 0,
+    description: 'No description available',
     rating: 0,
   };
 
@@ -44,6 +49,32 @@ const ProfileSummary: React.FC = () => {
   const instructor = data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability = data?.getInstructorPublicProfile?.availability || fallbackAvailability;
+
+  const handleBookNow = () => {
+    if (!selectedAvailability) {
+      // You might want to show an error message here
+      return;
+    }
+
+    if (location.pathname.includes('/student-dashboard/search')) {
+      navigate('/student-dashboard/book', { 
+        state: { 
+          instructorId: id,
+          selectedAvailability: selectedAvailability,
+          instructorData: {
+            name: `${instructor.firstName} ${instructor.lastName}`,
+            email: instructor.email,
+            description: instructor.description
+          }
+        }
+      });
+    } else {
+      navigate('/auth/signin', { 
+        state: { from: location.pathname },
+        replace: true 
+      });
+    }
+  };
 
   // Render loading state with skeleton loaders
   if (loading) {
@@ -118,6 +149,7 @@ const ProfileSummary: React.FC = () => {
         <Button
           variant="contained"
           disabled={loading}
+          onClick={handleBookNow}
           sx={{
             margin: 2,
             marginTop: { xs: 2, md: 8 },
@@ -179,7 +211,11 @@ const ProfileSummary: React.FC = () => {
       </Tabs>
 
       {activeTab === 0 && <Summary instructorData={instructor} tariffData={tariff} loading={loading} />}
-      {activeTab === 1 && <Availability availabilityData={availability} loading={loading} />}
+      {activeTab === 1 && <Availability 
+        availabilityData={availability} 
+        loading={loading} 
+        onSelectAvailability={setSelectedAvailability}
+      />}
       {activeTab === 2 && <Reviews loading={loading} />}
     </Box>
   );

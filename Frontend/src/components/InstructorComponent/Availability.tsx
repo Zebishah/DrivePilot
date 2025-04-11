@@ -19,7 +19,8 @@ interface AvailabilitySlot {
 
 interface AvailabilityProps {
   availabilityData: AvailabilitySlot[];
-  loading?: boolean;
+  loading: boolean;
+  onSelectAvailability?: (availability: AvailabilitySlot[]) => void;
 }
 
 const CalendarIconWrapper = styled.div`
@@ -44,10 +45,10 @@ const CustomDatePicker = styled(DatePicker)`
   }
 `;
 
-const Availability: React.FC<AvailabilityProps> = ({ availabilityData = [], loading = false }) => {
+const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, onSelectAvailability }) => {
   const [startDate, setStartDate] = useState<Date | null>(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 
   // Transform availability data into a more usable format
   const transformedSlots = useMemo(() => {
@@ -69,8 +70,21 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData = [], load
   ));
 
   const handleCardClick = (id: string) => {
-    setSelectedSlot(id);
+    setSelectedSlots(prev => {
+      const newSelection = prev.includes(id) 
+        ? prev.filter(slotId => slotId !== id)
+        : [...prev, id];
+      
+      // Call the callback with all selected availability data
+      if (onSelectAvailability) {
+        const selectedAvailabilityData = availabilityData.filter(slot => newSelection.includes(slot._id));
+        onSelectAvailability(selectedAvailabilityData);
+      }
+      
+      return newSelection;
+    });
   };
+
 
   // Render loading state
   if (loading) {
@@ -184,11 +198,11 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData = [], load
                   onClick={() => handleCardClick(slot.id)}
                   sx={{
                     borderRadius: '10px',
-                    backgroundColor: selectedSlot === slot.id ? '#5FC2D333' : '#5FC2D333',
-                    border: selectedSlot === slot.id ? '2px solid #828282' : '1px solid #cce4f7',
-                    boxShadow: selectedSlot === slot.id ? '0px 0px 10px rgba(0, 0, 0, 0.2)' : 1,
+                    backgroundColor: selectedSlots.includes(slot.id) ? '#5FC2D333' : '#5FC2D333',
+                    border: selectedSlots.includes(slot.id) ? '2px solid #828282' : '1px solid #cce4f7',
+                    boxShadow: selectedSlots.includes(slot.id) ? '0px 0px 10px rgba(0, 0, 0, 0.2)' : 1,
                     width: '100%',
-                    transform: selectedSlot === slot.id ? 'scale(1.05)' : 'scale(1)',
+                    transform: selectedSlots.includes(slot.id) ? 'scale(1.05)' : 'scale(1)',
                     transition: 'transform 0.2s, box-shadow 0.2s',
                   }}
                 >

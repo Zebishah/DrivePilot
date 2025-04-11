@@ -20,37 +20,6 @@ export default function SearchInstructor() {
   return (
     <div className="bg-[#f5f7fa] min-h-screen p-4">
       <Box className="max-w-screen-xl mx-auto">
-        <Typography variant="h4" className="mb-6 font-bold text-gray-800">
-          Find Your Instructor
-        </Typography>
-        
-        <Box className="mb-8">
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Search instructors by name, location, or expertise..."
-            value={searchQuery}
-            onChange={handleSearch}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-              sx: {
-                borderRadius: '12px',
-                backgroundColor: 'white',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#e2e8f0',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#5FC2D3',
-                },
-              },
-            }}
-          />
-        </Box>
-
         <InstructorInfo />
       </Box>
     </div>

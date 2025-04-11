@@ -30,7 +30,7 @@ import TwoFactorAuth from "../pages/public/auth/TwoFactorAuth";
 import StudentProfileSetting from "../pages/private/student-dashboard/profileSetting";
 import StudentBookings from "../pages/private/student-dashboard/bookLesson";
 import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
-import StudentInstructorInfo from "../pages/private/student-dashboard/instructorInfo";
+import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
 
 const router = createBrowserRouter([
   {
@@ -84,7 +84,8 @@ const router = createBrowserRouter([
         element: <SearchInstructor />,
 
       },
-      { path: "search/instructors/:id", element: <OurInstructor /> }
+      { path: "search/instructors/:id", element: <OurInstructor /> },
+      { path: "booking-details", element: <BookingDetails /> }
     ],
   },
   {
