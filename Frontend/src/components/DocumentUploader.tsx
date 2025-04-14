@@ -1,170 +1,236 @@
-import type React from 'react';
-import { useState, useRef, useEffect } from 'react';
-import { Paper, Typography, Button, Box, IconButton } from '@mui/material';
-import { Upload, Delete } from '@mui/icons-material';
-import type { UseFormSetValue } from 'react-hook-form';
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import {
+  Paper,
+  Typography,
+  Button,
+  Box,
+  IconButton,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+} from "@mui/material";
+import {
+  Upload,
+  Delete,
+  Image as ImageIcon,
+  InsertDriveFile,
+} from "@mui/icons-material";
+import type { UseFormSetValue } from "react-hook-form";
+import { List } from "@mui/material";
 
 // Define the type for a single document
 type Document = {
-    file: File; // The actual file object
-    name: string; // Name of the file
-    url: string; // URL for preview (created using URL.createObjectURL)
-    type: string; // MIME type of the file (e.g., 'image/jpeg', 'application/pdf')
+  file: File;
+  name: string;
+  url: string;
+  type: string;
+  id: string; // Unique identifier for each file
 };
 
-// Define the props for the DocumentUploader component
 type DocumentUploaderProps = {
-    onFileUpload: (file: File | null, documentType: string) => void; // Callback to return the file to the parent
-    selectedFile: File | null; // Accept file from parent
-    setSelectedFile: (file: File | null) => void; // Callback to return the file to the parent
-    setValue: UseFormSetValue<any>;
-    documentType: string; // The type of document being uploaded (e.g., "Driving License", "ID Card")
+  onFileUpload: (files: File[] | null, documentType: string) => void;
+  selectedFiles: File[] | null;
+  setSelectedFiles: (files: File[] | null) => void;
+  setValue: UseFormSetValue<any>;
+  documentType: string;
+  maxFiles?: number;
+  accept?: string;
 };
-
 const DocumentUploader: React.FC<DocumentUploaderProps> = ({
-    onFileUpload,
-    selectedFile,
-    setSelectedFile,
-    setValue,
-    documentType,
+  onFileUpload,
+  selectedFiles,
+  setSelectedFiles,
+  setValue,
+  documentType,
+  maxFiles = 5,
+  accept = ".pdf,.jpg,.jpeg,.png",
 }) => {
-    const [document, setDocument] = useState<Document | null>(null);
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    useEffect(() => {
-        if (selectedFile) {
-            const newDocument = {
-                file: selectedFile,
-                name: selectedFile.name,
-                url: URL.createObjectURL(selectedFile),
-                type: selectedFile.type,
-            };
-            setDocument(newDocument);
-        } else {
-            setDocument(null);
-        }
-    }, [selectedFile]);
+  useEffect(() => {
+    if (selectedFiles && selectedFiles.length > 0) {
+      const newDocuments = selectedFiles.map((file) => ({
+        file,
+        name: file.name,
+        url: URL.createObjectURL(file),
+        type: file.type,
+        id: `${file.name}-${file.lastModified}-${file.size}`,
+      }));
+      setDocuments(newDocuments);
+    } else {
+      setDocuments([]);
+    }
+  }, [selectedFiles]);
 
-    // Handle file upload
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const newDocument = {
-                file,
-                name: file.name,
-                url: URL.createObjectURL(file),
-                type: file.type,
-            };
-            setDocument(newDocument);
-            onFileUpload(file, documentType); // Return the file and document type to the parent
-        }
-    };
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
 
-    // Handle deselect (remove) the document
-    const handleDeselect = () => {
-        setDocument(null);
-        setSelectedFile(null);
-        onFileUpload(null, documentType); // Notify the parent that the file is removed
-        setValue("documentUrl", "", { shouldValidate: true });
-        // Reset the file input value
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
-    };
+    if (files.length === 0) return;
 
-    return (
-        <Paper
-            variant="outlined"
+    // Check if adding these files would exceed maxFiles limit
+    if (documents.length + files.length > maxFiles) {
+      alert(`You can upload a maximum of ${maxFiles} files`);
+      return;
+    }
+
+    const newDocuments = files.map((file) => ({
+      file,
+      name: file.name,
+      url: URL.createObjectURL(file),
+      type: file.type,
+      id: `${file.name}-${file.lastModified}-${file.size}`,
+    }));
+
+    const updatedDocuments = [...documents, ...newDocuments];
+    setDocuments(updatedDocuments);
+
+    // Convert to File array and send to parent
+    const fileArray = updatedDocuments.map((doc) => doc.file);
+    onFileUpload(fileArray, documentType);
+    setSelectedFiles(fileArray);
+    setValue("documentUrl", "uploaded", { shouldValidate: true });
+  };
+
+  const handleRemoveFile = (id: string) => {
+    const updatedDocuments = documents.filter((doc) => doc.id !== id);
+    setDocuments(updatedDocuments);
+
+    if (updatedDocuments.length === 0) {
+      onFileUpload(null, documentType);
+      setSelectedFiles(null);
+      setValue("documentUrl", "", { shouldValidate: true });
+    } else {
+      const fileArray = updatedDocuments.map((doc) => doc.file);
+      onFileUpload(fileArray, documentType);
+      setSelectedFiles(fileArray);
+    }
+  };
+
+  const handleRemoveAll = () => {
+    setDocuments([]);
+    onFileUpload(null, documentType);
+    setSelectedFiles(null);
+    setValue("documentUrl", "", { shouldValidate: true });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith("image/")) {
+      return <ImageIcon color="primary" />;
+    }
+    return <InsertDriveFile color="primary" />;
+  };
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 3,
+        border: "2px dashed",
+        borderColor: "primary.main",
+        textAlign: "center",
+        backgroundColor: "#f5f5f5",
+      }}
+    >
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        Please upload your {documentType} (max {maxFiles} files)
+      </Typography>
+
+      <Button
+        component="label"
+        variant="contained"
+        startIcon={<Upload />}
+        sx={{ mb: 2 }}
+      >
+        Upload {documentType}
+        <input
+          ref={fileInputRef}
+          type="file"
+          hidden
+          onChange={handleFileUpload}
+          accept={accept}
+          multiple
+        />
+      </Button>
+
+      {documents.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Box
             sx={{
-                p: 3,
-                border: '2px dashed',
-                borderColor: 'primary.main',
-                textAlign: 'center',
-                backgroundColor: '#f5f5f5',
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
             }}
-        >
-            <Typography variant="body1" sx={{ mb: 2 }}>
-                Please upload your {documentType}
+          >
+            <Typography variant="subtitle2">
+              {documents.length} file(s) selected
             </Typography>
             <Button
-                component="label"
-                variant="contained"
-                startIcon={<Upload />}
-                sx={{ mb: 2 }}
+              size="small"
+              color="error"
+              onClick={handleRemoveAll}
+              disabled={documents.length === 0}
             >
-                Upload {documentType}
-                <input
-                    ref={fileInputRef} // Reference the input
-                    type="file"
-                    hidden
-                    onChange={handleFileUpload}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    multiple={false} // Allow only single file upload
-                />
+              Remove All
             </Button>
-            {document && (
-                <Box
-                    sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: 2,
-                        p: 2,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        backgroundColor: 'background.paper',
-                    }}
-                >
-                    {/* Preview Section */}
-                    {document.type.startsWith('image/') ? (
-                        <img
-                            src={document.url}
-                            alt={document.name}
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '200px',
-                                borderRadius: '4px',
-                                marginBottom: '16px',
-                            }}
-                        />
-                    ) : document.type === 'application/pdf' ? (
-                        <iframe
-                            src={document.url}
-                            title={document.name}
-                            style={{
-                                width: '100%',
-                                height: '200px',
-                                border: 'none',
-                                borderRadius: '4px',
-                                marginBottom: '16px',
-                            }}
-                        />
-                    ) : (
-                        <Typography variant="body2" sx={{ mb: 2 }}>
-                            Preview not available for this file type.
-                        </Typography>
-                    )}
+          </Box>
 
-                    {/* File Info and Actions */}
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            width: '100%',
-                        }}
-                    >
-                        <Typography variant="body2">{document.name}</Typography>
-                        <IconButton onClick={handleDeselect}>
-                            <Delete />
-                        </IconButton>
-                    </Box>
-                </Box>
-            )}
-        </Paper>
-    );
+          <List dense sx={{ maxHeight: 300, overflow: "auto" }}>
+            {documents.map((document) => (
+              <ListItem
+                key={document.id}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    onClick={() => handleRemoveFile(document.id)}
+                    color="error"
+                  >
+                    <Delete />
+                  </IconButton>
+                }
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  mb: 1,
+                  backgroundColor: "background.paper",
+                }}
+              >
+                <ListItemIcon>{getFileIcon(document.type)}</ListItemIcon>
+                <ListItemText
+                  primary={document.name}
+                  secondary={`${(document.file.size / 1024).toFixed(2)} KB`}
+                />
+              </ListItem>
+            ))}
+          </List>
+
+          {/* Preview Section - Show preview for the first file */}
+          {documents.length > 0 && documents[0].type.startsWith("image/") && (
+            <Box sx={{ mt: 2, textAlign: "center" }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Preview (first image)
+              </Typography>
+              <img
+                src={documents[0].url}
+                alt={documents[0].name}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "200px",
+                  borderRadius: "4px",
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+      )}
+    </Paper>
+  );
 };
 
 export default DocumentUploader;

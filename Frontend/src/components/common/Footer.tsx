@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Instagram, Twitter } from "@mui/icons-material";
 import { Button } from "@mui/material";
@@ -43,23 +42,39 @@ const Footer: React.FC = () => {
 
         {/* Social Media Icons */}
         <div className="flex space-x-6">
-          <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.instagram.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Instagram sx={{ fontSize: 32, color: "#E1306C" }} />
           </a>
-          <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.linkedin.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <FaLinkedinIn style={{ fontSize: 32 }} />
           </a>
-          <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.facebook.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <FaFacebookF style={{ fontSize: 32 }} />
           </a>
-          <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.twitter.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Twitter sx={{ fontSize: 32, color: "#1DA1F2" }} />
           </a>
         </div>
       </div>
 
       {/* Right Section: Sign In Button */}
-      <div className="flex items-center  md:mt-32 md:mb-0">
+      <div className="flex items-center  md:mt-32 md:mb-0 opacity-0">
         <Button
           variant="contained"
           sx={{

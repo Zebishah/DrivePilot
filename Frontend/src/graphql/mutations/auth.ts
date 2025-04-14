@@ -47,6 +47,10 @@ export const SETUP_STUDENT_PROFILE = gql`
       zipCode
       documentType
       documentUrl
+      documents {
+        documentType
+        documentUrl
+      }
     }
   }
 `;

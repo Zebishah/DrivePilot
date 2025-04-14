@@ -49,12 +49,34 @@ const sendOtpEmail = async (email, otp, type) => {
       </div>
     </div>
   `;
+  } else if (type === "welcome_email") {
+    subject = "Welcome To Our Driving School Platform!";
+    message = `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="https://yourdomain.com/logo.png" alt="Driving School Platform" style="max-height: 60px;" />
+      </div>
+      <div style="color: #333333; line-height: 1.6;">
+        <h1 style="color: #4a6ee0; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Verify Your Email Address</h1>
+        <p style="margin-bottom: 25px; font-size: 16px;">Thank you for signing up! Welcome To our Site Driving School platform</p>
+        <div style="background-color: #f7f9fc; border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 25px;">
+          <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Your verification code is:</p>
+          <p style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #4a6ee0; margin: 0;">${email} Its been Pleasure For us to make u a part of our team</p>
+        </div>
+        <p style="margin-bottom: 25px; font-size: 16px;">Please Enjoy Your Time in our platform and enjoy the given Services .</p>
+      </div>
+      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
+        <p>&copy; ${new Date().getFullYear()} Dsp. All rights reserved.</p>
+        <p>If you have any questions, please contact our support team.</p>
+      </div>
+    </div>
+  `;
   }
   const mailOptions = {
     from: `"Drive School" <${process.env.EMAIL_USER}>`,
     to: email,
     subject,
-    html: `${message}<p>This OTP is valid for 10 minutes.</p>`,
+    html: message,
   };
   const transporter = nodemailer.createTransport({
     host: process.env.DOMAIN_HOST, // Use the correct SMTP host
