@@ -62,9 +62,11 @@ const ProfileSummary: React.FC = () => {
           instructorId: id,
           selectedAvailability: selectedAvailability,
           instructorData: {
+            id: instructor._id,
             name: `${instructor.firstName} ${instructor.lastName}`,
             email: instructor.email,
-            description: instructor.description
+            description: instructor.description,
+            lessonFee: tariff.lessonFee,  
           }
         }
       });

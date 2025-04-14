@@ -19,9 +19,11 @@ interface AvailabilitySlot {
 }
 
 interface InstructorData {
+  id: string;
   name: string;
   email: string;
   description: string;
+  lessonFee: number;
 }
 
 const BookLesson: React.FC = () => {
@@ -37,14 +39,17 @@ const BookLesson: React.FC = () => {
   }, [selectedAvailability]);
 
   const handleConfirmPay = () => {
+    // Add debug logging
+    const paymentData = {
+      type: 'card',
+      cardNumber: '5105 **** **** 0505'
+    };
+    
     navigate('/student-dashboard/booking-details', {
       state: {
         selectedAvailability,
         instructorData,
-        paymentMethod: {
-          type: 'Credit card',
-          cardNumber: '5105 **** **** 0505'
-        }
+        paymentMethod: paymentData
       }
     });
   };
