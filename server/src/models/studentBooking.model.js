@@ -8,7 +8,7 @@ const studentBookingSchema = new mongoose.Schema({
   },
   instructorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Instructor',
     required: true
   },
   slots: [{

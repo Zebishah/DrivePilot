@@ -19,16 +19,24 @@ const studentBookingTypeDefs = gql`
     cardNumber: String
   }
 
+  type UserBooking {
+    _id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    description: String
+  }
+
   type StudentBooking {
     _id: ID!
-    studentId: User!
-    instructorId: User!
+    studentId: UserBooking!
+    instructorId: UserBooking!
     slots: [Slot!]!
     totalAmount: Int!
     paymentMethod: PaymentMethod!
     status: BookingStatus!
     createdAt: String!
-    updatedAt: String!
+    updatedAt: String!    
   }
 
   input SlotInput {
@@ -61,4 +69,4 @@ const studentBookingTypeDefs = gql`
   }
 `;
 
-module.exports = studentBookingTypeDefs; 
+module.exports = studentBookingTypeDefs;
