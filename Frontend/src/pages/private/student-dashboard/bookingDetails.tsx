@@ -5,16 +5,19 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import { useMutation } from '@apollo/client';
 import { CREATE_BOOKING } from '../../../graphql/mutations/studentBooking';
-import { useApolloClient } from '@apollo/client';
 
 const BookingDetails: React.FC = () => {
-  const client = useApolloClient();
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedAvailability, instructorData, paymentMethod } = location.state || {};
+  const { 
+    selectedAvailability, 
+    instructorData, 
+    paymentMethod,
+    isCurrentBooking = true,
+    status
+  } = location.state || {};
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
 
   const [createBooking] = useMutation(CREATE_BOOKING, {
     onCompleted: () => {
@@ -42,33 +45,19 @@ const BookingDetails: React.FC = () => {
   };
 
   const handleConfirmBooking = async () => {
-    console.log('JWT Token:', localStorage.getItem('token')); // Adjust based on your auth setup
     try {
       if (!selectedAvailability || selectedAvailability.length === 0) {
         throw new Error('No availability slots selected');
       }
-  
+
       if (!instructorData?.id) {
         throw new Error('Invalid instructor information');
       }
-  
+
       if (!paymentMethod?.type) {
         throw new Error('Payment method is required');
       }
-  
-      // Debug logging
-      console.log('Payment Method:', paymentMethod);
-      console.log('Payment Type (original):', paymentMethod.type);
-      console.log('Payment Type (lowercase):', paymentMethod.type.toLowerCase());
-      console.log('Total Amount:', totalAmount, typeof totalAmount);
-      console.log('Instructor ID:', instructorData.id);
-      console.log('Selected Availability:', selectedAvailability);
-  
-      const paymentType = paymentMethod.type.toLowerCase();
-      if (paymentType !== 'card' && paymentType !== 'cash') {
-        throw new Error(`Invalid payment type: "${paymentType}". Must be either card or cash`);
-      }
-  
+
       const mutationInput = {
         instructorId: instructorData.id,
         slots: selectedAvailability.map((slot: any) => ({
@@ -76,15 +65,13 @@ const BookingDetails: React.FC = () => {
           startTime: slot.startTime,
           endTime: slot.endTime
         })),
-        totalAmount: Number(totalAmount), // Ensure number
+        totalAmount: parseFloat(totalAmount.toFixed(2)),
         paymentMethod: {
-          type: paymentType,
+          type: paymentMethod.type.toLowerCase(),
           cardNumber: paymentMethod.cardNumber || ''
         }
       };
-  
-      console.log('Cleaned Mutation Input:', JSON.stringify(mutationInput, null, 2));
-  
+
       await createBooking({
         variables: {
           input: mutationInput
@@ -124,6 +111,18 @@ const BookingDetails: React.FC = () => {
           <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
             Booking Details
           </Typography>
+          {!isCurrentBooking && (
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: status === 'confirmed' ? 'green' : 
+                      status === 'cancelled' ? 'red' : 'orange',
+                fontWeight: 'bold'
+              }}
+            >
+              {status.toUpperCase()}
+            </Typography>
+          )}
           <Box>
             <Button
               variant="contained"
@@ -243,120 +242,132 @@ const BookingDetails: React.FC = () => {
       </Card>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleConfirm}
-        >
-          Confirmed
-        </Button>
-      </Box>
-
-      {/* Confirmation Dialog */}
-      <Dialog 
-        open={isConfirmDialogOpen} 
-        onClose={handleCloseDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogContent sx={{ position: 'relative', pt: 2 }}>
-          <IconButton
-            onClick={handleCloseDialog}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Typography variant="h6" align="center" gutterBottom>
-            Confirm Lesson Booking
-          </Typography>
-          
-          <Typography variant="h5" align="center" gutterBottom>
-            Congratulations!
-          </Typography>
-          
-          <Typography align="center" gutterBottom>
-            You have Booked {selectedAvailability?.length || 0} lesson{selectedAvailability?.length > 1 ? 's' : ''}
-          </Typography>
-
-          <Box sx={{ bgcolor: '#f5f5f5', p: 3, borderRadius: 1, mt: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Details
-            </Typography>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Avatar sx={{ bgcolor: '#6a1b9a', mr: 2 }}>S</Avatar>
-              <Box>
-                <Typography variant="body1">
-                  {paymentMethod?.type || 'Credit card'} 
-                  <Typography variant="caption" color="textSecondary">
-                    (Debug - type: {JSON.stringify(paymentMethod?.type)})
-                  </Typography>
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {paymentMethod?.cardNumber || '5105 **** **** 0505'}
-                </Typography>
-              </Box>
-            </Box>
-
-            <Typography variant="body1" gutterBottom>
-              <strong>Lesson Number:</strong> {selectedAvailability?.length || 0}
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              <strong>Duration:</strong> {selectedAvailability?.length || 0} Hours
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              <strong>Amount:</strong> ${totalAmount}
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              <strong>Start Date:</strong> {selectedAvailability?.[0]?.date ? 
-                new Date(selectedAvailability[0].date).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                }) : 'Not selected'}
-            </Typography>
-            <Typography variant="body1" gutterBottom>
-              <strong>End Date:</strong> {selectedAvailability?.[selectedAvailability.length - 1]?.date ? 
-                new Date(selectedAvailability[selectedAvailability.length - 1].date).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                }) : 'Not selected'}
-            </Typography>
-
-            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-              <strong>Attention:</strong> If you cancel a lesson less than 48 hours in advance, the teacher will be informed, but no refund will be issued for the missed session.
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+        {isCurrentBooking ? (
           <Button
             variant="contained"
-            onClick={handleConfirmBooking}
-            disabled={!!error}
-            sx={{
-              width: '200px',
-              bgcolor: '#5ec2d2',
-              '&:hover': {
-                bgcolor: 'rgba(65, 135, 147);'
-              }
-            }}
+            color="primary"
+            onClick={handleConfirm}
           >
-            Yes
+            Confirm Booking
           </Button>
-        </DialogActions>
-      </Dialog>
+        ) : (
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate('/student-dashboard/book')}
+          >
+            Back to Bookings
+          </Button>
+        )}
+      </Box>
+
+      {/* Confirmation Dialog - Only show for current bookings */}
+      {isCurrentBooking && (
+        <Dialog 
+          open={isConfirmDialogOpen} 
+          onClose={handleCloseDialog}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogContent sx={{ position: 'relative', pt: 2 }}>
+            <IconButton
+              onClick={handleCloseDialog}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <Typography variant="h6" align="center" gutterBottom>
+              Confirm Lesson Booking
+            </Typography>
+            
+            <Typography variant="h5" align="center" gutterBottom>
+              Congratulations!
+            </Typography>
+            
+            <Typography align="center" gutterBottom>
+              You have Booked {selectedAvailability?.length || 0} lesson{selectedAvailability?.length > 1 ? 's' : ''}
+            </Typography>
+
+            <Box sx={{ bgcolor: '#f5f5f5', p: 3, borderRadius: 1, mt: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Details
+              </Typography>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Avatar sx={{ bgcolor: '#6a1b9a', mr: 2 }}>S</Avatar>
+                <Box>
+                  <Typography variant="body1">
+                    {paymentMethod?.type || 'Credit card'} 
+                    <Typography variant="caption" color="textSecondary">
+                      (Debug - type: {JSON.stringify(paymentMethod?.type)})
+                    </Typography>
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {paymentMethod?.cardNumber || '5105 **** **** 0505'}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Typography variant="body1" gutterBottom>
+                <strong>Lesson Number:</strong> {selectedAvailability?.length || 0}
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                <strong>Duration:</strong> {selectedAvailability?.length || 0} Hours
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                <strong>Amount:</strong> ${totalAmount}
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                <strong>Start Date:</strong> {selectedAvailability?.[0]?.date ? 
+                  new Date(selectedAvailability[0].date).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  }) : 'Not selected'}
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                <strong>End Date:</strong> {selectedAvailability?.[selectedAvailability.length - 1]?.date ? 
+                  new Date(selectedAvailability[selectedAvailability.length - 1].date).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  }) : 'Not selected'}
+              </Typography>
+
+              <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+                <strong>Attention:</strong> If you cancel a lesson less than 48 hours in advance, the teacher will be informed, but no refund will be issued for the missed session.
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+            <Button
+              variant="contained"
+              onClick={handleConfirmBooking}
+              disabled={!!error}
+              sx={{
+                width: '200px',
+                bgcolor: '#5ec2d2',
+                '&:hover': {
+                  bgcolor: 'rgba(65, 135, 147);'
+                }
+              }}
+            >
+              Yes
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 };

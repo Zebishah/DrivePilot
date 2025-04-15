@@ -4,8 +4,7 @@ export const CREATE_BOOKING = gql`
   mutation CreateBooking($input: StudentBookingInput!) {
     createBooking(input: $input) {
       _id
-      studentId
-      instructorId
+
       slots {
         date
         startTime
@@ -18,6 +17,7 @@ export const CREATE_BOOKING = gql`
       }
       status
       createdAt
+      updatedAt
     }
   }
 `;
@@ -26,23 +26,26 @@ export const GET_STUDENT_BOOKINGS = gql`
   query GetStudentBookings {
     getStudentBookings {
       _id
+      totalAmount
+      status
+      createdAt
+      updatedAt
       instructorId {
+        _id
         firstName
         lastName
         email
+        description
       }
       slots {
         date
         startTime
         endTime
       }
-      totalAmount
       paymentMethod {
         type
         cardNumber
       }
-      status
-      createdAt
     }
   }
 `;
