@@ -110,6 +110,8 @@
 const SignupToken = require("../../models/SignupLink");
 const { v4: uuidv4 } = require("uuid");
 const { AuthenticationError } = require("apollo-server-express");
+const { User, Admin } = require("../../models/User");
+const { sendOtpEmail } = require("../../utils/SendOtpEmail");
 
 const SignupLinkResolver = {
   Query: {
@@ -157,7 +159,7 @@ const SignupLinkResolver = {
 
       const token = uuidv4();
       const baseUrl = process.env.Frontend_URL || "http://localhost:5137";
-      const signupLink = `${baseUrl}/signup/${token}`;
+      const signupLink = `${baseUrl}signup/${token}`;
 
       const newSignupToken = new SignupToken({
         firstName,
@@ -170,7 +172,7 @@ const SignupLinkResolver = {
       });
 
       await newSignupToken.save();
-
+      await sendOtpEmail(email, signupLink, "signupLinkCreation");
       return {
         id: newSignupToken._id,
         signupLink,
@@ -195,16 +197,39 @@ const SignupLinkResolver = {
         message: "Signup link deleted successfully.",
       };
     },
-    updateSignupLinkStatus: async (_, { id, pending }) => {
+    updateSignupLinkStatus: async (_, { id, pending, email }) => {
       try {
-        const updatedLink = await SignupToken.findByIdAndUpdate(
-          id,
+        if (pending === false) {
+          // Find the user first - important to use findById to get the actual document
+          const user = await User.findOne({ email });
+          if (!user) {
+            throw new Error("User not found.");
+          }
+
+          // Update role and other fields
+          user.role = "Admin";
+          user.isUserVerified = true;
+          user.isUserAuthenticated = false;
+          user.isProfileComplete = false;
+
+          // For the adminLevel field, we need a different approach
+          // Since we're working with the same document but changing its discriminator
+          // We can add the adminLevel directly to the document
+          user.set("adminLevel", "regular");
+
+          await user.save();
+
+          console.log("Updated user to Admin:", user);
+        }
+
+        const updatedLink = await SignupToken.findOneAndUpdate(
+          { _id: id },
           { pending },
           { new: true }
         );
 
         if (!updatedLink) {
-          throw new Error("Signup link not found.");
+          throw new Error("Signup link not found for this user.");
         }
 
         return updatedLink;

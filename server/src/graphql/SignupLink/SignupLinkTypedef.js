@@ -41,7 +41,11 @@ const SignupLinkTypedef = gql`
       email: String!
     ): SignupLink!
     deleteSignUpLink(id: ID!): DeleteResponse!
-    updateSignupLinkStatus(id: ID!, pending: Boolean!): SignupLink!
+    updateSignupLinkStatus(
+      id: ID!
+      pending: Boolean!
+      email: String!
+    ): SignupLink!
   }
 `;
 

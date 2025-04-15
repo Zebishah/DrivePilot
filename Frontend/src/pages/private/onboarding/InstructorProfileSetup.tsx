@@ -28,13 +28,14 @@ import { useAuth } from "../../../context/AuthContext";
 import { useMutation } from "@apollo/client";
 import { SETUP_INSTRUCTOR_PROFILE } from "../../../graphql/mutations/auth";
 import { useNavigate } from "react-router-dom";
-import DocumentUploader from "../../../components/DocumentUploader";
+
 import toast from "react-hot-toast";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import axios from "axios";
 import _ from "lodash";
 // Add this to your MUI imports
 import { Description as DescriptionIcon } from "@mui/icons-material";
+import DocumentUploaderInstructor from "../../../components/public/DocumentUploaderInstructor";
 const schema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -749,7 +750,7 @@ const InstructorProfileSetup: React.FC = () => {
                   ))}
               </Box>
             ) : (
-              <DocumentUploader
+              <DocumentUploaderInstructor
                 key={docType}
                 onFileUpload={handleFileUpload}
                 selectedFile={

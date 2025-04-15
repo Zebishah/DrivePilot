@@ -63,6 +63,10 @@ const DocumentSchema = new mongoose.Schema({
   documentType: { type: String, required: true },
   documentUrl: { type: String, required: true },
 });
+const InstructorDocumentSchema = new mongoose.Schema({
+  documentType: { type: String, required: true },
+  documentUrl: { type: String, required: true },
+});
 const StudentSchema = new mongoose.Schema({
   homeAddress: String,
   location: String,
@@ -88,7 +92,7 @@ const InstructorSchema = new mongoose.Schema({
   zipCode: { type: String, required: false },
   description: { type: String, required: false },
   experience: { type: String, required: false },
-  documents: [DocumentSchema], // Array of documents
+  documents: [InstructorDocumentSchema], // Array of documents
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },
   dateOfBirth: { type: String, required: false },

@@ -147,7 +147,7 @@ instead.`);
           type, // Add this to ensure you're matching the correct OTP type
           status: "unused",
         });
-
+        console.log("otpEntry", otpEntry);
         if (!otpEntry) {
           throw new UserInputError("Invalid or expired OTP.");
         }
@@ -179,7 +179,7 @@ instead.`);
         delete userObj.password;
         userObj.id = user._id.toString();
         if (type === "email_verification") {
-          await sendOtpEmail(user.email, otp, "welcome_email");
+          await sendOtpEmail(user.email, user.firstName, "welcome_email");
         }
         return {
           success: true,

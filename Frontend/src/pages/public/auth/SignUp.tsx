@@ -65,8 +65,18 @@ const SignUp: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkID, setLinkID] = useState(null);
   const nav = useNavigate();
-  const { login, tempUser, verifyUser } = useAuth();
-  const [updateSignupLinkStatus] = useMutation(UPDATE_SIGNUP_LINK_STATUS);
+  const { verifyUser } = useAuth();
+  const [updateSignupLinkStatus] = useMutation(UPDATE_SIGNUP_LINK_STATUS, {
+    onCompleted: () => {
+      toast.success("Signup successful! Redirecting you to Sign in...");
+      setTimeout(() => {
+        nav("/auth/signin");
+      }, 2000); // delay for better UX, or remove if not needed
+    },
+    onError: (err) => {
+      toast.error(err.message || "Something went wrong!");
+    },
+  });
   const [signUp, { loading }] = useMutation(SIGN_UP_MUTATION);
   const {
     data,
@@ -96,7 +106,6 @@ const SignUp: React.FC = () => {
   useEffect(() => {
     if (token && data) {
       if (data.getSignupTokenDetails.pending === true)
-
         setValue("firstName", data.getSignupTokenDetails.firstName);
       setValue("lastName", data.getSignupTokenDetails.lastName);
       setValue("email", data.getSignupTokenDetails.email);
@@ -119,18 +128,20 @@ const SignUp: React.FC = () => {
         },
       });
       if (token && linkID) {
-
+        console.log("got it ");
         const pending = false;
         await updateSignupLinkStatus({
-          variables: { id: linkID, pending },
+          variables: { id: linkID, pending, email: data.email },
         });
       }
 
       // tempUser(authData.signUp);
-      verifyUser(authData.signUp);
+      if (!token) {
+        verifyUser(authData.signUp);
 
-      if (authData.signUp.success) {
-        nav(`/auth/verificationPage/${authData.signUp.user.email}`);
+        if (authData.signUp.success) {
+          nav(`/auth/verificationPage/${authData.signUp.user.email}`);
+        }
       }
       // nav("/onboarding/role-selection");
     } catch (error) {
