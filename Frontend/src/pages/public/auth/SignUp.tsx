@@ -128,7 +128,6 @@ const SignUp: React.FC = () => {
         },
       });
       if (token && linkID) {
-        console.log("got it ");
         const pending = false;
         await updateSignupLinkStatus({
           variables: { id: linkID, pending, email: data.email },
@@ -145,7 +144,6 @@ const SignUp: React.FC = () => {
       }
       // nav("/onboarding/role-selection");
     } catch (error) {
-      console.error("Registration error:", error);
       toast.error(`${error?.message}`);
     } finally {
       setIsSubmitting(false);

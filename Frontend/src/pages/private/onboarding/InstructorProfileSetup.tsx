@@ -19,7 +19,7 @@ import {
   FormHelperText,
   IconButton,
 } from "@mui/material";
-import { DeleteIcon, Upload } from "lucide-react";
+import { DeleteIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
@@ -65,12 +65,10 @@ const steps = [
 ];
 
 const InstructorProfileSetup: React.FC = () => {
-  const [setupInstructorProfile, { error }] = useMutation(
-    SETUP_INSTRUCTOR_PROFILE
-  );
+  const [setupInstructorProfile] = useMutation(SETUP_INSTRUCTOR_PROFILE);
 
   const [activeStep, setActiveStep] = useState(0);
-  const { user, login, markUserProfileComplete } = useAuth();
+  const { user, markUserProfileComplete } = useAuth();
   const navigate = useNavigate();
   const { uploadFile } = useFileUpload();
 
@@ -197,7 +195,6 @@ const InstructorProfileSetup: React.FC = () => {
         toast.success("Profile setup successfully");
         navigate("/teacher-dashboard/overview");
       } catch (err) {
-        console.error("Error setting up instructor profile:", err);
         toast.error(`Profile setup failed: ${err?.message}`);
       } finally {
         setLoading(false); // Stop loading
@@ -208,7 +205,7 @@ const InstructorProfileSetup: React.FC = () => {
   };
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const abortControllerRef = useRef(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const lastRequestTime = useRef(0);
   const isSelecting = useRef(false);
 
@@ -261,7 +258,20 @@ const InstructorProfileSetup: React.FC = () => {
     }, 300) // 300ms debounce time
   ).current;
 
-  const handleSelectSuggestion = (address) => {
+  interface Address {
+    display_name: string;
+    address: {
+      city?: string;
+      town?: string;
+      village?: string;
+      county?: string;
+      postcode?: string;
+    };
+    lat?: string;
+    lon?: string;
+  }
+
+  const handleSelectSuggestion = (address: Address): void => {
     isSelecting.current = true;
     setValue("address", address?.display_name, { shouldValidate: true });
     setShowSuggestions(false);
@@ -648,7 +658,9 @@ const InstructorProfileSetup: React.FC = () => {
                   type="file"
                   multiple
                   onChange={(e) => {
-                    const files = Array.from(e.target.files);
+                    const files = e.target.files
+                      ? Array.from(e.target.files)
+                      : [];
                     files.forEach((file) => {
                       handleFileUpload(file, "Other Documents");
                     });

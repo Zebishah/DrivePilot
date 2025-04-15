@@ -78,7 +78,6 @@ const StudentProfileSetup = () => {
       navigate("/student-dashboard/overview");
     },
     onError: (error) => {
-      console.error("Profile setup error:", error);
       toast.error(`Profile setup failed :${error?.message}`);
     },
   });
@@ -138,16 +137,30 @@ const StudentProfileSetup = () => {
   };
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
 
-  const handleFileUpload = (files: File[] | null, documentType: string) => {
+  const handleFileUpload = (files: File[] | null) => {
     if (files) {
       setSelectedFiles(files);
     } else {
       setSelectedFiles(null);
     }
   };
-  const [suggestions, setSuggestions] = useState([]);
+  interface Place {
+    place_id: string;
+    display_name: string;
+    address?: {
+      city?: string;
+      town?: string;
+      village?: string;
+      county?: string;
+      postcode?: string;
+    };
+    lat?: string;
+    lon?: string;
+  }
+
+  const [suggestions, setSuggestions] = useState<Place[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const abortControllerRef = useRef(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const lastRequestTime = useRef(0);
   const isSelecting = useRef(false);
 
@@ -200,7 +213,7 @@ const StudentProfileSetup = () => {
     }, 300) // 300ms debounce time
   ).current;
 
-  const handleSelectSuggestion = (address) => {
+  const handleSelectSuggestion = (address: Place) => {
     isSelecting.current = true;
     setValue("homeAddress", address?.display_name, { shouldValidate: true });
     setShowSuggestions(false);
@@ -251,8 +264,8 @@ const StudentProfileSetup = () => {
               {...field}
               fullWidth
               placeholder="Enter Address"
-              error={!!errors.address}
-              helperText={errors.address?.message}
+              error={!!errors.homeAddress}
+              helperText={errors.homeAddress?.message}
               onChange={(e) => {
                 field.onChange(e);
                 isSelecting.current = false;
@@ -283,7 +296,7 @@ const StudentProfileSetup = () => {
             <List>
               {suggestions.map((place) => (
                 <ListItem
-                  button
+                  component="button"
                   key={place.place_id}
                   onClick={() => {
                     isSelecting.current = true;

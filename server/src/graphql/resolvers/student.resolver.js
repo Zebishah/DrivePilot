@@ -29,11 +29,10 @@ const studentResolver = {
           languagePreference: student.languagePreference,
         };
       } catch (error) {
-        console.error("Error fetching student profile:", error);
         throw new Error("Failed to fetch student profile");
       }
     },
   },
 };
 
-module.exports = studentResolver; 
+module.exports = studentResolver;

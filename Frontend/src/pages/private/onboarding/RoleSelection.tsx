@@ -107,7 +107,6 @@ const RoleSelection: React.FC = () => {
 
   const [selectRole, { loading }] = useMutation(SELECT_ROLE_MUTATION, {
     onCompleted: (data) => {
-
       login(data.selectRole);
 
       if (data.selectRole.user.role === UserRole.Student) {
@@ -119,7 +118,6 @@ const RoleSelection: React.FC = () => {
     },
     onError: (error) => {
       toast.error(`Role selection error: ${error?.message}`);
-      console.error("Role selection error:", error);
     },
   });
 

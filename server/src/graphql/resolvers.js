@@ -147,7 +147,7 @@ instead.`);
           type, // Add this to ensure you're matching the correct OTP type
           status: "unused",
         });
-        console.log("otpEntry", otpEntry);
+
         if (!otpEntry) {
           throw new UserInputError("Invalid or expired OTP.");
         }
@@ -187,7 +187,6 @@ instead.`);
           user: userObj,
         };
       } catch (error) {
-        console.error("Error in verifyUser:", error);
         if (error instanceof UserInputError) {
           throw error;
         }
@@ -219,7 +218,6 @@ instead.`);
           email,
         };
       } catch (error) {
-        console.error("Error in resendOtp:", error);
         throw new UserInputError(
           "Failed to resend OTP. Please try again later."
         );
@@ -289,7 +287,6 @@ instead.`);
           token,
         };
       } catch (error) {
-        console.error("Error in signIn:", error);
         if (error instanceof UserInputError) {
           throw error;
         }

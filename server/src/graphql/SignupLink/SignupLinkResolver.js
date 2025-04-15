@@ -122,7 +122,6 @@ const SignupLinkResolver = {
         });
         return signupLinks;
       } catch (error) {
-        console.error("Error fetching signup links:", error);
         throw new Error("Error fetching signup links.");
       }
     },
@@ -145,7 +144,6 @@ const SignupLinkResolver = {
           pending: signupToken.pending,
         };
       } catch (err) {
-        console.error("Error fetching token data:", err);
         throw new Error("An error occurred while fetching the token data.");
       }
     },
@@ -211,15 +209,9 @@ const SignupLinkResolver = {
           user.isUserVerified = true;
           user.isUserAuthenticated = false;
           user.isProfileComplete = false;
-
-          // For the adminLevel field, we need a different approach
-          // Since we're working with the same document but changing its discriminator
-          // We can add the adminLevel directly to the document
           user.set("adminLevel", "regular");
 
           await user.save();
-
-          console.log("Updated user to Admin:", user);
         }
 
         const updatedLink = await SignupToken.findOneAndUpdate(
@@ -234,7 +226,6 @@ const SignupLinkResolver = {
 
         return updatedLink;
       } catch (error) {
-        console.error("Error updating signup link status:", error);
         throw new Error(
           "An error occurred while updating the signup link status."
         );

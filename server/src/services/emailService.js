@@ -77,7 +77,6 @@ const sendTemplateEmail = async (to, templateName, data) => {
     const info = await transporter.sendMail(mailOptions);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Email sending failed:", error);
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };
@@ -102,7 +101,6 @@ const sendCustomEmail = async (mailOptions) => {
     const info = await transporter.sendMail(options);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Email sending failed:", error);
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };
