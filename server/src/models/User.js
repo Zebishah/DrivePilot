@@ -59,21 +59,31 @@ const otpSchema = new mongoose.Schema({
   expiresAt: { type: Date, required: true },
 });
 const Otp = mongoose.model("Otp", otpSchema);
+const DocumentSchema = new mongoose.Schema({
+  documentType: { type: String, required: true },
+  documentUrl: { type: String, required: true },
+});
+const InstructorDocumentSchema = new mongoose.Schema({
+  documentType: { type: String, required: true },
+  documentUrl: { type: String, required: true },
+});
 const StudentSchema = new mongoose.Schema({
   homeAddress: String,
   location: String,
   zipCode: String,
-  documentType: String,
-  documentUrl: String,
+  documentType: {
+    type: String,
+    required: false, // Now optional since we have documents array
+  },
+  documentUrl: {
+    type: String,
+    required: false, // Now optional since we have documents array
+  },
+  documents: [DocumentSchema], // Add this line
   paymentInfo: {
     isPaid: { type: Boolean, default: false },
     paymentDate: Date,
   },
-});
-
-const DocumentSchema = new mongoose.Schema({
-  documentType: String,
-  documentUrl: String,
 });
 
 const InstructorSchema = new mongoose.Schema({
@@ -82,7 +92,7 @@ const InstructorSchema = new mongoose.Schema({
   zipCode: { type: String, required: false },
   description: { type: String, required: false },
   experience: { type: String, required: false },
-  documents: [DocumentSchema], // Array of documents
+  documents: [InstructorDocumentSchema], // Array of documents
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },
   dateOfBirth: { type: String, required: false },

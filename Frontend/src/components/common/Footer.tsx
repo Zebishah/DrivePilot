@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Instagram, Twitter } from "@mui/icons-material";
 import { Button } from "@mui/material";
@@ -9,13 +8,13 @@ const Footer: React.FC = () => {
     <footer className="bg-gray-900 font-poppins text-white px-8 py-8 flex flex-col md:flex-row items-center justify-between mt-8">
       {/* Left Section: Logo */}
       <div className="flex items-center  md:mt-24">
-        <img src="/dsp.png" alt="Logo" className="h-20 w-auto" />
+        <img src="/new-logo.png" alt="Logo" className="h-20 w-auto" />
       </div>
 
       {/* Center Section: Links and Description */}
       <div className="flex flex-col items-center mb-8 md:mb- md:mt-0 text-center md:text-left">
         {/* Links */}
-        <ul className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8 mb-6">
+        <ul className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8a mb-6">
           <li>
             <a href="/" className="hover:text-gray-300">
               Home
@@ -43,23 +42,39 @@ const Footer: React.FC = () => {
 
         {/* Social Media Icons */}
         <div className="flex space-x-6">
-          <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.instagram.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Instagram sx={{ fontSize: 32, color: "#E1306C" }} />
           </a>
-          <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.linkedin.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <FaLinkedinIn style={{ fontSize: 32 }} />
           </a>
-          <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.facebook.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <FaFacebookF style={{ fontSize: 32 }} />
           </a>
-          <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://www.twitter.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Twitter sx={{ fontSize: 32, color: "#1DA1F2" }} />
           </a>
         </div>
       </div>
 
       {/* Right Section: Sign In Button */}
-      <div className="flex items-center  md:mt-32 md:mb-0">
+      <div className="flex items-center  md:mt-32 md:mb-0 opacity-0">
         <Button
           variant="contained"
           sx={{

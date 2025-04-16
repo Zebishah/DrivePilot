@@ -71,11 +71,21 @@ const typeDefs = gql`
     homeAddress: String
     location: String
     zipCode: String
-    documentType: String
-    documentUrl: String
+    documentType: String # Keep for backward compatibility
+    documentUrl: String # Keep for backward compatibility
+    documents: [Document!] # Add this for multiple documents
     paymentInfo: PaymentInfo
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+  }
+
+  input StudentProfileInput {
+    homeAddress: String!
+    location: String!
+    zipCode: String!
+    documentType: String # Now optional
+    documentUrl: String # Now optional
+    documents: [DocumentInput!]! # New required array
   }
 
   type Instructor implements User {
@@ -170,13 +180,6 @@ const typeDefs = gql`
   input resendOtpInput {
     email: String!
     type: String!
-  }
-  input StudentProfileInput {
-    homeAddress: String!
-    location: String!
-    zipCode: String!
-    documentType: String!
-    documentUrl: String
   }
 
   input InstructorProfileInput {

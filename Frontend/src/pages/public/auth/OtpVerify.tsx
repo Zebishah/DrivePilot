@@ -13,7 +13,7 @@ import {
 import { styled } from "@mui/material/styles";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import logoSrc from "../../../../../Frontend/public/dsp-logo.png"; // Adjust the path as necessary
+import logoSrc from "../../../../../Frontend/public/Website-new-logo.png"; // Adjust the path as necessary
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
@@ -133,7 +133,6 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
       });
 
       if (data?.verifyUser?.success) {
-
         // Update the user state first
         await tempUser(data.verifyUser);
 
@@ -177,7 +176,6 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   // Handle resend OTP
   const handleResendOtp = async () => {
     try {
-
       const { data } = await resendOtp({
         variables: {
           input: {

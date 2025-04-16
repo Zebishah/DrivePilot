@@ -1,8 +1,7 @@
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { setCredentials, logout } from '../store/slices/authSlice';
-import type { RootState } from '../store';
-import type { User } from '../types';
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { logout } from "../store/slices/authSlice";
+import type { RootState } from "../store";
 
 export const useAuth = () => {
   const dispatch = useDispatch();
@@ -17,7 +16,7 @@ export const useAuth = () => {
       // const response = await authApi.login(credentials);
       // dispatch(setCredentials(response.data));
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
     }
   };
 
@@ -31,13 +30,13 @@ export const useAuth = () => {
       // const response = await authApi.register(userData);
       // dispatch(setCredentials(response.data));
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error("Registration failed:", error);
     }
   };
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
+    navigate("/login");
   };
 
   return {

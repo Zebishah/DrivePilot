@@ -66,10 +66,11 @@ const SignIn: React.FC = () => {
   const [signIn, { loading }] = useMutation(SIGN_IN, {
     onCompleted: (data) => {
       const { signIn } = data;
+
       if (signIn?.user?.role === "Admin") {
         login(signIn);
         navigate(`/admin-dashboard/overview`);
-        return
+        return;
       }
       if (!signIn?.user?.isUserVerified) {
         navigate(`/auth/verificationPage/${signIn?.user.email}`);
@@ -113,7 +114,6 @@ const SignIn: React.FC = () => {
       });
     } catch (error) {
       toast.error(`Login error: ${error?.message}`);
-      console.error("Login error:", error);
     }
   };
 

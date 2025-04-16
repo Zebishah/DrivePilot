@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -19,7 +19,7 @@ import {
   FormHelperText,
   IconButton,
 } from "@mui/material";
-import { DeleteIcon, Upload } from "lucide-react";
+import { DeleteIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
@@ -28,11 +28,14 @@ import { useAuth } from "../../../context/AuthContext";
 import { useMutation } from "@apollo/client";
 import { SETUP_INSTRUCTOR_PROFILE } from "../../../graphql/mutations/auth";
 import { useNavigate } from "react-router-dom";
-import DocumentUploader from "../../../components/DocumentUploader";
+
 import toast from "react-hot-toast";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import axios from "axios";
-
+import _ from "lodash";
+// Add this to your MUI imports
+import { Description as DescriptionIcon } from "@mui/icons-material";
+import DocumentUploaderInstructor from "../../../components/public/DocumentUploaderInstructor";
 const schema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -62,12 +65,10 @@ const steps = [
 ];
 
 const InstructorProfileSetup: React.FC = () => {
-  const [setupInstructorProfile, { error }] = useMutation(
-    SETUP_INSTRUCTOR_PROFILE
-  );
+  const [setupInstructorProfile] = useMutation(SETUP_INSTRUCTOR_PROFILE);
 
   const [activeStep, setActiveStep] = useState(0);
-  const { user, login, markUserProfileComplete } = useAuth();
+  const { user, markUserProfileComplete } = useAuth();
   const navigate = useNavigate();
   const { uploadFile } = useFileUpload();
 
@@ -99,7 +100,7 @@ const InstructorProfileSetup: React.FC = () => {
     "ID Card",
     "Certificates",
     "Criminal Record",
-    "Other Documents"
+    "Other Documents",
   ];
 
   useEffect(() => {
@@ -133,13 +134,14 @@ const InstructorProfileSetup: React.FC = () => {
   const handleNext = async (data) => {
     const { email, ...mutationData } = data;
 
-
     if (activeStep === 1) {
       if (!data?.experience) {
         toast.error("Experience is required.");
         return; // Stop progression
       }
       const missingDocuments = requiredDocuments.filter((docType) => {
+        // Skip "Other Documents" from required check
+        if (docType === "Other Documents") return false;
         return !selectedFiles.some((file) => file.documentType === docType);
       });
 
@@ -179,7 +181,7 @@ const InstructorProfileSetup: React.FC = () => {
         const finalData = {
           ...mutationData,
           documents: documentUploads, // Array of documents with type and URL
-          coordinates: coordinates
+          coordinates: coordinates,
         };
 
         // Call the mutation
@@ -193,7 +195,6 @@ const InstructorProfileSetup: React.FC = () => {
         toast.success("Profile setup successfully");
         navigate("/teacher-dashboard/overview");
       } catch (err) {
-        console.error("Error setting up instructor profile:", err);
         toast.error(`Profile setup failed: ${err?.message}`);
       } finally {
         setLoading(false); // Stop loading
@@ -202,51 +203,111 @@ const InstructorProfileSetup: React.FC = () => {
       setActiveStep((prevStep) => prevStep + 1);
     }
   };
-
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastRequestTime = useRef(0);
+  const isSelecting = useRef(false);
 
-  const fetchLocations = async (inputValue) => {
-    if (!inputValue) {
-      setSuggestions([]);
-      return;
-    }
-    try {
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/search`,
-        {
-          params: {
-            q: inputValue,
-            format: "json",
-            addressdetails: 1,
-            limit: 5,
-          },
-        }
-      );
-
-      setSuggestions(response.data);
-      setShowSuggestions(true);
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-      setSuggestions([]);
-    }
-  };
   const [coordinates, setCoordinates] = useState({
     type: "Point",
-    coordinates: [0, 0]
+    coordinates: [0, 0],
   });
-  const handleSelectSuggestion = (address) => {
+  const fetchLocations = useRef(
+    _.debounce(async (inputValue) => {
+      if (!inputValue) {
+        setSuggestions([]);
+        return;
+      }
+
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const requestId = Date.now();
+      lastRequestTime.current = requestId;
+
+      try {
+        const response = await axios.get(
+          "https://nominatim.openstreetmap.org/search",
+          {
+            params: {
+              q: inputValue,
+              format: "json",
+              addressdetails: 1,
+              limit: 5,
+            },
+            signal: controller.signal,
+          }
+        );
+
+        // Only update if this is the latest request
+        if (lastRequestTime.current === requestId) {
+          setSuggestions(response.data);
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error("Error fetching locations:", error);
+          setSuggestions([]);
+        }
+      }
+    }, 300) // 300ms debounce time
+  ).current;
+
+  interface Address {
+    display_name: string;
+    address: {
+      city?: string;
+      town?: string;
+      village?: string;
+      county?: string;
+      postcode?: string;
+    };
+    lat?: string;
+    lon?: string;
+  }
+
+  const handleSelectSuggestion = (address: Address): void => {
+    isSelecting.current = true;
     setValue("address", address?.display_name, { shouldValidate: true });
     setShowSuggestions(false);
 
-    // Update coordinates state
+    // Extract city and ZIP code from address details
+    const city =
+      address?.address?.city ||
+      address?.address?.town ||
+      address?.address?.village ||
+      address?.address?.county ||
+      "";
+    const zipCode = address?.address?.postcode || "";
+
+    // Update city and ZIP code fields
+    setValue("location", city, { shouldValidate: true });
+    setValue("zipCode", zipCode, { shouldValidate: true });
+
+    // Update coordinates if available
     if (address?.lat && address?.lon) {
       setCoordinates({
         type: "Point",
-        coordinates: [Number.parseFloat(address.lon), Number.parseFloat(address.lat)]
+        coordinates: [
+          Number.parseFloat(address.lon),
+          Number.parseFloat(address.lat),
+        ],
       });
     }
   };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup debounce on unmount
+      fetchLocations.cancel();
+    };
+  }, [fetchLocations]);
+
   const renderPersonalInfo = () => (
     <Box component="form">
       <Box>
@@ -409,9 +470,7 @@ const InstructorProfileSetup: React.FC = () => {
             )}
           />
           {errors.gender && (
-            <FormHelperText error>
-              {errors.gender.message}
-            </FormHelperText>
+            <FormHelperText error>{errors.gender.message}</FormHelperText>
           )}
         </Box>
 
@@ -431,9 +490,17 @@ const InstructorProfileSetup: React.FC = () => {
                 helperText={errors.address?.message}
                 onChange={(e) => {
                   field.onChange(e);
+                  isSelecting.current = false;
                   fetchLocations(e.target.value);
                 }}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onBlur={() => {
+                  // Add a small delay to allow click events to process first
+                  setTimeout(() => {
+                    if (!isSelecting.current) {
+                      setShowSuggestions(false);
+                    }
+                  }, 200);
+                }}
               />
             )}
           />
@@ -453,7 +520,11 @@ const InstructorProfileSetup: React.FC = () => {
                   <ListItem
                     button
                     key={place.place_id}
-                    onClick={() => handleSelectSuggestion(place)}
+                    onClick={() => {
+                      isSelecting.current = true;
+                      handleSelectSuggestion(place);
+                    }}
+                    onMouseDown={(e) => e.preventDefault()} // Prevent blur on mouse down
                   >
                     {place.display_name}
                   </ListItem>
@@ -582,23 +653,21 @@ const InstructorProfileSetup: React.FC = () => {
               <Box sx={{ mt: 1 }}>
                 <input
                   accept=".pdf,.jpg,.jpeg,.png"
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                   id={`other-docs-upload`}
                   type="file"
                   multiple
                   onChange={(e) => {
-                    const files = Array.from(e.target.files);
+                    const files = e.target.files
+                      ? Array.from(e.target.files)
+                      : [];
                     files.forEach((file) => {
                       handleFileUpload(file, "Other Documents");
                     });
                   }}
                 />
                 <label htmlFor={`other-docs-upload`}>
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    sx={{ mr: 2 }}
-                  >
+                  <Button variant="outlined" component="span" sx={{ mr: 2 }}>
                     Upload Multiple
                   </Button>
                 </label>
@@ -608,28 +677,40 @@ const InstructorProfileSetup: React.FC = () => {
 
                 {/* Display uploaded other documents with previews */}
                 {selectedFiles
-                  .filter(doc => doc.documentType === "Other Documents")
+                  .filter((doc) => doc.documentType === "Other Documents")
                   .map((doc, idx) => (
-                    <Box key={idx} sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      mt: 2,
-                      p: 2,
-                      border: '1px solid #e0e0e0',
-                      borderRadius: 1
-                    }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        mt: 2,
+                        p: 2,
+                        border: "1px solid #e0e0e0",
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{ flexGrow: 1, fontWeight: "bold" }}
+                        >
                           {doc.file.name}
                         </Typography>
                         <IconButton
                           size="small"
                           onClick={() => {
                             const updatedFiles = selectedFiles.filter(
-                              (f, i) => !(f.documentType === "Other Documents" && f?.file?.name === doc?.file?.name)
+                              (f, i) =>
+                                !(
+                                  f.documentType === "Other Documents" &&
+                                  f?.file?.name === doc?.file?.name
+                                )
                             );
                             setSelectedFiles(updatedFiles);
-                            setValue('documents', updatedFiles);
+                            setValue("documents", updatedFiles);
                           }}
                         >
                           <DeleteIcon fontSize="small" />
@@ -637,35 +718,41 @@ const InstructorProfileSetup: React.FC = () => {
                       </Box>
 
                       {/* File Preview Section */}
-                      {doc.file.type.startsWith('image/') ? (
-                        <Box sx={{
-                          mt: 1,
-                          maxHeight: 200,
-                          overflow: 'hidden',
-                          display: 'flex',
-                          justifyContent: 'center'
-                        }}>
+                      {doc.file.type.startsWith("image/") ? (
+                        <Box
+                          sx={{
+                            mt: 1,
+                            maxHeight: 200,
+                            overflow: "hidden",
+                            display: "flex",
+                            justifyContent: "center",
+                          }}
+                        >
                           <img
                             src={URL.createObjectURL(doc.file)}
                             alt="Preview"
                             style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              objectFit: 'contain'
+                              maxWidth: "100%",
+                              maxHeight: "100%",
+                              objectFit: "contain",
                             }}
                           />
                         </Box>
                       ) : (
-                        <Box sx={{
-                          mt: 1,
-                          p: 2,
-                          backgroundColor: '#f5f5f5',
-                          borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <DescriptionIcon sx={{ mr: 1, color: 'primary.main' }} />
+                        <Box
+                          sx={{
+                            mt: 1,
+                            p: 2,
+                            backgroundColor: "#f5f5f5",
+                            borderRadius: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <DescriptionIcon
+                            sx={{ mr: 1, color: "primary.main" }}
+                          />
                           <Typography variant="body2">
                             PDF Document (Preview not available)
                           </Typography>
@@ -675,7 +762,7 @@ const InstructorProfileSetup: React.FC = () => {
                   ))}
               </Box>
             ) : (
-              <DocumentUploader
+              <DocumentUploaderInstructor
                 key={docType}
                 onFileUpload={handleFileUpload}
                 selectedFile={

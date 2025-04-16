@@ -24,6 +24,7 @@ const httpLink = createHttpLink({ uri: BACKEND_URL });
 const authLink = setContext((operation, { headers }) => {
   const cookies = useCookies(); // Get cookies
   const encryptedToken = cookies;
+
   const token = decrypt(encryptedToken); // Decrypt token
 
   // Skip auth for public operations

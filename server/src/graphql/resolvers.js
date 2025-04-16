@@ -114,16 +114,15 @@ instead.`);
 
         // Save OTP to DB
         const otp = generateOTP();
+
+        await sendOtpEmail(user.email, otp, "email_verification");
+        // const token = createToken(user);
         await Otp.create({
           email: user.email,
           otp,
           type: "email_verification",
           expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         });
-
-        await sendOtpEmail(user.email, otp, "email_verification");
-        // const token = createToken(user);
-
         return {
           // token,
           success: true,
@@ -179,14 +178,15 @@ instead.`);
         const userObj = user.toObject();
         delete userObj.password;
         userObj.id = user._id.toString();
-
+        if (type === "email_verification") {
+          await sendOtpEmail(user.email, user.firstName, "welcome_email");
+        }
         return {
           success: true,
           token,
           user: userObj,
         };
       } catch (error) {
-        console.error("Error in verifyUser:", error);
         if (error instanceof UserInputError) {
           throw error;
         }
@@ -218,7 +218,6 @@ instead.`);
           email,
         };
       } catch (error) {
-        console.error("Error in resendOtp:", error);
         throw new UserInputError(
           "Failed to resend OTP. Please try again later."
         );
@@ -288,7 +287,6 @@ instead.`);
           token,
         };
       } catch (error) {
-        console.error("Error in signIn:", error);
         if (error instanceof UserInputError) {
           throw error;
         }
@@ -348,14 +346,25 @@ instead.`);
       }
 
       try {
+        // Update the schema validation if needed
         studentProfileSchema.parse(input);
+
+        const updateData = {
+          ...input,
+          isProfileComplete: true,
+        };
+
+        // If documents array is provided, use it
+        if (input.documents && input.documents.length > 0) {
+          updateData.documents = input.documents;
+          // For backward compatibility, set the first document as the primary
+          updateData.documentType = input.documents[0].documentType;
+          updateData.documentUrl = input.documents[0].documentUrl;
+        }
 
         const updatedStudent = await Student.findByIdAndUpdate(
           user.id,
-          {
-            ...input,
-            isProfileComplete: true,
-          },
+          updateData,
           { new: true }
         );
 

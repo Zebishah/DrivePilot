@@ -168,13 +168,11 @@ const instructorResolver = {
           hasMore: offset + limit < totalCount,
         };
       } catch (error) {
-        console.error("Error fetching nearby instructors:", error);
         throw new Error("Failed to fetch instructors");
       }
     },
     getInstructorPublicProfile: async (_, { id }) => {
       try {
-        console.log("id", id);
         // Validate ID format
         if (!mongoose.Types.ObjectId.isValid(id)) {
           throw new Error("Invalid instructor ID");
@@ -211,7 +209,6 @@ const instructorResolver = {
           })),
         };
       } catch (error) {
-        console.error("Error fetching instructor profile:", error);
         throw new Error("Failed to fetch instructor profile");
       }
     },

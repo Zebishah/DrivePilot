@@ -46,7 +46,6 @@ export const useFileUpload = () => {
       }
       return { success: true, fileUrl };
     } catch (error) {
-      console.error("Upload error:", error);
       return { success: false, message: (error as Error).message };
     }
   };

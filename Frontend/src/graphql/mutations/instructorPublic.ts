@@ -90,7 +90,6 @@ export const getUserLocation = (): Promise<[number, number] | null> => {
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
-          console.log("User denied location access");
           resolve([0, 0]);
         } else {
           console.warn("Geolocation error:", error);

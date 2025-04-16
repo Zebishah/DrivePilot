@@ -97,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isVerified, setIsVerified] = useState(false);
 
   const login = (authPayload: AuthPayload) => {
-
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -109,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const tempUser = (authPayload: AuthPayload) => {
-
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -159,6 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         setIsAuthenticated(decryptedUser.isUserVerified);
         setUser(decryptedUser);
+        setIsTempAuthenticated(decryptedUser.isUserVerified);
       } catch (error) {
         console.error("Error decrypting auth data:", error);
         logout();

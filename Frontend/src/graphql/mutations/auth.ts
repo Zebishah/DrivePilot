@@ -47,6 +47,10 @@ export const SETUP_STUDENT_PROFILE = gql`
       zipCode
       documentType
       documentUrl
+      documents {
+        documentType
+        documentUrl
+      }
     }
   }
 `;
@@ -213,10 +217,15 @@ export const GET_SIGNUP_TOKEN_DETAILS = gql`
 `;
 
 export const UPDATE_SIGNUP_LINK_STATUS = gql`
-  mutation UpdateSignupLinkStatus($id: ID!, $pending: Boolean!) {
-    updateSignupLinkStatus(id: $id, pending: $pending) {
+  mutation UpdateSignupLinkStatus(
+    $id: ID!
+    $pending: Boolean!
+    $email: String!
+  ) {
+    updateSignupLinkStatus(id: $id, pending: $pending, email: $email) {
       id
       pending
+      email
     }
   }
 `;

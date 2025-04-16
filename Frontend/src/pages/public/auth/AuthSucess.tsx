@@ -62,7 +62,6 @@ const AuthSuccess = () => {
           }
         }
       } catch (error) {
-        console.error("Auth error:", error);
         navigate("/auth/signin?error=auth_failed");
       }
     };
