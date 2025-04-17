@@ -96,7 +96,7 @@ const AdminAccess = () => {
     });
   };
   return (
-    <div>
+    <div className="w-full ">
       <Container
         maxWidth={false}
         sx={{
@@ -110,7 +110,6 @@ const AdminAccess = () => {
             border: "1px solid #e0e0e0",
             borderRadius: 2,
             overflow: "visible",
-            maxWidth: "1102px",
           }}
         >
           <Box
@@ -119,7 +118,6 @@ const AdminAccess = () => {
               justifyContent: "space-between",
               p: 2,
               alignItems: "center",
-
               borderBottom: "1px solid #e0e0e0",
             }}
           >
@@ -139,6 +137,7 @@ const AdminAccess = () => {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: "6px",
+
                 alignItems: "center",
               }}
             >
@@ -171,14 +170,19 @@ const AdminAccess = () => {
           </Box>
 
           {showForm && (
-            <Box component="form" onSubmit={handleSubmit} sx={{ p: 2 }}>
-              <Box sx={{ mb: 2 }}>
+            <Box
+              component="form"
+              onSubmit={handleSubmit}
+              sx={{ p: 2, width: "100%" }}
+            >
+              <Box sx={{ mb: 2, width: "100%" }}>
                 <Typography
                   variant="body1"
                   sx={{
                     fontWeight: 500,
                     fontFamily: "poppins",
                     fontSize: "18px",
+
                     mb: 1,
                   }}
                 >
@@ -194,6 +198,7 @@ const AdminAccess = () => {
 
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "4px", // Adjust this value
+                      padding: "7px 8px", // <--- Add your desired padding here
                     },
                     "& .MuiOutlinedInput-notchedOutline": {
                       borderRadius: "4px", // Ensure the border radius is applied to the outline
@@ -227,6 +232,7 @@ const AdminAccess = () => {
 
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "4px", // Adjust this value
+                      padding: "7px 8px", // <--- Add your desired padding here
                     },
                     "& .MuiOutlinedInput-notchedOutline": {
                       borderRadius: "4px", // Ensure the border radius is applied to the outline
@@ -262,6 +268,7 @@ const AdminAccess = () => {
                     maxHeight: "44px",
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "4px", // Adjust this value
+                      padding: "7px 8px", // <--- Add your desired padding here
                     },
                     "& .MuiOutlinedInput-notchedOutline": {
                       borderRadius: "4px", // Ensure the border radius is applied to the outline
@@ -274,48 +281,56 @@ const AdminAccess = () => {
                   }}
                 />
               </Box>
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={agreed}
-                    onChange={(e) => setAgreed(e.target.checked)}
-                    name="agreed"
-                    color="primary"
-                  />
-                }
-                label={
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 400,
-                      fontFamily: "poppins",
-                      fontSize: "16px",
-                    }}
-                  >
-                    I have read and agreed with Terms of Use and Privacy Policy
-                  </Typography>
-                }
-                sx={{ mb: 2 }}
-              />
-
-              <Button
-                type="submit"
-                variant="contained"
+              <Box
                 sx={{
-                  bgcolor: "#5EC2D2",
-                  "&:hover": { bgcolor: "#5EC2D2" },
-                  py: 1,
-                  textTransform: "none",
-                  fontWeight: 600,
-                  fontFamily: "poppins",
-                  fontSize: "18px",
-                  maxHeight: "50px",
-                  width: "65%",
+                  mb: 2,
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                Add
-              </Button>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      name="agreed"
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 400,
+                        fontFamily: "poppins",
+                        fontSize: "16px",
+                      }}
+                    >
+                      I have read and agreed with Terms of Use and Privacy
+                      Policy
+                    </Typography>
+                  }
+                  sx={{ mb: 2 }}
+                />
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  sx={{
+                    bgcolor: "#5EC2D2",
+                    "&:hover": { bgcolor: "#5EC2D2" },
+                    py: 1,
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontFamily: "poppins",
+                    fontSize: "18px",
+                    maxHeight: "50px",
+                    width: "65%",
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
             </Box>
           )}
         </Card>
@@ -326,7 +341,6 @@ const AdminAccess = () => {
             border: "1px solid #e0e0e0",
             borderRadius: 2,
             overflow: "visible",
-            maxWidth: "1102px",
           }}
         >
           <Box

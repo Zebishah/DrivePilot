@@ -43,48 +43,48 @@ interface AdminLayoutProps {
 const DRAWER_WIDTH = 280;
 
 const menuItems: MenuItem[] = [
-  { text: "Overview", icon: LayoutGrid, path: "/student-dashboard/overview" },
-  {
-    text: "Search Instructors",
-    icon: Search,
-    path: "/student-dashboard/search",
-  },
-  { text: "Book lesson", icon: BookOpen, path: "/student-dashboard/book" },
-  {
-    text: "Progress Tracker",
-    icon: Activity,
-    path: "/student-dashboard/progress",
-  },
-  {
-    text: "Payment History",
-    icon: Wallet,
-    path: "/student-dashboard/payments",
-  },
-  {
-    text: "Feedback & Rating",
-    icon: MessageSquare,
-    path: "/student-dashboard/feedback",
-  },
-  {
-    text: "Messages",
-    icon: MessageSquare,
-    path: "/student-dashboard/messages",
-  },
-  {
-    text: "Profile Setting",
-    icon: Settings,
-    path: "/student-dashboard/settings",
-  },
+  { text: "Overview", icon: LayoutGrid, path: "/admin-dashboard/overview" },
+  // {
+  //   text: "Search Instructors",
+  //   icon: Search,
+  //   path: "/admin-dashboard/search",
+  // },
+  // { text: "Book lesson", icon: BookOpen, path: "/admin-dashboard/book" },
+  // {
+  //   text: "Progress Tracker",
+  //   icon: Activity,
+  //   path: "/admin-dashboard/progress",
+  // },
+  // {
+  //   text: "Payment History",
+  //   icon: Wallet,
+  //   path: "/admin-dashboard/payments",
+  // },
+  // {
+  //   text: "Feedback & Rating",
+  //   icon: MessageSquare,
+  //   path: "/admin-dashboard/feedback",
+  // },
+  // {
+  //   text: "Messages",
+  //   icon: MessageSquare,
+  //   path: "/admin-dashboard/messages",
+  // },
+  // {
+  //   text: "Profile Setting",
+  //   icon: Settings,
+  //   path: "/admin-dashboard/settings",
+  // },
   {
     text: "Admin Access",
     icon: UserRoundCog,
     path: "/admin-dashboard/admin-access",
   },
-  {
-    text: "Help & Chat bot",
-    icon: HelpCircle,
-    path: "/student-dashboard/help",
-  },
+  // {
+  //   text: "Help & Chat bot",
+  //   icon: HelpCircle,
+  //   path: "/admin-dashboard/help",
+  // },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 
