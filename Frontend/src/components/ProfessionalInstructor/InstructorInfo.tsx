@@ -1,17 +1,34 @@
 import type React from "react";
 import { useState, useEffect } from "react";
-import { useQuery } from '@apollo/client';
+import { useQuery } from "@apollo/client";
 import { Button, Box, Typography, CircularProgress, Chip } from "@mui/material";
+import L from "leaflet";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+
+// Fix the icon issue
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+import "leaflet/dist/leaflet.css";
 import { IoStarSharp } from "react-icons/io5";
-import { FaBook, FaCar, FaCogs, FaMoneyBillWave, FaSlidersH } from "react-icons/fa";
+import {
+  FaBook,
+  FaCar,
+  FaCogs,
+  FaMoneyBillWave,
+  FaSlidersH,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { GET_NEARBY_INSTRUCTORS, getUserLocation } from "../../graphql/mutations/instructorPublic";
+import {
+  GET_NEARBY_INSTRUCTORS,
+  getUserLocation,
+} from "../../graphql/mutations/instructorPublic";
 import { getMapCenterAndMarkers } from "../../utils/mapUtils";
 import FilterPopover from "../FilterPopover";
 import { X } from "lucide-react";
+
 import InstructorsListSkeleton from "../loaders/InstructorsListSkeleton";
+
 const InstructorsInfo: React.FC = () => {
   const [filters, setFilters] = useState({
     coordinates: null,
@@ -31,24 +48,31 @@ const InstructorsInfo: React.FC = () => {
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
-    setIsOpen(true)
+    setIsOpen(true);
   };
 
-
   const open = Boolean(anchorEl);
-  const id = open ? 'simple-popover' : undefined;
+  const id = open ? "simple-popover" : undefined;
 
+  // Fix default icon paths
+  const DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+  });
 
+  L.Marker.prototype.options.icon = DefaultIcon;
   useEffect(() => {
     const fetchUserLocation = async () => {
       try {
         const coords = await getUserLocation();
-        setFilters(prev => ({
+        setFilters((prev) => ({
           ...prev,
-          coordinates: coords
+          coordinates: coords,
         }));
       } catch (error) {
-        console.error('Error fetching user location:', error);
+        console.error("Error fetching user location:", error);
       }
     };
 
@@ -61,10 +85,10 @@ const InstructorsInfo: React.FC = () => {
     variables: {
       filter: filters.activeFilters,
       limit: 5,
-      offset: 0
+      offset: 0,
     },
-    fetchPolicy: 'network-only',
-    skip: !filtersApplied && !filters.coordinates
+    fetchPolicy: "network-only",
+    skip: !filtersApplied && !filters.coordinates,
   });
 
   const handleApplyFilters = (filters) => {
@@ -74,24 +98,24 @@ const InstructorsInfo: React.FC = () => {
       ...(filters.rating > 0 && { minRating: filters.rating }),
       ...((filters.price[0] > 1000 || filters.price[1] < 10000) && {
         priceMin: filters.price[0],
-        priceMax: filters.price[1]
+        priceMax: filters.price[1],
       }),
-      ...(filters.coordinates && filters.coordinates[0] !== 0 && {
-        coordinates: filters.coordinates,
-        areaRadius: filters.areaRadius
-      }),
+      ...(filters.coordinates &&
+        filters.coordinates[0] !== 0 && {
+          coordinates: filters.coordinates,
+          areaRadius: filters.areaRadius,
+        }),
       ...(filters.availability.length > 0 && {
-        availableDates: filters.availability
-      })
+        availableDates: filters.availability,
+      }),
     };
 
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      activeFilters
+      activeFilters,
     }));
 
-
-    setIsOpen(false)
+    setIsOpen(false);
     setFiltersApplied(true);
   };
   const handleResetFilters = () => {
@@ -105,7 +129,7 @@ const InstructorsInfo: React.FC = () => {
       activeFilters: {},
       availability: [],
     });
-    setIsOpen(false)
+    setIsOpen(false);
   };
 
   // Load more instructors
@@ -114,10 +138,12 @@ const InstructorsInfo: React.FC = () => {
     fetchMore({
       variables: {
         offset: currentLength,
-        filter: filters.coordinates ? {
-          coordinates: filters.coordinates,
-          areaRadius: filters.areaRadius
-        } : null
+        filter: filters.coordinates
+          ? {
+              coordinates: filters.coordinates,
+              areaRadius: filters.areaRadius,
+            }
+          : null,
       },
       updateQuery: (prev, { fetchMoreResult }) => {
         if (!fetchMoreResult) return prev;
@@ -126,28 +152,30 @@ const InstructorsInfo: React.FC = () => {
             ...fetchMoreResult.getNearbyInstructors,
             instructors: [
               ...prev.getNearbyInstructors.instructors,
-              ...fetchMoreResult.getNearbyInstructors.instructors
-            ]
-          }
+              ...fetchMoreResult.getNearbyInstructors.instructors,
+            ],
+          },
         };
-      }
+      },
     });
   };
-
 
   const instructors = data?.getNearbyInstructors?.instructors || [];
   const hasMore = data?.getNearbyInstructors?.hasMore || false;
 
-  const { mapCenter, markers } = getMapCenterAndMarkers(filters?.coordinates, instructors);
+  const { mapCenter, markers } = getMapCenterAndMarkers(
+    filters?.coordinates,
+    instructors
+  );
 
   const generateFilterChips = () => {
-    const chips: { label: string, key: string }[] = [];
+    const chips: { label: string; key: string }[] = [];
 
     // Price Range
     if (filters.price[0] !== 1000 || filters.price[1] !== 10000) {
       chips.push({
         label: `Price: $${filters.price[0]} - $${filters.price[1]}`,
-        key: 'price'
+        key: "price",
       });
     }
 
@@ -155,7 +183,7 @@ const InstructorsInfo: React.FC = () => {
     if (filters.rating > 0) {
       chips.push({
         label: `Rating: ${filters.rating}+ Stars`,
-        key: 'rating'
+        key: "rating",
       });
     }
 
@@ -163,7 +191,7 @@ const InstructorsInfo: React.FC = () => {
     if (filters.transmission) {
       chips.push({
         label: `Transmission: ${filters.transmission}`,
-        key: 'transmission'
+        key: "transmission",
       });
     }
 
@@ -171,15 +199,15 @@ const InstructorsInfo: React.FC = () => {
     if (filters.gender) {
       chips.push({
         label: `Gender: ${filters.gender}`,
-        key: 'gender'
+        key: "gender",
       });
     }
 
     // Availability
     if (filters.availability.length > 0) {
       chips.push({
-        label: `Availability: ${filters.availability.join(', ')}`,
-        key: 'availability'
+        label: `Availability: ${filters.availability.join(", ")}`,
+        key: "availability",
       });
     }
 
@@ -187,7 +215,7 @@ const InstructorsInfo: React.FC = () => {
     if (filters.coordinates && filters.areaRadius !== 50) {
       chips.push({
         label: `Radius: ${filters.areaRadius} km`,
-        key: 'areaRadius'
+        key: "areaRadius",
       });
     }
 
@@ -197,25 +225,24 @@ const InstructorsInfo: React.FC = () => {
   // Function to remove a specific filter
   const handleDeleteFilter = (key: string) => {
     const resetFilterMap: Record<string, any> = {
-      'price': [1000, 10000],
-      'rating': 0,
-      'transmission': null,
-      'gender': null,
-      'availability': [],
-      'areaRadius': 50,
-      'coordinates': null
+      price: [1000, 10000],
+      rating: 0,
+      transmission: null,
+      gender: null,
+      availability: [],
+      areaRadius: 50,
+      coordinates: null,
     };
 
     setFilters((prev: any) => ({
       ...prev,
-      [key]: resetFilterMap[key]
+      [key]: resetFilterMap[key],
     }));
   };
   const filterChips = generateFilterChips();
 
-
   const handleViewDetails = (instructorId: string) => {
-    if (location.pathname.includes('/student-dashboard/search')) {
+    if (location.pathname.includes("/student-dashboard/search")) {
       navigate(`/student-dashboard/search/instructors/${instructorId}`);
     } else {
       navigate(`/instructors/${instructorId}`);
@@ -233,20 +260,20 @@ const InstructorsInfo: React.FC = () => {
           onClick={handleClick}
           startIcon={<FaSlidersH />}
           sx={{
-            fontFamily: 'Poppins, sans-serif',
-            backgroundColor: '#5FC2D3',
-            color: 'black',
-            textTransform: 'none',
-            paddingLeft: '2rem',
-            paddingRight: '2rem',
-            '&:hover': {
-              backgroundColor: '#4AB0C0'
+            fontFamily: "Poppins, sans-serif",
+            backgroundColor: "#5FC2D3",
+            color: "black",
+            textTransform: "none",
+            paddingLeft: "2rem",
+            paddingRight: "2rem",
+            "&:hover": {
+              backgroundColor: "#4AB0C0",
             },
-            '& .MuiButton-startIcon': {
-              marginRight: '0.5rem',
-              display: 'flex',
-              alignItems: 'center'
-            }
+            "& .MuiButton-startIcon": {
+              marginRight: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+            },
           }}
         >
           Filters
@@ -257,20 +284,20 @@ const InstructorsInfo: React.FC = () => {
           onClick={handleResetFilters}
           startIcon={<X size={20} />}
           sx={{
-            fontFamily: 'Poppins, sans-serif',
-            backgroundColor: '#5FC2D3',
-            color: 'black',
-            textTransform: 'none',
-            paddingLeft: '2rem',
-            paddingRight: '2rem',
-            '&:hover': {
-              backgroundColor: '#4AB0C0'
+            fontFamily: "Poppins, sans-serif",
+            backgroundColor: "#5FC2D3",
+            color: "black",
+            textTransform: "none",
+            paddingLeft: "2rem",
+            paddingRight: "2rem",
+            "&:hover": {
+              backgroundColor: "#4AB0C0",
             },
-            '& .MuiButton-startIcon': {
-              marginRight: '0.5rem',
-              display: 'flex',
-              alignItems: 'center'
-            }
+            "& .MuiButton-startIcon": {
+              marginRight: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+            },
           }}
         >
           Reset Filters
@@ -287,46 +314,39 @@ const InstructorsInfo: React.FC = () => {
         resetFilters={handleResetFilters}
       />
 
+      {loading && (
+        <div className="m-12">
+          <InstructorsListSkeleton />{" "}
+        </div>
+      )}
 
-      {loading && (<div className="m-12">
-        <InstructorsListSkeleton /> </div>)}
-
-
-      {
-        !loading && data?.getNearbyInstructors?.instructors.length === 0 && (
-          <Box
-            display="flex"
-            flexDirection="column"
-            justifyContent="center"
-            alignItems="center"
-            minHeight="60vh"
-            textAlign="center"
-            p={3}
+      {!loading && data?.getNearbyInstructors?.instructors.length === 0 && (
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="center"
+          alignItems="center"
+          minHeight="60vh"
+          textAlign="center"
+          p={3}
+        >
+          <Typography variant="h5" gutterBottom>
+            No Instructors Found
+          </Typography>
+          <Typography variant="body1" color="textSecondary" paragraph>
+            {filters.coordinates
+              ? "We couldn't find any instructors near your location."
+              : "Try adjusting your filters or search in a different area."}
+          </Typography>
+          <Button
+            variant="contained"
+            style={{ backgroundColor: "#5FC2D3", color: "black" }}
+            onClick={handleResetFilters}
           >
-            <img
-              src="/images/no-instructors.svg"
-              alt="No instructors found"
-              style={{ width: 200, marginBottom: 20 }}
-            />
-            <Typography variant="h5" gutterBottom>
-              No Instructors Found
-            </Typography>
-            <Typography variant="body1" color="textSecondary" paragraph>
-              {filters.coordinates
-                ? "We couldn't find any instructors near your location."
-                : "Try adjusting your filters or search in a different area."}
-            </Typography>
-            <Button
-              variant="contained"
-              style={{ backgroundColor: "#5FC2D3", color: "black" }}
-              onClick={handleResetFilters}
-            >
-              Show All Instructors
-            </Button>
-          </Box>
-        )
-      }
-
+            Show All Instructors
+          </Button>
+        </Box>
+      )}
 
       {!loading && data?.getNearbyInstructors?.instructors.length !== 0 && (
         <div className="flex flex-col md:flex-row p-4 font-poppins">
@@ -349,13 +369,15 @@ const InstructorsInfo: React.FC = () => {
                   </h2>
                   <p className="text-gray-500 mb-2">{instructor.location}</p>
                   <Box sx={{ display: "flex", alignItems: "center" }}>
-                    {[...Array(Math.floor(instructor.rating || 0))].map((_, i) => (
-                      <IoStarSharp
-                        key={i}
-                        style={{ color: '#FFDB20', marginRight: "0.5rem" }}
-                      />
-                    ))}
-                    <p className="mr-0.5">{instructor.rating || 'N/A'}</p>
+                    {[...Array(Math.floor(instructor.rating || 0))].map(
+                      (_, i) => (
+                        <IoStarSharp
+                          key={i}
+                          style={{ color: "#FFDB20", marginRight: "0.5rem" }}
+                        />
+                      )
+                    )}
+                    <p className="mr-0.5">{instructor.rating || "N/A"}</p>
                   </Box>
                 </div>
 
@@ -363,16 +385,17 @@ const InstructorsInfo: React.FC = () => {
                 <div className="w-full p-6">
                   <div className="text-left">
                     <p className="flex items-center gap-2 mb-2">
-                      <FaBook /> {`${instructor.details?.degree} Years` || 'N/A'}
+                      <FaBook />{" "}
+                      {`${instructor.details?.degree} Years` || "N/A"}
                     </p>
                     <p className="flex items-center gap-2 mb-2">
-                      <FaCar /> {instructor.details?.car || 'N/A'}
+                      <FaCar /> {instructor.details?.car || "N/A"}
                     </p>
                     <p className="flex items-center gap-2 mb-2">
-                      <FaCogs /> {instructor.details?.type || 'N/A'}
+                      <FaCogs /> {instructor.details?.type || "N/A"}
                     </p>
                     <p className="flex items-center gap-2">
-                      <FaMoneyBillWave /> {instructor.details?.rate || 'N/A'}
+                      <FaMoneyBillWave /> {instructor.details?.rate || "N/A"}
                     </p>
                   </div>
                   <Button
@@ -383,10 +406,9 @@ const InstructorsInfo: React.FC = () => {
                       borderRadius: "10px",
                       marginTop: "2rem",
                       textTransform: "none",
-                      color: "black"
+                      color: "black",
                     }}
                     onClick={() => handleViewDetails(instructor._id)}
-
                   >
                     View Details
                   </Button>
@@ -407,7 +429,6 @@ const InstructorsInfo: React.FC = () => {
             )}
           </div>
 
-
           <div className="w-full md:w-1/2 mt-4 h-96 md:h-auto pl-4">
             <MapContainer
               center={mapCenter}
@@ -416,21 +437,13 @@ const InstructorsInfo: React.FC = () => {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               {markers.map((marker) => (
-                <Marker
-                  key={marker.id}
-                  position={marker.position}
-                />
+                <Marker key={marker.id} position={marker.position} />
               ))}
             </MapContainer>
           </div>
-
-
         </div>
       )}
-
-
     </div>
-
   );
 };
 

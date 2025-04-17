@@ -1,13 +1,20 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, Typography, Grid, Box, Skeleton } from '@mui/material';
-import { FaRegCheckCircle } from 'react-icons/fa';
-import { IoMdTime } from 'react-icons/io';
-import { TiLocationOutline } from 'react-icons/ti';
-import { SlCalender } from 'react-icons/sl';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import styled from 'styled-components';
-import { CalendarCheck2 } from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Box,
+  Skeleton,
+} from "@mui/material";
+import { FaRegCheckCircle } from "react-icons/fa";
+import { IoMdTime } from "react-icons/io";
+import { TiLocationOutline } from "react-icons/ti";
+import { SlCalender } from "react-icons/sl";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import styled from "styled-components";
+import { CalendarCheck2 } from "lucide-react";
 
 // Types for Availability
 interface AvailabilitySlot {
@@ -33,7 +40,7 @@ const CalendarIconButton = styled.div`
   justify-content: center;
   width: 40px;
   height: 40px;
-  background-color: #5FC2D3;
+  background-color: #5fc2d3;
   cursor: pointer;
   position: relative;
 `;
@@ -45,7 +52,11 @@ const CustomDatePicker = styled(DatePicker)`
   }
 `;
 
-const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, onSelectAvailability }) => {
+const Availability: React.FC<AvailabilityProps> = ({
+  availabilityData,
+  loading,
+  onSelectAvailability,
+}) => {
   const [startDate, setStartDate] = useState<Date | null>(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
@@ -54,37 +65,63 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
   const transformedSlots = useMemo(() => {
     if (!availabilityData || availabilityData.length === 0) return [];
 
-    return availabilityData.map(slot => ({
-      id: slot._id,
-      time: `${slot.startTime} - ${slot.endTime}`,
-      duration: '1 hr lesson',
-      location: 'Location Not Specified',
-      date: slot.date
-    }));
+    const now = new Date();
+    const currentDate = now.toISOString().split("T")[0]; // 'YYYY-MM-DD' in UTC
+    const currentHour = now.getHours(); // Local hour (0–23)
+
+    return availabilityData
+      .filter((slot) => {
+        const slotDate = slot.date;
+        const slotHour = parseInt(slot.startTime.split(":")[0], 10);
+
+        // 👇 Add logs to verify comparison logic
+        console.log(
+          "Now:",
+          currentDate,
+          currentHour,
+          "Slot:",
+          slotDate,
+          slotHour
+        );
+
+        if (slotDate < currentDate) return false;
+
+        if (slotDate === currentDate && slotHour < currentHour) return false;
+
+        return true;
+      })
+      .map((slot) => ({
+        id: slot._id,
+        time: `${slot.startTime} - ${slot.endTime}`,
+        duration: "1 hr lesson",
+        location: "Location Not Specified",
+        date: slot.date,
+      }));
   }, [availabilityData]);
 
   const CustomInput = React.forwardRef(({ value, onClick }: any, ref: any) => (
     <CalendarIconButton onClick={onClick} ref={ref}>
-      <SlCalender style={{ color: 'black' }} />
+      <SlCalender style={{ color: "black" }} />
     </CalendarIconButton>
   ));
 
   const handleCardClick = (id: string) => {
-    setSelectedSlots(prev => {
-      const newSelection = prev.includes(id) 
-        ? prev.filter(slotId => slotId !== id)
+    setSelectedSlots((prev) => {
+      const newSelection = prev.includes(id)
+        ? prev.filter((slotId) => slotId !== id)
         : [...prev, id];
-      
+
       // Call the callback with all selected availability data
       if (onSelectAvailability) {
-        const selectedAvailabilityData = availabilityData.filter(slot => newSelection.includes(slot._id));
+        const selectedAvailabilityData = availabilityData.filter((slot) =>
+          newSelection.includes(slot._id)
+        );
         onSelectAvailability(selectedAvailabilityData);
       }
-      
+
       return newSelection;
     });
   };
-
 
   // Render loading state
   if (loading) {
@@ -92,15 +129,21 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
       <Card
         sx={{
           marginTop: 2,
-          height: { xs: 'auto', md: 600 },
-          borderRadius: '10px',
-          marginBottom: '1rem',
+          height: { xs: "auto", md: 600 },
+          borderRadius: "10px",
+          marginBottom: "1rem",
           boxShadow: 2,
           padding: 2,
         }}
       >
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: 2,
+            }}
+          >
             <Skeleton variant="text" width="30%" height={40} />
             <Skeleton variant="circular" width={40} height={40} />
           </Box>
@@ -123,22 +166,22 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
       <Card
         sx={{
           marginTop: 2,
-          height: { xs: 'auto', md: 600 },
-          borderRadius: '10px',
-          marginBottom: '1rem',
+          height: { xs: "auto", md: 600 },
+          borderRadius: "10px",
+          marginBottom: "1rem",
           boxShadow: 2,
           padding: 2,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
         }}
       >
         <Typography
           variant="h6"
           color="textSecondary"
           sx={{
-            fontFamily: 'Poppins, sans-serif',
-            textAlign: 'center'
+            fontFamily: "Poppins, sans-serif",
+            textAlign: "center",
           }}
         >
           No availability slots found
@@ -152,19 +195,26 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
       <Card
         sx={{
           marginTop: 2,
-          height: { xs: 'auto', md: 600 },
-          borderRadius: '10px',
-          marginBottom: '1rem',
+          height: { xs: "auto", md: 600 },
+          borderRadius: "10px",
+          marginBottom: "1rem",
           boxShadow: 2,
           padding: 2,
         }}
       >
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', position: 'relative', alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              position: "relative",
+              alignItems: "center",
+            }}
+          >
             <Typography
               sx={{
-                fontWeight: '600',
-                fontFamily: 'Poppins, sans-serif',
+                fontWeight: "600",
+                fontFamily: "Poppins, sans-serif",
               }}
               variant="h6"
             >
@@ -173,7 +223,9 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
             <CalendarIconWrapper>
               <CustomDatePicker
                 selected={startDate}
-                onChange={(date: React.SetStateAction<Date | null>) => setStartDate(date)}
+                onChange={(date: React.SetStateAction<Date | null>) =>
+                  setStartDate(date)
+                }
                 customInput={<CustomInput />}
                 onClickOutside={() => setIsCalendarOpen(false)}
                 open={isCalendarOpen}
@@ -183,8 +235,8 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
           </Box>
           <Typography
             sx={{
-              fontFamily: 'Poppins, sans-serif',
-              fontWeight: '600',
+              fontFamily: "Poppins, sans-serif",
+              fontWeight: "600",
             }}
             variant="subtitle1"
             marginTop={2}
@@ -197,46 +249,75 @@ const Availability: React.FC<AvailabilityProps> = ({ availabilityData, loading, 
                 <Card
                   onClick={() => handleCardClick(slot.id)}
                   sx={{
-                    borderRadius: '10px',
-                    backgroundColor: selectedSlots.includes(slot.id) ? '#5FC2D333' : '#5FC2D333',
-                    border: selectedSlots.includes(slot.id) ? '2px solid #828282' : '1px solid #cce4f7',
-                    boxShadow: selectedSlots.includes(slot.id) ? '0px 0px 10px rgba(0, 0, 0, 0.2)' : 1,
-                    width: '100%',
-                    transform: selectedSlots.includes(slot.id) ? 'scale(1.05)' : 'scale(1)',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    borderRadius: "10px",
+                    backgroundColor: selectedSlots.includes(slot.id)
+                      ? "#5FC2D333"
+                      : "#5FC2D333",
+                    border: selectedSlots.includes(slot.id)
+                      ? "2px solid #828282"
+                      : "1px solid #cce4f7",
+                    boxShadow: selectedSlots.includes(slot.id)
+                      ? "0px 0px 10px rgba(0, 0, 0, 0.2)"
+                      : 1,
+                    width: "100%",
+                    transform: selectedSlots.includes(slot.id)
+                      ? "scale(1.05)"
+                      : "scale(1)",
+                    transition: "transform 0.2s, box-shadow 0.2s",
                   }}
                 >
                   <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
-                      <CalendarCheck2 size={18} style={{ color: '#25D422' }} />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                        gap: 1,
+                      }}
+                    >
+                      <CalendarCheck2 size={18} style={{ color: "#25D422" }} />
                       <Typography
                         variant="body1"
                         sx={{
-                          fontWeight: '500',
-                          fontFamily: 'Poppins, sans-serif',
+                          fontWeight: "500",
+                          fontFamily: "Poppins, sans-serif",
                         }}
                       >
                         {slot.date}
                       </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
-                      <FaRegCheckCircle style={{ color: '#25D422' }} />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                        gap: 1,
+                      }}
+                    >
+                      <FaRegCheckCircle style={{ color: "#25D422" }} />
                       <Typography
                         variant="body1"
                         sx={{
-                          fontWeight: '500',
-                          fontFamily: 'Poppins, sans-serif',
+                          fontWeight: "500",
+                          fontFamily: "Poppins, sans-serif",
                         }}
                       >
                         {slot.time}
                       </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                        gap: 1,
+                      }}
+                    >
                       <IoMdTime />
                       <Typography
                         sx={{
-                          fontWeight: '500',
-                          fontFamily: 'Poppins, sans-serif',
+                          fontWeight: "500",
+                          fontFamily: "Poppins, sans-serif",
                         }}
                         variant="body2"
                         fontWeight="bold"
