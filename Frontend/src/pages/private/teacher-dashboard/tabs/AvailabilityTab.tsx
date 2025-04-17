@@ -20,7 +20,14 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { PickersDay, PickersDayProps } from "@mui/x-date-pickers/PickersDay";
-import { format, isAfter, startOfDay, isSameDay } from "date-fns";
+import {
+  format,
+  isAfter,
+  startOfDay,
+  isSameDay,
+  isBefore,
+  isToday,
+} from "date-fns";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   GET_TEACHER_AVAILABILITY,
@@ -134,7 +141,7 @@ export const AvailabilityTab: React.FC = () => {
   const [deleteSlot] = useMutation(DELETE_AVAILABILITY_SLOT);
 
   const handleDateChange = (date: Date | null) => {
-    if (date && !isAfter(startOfDay(date), today)) {
+    if (date && isBefore(startOfDay(date), today)) {
       toast.error("Cannot select past dates");
       return;
     }
@@ -164,11 +171,20 @@ export const AvailabilityTab: React.FC = () => {
       return;
     }
 
+    // Additional check for today's time slots
+    if (isToday(selectedDate)) {
+      const now = new Date();
+      if (isBefore(startTime, now)) {
+        toast.error("Start time must be in the future for today");
+        return;
+      }
+    }
     try {
       await addSlot({
         variables: {
           input: {
-            date: selectedDate.toISOString(),
+            // Change this line
+            date: format(selectedDate, "yyyy-MM-dd"), // Use local date format instead of ISO
             startTime: format(startTime, "HH:mm"),
             endTime: format(endTime, "HH:mm"),
           },
@@ -425,7 +441,7 @@ export const AvailabilityTab: React.FC = () => {
         >
           <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
             Add Availability Slot
-    </Typography>
+          </Typography>
         </DialogTitle>
         <DialogContent sx={{ p: 3, mt: 2 }}>
           <Box>
@@ -437,12 +453,15 @@ export const AvailabilityTab: React.FC = () => {
                     value={selectedDate}
                     onChange={handleDateChange}
                     minDate={today}
+                    shouldDisableDate={(date) =>
+                      isBefore(startOfDay(date), today)
+                    }
                     slotProps={{
                       textField: {
                         fullWidth: true,
                         sx: {
                           "& .MuiOutlinedInput-root": {
-                            padding: 1.1, // Adjust this value as needed (1 = 8px)
+                            padding: 1.1,
                             borderRadius: 1.6,
                           },
                         },
