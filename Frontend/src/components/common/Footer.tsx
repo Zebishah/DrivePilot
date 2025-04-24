@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
     <footer className="bg-gray-900 font-poppins text-white px-8 py-8 flex flex-col md:flex-row items-center justify-between mt-8">
       {/* Left Section: Logo */}
       <div className="flex items-center  md:mt-24">
-        <img src="/new-logo.png" alt="Logo" className="h-20 w-auto" />
+        <img src="/darkbluelogo.png" alt="Logo" className="h-20 w-auto" />
       </div>
 
       {/* Center Section: Links and Description */}

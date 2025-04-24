@@ -17,7 +17,11 @@ const Navbar: React.FC = () => {
     <nav className="bg-gray-900 font-poppins text-white py-4 px-6 flex justify-between items-center relative">
       {/* Logo Section */}
       <div className="flex items-center">
-        <img src="/new-logo.png" alt="Logo" className="h-10 w-auto md:ml-8" />
+        <img
+          src="/darkbluelogo.png"
+          alt="Logo"
+          className="h-10 w-auto md:ml-8"
+        />
       </div>
 
       {/* Hamburger Menu Icon */}

@@ -75,14 +75,6 @@ const Availability: React.FC<AvailabilityProps> = ({
         const slotHour = parseInt(slot.startTime.split(":")[0], 10);
 
         // 👇 Add logs to verify comparison logic
-        console.log(
-          "Now:",
-          currentDate,
-          currentHour,
-          "Slot:",
-          slotDate,
-          slotHour
-        );
 
         if (slotDate < currentDate) return false;
 

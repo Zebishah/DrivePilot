@@ -10,7 +10,7 @@ const sendOtpEmail = async (email, otp, type) => {
     message = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://yourdomain.com/logo.png" alt="Driving School Platform" style="max-height: 60px;" />
+        <h1 style="color: #4a6ee0; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
       </div>
       <div style="color: #333333; line-height: 1.6;">
         <h1 style="color: #4a6ee0; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Verify Your Email Address</h1>
@@ -22,7 +22,7 @@ const sendOtpEmail = async (email, otp, type) => {
         <p style="margin-bottom: 25px; font-size: 16px;">This code will expire in 10 minutes. If you didn't request this verification, please ignore this email.</p>
       </div>
       <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
-        <p>&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
         <p>If you have any questions, please contact our support team.</p>
       </div>
     </div>
@@ -32,7 +32,7 @@ const sendOtpEmail = async (email, otp, type) => {
     message = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://yourdomain.com/logo.png" alt="Driving School Platform" style="max-height: 60px;" />
+       <h1 style="color: #2e7d32; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
       </div>
       <div style="color: #333333; line-height: 1.6;">
         <h1 style="color: #2e7d32; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Two-Factor Authentication</h1>
@@ -41,11 +41,11 @@ const sendOtpEmail = async (email, otp, type) => {
           <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Your 2FA code is:</p>
           <p style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #2e7d32; margin: 0;">${otp}</p>
         </div>
-        <p style="margin-bottom: 25px; font-size: 16px;">This code will expire in 5 minutes. If you didn't attempt to log in, please secure your account immediately.</p>
+        <p style="margin-bottom: 25px; font-size: 16px;">This code will expire in 10 minutes. If you didn't attempt to log in, please secure your account immediately.</p>
       </div>
       <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
-        <p>&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
-        <p>This is an automated message, please do not reply.</p>
+        <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          <p>If you have any questions, please contact our support team.</p>
       </div>
     </div>
   `;
@@ -79,7 +79,9 @@ const sendOtpEmail = async (email, otp, type) => {
         </div>
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="https://yourdomain.com/login" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
+          <a href="${
+            process.env.Frontend_URL
+          }auth/signin" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
         </div>
         
         <p style="margin-bottom: 20px; font-size: 16px;">Our platform offers:</p>
@@ -119,7 +121,7 @@ const sendOtpEmail = async (email, otp, type) => {
     message = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://yourdomain.com/logo.png" alt="DSP Admin Panel" style="max-height: 70px;" />
+        <img src="https://domain.com/logo.png" alt="DSP Admin Panel" style="max-height: 70px;" />
       </div>
       <div style="color: #333333; line-height: 1.6;">
         <h1 style="color: #3d5afe; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">Welcome to the DSP Admin Panel</h1>
@@ -131,7 +133,7 @@ const sendOtpEmail = async (email, otp, type) => {
           <a href="${otp}" style="display: inline-block; background-color: white; color: #3d5afe; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">Set Up Your Account</a>
         </div>
         
-        <p style="margin-bottom: 15px; font-size: 16px;">This link is valid for 24 hours. If you need assistance, please contact our support team.</p>
+        <p style="margin-bottom: 15px; font-size: 16px;">This link is all Yours now. If you need assistance, please contact our support team.</p>
         
         <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin: 25px 0;">
           <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 15px;">What to expect as an admin:</h3>

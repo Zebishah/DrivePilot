@@ -69,12 +69,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
     if (files.length === 0) return;
 
-    // Check if adding these files would exceed maxFiles limit
-    if (documents.length + files.length > maxFiles) {
-      alert(`You can upload a maximum of ${maxFiles} files`);
-      return;
-    }
-
     const newDocuments = files.map((file) => ({
       file,
       name: file.name,
@@ -137,7 +131,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       }}
     >
       <Typography variant="body1" sx={{ mb: 2 }}>
-        Please upload your {documentType} (max {maxFiles} files)
+        Please upload your {documentType}
       </Typography>
 
       <Button
