@@ -144,7 +144,7 @@ instead.`);
         const otpEntry = await Otp.findOne({
           email,
           otp,
-          type, // Add this to ensure you're matching the correct OTP type
+          type,
           status: "unused",
         });
 
@@ -157,10 +157,8 @@ instead.`);
           throw new UserInputError("OTP has expired.");
         }
 
-        // Delete OTP after successful verification instead of just marking as "used"
-        await Otp.findByIdAndDelete(otpEntry._id);
-
         const user = await User.findOne({ email });
+
         if (!user) {
           throw new Error("User not found.");
         }
@@ -178,15 +176,20 @@ instead.`);
         const userObj = user.toObject();
         delete userObj.password;
         userObj.id = user._id.toString();
+
         if (type === "email_verification") {
           await sendOtpEmail(user.email, user.firstName, "welcome_email");
         }
+
+        await Otp.findByIdAndDelete(otpEntry._id);
+
         return {
           success: true,
           token,
           user: userObj,
         };
       } catch (error) {
+        console.error("❌ Error in verifyUser:", error);
         if (error instanceof UserInputError) {
           throw error;
         }
@@ -234,29 +237,32 @@ instead.`);
         if (!isValid) {
           throw new UserInputError("Invalid credentials");
         }
+
         let token = null;
         if (user?.role === "Admin") {
           token = createToken(user);
         }
+
         const userObj = user.toObject();
         delete userObj.password;
         userObj.id = user._id.toString();
 
-        // If user is not verified, send verification OTP instead of 2FA
+        // If user is not verified, send verification OTP
         if (!user.isUserVerified) {
-          // Delete any existing unused OTPs of type email_verification
+          // Delete existing unused email verification OTPs
           await Otp.deleteMany({
             email: user.email,
             type: "email_verification",
           });
 
           const otp = generateOTP();
+
           await Otp.create({
             email: user.email,
             otp,
             type: "email_verification",
             status: "unused",
-            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
           });
 
           await sendOtpEmail(user.email, otp, "email_verification");
@@ -268,14 +274,15 @@ instead.`);
           };
         }
 
-        // If verified, proceed with two-factor authentication OTP
+        // If verified, send two-factor authentication OTP
         const otp = generateOTP();
+
         await Otp.create({
           email: user.email,
           otp,
           type: "two_factor_auth",
           status: "unused",
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
         });
 
         await sendOtpEmail(user.email, otp, "two_factor_auth");
@@ -287,12 +294,14 @@ instead.`);
           token,
         };
       } catch (error) {
+        console.error("SignIn Error:", error);
         if (error instanceof UserInputError) {
           throw error;
         }
         throw new Error("Failed to sign in. Please try again.");
       }
     },
+
     selectRole: async (_, { role }, { user }) => {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
@@ -358,8 +367,6 @@ instead.`);
         if (input.documents && input.documents.length > 0) {
           updateData.documents = input.documents;
           // For backward compatibility, set the first document as the primary
-          updateData.documentType = input.documents[0].documentType;
-          updateData.documentUrl = input.documents[0].documentUrl;
         }
 
         const updatedStudent = await Student.findByIdAndUpdate(
@@ -389,7 +396,32 @@ instead.`);
       }
 
       try {
+        // First validate the basic schema
         instructorProfileSchema.parse(input);
+
+        // Now validate that all required documents are present
+        const requiredDocumentTypes = [
+          "Swiss Driving License (Front)",
+          "Swiss Driving License (Back)",
+          "National ID or Passport",
+          "Federal Driving Instructor Certificate",
+          "Swiss Criminal Record Extract",
+        ];
+
+        // Check that all required document types are present
+        const providedDocumentTypes = input.documents.map(
+          (doc) => doc.documentType
+        );
+
+        const missingDocuments = requiredDocumentTypes.filter(
+          (type) => !providedDocumentTypes.includes(type)
+        );
+
+        if (missingDocuments.length > 0) {
+          throw new UserInputError(
+            `Missing required documents: ${missingDocuments.join(", ")}`
+          );
+        }
 
         const updatedInstructor = await Instructor.findByIdAndUpdate(
           user.id,

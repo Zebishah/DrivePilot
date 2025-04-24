@@ -29,6 +29,9 @@ import { useMutation } from "@apollo/client";
 import { SETUP_INSTRUCTOR_PROFILE } from "../../../graphql/mutations/auth";
 import { useNavigate } from "react-router-dom";
 
+// Import the Accordion components (add these at the top of your file)
+import { Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import toast from "react-hot-toast";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import axios from "axios";
@@ -47,6 +50,14 @@ const schema = z.object({
   description: z.string().optional(),
   experience: z.string().optional(),
   documents: z
+    .array(
+      z.object({
+        documentType: z.string().optional(),
+        documentUrl: z.string().optional(),
+      })
+    )
+    .optional(),
+  optionalDocuments: z
     .array(
       z.object({
         documentType: z.string().optional(),
@@ -96,11 +107,17 @@ const InstructorProfileSetup: React.FC = () => {
     },
   });
   const requiredDocuments = [
-    "Driving License",
-    "ID Card",
-    "Certificates",
-    "Criminal Record",
-    "Other Documents",
+    "Swiss Driving License",
+    "National ID or Passport",
+    "Federal Driving Instructor Certificate",
+    "Swiss Criminal Record Extract",
+  ];
+
+  const optionalDocuments = [
+    "Driving Instructor Authorization",
+    "Professional Passenger Transport Authorization",
+    "Refresher Training Certificates",
+    "Other Document (Optional)",
   ];
 
   useEffect(() => {
@@ -117,14 +134,26 @@ const InstructorProfileSetup: React.FC = () => {
 
   const handleFileUpload = (file: File | null, documentType: string) => {
     if (file) {
-      setSelectedFiles((prev) => [...prev, { file, documentType }]);
+      if (
+        documentType === "Other Document (Optional)" ||
+        documentType === "Refresher Training Certificates"
+      ) {
+        // Append multiple optional documents
+        setSelectedFiles((prev) => [...prev, { file, documentType }]);
+      } else {
+        // Replace existing entries for the same documentType
+        setSelectedFiles((prev) => [
+          ...prev.filter((doc) => doc.documentType !== documentType),
+          { file, documentType },
+        ]);
+      }
     } else {
+      // Remove all entries of this documentType
       setSelectedFiles((prev) =>
         prev.filter((doc) => doc.documentType !== documentType)
       );
     }
   };
-
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
@@ -140,8 +169,18 @@ const InstructorProfileSetup: React.FC = () => {
         return; // Stop progression
       }
       const missingDocuments = requiredDocuments.filter((docType) => {
-        // Skip "Other Documents" from required check
         if (docType === "Other Documents") return false;
+
+        if (docType === "Swiss Driving License") {
+          const hasFront = selectedFiles.some(
+            (file) => file.documentType === "Swiss Driving License (Front)"
+          );
+          const hasBack = selectedFiles.some(
+            (file) => file.documentType === "Swiss Driving License (Back)"
+          );
+          return !(hasFront && hasBack); // missing if either side is missing
+        }
+
         return !selectedFiles.some((file) => file.documentType === docType);
       });
 
@@ -178,12 +217,13 @@ const InstructorProfileSetup: React.FC = () => {
         );
 
         // Prepare the final data for the mutation
+        const { optionalDocuments, ...filteredData } = mutationData;
+
         const finalData = {
-          ...mutationData,
-          documents: documentUploads, // Array of documents with type and URL
+          ...filteredData,
+          documents: documentUploads,
           coordinates: coordinates,
         };
-
         // Call the mutation
         await setupInstructorProfile({
           variables: {
@@ -605,7 +645,11 @@ const InstructorProfileSetup: React.FC = () => {
     </Box>
   );
   const renderMoreInfo = () => (
-    <Box component="form" onSubmit={handleSubmit(handleNext)}>
+    <Box
+      component="form"
+      onSubmit={handleSubmit(handleNext)}
+      sx={{ overflowY: "auto", height: "100%" }}
+    >
       <Box sx={{ mt: 2 }}>
         {/* Experience Selector (unchanged) */}
         <FormControl fullWidth margin="normal" error={!!errors.experience}>
@@ -648,118 +692,52 @@ const InstructorProfileSetup: React.FC = () => {
               />
             </FormControl>
 
-            {/* Special handling for Other Documents */}
-            {docType === "Other Documents" ? (
-              <Box sx={{ mt: 1 }}>
-                <input
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  style={{ display: "none" }}
-                  id={`other-docs-upload`}
-                  type="file"
-                  multiple
-                  onChange={(e) => {
-                    const files = e.target.files
-                      ? Array.from(e.target.files)
-                      : [];
-                    files.forEach((file) => {
-                      handleFileUpload(file, "Other Documents");
-                    });
-                  }}
-                />
-                <label htmlFor={`other-docs-upload`}>
-                  <Button variant="outlined" component="span" sx={{ mr: 2 }}>
-                    Upload Multiple
-                  </Button>
-                </label>
-                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  You can upload multiple files for Other Documents
-                </Typography>
+            {/* Special handling for Swiss Driving License - split into front and back */}
+            {docType === "Swiss Driving License" ? (
+              <Box sx={{ display: "flex", flexDirection: "row", gap: 2 }}>
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Front Side
+                  </Typography>
+                  <DocumentUploaderInstructor
+                    onFileUpload={(file) =>
+                      handleFileUpload(file, "Swiss Driving License (Front)")
+                    }
+                    selectedFile={
+                      selectedFiles.find(
+                        (doc) =>
+                          doc.documentType === "Swiss Driving License (Front)"
+                      )?.file || null
+                    }
+                    setSelectedFile={(file) =>
+                      handleFileUpload(file, "Swiss Driving License (Front)")
+                    }
+                    setValue={setValue}
+                    documentType="Swiss Driving License (Front)"
+                  />
+                </Box>
 
-                {/* Display uploaded other documents with previews */}
-                {selectedFiles
-                  .filter((doc) => doc.documentType === "Other Documents")
-                  .map((doc, idx) => (
-                    <Box
-                      key={idx}
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        mt: 2,
-                        p: 2,
-                        border: "1px solid #e0e0e0",
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ flexGrow: 1, fontWeight: "bold" }}
-                        >
-                          {doc.file.name}
-                        </Typography>
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            const updatedFiles = selectedFiles.filter(
-                              (f, i) =>
-                                !(
-                                  f.documentType === "Other Documents" &&
-                                  f?.file?.name === doc?.file?.name
-                                )
-                            );
-                            setSelectedFiles(updatedFiles);
-                            setValue("documents", updatedFiles);
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-
-                      {/* File Preview Section */}
-                      {doc.file.type.startsWith("image/") ? (
-                        <Box
-                          sx={{
-                            mt: 1,
-                            maxHeight: 200,
-                            overflow: "hidden",
-                            display: "flex",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <img
-                            src={URL.createObjectURL(doc.file)}
-                            alt="Preview"
-                            style={{
-                              maxWidth: "100%",
-                              maxHeight: "100%",
-                              objectFit: "contain",
-                            }}
-                          />
-                        </Box>
-                      ) : (
-                        <Box
-                          sx={{
-                            mt: 1,
-                            p: 2,
-                            backgroundColor: "#f5f5f5",
-                            borderRadius: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <DescriptionIcon
-                            sx={{ mr: 1, color: "primary.main" }}
-                          />
-                          <Typography variant="body2">
-                            PDF Document (Preview not available)
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  ))}
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Back Side
+                  </Typography>
+                  <DocumentUploaderInstructor
+                    onFileUpload={(file) =>
+                      handleFileUpload(file, "Swiss Driving License (Back)")
+                    }
+                    selectedFile={
+                      selectedFiles.find(
+                        (doc) =>
+                          doc.documentType === "Swiss Driving License (Back)"
+                      )?.file || null
+                    }
+                    setSelectedFile={(file) =>
+                      handleFileUpload(file, "Swiss Driving License (Back)")
+                    }
+                    setValue={setValue}
+                    documentType="Swiss Driving License (Back)"
+                  />
+                </Box>
               </Box>
             ) : (
               <DocumentUploaderInstructor
@@ -776,6 +754,213 @@ const InstructorProfileSetup: React.FC = () => {
             )}
           </Box>
         ))}
+
+        {/* Optional Documents Accordion Section */}
+        <Box sx={{ paddingBottom: "10px" }}>
+          <Accordion
+            sx={{
+              mt: 3,
+              mb: 3,
+              "&:before": {
+                display: "none",
+              },
+            }}
+            elevation={1}
+            defaultExpanded={false}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls="optional-documents-content"
+              id="optional-documents-header"
+              sx={{
+                backgroundColor: "primary.light",
+                color: "primary.contrastText",
+                borderRadius: "4px",
+                "&.Mui-expanded": {
+                  borderBottomLeftRadius: 0,
+                  borderBottomRightRadius: 0,
+                },
+              }}
+            >
+              <Typography variant="h6">Optional Documents Upload</Typography>
+            </AccordionSummary>
+            <AccordionDetails
+              sx={{
+                pt: 3,
+                border: "1px solid",
+                borderColor: "primary.light",
+                borderTop: "none",
+                borderBottomLeftRadius: "4px",
+                borderBottomRightRadius: "4px",
+              }}
+            >
+              {optionalDocuments.map((docType, index) => (
+                <Box key={index} sx={{ mb: 2 }}>
+                  <FormControl fullWidth margin="normal">
+                    <Controller
+                      name={`optionalDocuments.${index}.documentType`}
+                      control={control}
+                      defaultValue={docType}
+                      render={({ field }) => (
+                        <Select {...field} disabled>
+                          <MenuItem value={docType}>{docType}</MenuItem>
+                        </Select>
+                      )}
+                    />
+                  </FormControl>
+
+                  {docType === "Other Document (Optional)" ? (
+                    <Box sx={{ mt: 1 }}>
+                      <input
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        style={{ display: "none" }}
+                        id={`optional-other-docs-upload`}
+                        type="file"
+                        multiple
+                        onChange={(e) => {
+                          const files = e.target.files
+                            ? Array.from(e.target.files)
+                            : [];
+                          files.forEach((file) => {
+                            handleFileUpload(file, "Other Document (Optional)");
+                          });
+                        }}
+                      />
+                      <label htmlFor={`optional-other-docs-upload`}>
+                        <Button
+                          variant="outlined"
+                          component="span"
+                          sx={{ mr: 2 }}
+                        >
+                          Upload Multiple
+                        </Button>
+                      </label>
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        sx={{ mt: 1 }}
+                      >
+                        You can upload multiple optional documents
+                      </Typography>
+
+                      {/* Display uploaded optional other documents with previews */}
+                      {selectedFiles
+                        .filter(
+                          (doc) =>
+                            doc.documentType === "Other Document (Optional)"
+                        )
+                        .map((doc, idx) => (
+                          <Box
+                            key={idx}
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              mt: 2,
+                              p: 2,
+                              border: "1px solid #e0e0e0",
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                sx={{ flexGrow: 1, fontWeight: "bold" }}
+                              >
+                                {doc.file.name}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  const updatedFiles = selectedFiles.filter(
+                                    (f, i) =>
+                                      !(
+                                        f.documentType ===
+                                          "Other Document (Optional)" &&
+                                        f?.file?.name === doc?.file?.name
+                                      )
+                                  );
+                                  setSelectedFiles(updatedFiles);
+                                  setValue("documents", updatedFiles);
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+
+                            {/* File Preview Section */}
+                            {doc.file.type.startsWith("image/") ? (
+                              <Box
+                                sx={{
+                                  mt: 1,
+                                  maxHeight: 200,
+                                  overflow: "hidden",
+                                  display: "flex",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <img
+                                  src={URL.createObjectURL(doc.file)}
+                                  alt="Preview"
+                                  style={{
+                                    maxWidth: "100%",
+                                    maxHeight: "100%",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </Box>
+                            ) : (
+                              <Box
+                                sx={{
+                                  mt: 1,
+                                  p: 2,
+                                  backgroundColor: "#f5f5f5",
+                                  borderRadius: 1,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <DescriptionIcon
+                                  sx={{ mr: 1, color: "primary.main" }}
+                                />
+                                <Typography variant="body2">
+                                  PDF Document (Preview not available)
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        ))}
+                    </Box>
+                  ) : (
+                    <DocumentUploaderInstructor
+                      key={docType}
+                      onFileUpload={handleFileUpload}
+                      selectedFile={
+                        selectedFiles.find(
+                          (doc) => doc.documentType === docType
+                        )?.file || null
+                      }
+                      setSelectedFile={(file) =>
+                        handleFileUpload(file, docType)
+                      }
+                      allowMultiple={
+                        docType === "Refresher Training Certificates"
+                      }
+                      setValue={setValue}
+                      documentType={docType}
+                    />
+                  )}
+                </Box>
+              ))}
+            </AccordionDetails>
+          </Accordion>
+        </Box>
       </Box>
     </Box>
   );

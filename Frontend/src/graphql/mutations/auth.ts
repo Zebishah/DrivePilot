@@ -45,8 +45,6 @@ export const SETUP_STUDENT_PROFILE = gql`
       homeAddress
       location
       zipCode
-      documentType
-      documentUrl
       documents {
         documentType
         documentUrl

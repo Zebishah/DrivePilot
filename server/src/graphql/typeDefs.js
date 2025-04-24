@@ -78,14 +78,11 @@ const typeDefs = gql`
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
   }
-
   input StudentProfileInput {
     homeAddress: String!
     location: String!
     zipCode: String!
-    documentType: String # Now optional
-    documentUrl: String # Now optional
-    documents: [DocumentInput!]! # New required array
+    documents: [DocumentInput!]! # Required array
   }
 
   type Instructor implements User {

@@ -15,12 +15,16 @@ const signUpSchema = z.object({
   }),
 });
 
+const DocumentInputSchema = z.object({
+  documentType: z.string(),
+  documentUrl: z.string(),
+});
+
 const studentProfileSchema = z.object({
-  homeAddress: z.string().min(1, "Home address is required"),
-  location: z.string().min(1, "Location is required"),
-  zipCode: z.string().min(1, "ZIP code is required"),
-  documentType: z.string().min(1, "Document type is required"),
-  documentUrl: z.string().optional(),
+  homeAddress: z.string(),
+  location: z.string(),
+  zipCode: z.string(),
+  documents: z.array(DocumentInputSchema).min(1),
 });
 
 const instructorProfileSchema = z.object({
@@ -30,34 +34,57 @@ const instructorProfileSchema = z.object({
   location: z.string().min(1, "Location is required"),
   zipCode: z.string().min(1, "ZIP code is required"),
   description: z.string().optional(),
-  experience: z.string().optional(),
-  documentType: z.string().optional(),
-  documentUrl: z.string().optional(),
+  experience: z.string().min(1, "Experience is required"),
+  documents: z.array(
+    z.object({
+      documentType: z.string(),
+      documentUrl: z.string(),
+    })
+  ),
+  phone: z.string().min(1, "Phone number is required"),
+  coordinates: z
+    .object({
+      type: z.string(),
+      coordinates: z.array(z.number()),
+    })
+    .optional(),
+  carName: z.string().min(2, "Car model must be at least 2 characters"),
+  transmissionType: z.enum(["Automatic", "Manual"]),
+  gender: z.enum(["Male", "Female", "Other"]),
 });
 
-const updateInstructorProfileSchema = z.object({
-  firstName: z.string().min(1, "First name is required").optional(),
-  lastName: z.string().min(1, "Last name is required").optional(),
-  address: z.string().min(1, "Address is required").optional(),
-  location: z.string().min(1, "Location is required").optional(),
-  zipCode: z.string().min(1, "ZIP code is required").optional(),
-  description: z.string().optional(),
-  experience: z.string().optional(),
-  documents: z.array(z.object({
-    documentType: z.string(),
-    documentUrl: z.string()
-  })).optional(),
-  phone: z.string().optional(),
-  fatherName: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  languagePreference: z.string().optional()
-}).refine((data) => {
-  // If any field is provided, it must be valid
-  return Object.keys(data).length > 0;
-}, {
-  message: "At least one field must be provided for update",
-  path: ["input"]
-});
+const updateInstructorProfileSchema = z
+  .object({
+    firstName: z.string().min(1, "First name is required").optional(),
+    lastName: z.string().min(1, "Last name is required").optional(),
+    address: z.string().min(1, "Address is required").optional(),
+    location: z.string().min(1, "Location is required").optional(),
+    zipCode: z.string().min(1, "ZIP code is required").optional(),
+    description: z.string().optional(),
+    experience: z.string().optional(),
+    documents: z
+      .array(
+        z.object({
+          documentType: z.string(),
+          documentUrl: z.string(),
+        })
+      )
+      .optional(),
+    phone: z.string().optional(),
+    fatherName: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    languagePreference: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If any field is provided, it must be valid
+      return Object.keys(data).length > 0;
+    },
+    {
+      message: "At least one field must be provided for update",
+      path: ["input"],
+    }
+  );
 
 const resetPasswordSchema = z.object({
   newPassword: z

@@ -63,9 +63,34 @@ const DocumentSchema = new mongoose.Schema({
   documentType: { type: String, required: true },
   documentUrl: { type: String, required: true },
 });
+const validDocumentTypes = [
+  // Required
+  "Swiss Driving License (Front)",
+  "Swiss Driving License (Back)",
+  "National ID or Passport",
+  "Federal Driving Instructor Certificate",
+  "Swiss Criminal Record Extract",
+
+  // Optional
+  "Driving Instructor Authorization",
+  "Professional Passenger Transport Authorization",
+  "Refresher Training Certificates",
+  "Other Document (Optional)",
+];
+
 const InstructorDocumentSchema = new mongoose.Schema({
-  documentType: { type: String, required: true },
-  documentUrl: { type: String, required: true },
+  documentType: {
+    type: String,
+    required: true,
+    validate: {
+      validator: (v) => validDocumentTypes.includes(v),
+      message: (props) => `${props.value} is not a valid document type!`,
+    },
+  },
+  documentUrl: {
+    type: String,
+    required: true,
+  },
 });
 const StudentSchema = new mongoose.Schema({
   homeAddress: String,

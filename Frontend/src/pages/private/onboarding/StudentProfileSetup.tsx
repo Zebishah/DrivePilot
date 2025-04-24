@@ -24,32 +24,33 @@ import Logo from "../../../components/Logo";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { SETUP_STUDENT_PROFILE } from "../../../graphql/mutations/auth";
-import DocumentUploader from "../../../components/DocumentUploader";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
 import _ from "lodash";
+import SingleDocumentUploader from "../../../components/SingleDocumentUploader";
 
 const schema = z.object({
   homeAddress: z.string().min(1, "Home address is required"),
   location: z.string().min(1, "City is required"),
   zipCode: z.string().min(1, "ZIP code is required"),
-  documentType: z.string().min(1, "Document type is required"),
-  // documentUrl is now optional since we have documents array
-  documentUrl: z.string().optional(),
-  // Add validation for documents array
   documents: z
     .array(
       z.object({
-        documentType: z.string(),
-        documentUrl: z.string(),
+        documentType: z.enum(["Driving License", "ID Card"]).optional(),
+        documentUrl: z.string().optional(),
       })
     )
-    .optional(),
+    .min(1, "At least one document is required"),
 });
 
 const steps = ["More Information", "Payment Method"];
+type DocumentType = "Driving License" | "ID Card";
 
+type DocumentFile = {
+  file: File;
+  documentType: DocumentType;
+};
 const StudentProfileSetup = () => {
   const { user, markUserProfileComplete } = useAuth();
   const { uploadFile } = useFileUpload();
@@ -67,8 +68,7 @@ const StudentProfileSetup = () => {
       homeAddress: "",
       location: "",
       zipCode: "",
-      documentType: "",
-      documentUrl: "",
+      documents: [],
     },
   });
 
@@ -83,38 +83,45 @@ const StudentProfileSetup = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [documentFiles, setDocumentFiles] = useState<{
+    [key in DocumentType]?: DocumentFile;
+  }>({});
 
   const handleNext = async (data) => {
     if (activeStep === steps.length - 1) {
       try {
         setLoading(true);
 
-        if (!selectedFiles || selectedFiles.length === 0) {
+        if (Object.keys(documentFiles).length === 0) {
           toast.error("Please upload at least one document");
+          setLoading(false);
           return;
         }
 
-        // Upload all files
+        const filesToUpload = Object.values(documentFiles);
+
         const uploadResults = await Promise.all(
-          selectedFiles.map((file) => uploadFile(file, user?.id, user?.role))
+          filesToUpload.map(({ file }) =>
+            uploadFile(file, user?.id, user?.role)
+          )
         );
 
-        // Check if all uploads succeeded
         if (uploadResults.some((result) => !result.success)) {
           throw new Error("Some files failed to upload");
         }
 
-        // Create documents array for the input
-        const documents = selectedFiles.map((file, index) => ({
-          documentType: data.documentType, // Or use individual types if you implement that
+        const documents = filesToUpload.map((doc, index) => ({
+          documentType: doc.documentType,
           documentUrl: uploadResults[index].fileUrl,
         }));
 
+        // Update the documents field with actual URLs
+        setValue("documents", documents, { shouldValidate: true });
+
+        // Prepare the final payload
         const finalData = {
           ...data,
           documents,
-          // Keep these for backward compatibility
-          documentUrl: uploadResults[0].fileUrl,
         };
 
         await setupProfile({
@@ -122,6 +129,7 @@ const StudentProfileSetup = () => {
             input: finalData,
           },
         });
+
         markUserProfileComplete();
       } catch (error) {
         toast.error(`Profile setup failed: ${error?.message}`);
@@ -132,18 +140,42 @@ const StudentProfileSetup = () => {
       setActiveStep((prevStep) => prevStep + 1);
     }
   };
+
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
-  const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
 
-  const handleFileUpload = (files: File[] | null) => {
-    if (files) {
-      setSelectedFiles(files);
+  const handleFileUpload = (file: File | null, documentType: DocumentType) => {
+    if (file) {
+      setDocumentFiles((prev) => ({
+        ...prev,
+        [documentType]: {
+          file,
+          documentType,
+        },
+      }));
     } else {
-      setSelectedFiles(null);
+      const newDocumentFiles = { ...documentFiles };
+      delete newDocumentFiles[documentType];
+      setDocumentFiles(newDocumentFiles);
     }
+
+    // Update documents in form state
+    const updatedDocuments = Object.entries(documentFiles).reduce<
+      Array<{ documentType: string; documentUrl: string }>
+    >((acc, [docType, doc]) => {
+      if (docType === documentType && file) {
+        return [...acc, { documentType: docType, documentUrl: "pending" }];
+      }
+      if (docType !== documentType && doc) {
+        return [...acc, { documentType: docType, documentUrl: "pending" }];
+      }
+      return acc;
+    }, []);
+
+    setValue("documents", updatedDocuments, { shouldValidate: true });
   };
+
   interface Place {
     place_id: string;
     display_name: string;
@@ -406,31 +438,32 @@ const StudentProfileSetup = () => {
         Upload Documents
       </Typography>
 
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <InputLabel>Document Type</InputLabel>
-        <Controller
-          name="documentType"
-          control={control}
-          render={({ field }) => (
-            <Select
-              {...field}
-              label="Document Type"
-              error={!!errors.documentType}
-            >
-              <MenuItem value="Driving License">Driving License</MenuItem>
-              <MenuItem value="ID Card">ID Card</MenuItem>
-            </Select>
-          )}
-        />
+      {/* Driving License Document */}
+      <FormControl fullWidth sx={{ mb: 3 }} margin="normal">
+        <Select value="Driving License" disabled>
+          <MenuItem value="Driving License">Driving License</MenuItem>
+        </Select>
       </FormControl>
 
-      <DocumentUploader
-        documentType={"Document"}
+      <SingleDocumentUploader
+        documentType="Driving License"
         onFileUpload={handleFileUpload}
-        selectedFiles={selectedFiles}
-        setSelectedFiles={setSelectedFiles}
+        documentFile={documentFiles["Driving License"]}
         setValue={setValue}
-        maxFiles={3} // Optional: set maximum files
+      />
+
+      {/* ID Card Document */}
+      <FormControl fullWidth sx={{ mb: 3 }} margin="normal">
+        <Select value="ID Card" disabled>
+          <MenuItem value="ID Card">ID Card</MenuItem>
+        </Select>
+      </FormControl>
+
+      <SingleDocumentUploader
+        documentType="ID Card"
+        onFileUpload={handleFileUpload}
+        documentFile={documentFiles["ID Card"]}
+        setValue={setValue}
       />
     </Box>
   );
