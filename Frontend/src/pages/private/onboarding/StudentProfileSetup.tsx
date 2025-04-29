@@ -225,7 +225,8 @@ const StudentProfileSetup = () => {
               q: inputValue,
               format: "json",
               addressdetails: 1,
-              limit: 5,
+              limit: 10,
+              countrycodes: "ch", // Restrict to Switzerland with country code "ch"
             },
             signal: controller.signal,
           }
@@ -233,7 +234,18 @@ const StudentProfileSetup = () => {
 
         // Only update if this is the latest request
         if (lastRequestTime.current === requestId) {
-          setSuggestions(response.data);
+          // Double-check that all results are from Switzerland
+          interface OpenStreetMapResult {
+            address: {
+              country_code?: string;
+            };
+          }
+
+          const swissLocations = response.data.filter(
+            (place: OpenStreetMapResult) =>
+              place.address && place.address.country_code === "ch"
+          );
+          setSuggestions(swissLocations);
           setShowSuggestions(true);
         }
       } catch (error) {

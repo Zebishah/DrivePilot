@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -31,6 +31,7 @@ import { startOfDay } from "date-fns";
 import { ApolloError } from "@apollo/client";
 import axios from "axios";
 import { LuMapPin } from "react-icons/lu";
+import _ from "lodash";
 // Define the interfaces for the data
 interface ProfileData {
   firstName: string;
@@ -77,10 +78,10 @@ export default function EditProfile() {
     dateOfBirth: "",
     languagePreference: "",
   });
-
+  const lastRequestTime = useRef(0);
   // Get today's date at the start of the day for maximum date validation
   const today = startOfDay(new Date());
-
+  const abortControllerRef = useRef<AbortController | null>(null);
   // Update form data when profile data is loaded
   useEffect(() => {
     if (data?.teacherProfile) {
@@ -111,31 +112,62 @@ export default function EditProfile() {
     handleInputChange("dateOfBirth", newValue ? newValue.toISOString() : "");
   };
 
-  const fetchLocations = async (inputValue: string) => {
-    if (!inputValue) {
-      setSuggestions([]);
-      return;
-    }
-    try {
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/search`,
-        {
-          params: {
-            q: inputValue,
-            format: "json",
-            addressdetails: 1,
-            limit: 5,
-          },
-        }
-      );
-      setSuggestions(response.data);
-      setShowSuggestions(true);
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-      setSuggestions([]);
-    }
-  };
+  const fetchLocations = useRef(
+    _.debounce(async (inputValue) => {
+      if (!inputValue) {
+        setSuggestions([]);
+        return;
+      }
 
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const requestId = Date.now();
+      lastRequestTime.current = requestId;
+
+      try {
+        const response = await axios.get(
+          "https://nominatim.openstreetmap.org/search",
+          {
+            params: {
+              q: inputValue,
+              format: "json",
+              addressdetails: 1,
+              limit: 10,
+              countrycodes: "ch", // Restrict to Switzerland with country code "ch"
+            },
+            signal: controller.signal,
+          }
+        );
+
+        // Only update if this is the latest request
+        if (lastRequestTime.current === requestId) {
+          // Double-check that all results are from Switzerland
+          interface OpenStreetMapResult {
+            address: {
+              country_code?: string;
+            };
+          }
+
+          const swissLocations = response.data.filter(
+            (place: OpenStreetMapResult) =>
+              place.address && place.address.country_code === "ch"
+          );
+          setSuggestions(swissLocations);
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error("Error fetching locations:", error);
+          setSuggestions([]);
+        }
+      }
+    }, 300) // 300ms debounce time
+  ).current;
   const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     handleInputChange("location", value);

@@ -34,11 +34,12 @@ const InstructorsInfo: React.FC = () => {
     coordinates: null,
     areaRadius: 50,
     rating: 0,
-    transmission: null,
+    transmission: "Manual",
     gender: null,
     price: [1000, 10000],
     activeFilters: {},
     availability: [],
+    city: "Berlin",
   });
 
   const navigate = useNavigate();
@@ -123,11 +124,12 @@ const InstructorsInfo: React.FC = () => {
       coordinates: filters.coordinates,
       areaRadius: 50,
       rating: 0,
-      transmission: null,
+      transmission: "Manual",
       gender: null,
       price: [1000, 10000],
       activeFilters: {},
       availability: [],
+      city: "Berlin",
     });
     setIsOpen(false);
   };
