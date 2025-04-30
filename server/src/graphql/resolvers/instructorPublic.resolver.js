@@ -8,7 +8,7 @@ const teacherAvailabilityModel = require("../../models/teacherAvailability.model
 
 const instructorResolver = {
   Query: {
-    getNearbyInstructors: async (_, { filter = {}, limit = 5, offset = 0 }) => {
+    getNearbyInstructors: async (_, { filter = {}, offset = 0 }) => {
       try {
         // Build the base query
         let query = {
@@ -93,11 +93,7 @@ const instructorResolver = {
           };
 
           const [results, countResult] = await Promise.all([
-            User.Instructor.aggregate([
-              geoNearStage,
-              { $skip: offset },
-              { $limit: limit },
-            ]),
+            User.Instructor.aggregate([geoNearStage]),
             User.Instructor.aggregate([geoNearStage, { $count: "totalCount" }]),
           ]);
 
@@ -105,22 +101,24 @@ const instructorResolver = {
           totalCount = countResult[0]?.totalCount || 0;
         } else {
           // Non-geo query
-          instructors = await User.Instructor.find(query)
-            .skip(offset)
-            .limit(limit);
+          instructors = await User.Instructor.find(query);
+
           totalCount = await User.Instructor.countDocuments(query);
         }
 
         // Get tariffs and availability for the found instructors
         const instructorIds = instructors.map((i) => i._id);
+
+        // Build availability query
+        const availabilityQuery = { teacherId: { $in: instructorIds } };
+        if (filter.availableDates?.length) {
+          availabilityQuery.date = {
+            $in: filter.availableDates.map((d) => new Date(d)),
+          };
+        }
         const [tariffs, availability] = await Promise.all([
           teacherTariffModel.find({ teacherId: { $in: instructorIds } }),
-          teacherAvailabilityModel.find({
-            teacherId: { $in: instructorIds },
-            ...(filter.availableDates?.length && {
-              date: { $in: filter.availableDates.map((d) => new Date(d)) },
-            }),
-          }),
+          teacherAvailabilityModel.find(availabilityQuery),
         ]);
 
         const tariffMap = new Map(
@@ -165,7 +163,7 @@ const instructorResolver = {
             };
           }),
           totalCount,
-          hasMore: offset + limit < totalCount,
+          // hasMore: offset + limit < totalCount,
         };
       } catch (error) {
         throw new Error("Failed to fetch instructors");

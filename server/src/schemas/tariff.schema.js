@@ -1,14 +1,16 @@
-const { gql } = require('apollo-server-express');
+const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
   type BulkLessonPackage {
     lessons: Int!
     cost: Float!
+    startDate: String
+    endDate: String
   }
 
   type TeacherTariff {
     lessonFee: Float!
-    bulkPackages: [BulkLessonPackage!]!
+    bulkPackages: [BulkLessonPackage!]
     packageDiscount: Float!
     discountStartDate: String
     discountEndDate: String
@@ -18,11 +20,13 @@ const typeDefs = gql`
   input BulkLessonPackageInput {
     lessons: Int!
     cost: Float!
+    startDate: String
+    endDate: String
   }
 
   input TeacherTariffInput {
     lessonFee: Float!
-    bulkPackages: [BulkLessonPackageInput!]!
+    bulkPackages: [BulkLessonPackageInput!]
     packageDiscount: Float!
     discountStartDate: String
     discountEndDate: String
@@ -37,4 +41,4 @@ const typeDefs = gql`
   }
 `;
 
-module.exports = typeDefs; 
+module.exports = typeDefs;

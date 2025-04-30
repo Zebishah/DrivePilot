@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Popover,
   Box,
@@ -30,6 +30,7 @@ interface FilterPopoverProps {
   initialFilters: any;
   onApplyFilters: (filters: any) => void;
   resetFilters: () => void;
+  instructors: any;
 }
 
 const FilterPopover: React.FC<FilterPopoverProps> = ({
@@ -40,6 +41,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
   initialFilters,
   onApplyFilters,
   resetFilters,
+  instructors,
 }) => {
   const [filters, setFilters] = useState(initialFilters);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
@@ -52,7 +54,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
     { stars: 2 },
     { stars: 1 },
   ];
-
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const handleCheckboxChange = (rowIndex: number) => {
     setSelectedRow(selectedRow === rowIndex ? null : rowIndex);
   };
@@ -66,7 +68,35 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
     resetFilters();
     setSelectedRow(null);
   };
-  console.log("filters bro", filters);
+  // Extract all available dates from instructors
+  useEffect(() => {
+    if (instructors && instructors.length > 0) {
+      const dates: string[] = [];
+      instructors.forEach((instructor) => {
+        if (instructor.availability && instructor.availability.length > 0) {
+          instructor.availability.forEach((slot) => {
+            const dateObj = new Date(parseInt(slot.date));
+            const dateStr = dayjs(dateObj).format("YYYY-MM-DD");
+
+            dates.push(dateStr);
+          });
+        }
+      });
+      setAvailableDates(dates);
+    }
+  }, [instructors]);
+  const isDateAvailable = (date: dayjs.Dayjs) => {
+    const dateStr = date.format("YYYY-MM-DD");
+    return availableDates.includes(dateStr);
+  };
+
+  // This function converts timestamp from instructor data to YYYY-MM-DD
+  const formatInstructorDate = (timestamp: string) => {
+    // For timestamps in milliseconds format
+    const date = new Date(parseInt(timestamp));
+    return dayjs(date).format("YYYY-MM-DD");
+  };
+
   return (
     <Popover
       id={id}
@@ -83,7 +113,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
       }}
     >
       <div className="  w-[500px] max-h-[600px]  overflow-y-auto custom-scrollbar">
-        <div className=" mb-4 py-2">
+        <div className=" mb-4 py-4">
           <Typography
             variant="h6"
             sx={{
@@ -119,25 +149,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                     </Box> */}
 
           {/* Address */}
-          <Box>
-            <Typography sx={{ fontFamily: "Poppins, sans-serif", mb: 0.9 }}>
-              City
-            </Typography>
-            <TextField
-              select
-              fullWidth
-              value={filters.transmission || ""}
-              onChange={(e) =>
-                setFilters({ ...filters, transmission: e.target.value })
-              }
-              variant="outlined"
-              className="rounded-lg"
-            >
-              <MenuItem value="">Select City</MenuItem>
-              <MenuItem value="Manual">Berlin</MenuItem>
-              <MenuItem value="Automatic">Oslo</MenuItem>
-            </TextField>
-          </Box>
+
           <AddressSearch
             onCoordinatesChange={(coordinates) =>
               setFilters((prev) => ({ ...prev, coordinates }))
@@ -156,9 +168,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                 setFilters((prev) => ({ ...prev, areaRadius: newValue }))
               }
               valueLabelDisplay="auto"
-              min={5}
+              min={0}
               max={100}
-              step={5}
+              step={1}
               //   marks={[
               //     { value: 5, label: "5 km" },
               //     { value: 25, label: "25 km" },
@@ -183,10 +195,10 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               }}
             />
             <div className="flex justify-between text-xs text-gray-600 mt-2">
-              <span>5 km</span>
-              <span>30 km</span>
+              <span>0 km</span>
+              <span>25 km</span>
               <span>50 km</span>
-              <span>75 km</span>
+              <span>70 km</span>
               <span>100 km</span>
             </div>
           </Box>
@@ -198,12 +210,13 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               <DatePicker
                 sx={{
                   width: "100%",
+                  borderRadius: "25px !important",
                 }}
                 value={null}
                 onChange={(newValue) => {
                   if (newValue) {
                     const dateStr = newValue.format("YYYY-MM-DD");
-                    // Prevent duplicate dates
+                    // Only allow selection of available dates
                     if (!filters.availability.includes(dateStr)) {
                       setFilters((prev) => ({
                         ...prev,
@@ -212,7 +225,44 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                     }
                   }
                 }}
-                renderInput={(params) => <TextField {...params} fullWidth />}
+                shouldDisableDate={(date) => {
+                  const today = dayjs().startOf("day");
+                  return date.isBefore(today, "day");
+                }}
+                slotProps={{
+                  // Apply styling directly to the day components
+                  day: ({ day, selected, ...other }) => {
+                    const dateStr = dayjs(day).format("YYYY-MM-DD");
+                    const isAvailable = isDateAvailable(day);
+                    const isSelected = filters.availability.includes(dateStr);
+                    const today = dayjs().startOf("day");
+                    const isFutureOrToday = !day.isBefore(today, "day");
+                    return {
+                      ...other,
+                      selected: isSelected,
+                      sx: {
+                        ...(isAvailable &&
+                          isFutureOrToday &&
+                          !isSelected && {
+                            backgroundColor: "#2196F3 !important", // Blue for available dates
+                            color: "white",
+                            borderRadius: "50%",
+                            "&:hover": {
+                              backgroundColor: "#1976D2",
+                            },
+                          }),
+                        ...(isSelected && {
+                          backgroundColor: "#5FC2D3",
+                          color: "white",
+                          "&:hover": {
+                            backgroundColor: "#4AA8B8",
+                          },
+                        }),
+                      },
+                    };
+                  },
+                  // Style the calendar container
+                }}
                 renderDay={(day, _value, DayComponentProps) => {
                   const dateStr = day.format("YYYY-MM-DD");
                   const isSelected = filters.availability.includes(dateStr);
@@ -223,20 +273,11 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                       overlap="circular"
                       badgeContent={isSelected ? "✓" : undefined}
                       color="primary"
+                      sx={{
+                        backgroundColor: "#000000 !important",
+                      }}
                     >
-                      <PickersDay
-                        {...DayComponentProps}
-                        selected={isSelected}
-                        sx={{
-                          ...(isSelected && {
-                            backgroundColor: "primary.main",
-                            color: "primary.contrastText",
-                            "&:hover": {
-                              backgroundColor: "primary.dark",
-                            },
-                          }),
-                        }}
-                      />
+                      <PickersDay {...DayComponentProps} />
                     </Badge>
                   );
                 }}
@@ -371,8 +412,8 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                 setFilters((prev) => ({ ...prev, price: newValue }))
               }
               valueLabelDisplay="auto"
-              min={1000}
-              max={10000}
+              min={60}
+              max={120}
               sx={{
                 "& .MuiSlider-thumb": { color: "#5FC2D3" },
                 "& .MuiSlider-track": { color: "#d8d8d8" },
@@ -380,9 +421,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               }}
             />
             <div className="flex justify-between text-xs text-gray-600">
-              <span>$1000</span>
-              <span>$5000</span>
-              <span>$10000</span>
+              <span>60 CHF</span>
+              <span>90 CHF</span>
+              <span>120 CHF</span>
             </div>
           </Box>
 

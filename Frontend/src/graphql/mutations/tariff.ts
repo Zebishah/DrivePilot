@@ -7,6 +7,8 @@ export const GET_TEACHER_TARIFF = gql`
       bulkPackages {
         lessons
         cost
+        startDate
+        endDate
       }
       packageDiscount
       discountStartDate
@@ -23,6 +25,8 @@ export const UPDATE_TEACHER_TARIFF = gql`
       bulkPackages {
         lessons
         cost
+        startDate
+        endDate
       }
       packageDiscount
       discountStartDate
@@ -30,4 +34,4 @@ export const UPDATE_TEACHER_TARIFF = gql`
       isDefault
     }
   }
-`; 
+`;
