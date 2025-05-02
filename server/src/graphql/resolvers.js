@@ -60,10 +60,10 @@ const resolvers = {
           location: instructor.location,
           experience: instructor.experience,
           description: instructor.description,
+          profileImage: instructor.profileImage,
           address: instructor.address,
           zipCode: instructor.zipCode,
           documents: instructor.documents,
-          fatherName: instructor.fatherName,
           dateOfBirth: instructor.dateOfBirth,
           languagePreference: instructor.languagePreference,
         };

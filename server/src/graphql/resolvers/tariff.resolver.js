@@ -90,6 +90,21 @@ const resolvers = {
           {}
         );
 
+        // Handle special case for languagePreference to ensure it's always an array
+        if (cleanInput.languagePreference !== undefined) {
+          // If languagePreference is a string, convert it to an array
+          if (typeof cleanInput.languagePreference === "string") {
+            cleanInput.languagePreference = [cleanInput.languagePreference];
+          }
+          // If languagePreference is empty or null, set it to an empty array
+          if (
+            !cleanInput.languagePreference ||
+            cleanInput.languagePreference.length === 0
+          ) {
+            cleanInput.languagePreference = [];
+          }
+        }
+
         // Only allow updating instructor-specific fields
         const allowedFields = [
           "address",
@@ -101,6 +116,7 @@ const resolvers = {
           "phone",
           "fatherName",
           "dateOfBirth",
+          "profileImage",
           "languagePreference",
         ];
 
@@ -143,10 +159,11 @@ const resolvers = {
           description: instructor.description,
           address: instructor.address,
           zipCode: instructor.zipCode,
+          profileImage: instructor.profileImage,
           documents: instructor.documents,
           fatherName: instructor.fatherName,
           dateOfBirth: instructor.dateOfBirth,
-          languagePreference: instructor.languagePreference,
+          languagePreference: instructor.languagePreference, // Will now be an array
         };
       } catch (error) {
         if (error.name === "ValidationError") {

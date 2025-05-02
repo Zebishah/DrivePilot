@@ -34,6 +34,7 @@ const instructorProfileSchema = z.object({
   location: z.string().min(1, "Location is required"),
   zipCode: z.string().min(1, "ZIP code is required"),
   description: z.string().optional(),
+
   experience: z.string().min(1, "Experience is required"),
   documents: z.array(
     z.object({
@@ -71,9 +72,10 @@ const updateInstructorProfileSchema = z
       )
       .optional(),
     phone: z.string().optional(),
+    profileImage: z.string().optional(),
     fatherName: z.string().optional(),
     dateOfBirth: z.string().optional(),
-    languagePreference: z.string().optional(),
+    languagePreference: z.array(z.string()).optional(),
   })
   .refine(
     (data) => {

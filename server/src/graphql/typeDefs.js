@@ -136,12 +136,12 @@ const typeDefs = gql`
     location: String
     experience: String
     description: String
+    profileImage: String
     address: String
     zipCode: String
     documents: [Document!]
-    fatherName: String
     dateOfBirth: String
-    languagePreference: String
+    languagePreference: [String] # Changed from String to [String]
   }
   type UserBase implements User {
     id: ID!
@@ -207,9 +207,9 @@ const typeDefs = gql`
     documents: [DocumentInput!]
     phone: String
     documentUrl: String
-    fatherName: String
+    profileImage: String
     dateOfBirth: String
-    languagePreference: String
+    languagePreference: [String] # Changed from String to [String]
   }
 
   input DocumentInput {

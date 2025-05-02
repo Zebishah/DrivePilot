@@ -30,7 +30,8 @@ export default function StudentProfileSetting() {
       : "Not Provided",
     email: data?.studentProfile?.email,
     location: data?.studentProfile?.location || "Not Provided",
-    languagePreference: data?.studentProfile?.languagePreference || "Not Provided",
+    languagePreference:
+      data?.studentProfile?.languagePreference || "Not Provided",
     phone: data?.studentProfile?.phone || "Not Provided",
     description: data?.studentProfile?.description || "No description provided",
   };

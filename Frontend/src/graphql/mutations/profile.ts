@@ -12,13 +12,14 @@ export const GET_TEACHER_PROFILE = gql`
       location
       experience
       description
+      profileImage
       address
       zipCode
       documents {
         documentType
         documentUrl
       }
-      fatherName
+
       dateOfBirth
       languagePreference
     }
@@ -37,13 +38,14 @@ export const UPDATE_TEACHER_PROFILE = gql`
       location
       experience
       description
+      profileImage
       address
       zipCode
       documents {
         documentType
         documentUrl
       }
-      fatherName
+
       dateOfBirth
       languagePreference
     }

@@ -120,8 +120,9 @@ const InstructorSchema = new mongoose.Schema({
   documents: [InstructorDocumentSchema], // Array of documents
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },
+  profileImage: { type: String, required: false },
   dateOfBirth: { type: String, required: false },
-  languagePreference: { type: String, required: false },
+  languagePreference: { type: [String], required: false },
   coordinates: {
     type: {
       type: String,

@@ -16,6 +16,9 @@ import {
   Paper,
   ClickAwayListener,
   InputLabel,
+  Select,
+  MenuItem,
+  Skeleton,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
@@ -31,7 +34,10 @@ import { startOfDay } from "date-fns";
 import { ApolloError } from "@apollo/client";
 import axios from "axios";
 import { LuMapPin } from "react-icons/lu";
-import _ from "lodash";
+import _, { set } from "lodash";
+import { EditIcon } from "lucide-react";
+import { useFileUpload } from "../../../hooks/useUploadURL";
+import { useAuth } from "../../../context/AuthContext";
 // Define the interfaces for the data
 interface ProfileData {
   firstName: string;
@@ -42,10 +48,10 @@ interface ProfileData {
   experience: string;
   description: string;
   address: string;
+  profileImage?: string;
   zipCode: string;
-  fatherName?: string;
   dateOfBirth?: string;
-  languagePreference?: string;
+  languagePreference: string[]; // Changed from string to string[]
 }
 
 interface LocationSuggestion {
@@ -61,6 +67,7 @@ interface LocationSuggestion {
 export default function EditProfile() {
   const navigate = useNavigate();
   const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
+  console.log("data", data);
   const [updateProfile] = useMutation(UPDATE_TEACHER_PROFILE);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -72,15 +79,20 @@ export default function EditProfile() {
     location: "",
     experience: "",
     description: "",
+    profileImage: "",
     address: "",
     zipCode: "",
-    fatherName: "",
     dateOfBirth: "",
-    languagePreference: "",
+    languagePreference: [], // Changed from empty string to empty array
   });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const lastRequestTime = useRef(0);
   // Get today's date at the start of the day for maximum date validation
+  const { uploadFile } = useFileUpload();
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const today = startOfDay(new Date());
+  const { user } = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
   // Update form data when profile data is loaded
   useEffect(() => {
@@ -96,13 +108,64 @@ export default function EditProfile() {
         description: profile.description || "",
         address: profile.address || "",
         zipCode: profile.zipCode || "",
-        fatherName: profile.fatherName || "",
+        profileImage: profile.profileImage || "",
         dateOfBirth: profile.dateOfBirth || "",
-        languagePreference: profile.languagePreference || "",
+        languagePreference: Array.isArray(profile.languagePreference)
+          ? profile.languagePreference
+          : profile.languagePreference
+          ? [profile.languagePreference]
+          : [],
       });
+
+      // Only set the avatar preview if there's a profile image
+      if (profile.profileImage) {
+        setAvatarPreview(profile.profileImage);
+        setIsImageLoading(true);
+
+        // Check if the image is already loaded (cached)
+        const img = new Image();
+        img.src = profile.profileImage;
+        if (img.complete) {
+          setIsImageLoading(false);
+        } else {
+          img.onload = () => setIsImageLoading(false);
+          img.onerror = () => setIsImageLoading(false);
+        }
+      } else {
+        setAvatarPreview(null);
+        setIsImageLoading(false);
+      }
     }
   }, [data]);
+  const handleProfileImageUpload = async (file: File) => {
+    try {
+      setIsAvatarLoading(true);
+      const uploadResult = await uploadFile(file, user?.id, user?.role);
+      if (!uploadResult.success) {
+        toast.error(`Image upload failed: ${uploadResult.message}`);
+        return;
+      }
 
+      // Create preview URL before updating state
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
+
+      setFormData((prev) => ({
+        ...prev,
+        profileImage: uploadResult.fileUrl,
+      }));
+
+      // Set isImageLoading to true to show loading state while the new image loads
+      setIsImageLoading(true);
+
+      toast.success("Profile image updated successfully");
+    } catch (err) {
+      toast.error(`Error updating profile image: ${err?.message}`);
+    } finally {
+      setIsAvatarLoading(false);
+      // isImageLoading will be set to false when the image loads or errors in the Avatar component
+    }
+  };
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -202,10 +265,15 @@ export default function EditProfile() {
       }
 
       // Call the updateProfile mutation with the changed fields
-      await updateProfile({
+      updateProfile({
         variables: {
           input: changedFields,
         },
+        refetchQueries: [
+          {
+            query: GET_TEACHER_PROFILE,
+          },
+        ],
       });
 
       toast.success("Profile updated successfully");
@@ -223,7 +291,91 @@ export default function EditProfile() {
       toast.error("Failed to update profile");
     }
   };
+  const renderAvatar = () => {
+    // During file upload processing
+    if (isAvatarLoading) {
+      return (
+        <Box
+          sx={{
+            width: 130,
+            height: 130,
+            borderRadius: "50%",
+            bgcolor: "#e0e0e0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mb: 2,
+          }}
+        >
+          <CircularProgress size={24} />
+        </Box>
+      );
+    }
 
+    return (
+      <Box sx={{ position: "relative" }}>
+        {/* Skeleton that shows while image is loading */}
+        {isImageLoading && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 130,
+              height: 130,
+              borderRadius: "50%",
+              bgcolor: "#e0e0e0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1,
+              mb: 2,
+            }}
+          >
+            <CircularProgress size={24} />
+          </Box>
+        )}
+
+        {/* The actual avatar image */}
+        <Avatar
+          src={avatarPreview || formData.profileImage || "/default-avatar.jpg"}
+          sx={{
+            width: 130,
+            height: 130,
+            zIndex: isImageLoading ? 0 : 1,
+          }}
+          imgProps={{
+            onLoad: () => setIsImageLoading(false),
+            onError: () => {
+              setIsImageLoading(false);
+              // If the image fails to load, clear the preview
+              if (avatarPreview) {
+                setAvatarPreview(null);
+              }
+            },
+          }}
+        />
+        <Box
+          sx={{
+            position: "relative",
+            bottom: 44,
+            right: "calc(50% - 168px)",
+            backgroundColor: "white",
+            borderRadius: "50%",
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: 1,
+            zIndex: 2,
+          }}
+        >
+          <EditIcon fontSize="small" />
+        </Box>
+      </Box>
+    );
+  };
   if (loading) {
     return (
       <Box
@@ -273,20 +425,28 @@ export default function EditProfile() {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 2,
-                mb: 2,
               }}
             >
-              <Avatar
-                src="path/to/profile-image.jpg"
-                sx={{ width: 130, height: 130 }}
-              />
+              <label htmlFor="avatar-upload" style={{ cursor: "pointer" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleProfileImageUpload(file);
+                  }}
+                  id="avatar-upload"
+                  hidden
+                />
+                {renderAvatar()}
+              </label>
               <Box
                 sx={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
+                  mt: -2,
                 }}
               >
                 <Typography
@@ -402,6 +562,7 @@ export default function EditProfile() {
                   id="emailAddress"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
+                  disabled={!!formData.email} // <-- Disable if value exists
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       padding: 1.1, // Adjust this value as needed (1 = 8px)
@@ -411,30 +572,7 @@ export default function EditProfile() {
                   fullWidth
                 />
               </Grid>
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-              >
-                <InputLabel htmlFor="fatherName" sx={{ fontSize: "16px" }}>
-                  Father Name
-                </InputLabel>
-                <TextField
-                  id="fatherName"
-                  value={formData.fatherName}
-                  onChange={(e) =>
-                    handleInputChange("fatherName", e.target.value)
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      padding: 1.1, // Adjust this value as needed (1 = 8px)
-                      borderRadius: 1.6,
-                    },
-                  }}
-                  fullWidth
-                />
-              </Grid>
+
               <Grid
                 item
                 xs={12}
@@ -521,6 +659,7 @@ export default function EditProfile() {
                         : null
                     }
                     onChange={handleDateOfBirthChange}
+                    disabled={!!data.teacherProfile.dateOfBirth} // Disable if value exists
                     maxDate={today}
                     slotProps={{
                       textField: {
@@ -542,24 +681,49 @@ export default function EditProfile() {
                 sm={6}
                 sx={{ display: "flex", flexDirection: "column", gap: 1 }}
               >
-                <InputLabel htmlFor="language" sx={{ fontSize: "16px" }}>
-                  Language Preference
+                <InputLabel
+                  htmlFor="languagePreference"
+                  sx={{ fontSize: "16px" }}
+                >
+                  Language Preferences
                 </InputLabel>
-                <TextField
-                  id="language"
+                <Select
+                  id="languagePreference"
+                  fullWidth
+                  multiple
+                  displayEmpty
                   value={formData.languagePreference}
-                  onChange={(e) =>
-                    handleInputChange("languagePreference", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({
+                      ...formData,
+                      languagePreference:
+                        typeof value === "string" ? [value] : value,
+                    });
+                  }}
+                  renderValue={(selected) => {
+                    if (selected.length === 0) {
+                      return <em>Select languages</em>;
+                    }
+                    return selected.join(", ");
+                  }}
                   sx={{
                     "& .MuiOutlinedInput-root": {
-                      padding: 1.1, // Adjust this value as needed (1 = 8px)
+                      padding: 1.1,
                       borderRadius: 1.6,
                     },
                   }}
-                  fullWidth
-                />
+                >
+                  <MenuItem value="" disabled>
+                    Select languages
+                  </MenuItem>
+                  <MenuItem value="Français">Français (French)</MenuItem>
+                  <MenuItem value="Deutsch">Deutsch (German)</MenuItem>
+                  <MenuItem value="Italiano">Italiano (Italian)</MenuItem>
+                  <MenuItem value="English">English</MenuItem>
+                </Select>
               </Grid>
+
               <Grid
                 item
                 xs={12}
@@ -588,23 +752,33 @@ export default function EditProfile() {
                 sm={6}
                 sx={{ display: "flex", flexDirection: "column", gap: 1 }}
               >
-                <InputLabel htmlFor="Experience" sx={{ fontSize: "16px" }}>
+                <InputLabel htmlFor="experience" sx={{ fontSize: "16px" }}>
                   Experience
                 </InputLabel>
-                <TextField
-                  id="Experience"
+                <Select
+                  id="experience"
+                  fullWidth
+                  displayEmpty
                   value={formData.experience}
                   onChange={(e) =>
-                    handleInputChange("experience", e.target.value)
+                    setFormData({ ...formData, experience: e.target.value })
                   }
                   sx={{
                     "& .MuiOutlinedInput-root": {
-                      padding: 1.1, // Adjust this value as needed (1 = 8px)
+                      padding: 1.1,
                       borderRadius: 1.6,
                     },
                   }}
-                  fullWidth
-                />
+                >
+                  <MenuItem value="" disabled>
+                    Select experience
+                  </MenuItem>
+                  <MenuItem value="0-1">0 – 1 year of experience</MenuItem>
+                  <MenuItem value="1-3">1 – 3 years</MenuItem>
+                  <MenuItem value="3-5">3 – 5 years</MenuItem>
+                  <MenuItem value="5-10">5 – 10 years</MenuItem>
+                  <MenuItem value="10+">More than 10 years</MenuItem>
+                </Select>
               </Grid>
             </Grid>
             <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
