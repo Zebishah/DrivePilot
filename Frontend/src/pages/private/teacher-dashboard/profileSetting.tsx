@@ -308,7 +308,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.fullName}
+                    {profileData.fullName || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -324,7 +324,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.location}
+                    {profileData.location || "Not Provided"}
                   </Typography>
                 </Grid>
 
@@ -360,7 +360,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.dateOfBirth}
+                    {profileData.dateOfBirth || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -376,7 +376,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.phone}
+                    {profileData.phone || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -392,7 +392,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.email}
+                    {profileData.email || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -408,7 +408,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.experience}
+                    {profileData.experience || "Not Provided"}
                   </Typography>
                 </Grid>
               </Grid>

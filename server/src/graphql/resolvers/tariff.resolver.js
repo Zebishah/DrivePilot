@@ -109,6 +109,8 @@ const resolvers = {
         const allowedFields = [
           "address",
           "location",
+          "firstName",
+          "lastName",
           "zipCode",
           "description",
           "experience",

@@ -87,7 +87,39 @@ const updateInstructorProfileSchema = z
       path: ["input"],
     }
   );
-
+const updateStudentProfileSchema = z
+  .object({
+    firstName: z.string().min(1, "First name is required").optional(),
+    lastName: z.string().min(1, "Last name is required").optional(),
+    address: z.string().min(1, "Address is required").optional(),
+    location: z.string().min(1, "Location is required").optional(),
+    zipCode: z.string().min(1, "ZIP code is required").optional(),
+    description: z.string().optional(),
+    experience: z.string().optional(),
+    documents: z
+      .array(
+        z.object({
+          documentType: z.string(),
+          documentUrl: z.string(),
+        })
+      )
+      .optional(),
+    phone: z.string().optional(),
+    profileImage: z.string().optional(),
+    fatherName: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    languagePreference: z.array(z.string()).optional(),
+  })
+  .refine(
+    (data) => {
+      // If any field is provided, it must be valid
+      return Object.keys(data).length > 0;
+    },
+    {
+      message: "At least one field must be provided for update",
+      path: ["input"],
+    }
+  );
 const resetPasswordSchema = z.object({
   newPassword: z
     .string()
@@ -103,5 +135,6 @@ module.exports = {
   studentProfileSchema,
   instructorProfileSchema,
   updateInstructorProfileSchema,
+  updateStudentProfileSchema,
   resetPasswordSchema,
 };

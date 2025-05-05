@@ -265,7 +265,7 @@ export default function EditProfile() {
       }
 
       // Call the updateProfile mutation with the changed fields
-      updateProfile({
+      await updateProfile({
         variables: {
           input: changedFields,
         },

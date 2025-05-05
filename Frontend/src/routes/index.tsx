@@ -31,6 +31,7 @@ import StudentProfileSetting from "../pages/private/student-dashboard/profileSet
 import StudentBookings from "../pages/private/student-dashboard/bookLesson";
 import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
 import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
+import EditStudentProfile from "../pages/private/student-dashboard/EditStudentProfile";
 
 const router = createBrowserRouter([
   {
@@ -74,6 +75,9 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <StudentProfileSetting />,
+        children: [
+          { path: "edit-profile", element: <EditStudentProfile /> }, // Nested under settings
+        ],
       },
       {
         path: "book",
