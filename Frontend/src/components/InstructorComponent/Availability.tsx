@@ -90,7 +90,9 @@ const Availability: React.FC<AvailabilityProps> = ({
         date: slot.date,
       }));
   }, [availabilityData]);
-
+  React.useEffect(() => {
+    setSelectedSlots([]);
+  }, [availabilityData]);
   const CustomInput = React.forwardRef(({ value, onClick }: any, ref: any) => (
     <CalendarIconButton onClick={onClick} ref={ref}>
       <SlCalender style={{ color: "black" }} />
@@ -99,15 +101,18 @@ const Availability: React.FC<AvailabilityProps> = ({
 
   const handleCardClick = (id: string) => {
     setSelectedSlots((prev) => {
+      // Create new selection array (correctly removing or adding the clicked ID)
       const newSelection = prev.includes(id)
         ? prev.filter((slotId) => slotId !== id)
         : [...prev, id];
 
-      // Call the callback with all selected availability data
+      // Get the full availability data for ONLY the currently selected slots
+      const selectedAvailabilityData = availabilityData.filter((slot) =>
+        newSelection.includes(slot._id)
+      );
+
+      // Pass the filtered availability data to the parent component
       if (onSelectAvailability) {
-        const selectedAvailabilityData = availabilityData.filter((slot) =>
-          newSelection.includes(slot._id)
-        );
         onSelectAvailability(selectedAvailabilityData);
       }
 

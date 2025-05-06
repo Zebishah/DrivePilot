@@ -2,12 +2,8 @@
 import { gql } from "@apollo/client";
 
 export const GET_NEARBY_INSTRUCTORS = gql`
-  query GetNearbyInstructors(
-    $filter: InstructorFilterInput
-    $limit: Int
-    $offset: Int
-  ) {
-    getNearbyInstructors(filter: $filter, limit: $limit, offset: $offset) {
+  query GetNearbyInstructors($filter: InstructorFilterInput, $offset: Int) {
+    getNearbyInstructors(filter: $filter, offset: $offset) {
       instructors {
         _id
         firstName
@@ -25,9 +21,14 @@ export const GET_NEARBY_INSTRUCTORS = gql`
           type
           rate
         }
+        availability {
+          _id
+          date
+          startTime
+          endTime
+        }
       }
       totalCount
-      hasMore
     }
   }
 `;

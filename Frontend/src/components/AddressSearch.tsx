@@ -8,6 +8,7 @@ import {
   ListItem,
 } from "@mui/material";
 import axios from "axios";
+import _ from "lodash";
 
 interface AddressSearchProps {
   onCoordinatesChange: (coordinates: {
@@ -22,43 +23,67 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-
+  const abortControllerRef = useRef<AbortController | null>(null);
   // Use useRef to store and manage debounce timer
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  const lastRequestTime = useRef(0);
   // Native debounce function
-  const debouncedFetchLocations = useCallback((value: string) => {
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Set new timer
-    debounceTimerRef.current = setTimeout(async () => {
-      if (!value || value.length < 3) {
+  const debouncedFetchLocations = useRef(
+    _.debounce(async (inputValue) => {
+      if (!inputValue) {
         setSuggestions([]);
         return;
       }
+
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const requestId = Date.now();
+      lastRequestTime.current = requestId;
+
       try {
         const response = await axios.get(
-          `https://nominatim.openstreetmap.org/search`,
+          "https://nominatim.openstreetmap.org/search",
           {
             params: {
-              q: value,
+              q: inputValue,
               format: "json",
               addressdetails: 1,
-              limit: 5,
+              limit: 10,
+              countrycodes: "ch", // Restrict to Switzerland with country code "ch"
             },
+            signal: controller.signal,
           }
         );
-        setSuggestions(response.data);
-        setShowSuggestions(true);
+
+        // Only update if this is the latest request
+        if (lastRequestTime.current === requestId) {
+          // Double-check that all results are from Switzerland
+          interface OpenStreetMapResult {
+            address: {
+              country_code?: string;
+            };
+          }
+
+          const swissLocations = response.data.filter(
+            (place: OpenStreetMapResult) =>
+              place.address && place.address.country_code === "ch"
+          );
+          setSuggestions(swissLocations);
+          setShowSuggestions(true);
+        }
       } catch (error) {
-        console.error("Error fetching locations:", error);
-        setSuggestions([]);
+        if (!axios.isCancel(error)) {
+          console.error("Error fetching locations:", error);
+          setSuggestions([]);
+        }
       }
-    }, 500); // 500ms debounce
-  }, []);
+    }, 300) // 300ms debounce time
+  ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

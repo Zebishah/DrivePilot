@@ -136,12 +136,12 @@ const typeDefs = gql`
     location: String
     experience: String
     description: String
+    profileImage: String
     address: String
     zipCode: String
     documents: [Document!]
-    fatherName: String
     dateOfBirth: String
-    languagePreference: String
+    languagePreference: [String] # Changed from String to [String]
   }
   type UserBase implements User {
     id: ID!
@@ -207,9 +207,9 @@ const typeDefs = gql`
     documents: [DocumentInput!]
     phone: String
     documentUrl: String
-    fatherName: String
+    profileImage: String
     dateOfBirth: String
-    languagePreference: String
+    languagePreference: [String] # Changed from String to [String]
   }
 
   input DocumentInput {
@@ -226,6 +226,37 @@ const typeDefs = gql`
     message: String!
     token: String
   }
+  type StudentProfile {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String
+    profileImage: String
+    location: String
+    description: String
+    homeAddress: String
+    zipCode: String
+    fatherName: String
+    dateOfBirth: String
+    documents: [Document!]
+    languagePreference: [String] # Changed from String to [String]
+  }
+  input UpdateStudentProfileInput {
+    firstName: String
+    lastName: String
+    homeAddress: String
+    location: String
+    zipCode: String
+    description: String
+    fatherName: String
+    phone: String
+    documents: [DocumentInput!]
+    documentUrl: String
+    profileImage: String
+    dateOfBirth: String
+    languagePreference: [String] # Changed from String to [String]
+  }
 
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
@@ -237,6 +268,7 @@ const typeDefs = gql`
     updateTeacherProfile(
       input: UpdateInstructorProfileInput!
     ): InstructorProfile!
+    updateStudentProfile(input: UpdateStudentProfileInput!): StudentProfile!
     signIn(email: String!, password: String!): AuthPayload!
     generateUploadUrl(
       userId: String!

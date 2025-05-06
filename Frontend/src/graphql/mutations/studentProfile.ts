@@ -11,11 +11,16 @@ export const GET_STUDENT_PROFILE = gql`
       phone
       location
       description
-      address
+      homeAddress
       zipCode
+      documents {
+        documentType
+        documentUrl
+      }
       fatherName
       dateOfBirth
       languagePreference
+      profileImage
     }
   }
 `;

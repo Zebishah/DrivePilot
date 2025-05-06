@@ -278,7 +278,8 @@ const InstructorProfileSetup: React.FC = () => {
               q: inputValue,
               format: "json",
               addressdetails: 1,
-              limit: 5,
+              limit: 10,
+              countrycodes: "ch", // Restrict to Switzerland with country code "ch"
             },
             signal: controller.signal,
           }
@@ -286,7 +287,18 @@ const InstructorProfileSetup: React.FC = () => {
 
         // Only update if this is the latest request
         if (lastRequestTime.current === requestId) {
-          setSuggestions(response.data);
+          // Double-check that all results are from Switzerland
+          interface OpenStreetMapResult {
+            address: {
+              country_code?: string;
+            };
+          }
+
+          const swissLocations = response.data.filter(
+            (place: OpenStreetMapResult) =>
+              place.address && place.address.country_code === "ch"
+          );
+          setSuggestions(swissLocations);
           setShowSuggestions(true);
         }
       } catch (error) {
@@ -662,7 +674,8 @@ const InstructorProfileSetup: React.FC = () => {
                 <MenuItem value="0-1">0-1 years</MenuItem>
                 <MenuItem value="1-3">1-3 years</MenuItem>
                 <MenuItem value="3-5">3-5 years</MenuItem>
-                <MenuItem value="5+">5+ years</MenuItem>
+                <MenuItem value="5-10">5-10 years</MenuItem>
+                <MenuItem value="10+">10+ years</MenuItem>
               </Select>
             )}
           />

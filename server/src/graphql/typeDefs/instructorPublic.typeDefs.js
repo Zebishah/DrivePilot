@@ -78,7 +78,6 @@ const instructorTypeDefs = gql`
   type Query {
     getNearbyInstructors(
       filter: InstructorFilterInput
-      limit: Int = 5
       offset: Int = 0
     ): InstructorPaginationResult
     getInstructorPublicProfile(id: ID!): InstructorPublicProfile

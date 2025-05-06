@@ -12,13 +12,14 @@ export const GET_TEACHER_PROFILE = gql`
       location
       experience
       description
+      profileImage
       address
       zipCode
       documents {
         documentType
         documentUrl
       }
-      fatherName
+
       dateOfBirth
       languagePreference
     }
@@ -37,19 +38,42 @@ export const UPDATE_TEACHER_PROFILE = gql`
       location
       experience
       description
+      profileImage
       address
       zipCode
       documents {
         documentType
         documentUrl
       }
-      fatherName
+
       dateOfBirth
       languagePreference
     }
   }
 `;
-
+export const UPDATE_STUDENT_PROFILE = gql`
+  mutation UpdateStudentProfile($input: UpdateStudentProfileInput!) {
+    updateStudentProfile(input: $input) {
+      id
+      firstName
+      lastName
+      email
+      location
+      phone
+      homeAddress
+      zipCode
+      fatherName
+      description
+      profileImage
+      documents {
+        documentType
+        documentUrl
+      }
+      dateOfBirth
+      languagePreference
+    }
+  }
+`;
 // Mutation to update documents
 export const UPDATE_TEACHER_DOCUMENTS = gql`
   mutation UpdateTeacherDocuments($documents: [DocumentInput!]!) {
@@ -58,6 +82,17 @@ export const UPDATE_TEACHER_DOCUMENTS = gql`
         documentType
         documentUrl
       }
+    }
+  }
+`;
+export const GET_STUDENT_LESSON_HISTORY = gql`
+  query GetStudentLessonHistory($studentId: ID!) {
+    getStudentLessonHistory(studentId: $studentId) {
+      lessonBooked
+      bookingDate
+      payment
+      status
+      endDate
     }
   }
 `;

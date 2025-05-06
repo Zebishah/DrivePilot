@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -9,8 +9,9 @@ import {
   Button,
   Tabs,
   Tab,
+  CircularProgress,
 } from "@mui/material";
-import { Star, Edit } from "lucide-react";
+import { Star, Edit, EditIcon } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { GET_TEACHER_PROFILE } from "../../../graphql/mutations/profile";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
@@ -26,7 +27,8 @@ export default function ProfileSetting() {
   const [tabValue, setTabValue] = React.useState<TabValue>("documents");
   const navigate = useNavigate();
   const location = useLocation();
-
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
 
   if (loading)
@@ -64,6 +66,7 @@ export default function ProfileSetting() {
     location: string;
     languagePreference: string;
     phone: string;
+    profileImage: string;
     experience: string;
     rating: number;
     introduction: string;
@@ -85,6 +88,7 @@ export default function ProfileSetting() {
     languagePreference: teacherData.languagePreference || "Not Provided",
     phone: teacherData.phone,
     experience: teacherData.experience,
+    profileImage: teacherData.profileImage,
     rating: 4, // This field isn't in your API response
     introduction: teacherData.description,
     documents:
@@ -111,7 +115,70 @@ export default function ProfileSetting() {
   if (location.pathname.includes("edit-profile")) {
     return <Outlet />; // Render the EditProfile component
   }
+  const renderAvatar = () => {
+    // During file upload processing
+    if (isAvatarLoading) {
+      return (
+        <Box
+          sx={{
+            width: 130,
+            height: 130,
+            borderRadius: "50%",
+            bgcolor: "#e0e0e0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mb: 2,
+          }}
+        >
+          <CircularProgress size={24} />
+        </Box>
+      );
+    }
 
+    return (
+      <Box sx={{ position: "relative" }}>
+        {/* Skeleton that shows while image is loading */}
+        {isImageLoading && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 130,
+              height: 130,
+              borderRadius: "50%",
+              bgcolor: "#e0e0e0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1,
+              mb: 2,
+            }}
+          >
+            <CircularProgress size={24} />
+          </Box>
+        )}
+
+        {/* The actual avatar image */}
+        <Avatar
+          src={profileData.profileImage || "/default-avatar.jpg"}
+          sx={{
+            width: 130,
+            height: 130,
+            zIndex: isImageLoading ? 0 : 1,
+          }}
+          imgProps={{
+            onLoad: () => setIsImageLoading(false),
+            onError: () => {
+              setIsImageLoading(false);
+              // If the image fails to load, clear the preview
+            },
+          }}
+        />
+      </Box>
+    );
+  };
   return (
     <Box sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
       {/* Profile and Personal Information Section */}
@@ -143,10 +210,7 @@ export default function ProfileSetting() {
                   mb: 2,
                 }}
               >
-                <Avatar
-                  src="path/to/profile-image.jpg"
-                  sx={{ width: 130, height: 130 }}
-                />
+                {renderAvatar()}
                 <Box
                   sx={{
                     display: "flex",
@@ -244,7 +308,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.fullName}
+                    {profileData.fullName || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -260,39 +324,27 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.location}
+                    {profileData.location || "Not Provided"}
                   </Typography>
                 </Grid>
+
                 <Grid item xs={6}>
                   <Typography
                     variant="body2"
                     color="text.secondary"
                     sx={{ mb: 0.6 }}
                   >
-                    Father Name
+                    Language Preferences
                   </Typography>
                   <Typography
                     variant="body1"
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.fatherName}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 0.6 }}
-                  >
-                    Language Preference
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    color="black"
-                    sx={{ fontSize: "18px" }}
-                  >
-                    {profileData.languagePreference}
+                    {Array.isArray(profileData.languagePreference) &&
+                    profileData.languagePreference.length > 0
+                      ? profileData.languagePreference.join(", ")
+                      : "Not provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -308,7 +360,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.dateOfBirth}
+                    {profileData.dateOfBirth || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -324,7 +376,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.phone}
+                    {profileData.phone || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -340,7 +392,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.email}
+                    {profileData.email || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -356,7 +408,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.experience}
+                    {profileData.experience || "Not Provided"}
                   </Typography>
                 </Grid>
               </Grid>
