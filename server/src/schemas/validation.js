@@ -72,7 +72,7 @@ const updateInstructorProfileSchema = z
       )
       .optional(),
     phone: z.string().optional(),
-    profileImage: z.string().optional(),
+    profileImage: z.string().nullable().optional(), // ✅ allow null here
     fatherName: z.string().optional(),
     dateOfBirth: z.string().optional(),
     languagePreference: z.array(z.string()).optional(),
@@ -105,7 +105,7 @@ const updateStudentProfileSchema = z
       )
       .optional(),
     phone: z.string().optional(),
-    profileImage: z.string().optional(),
+    profileImage: z.string().nullable().optional(), // ✅ allow null here
     fatherName: z.string().optional(),
     dateOfBirth: z.string().optional(),
     languagePreference: z.array(z.string()).optional(),

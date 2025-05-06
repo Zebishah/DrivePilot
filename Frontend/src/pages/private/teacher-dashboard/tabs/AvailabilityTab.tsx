@@ -14,6 +14,7 @@ import {
   Badge,
   Divider,
   InputLabel,
+  CircularProgress,
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -106,14 +107,19 @@ function CustomDay(
 }
 
 export const AvailabilityTab: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [isAddSlotOpen, setIsAddSlotOpen] = useState(false);
+  const [isAddingSlot, setIsAddingSlot] = useState(false);
+  const [isDeletingSlot, setIsDeletingSlot] = useState<string | null>(null);
+
   const today = startOfDay(new Date());
 
   const { data, loading, refetch } = useQuery(GET_TEACHER_AVAILABILITY, {
     variables: { month: format(selectedDate || new Date(), "yyyy-MM-dd") },
+    fetchPolicy: "network-only", // Don't use cache
+    notifyOnNetworkStatusChange: true, // To show loading state during refetch
   });
 
   // Group slots by date and count them
@@ -137,8 +143,28 @@ export const AvailabilityTab: React.FC = () => {
     }));
   }, [data?.teacherAvailability]);
 
-  const [addSlot] = useMutation(ADD_AVAILABILITY_SLOT);
-  const [deleteSlot] = useMutation(DELETE_AVAILABILITY_SLOT);
+  const [addSlot] = useMutation(ADD_AVAILABILITY_SLOT, {
+    onCompleted: () => {
+      toast.success("Availability slot added successfully");
+      setIsAddingSlot(false);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to add availability slot: ${error.message}`);
+      setIsAddingSlot(false);
+    },
+  });
+  const [deleteSlot] = useMutation(DELETE_AVAILABILITY_SLOT, {
+    onCompleted: () => {
+      toast.success("Slot deleted successfully");
+      setIsDeletingSlot(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete slot: ${error.message}`);
+      setIsDeletingSlot(null);
+    },
+  });
 
   const handleDateChange = (date: Date | null) => {
     if (date && isBefore(startOfDay(date), today)) {
@@ -179,24 +205,26 @@ export const AvailabilityTab: React.FC = () => {
         return;
       }
     }
+
+    setIsAddingSlot(true);
+
     try {
       await addSlot({
         variables: {
           input: {
-            // Change this line
-            date: format(selectedDate, "yyyy-MM-dd"), // Use local date format instead of ISO
+            date: format(selectedDate, "yyyy-MM-dd"),
             startTime: format(startTime, "HH:mm"),
             endTime: format(endTime, "HH:mm"),
           },
         },
       });
 
-      await refetch();
       handleReset();
       setIsAddSlotOpen(false);
-      toast.success("Availability slot added successfully");
     } catch (error) {
-      toast.error("Failed to add availability slot");
+      // Error handled by mutation onError callback
+      console.error("Error adding slot:", error);
+      toast.error("Failed to add slot");
     }
   };
 
@@ -207,6 +235,7 @@ export const AvailabilityTab: React.FC = () => {
   };
 
   const handleDeleteSlot = async (id: string) => {
+    setIsDeletingSlot(id);
     try {
       await deleteSlot({
         variables: { id },
@@ -217,6 +246,50 @@ export const AvailabilityTab: React.FC = () => {
       toast.error("Failed to delete slot");
     }
   };
+  const filteredSlots = useMemo(() => {
+    if (!data?.teacherAvailability || !Array.isArray(data.teacherAvailability))
+      return [];
+
+    // If no date is selected, show all slots
+    if (!selectedDate) return data.teacherAvailability;
+
+    // If a date is selected, filter for that date
+    const formattedSelectedDate = format(selectedDate, "yyyy-MM-dd");
+
+    return data.teacherAvailability.filter((slot: AvailabilitySlot) => {
+      try {
+        // Handle possible invalid date formats more safely
+        const slotDate = slot.date ? slot.date.substring(0, 10) : ""; // Get YYYY-MM-DD format
+        return slotDate === formattedSelectedDate;
+      } catch (err) {
+        console.error("Error filtering date:", err, slot);
+        return false; // Skip invalid slots
+      }
+    });
+  }, [data?.teacherAvailability, selectedDate]);
+
+  // Sort slots chronologically if showing all slots
+  const displaySlots = useMemo(() => {
+    if (!filteredSlots.length) return [];
+
+    return [...filteredSlots].sort((a, b) => {
+      try {
+        // First compare by date - safely handle missing properties
+        const dateA = a.date || "";
+        const dateB = b.date || "";
+        const dateComparison = dateA.localeCompare(dateB);
+        if (dateComparison !== 0) return dateComparison;
+
+        // Then compare by start time if dates are the same
+        const startTimeA = a.startTime || "";
+        const startTimeB = b.startTime || "";
+        return startTimeA.localeCompare(startTimeB);
+      } catch (err) {
+        console.error("Error sorting slots:", err);
+        return 0; // Keep original order on error
+      }
+    });
+  }, [filteredSlots]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -343,28 +416,52 @@ export const AvailabilityTab: React.FC = () => {
                   variant="h6"
                   sx={{ fontWeight: 600, color: "#2c3e50" }}
                 >
-                  Available Slots
+                  {selectedDate
+                    ? `Slots for ${format(selectedDate, "MMM dd, yyyy")}`
+                    : "All Available Slots"}
                 </Typography>
-                <IconButton
-                  onClick={handleAddButtonClick}
-                  sx={{
-                    bgcolor: "#5ec2d2",
-                    color: "white",
-                    "&:hover": {
-                      bgcolor: "#4ba1b0",
-                      transform: "scale(1.05)",
-                    },
-                    transition: "all 0.2s ease-in-out",
-                  }}
-                >
-                  <AddIcon />
-                </IconButton>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  {selectedDate && (
+                    <Button
+                      size="small"
+                      onClick={() => setSelectedDate(null)}
+                      sx={{
+                        fontSize: "0.75rem",
+                        textTransform: "none",
+                        color: "#64748b",
+                        bgcolor: "#f1f5f9",
+                        borderRadius: 4,
+                        "&:hover": {
+                          bgcolor: "#e2e8f0",
+                        },
+                      }}
+                    >
+                      Show All
+                    </Button>
+                  )}
+                  <IconButton
+                    onClick={handleAddButtonClick}
+                    sx={{
+                      bgcolor: "#5ec2d2",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "#4ba1b0",
+                        transform: "scale(1.05)",
+                      },
+                      transition: "all 0.2s ease-in-out",
+                    }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Box>
               </Box>
               <Divider sx={{ mb: 2 }} />
               {loading ? (
-                <Typography>Loading slots...</Typography>
-              ) : (
-                data?.teacherAvailability.map((slot: AvailabilitySlot) => (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                  <CircularProgress size={32} sx={{ color: "#5ec2d2" }} />
+                </Box>
+              ) : displaySlots && displaySlots.length > 0 ? (
+                displaySlots.map((slot: AvailabilitySlot) => (
                   <Box
                     key={slot.id}
                     sx={{
@@ -380,6 +477,9 @@ export const AvailabilityTab: React.FC = () => {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                         borderColor: "#5ec2d2",
                       },
+                      opacity: isDeletingSlot === slot.id ? 0.5 : 1,
+                      pointerEvents:
+                        isDeletingSlot === slot.id ? "none" : "auto",
                     }}
                   >
                     <Box>
@@ -387,7 +487,19 @@ export const AvailabilityTab: React.FC = () => {
                         variant="subtitle2"
                         sx={{ fontWeight: 600, color: "#2c3e50", mb: 0.5 }}
                       >
-                        {format(new Date(slot.date), "MMM dd, yyyy")}
+                        {(() => {
+                          try {
+                            // Make sure the date string is valid before formatting
+                            const dateObj = new Date(slot.date);
+                            if (isNaN(dateObj.getTime())) {
+                              return slot.date; // Fall back to raw date if invalid
+                            }
+                            return format(dateObj, "MMM dd, yyyy");
+                          } catch (err) {
+                            console.error("Date format error:", err);
+                            return slot.date; // Fall back to raw date string on error
+                          }
+                        })()}
                       </Typography>
                       <Box
                         sx={{ display: "flex", alignItems: "center", gap: 1 }}
@@ -400,20 +512,31 @@ export const AvailabilityTab: React.FC = () => {
                         </Typography>
                       </Box>
                     </Box>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteSlot(slot.id)}
-                      sx={{
-                        color: "#ef4444",
-                        "&:hover": {
-                          bgcolor: "rgba(239, 68, 68, 0.08)",
-                        },
-                      }}
-                    >
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
+                    {isDeletingSlot === slot.id ? (
+                      <CircularProgress size={20} sx={{ color: "#ef4444" }} />
+                    ) : (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteSlot(slot.id)}
+                        sx={{
+                          color: "#ef4444",
+                          "&:hover": {
+                            bgcolor: "rgba(239, 68, 68, 0.08)",
+                          },
+                        }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    )}
                   </Box>
                 ))
+              ) : (
+                <Typography
+                  sx={{ p: 2, textAlign: "center", color: "#64748b" }}
+                >
+                  No availability slots{" "}
+                  {selectedDate ? "for this date" : "found"}
+                </Typography>
               )}
             </CardContent>
           </Card>
@@ -423,7 +546,7 @@ export const AvailabilityTab: React.FC = () => {
       {/* Add Slot Dialog */}
       <Dialog
         open={isAddSlotOpen}
-        onClose={() => setIsAddSlotOpen(false)}
+        onClose={() => !isAddingSlot && setIsAddSlotOpen(false)}
         PaperProps={{
           sx: {
             borderRadius: 2,
@@ -456,6 +579,7 @@ export const AvailabilityTab: React.FC = () => {
                     shouldDisableDate={(date) =>
                       isBefore(startOfDay(date), today)
                     }
+                    disabled={isAddingSlot}
                     slotProps={{
                       textField: {
                         fullWidth: true,
@@ -480,18 +604,19 @@ export const AvailabilityTab: React.FC = () => {
                       label="Start Time"
                       value={startTime}
                       onChange={setStartTime}
+                      disabled={isAddingSlot}
                       slotProps={{
                         textField: {
                           fullWidth: true,
                           sx: {
                             "& .MuiOutlinedInput-root": {
-                              padding: 1.1, // Adjust this value as needed (1 = 8px)
+                              padding: 1.1,
                               borderRadius: 1.6,
                             },
                           },
                         },
                       }}
-                    />{" "}
+                    />
                   </Box>
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 1 }}
@@ -503,18 +628,19 @@ export const AvailabilityTab: React.FC = () => {
                       label="End Time"
                       value={endTime}
                       onChange={setEndTime}
+                      disabled={isAddingSlot}
                       slotProps={{
                         textField: {
                           fullWidth: true,
                           sx: {
                             "& .MuiOutlinedInput-root": {
-                              padding: 1.1, // Adjust this value as needed (1 = 8px)
+                              padding: 1.1,
                               borderRadius: 1.6,
                             },
                           },
                         },
                       }}
-                    />{" "}
+                    />
                   </Box>
                 </Box>
               </Box>
@@ -525,7 +651,12 @@ export const AvailabilityTab: React.FC = () => {
           <Button
             onClick={handleAddSlot}
             variant="contained"
-            disabled={!selectedDate}
+            disabled={!selectedDate || isAddingSlot}
+            startIcon={
+              isAddingSlot ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : null
+            }
             sx={{
               bgcolor: "#5ec2d2",
               borderRadius: 2,
@@ -539,10 +670,15 @@ export const AvailabilityTab: React.FC = () => {
               },
             }}
           >
-            Add Slot
+            {isAddingSlot ? "Adding..." : "Add Slot"}
           </Button>
           <Button
-            onClick={handleReset}
+            onClick={() => {
+              if (!isAddingSlot) {
+                handleReset();
+              }
+            }}
+            disabled={isAddingSlot}
             variant="outlined"
             sx={{
               borderRadius: 2,

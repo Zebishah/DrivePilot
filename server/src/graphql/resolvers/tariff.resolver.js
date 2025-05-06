@@ -82,7 +82,7 @@ const resolvers = {
         // Remove any undefined or null values from input
         const cleanInput = Object.entries(validatedInput).reduce(
           (acc, [key, value]) => {
-            if (value !== undefined && value !== null) {
+            if (value !== undefined) {
               acc[key] = value;
             }
             return acc;
