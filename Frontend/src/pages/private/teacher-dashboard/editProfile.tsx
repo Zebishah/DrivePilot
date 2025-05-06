@@ -19,6 +19,7 @@ import {
   Select,
   MenuItem,
   Skeleton,
+  IconButton,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
@@ -35,9 +36,15 @@ import { ApolloError } from "@apollo/client";
 import axios from "axios";
 import { LuMapPin } from "react-icons/lu";
 import _, { set } from "lodash";
-import { EditIcon } from "lucide-react";
+import { DeleteIcon, EditIcon } from "lucide-react";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import { useAuth } from "../../../context/AuthContext";
+import Menu from "@mui/material/Menu";
+
+import ListItemIcon from "@mui/material/ListItemIcon";
+
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import PopupState, { bindTrigger, bindMenu } from "material-ui-popup-state";
 // Define the interfaces for the data
 interface ProfileData {
   firstName: string;
@@ -67,8 +74,9 @@ interface LocationSuggestion {
 export default function EditProfile() {
   const navigate = useNavigate();
   const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
-  console.log("data", data);
+
   const [updateProfile] = useMutation(UPDATE_TEACHER_PROFILE);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [formData, setFormData] = useState<ProfileData>({
@@ -93,6 +101,10 @@ export default function EditProfile() {
   const [isImageLoading, setIsImageLoading] = useState(false);
   const today = startOfDay(new Date());
   const { user } = useAuth();
+  const [newProfileImageFile, setNewProfileImageFile] = useState<File | null>(
+    null
+  );
+
   const abortControllerRef = useRef<AbortController | null>(null);
   // Update form data when profile data is loaded
   useEffect(() => {
@@ -137,24 +149,15 @@ export default function EditProfile() {
       }
     }
   }, [data]);
+
   const handleProfileImageUpload = async (file: File) => {
     try {
       setIsAvatarLoading(true);
-      const uploadResult = await uploadFile(file, user?.id, user?.role);
-      if (!uploadResult.success) {
-        toast.error(`Image upload failed: ${uploadResult.message}`);
-        return;
-      }
 
       // Create preview URL before updating state
       const previewUrl = URL.createObjectURL(file);
       setAvatarPreview(previewUrl);
-
-      setFormData((prev) => ({
-        ...prev,
-        profileImage: uploadResult.fileUrl,
-      }));
-
+      setNewProfileImageFile(file); // Save file for later upload
       // Set isImageLoading to true to show loading state while the new image loads
       setIsImageLoading(true);
 
@@ -241,56 +244,87 @@ export default function EditProfile() {
     handleInputChange("location", suggestion.display_name);
     setShowSuggestions(false);
   };
+  const handleDeleteAvatar = async () => {
+    try {
+      setIsAvatarLoading(true);
 
+      // Clear the preview and new file
+      setAvatarPreview(null);
+      setNewProfileImageFile(null);
+
+      // If this was from DB (profile has an image), update immediately
+      if (formData.profileImage) {
+        await updateProfile({
+          variables: {
+            input: {
+              profileImage: null,
+            },
+          },
+          refetchQueries: [{ query: GET_TEACHER_PROFILE }],
+        });
+
+        // Update local state to reflect the change
+        setFormData((prev) => ({ ...prev, profileImage: "" }));
+        toast.success("Profile image deleted successfully");
+      }
+    } catch (err) {
+      toast.error(`Error deleting profile image: ${err?.message}`);
+    } finally {
+      setIsAvatarLoading(false);
+    }
+  };
   const handleSaveChanges = async () => {
     try {
-      // Only include fields that have changed
-      const changedFields = Object.entries(formData).reduce(
-        (acc, [key, value]) => {
-          if (
-            !data?.teacherProfile ||
-            value !== data.teacherProfile[key as keyof ProfileData]
-          ) {
-            acc[key as keyof ProfileData] = value;
-          }
-          return acc;
-        },
-        {} as Partial<ProfileData>
-      );
+      let finalImageUrl = formData.profileImage;
 
-      // If no fields have changed, just navigate back
+      // If new image selected, upload it now
+      if (newProfileImageFile) {
+        setIsAvatarLoading(true);
+        const uploadResult = await uploadFile(
+          newProfileImageFile,
+          user?.id,
+          user?.role
+        );
+        if (!uploadResult.success) {
+          toast.error(`Image upload failed: ${uploadResult.message}`);
+          return;
+        }
+        finalImageUrl = uploadResult.fileUrl;
+      }
+
+      const changedFields = Object.entries({
+        ...formData,
+        profileImage: finalImageUrl,
+      }).reduce((acc, [key, value]) => {
+        if (
+          !data?.teacherProfile ||
+          value !== data.teacherProfile[key as keyof ProfileData]
+        ) {
+          acc[key as keyof ProfileData] = value;
+        }
+        return acc;
+      }, {} as Partial<ProfileData>);
+
       if (Object.keys(changedFields).length === 0) {
         navigate("/teacher-dashboard/settings");
         return;
       }
 
-      // Call the updateProfile mutation with the changed fields
       await updateProfile({
-        variables: {
-          input: changedFields,
-        },
-        refetchQueries: [
-          {
-            query: GET_TEACHER_PROFILE,
-          },
-        ],
+        variables: { input: changedFields },
+        refetchQueries: [{ query: GET_TEACHER_PROFILE }],
       });
 
       toast.success("Profile updated successfully");
       navigate("/teacher-dashboard/settings");
     } catch (error) {
       console.error("Error updating profile:", error);
-      if (error instanceof ApolloError) {
-        if (error.graphQLErrors) {
-          console.error("GraphQL Errors:", error.graphQLErrors);
-        }
-        if (error.networkError) {
-          console.error("Network Error:", error.networkError);
-        }
-      }
       toast.error("Failed to update profile");
+    } finally {
+      setIsAvatarLoading(false);
     }
   };
+
   const renderAvatar = () => {
     // During file upload processing
     if (isAvatarLoading) {
@@ -311,9 +345,21 @@ export default function EditProfile() {
         </Box>
       );
     }
-
+    const hasImage = avatarPreview || formData.profileImage;
     return (
       <Box sx={{ position: "relative" }}>
+        {/* Hidden file input referenced by fileInputRef */}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleProfileImageUpload(file);
+          }}
+          ref={fileInputRef}
+          style={{ display: "none" }}
+        />
+
         {/* Skeleton that shows while image is loading */}
         {isImageLoading && (
           <Box
@@ -357,21 +403,62 @@ export default function EditProfile() {
         />
         <Box
           sx={{
-            position: "relative",
-            bottom: 44,
-            right: "calc(50% - 168px)",
-            backgroundColor: "white",
-            borderRadius: "50%",
-            width: 32,
-            height: 32,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: 1,
+            position: "absolute",
+            top: 0,
+            right: 0,
             zIndex: 2,
           }}
         >
-          <EditIcon fontSize="small" />
+          <PopupState variant="popover" popupId="avatar-menu-popup">
+            {(popupState) => (
+              <>
+                <IconButton
+                  {...bindTrigger(popupState)}
+                  size="small"
+                  sx={{
+                    backgroundColor: "white",
+                    boxShadow: 1,
+                    "&:hover": {
+                      backgroundColor: "#f5f5f5",
+                    },
+                  }}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+                <Menu {...bindMenu(popupState)}>
+                  <MenuItem
+                    onClick={() => {
+                      popupState.close();
+                      // Directly trigger the file input click using the ref
+                      if (fileInputRef.current) {
+                        fileInputRef.current.click();
+                      }
+                    }}
+                  >
+                    <ListItemIcon>
+                      <EditIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Edit</ListItemText>
+                  </MenuItem>
+
+                  {hasImage && (
+                    <MenuItem
+                      onClick={() => {
+                        popupState.close();
+                        handleDeleteAvatar();
+                      }}
+                      sx={{ color: "error.main" }}
+                    >
+                      <ListItemIcon>
+                        <DeleteIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Delete</ListItemText>
+                    </MenuItem>
+                  )}
+                </Menu>
+              </>
+            )}
+          </PopupState>
         </Box>
       </Box>
     );
@@ -427,26 +514,14 @@ export default function EditProfile() {
                 justifyContent: "center",
               }}
             >
-              <label htmlFor="avatar-upload" style={{ cursor: "pointer" }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleProfileImageUpload(file);
-                  }}
-                  id="avatar-upload"
-                  hidden
-                />
-                {renderAvatar()}
-              </label>
+              {renderAvatar()}
+
               <Box
                 sx={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  mt: -2,
                 }}
               >
                 <Typography

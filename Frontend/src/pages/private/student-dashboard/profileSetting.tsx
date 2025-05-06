@@ -51,7 +51,7 @@ export default function StudentProfileSetting() {
     );
 
   const studentData = data?.studentProfile;
-  console.log("Profile data:", studentData); // Debugging line
+
   if (!studentData)
     return (
       <Box sx={{ p: 3 }}>

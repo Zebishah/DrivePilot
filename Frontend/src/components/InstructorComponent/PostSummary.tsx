@@ -73,7 +73,6 @@ const ProfileSummary: React.FC = () => {
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
 
   const handleBookNow = () => {
-    console.log("selectedAvailability", selectedAvailability);
     if (selectedAvailability.length === 0) {
       toast.error("Please select an availability slot before booking.");
       return;

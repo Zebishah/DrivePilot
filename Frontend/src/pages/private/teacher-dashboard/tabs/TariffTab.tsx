@@ -12,6 +12,7 @@ import {
   IconButton,
   Tooltip,
   Slider,
+  CircularProgress,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -49,6 +50,7 @@ export const TariffTab: React.FC = () => {
 
   const [lessonFeeError, setLessonFeeError] = useState<string>("");
 
+  const [isLoading, setIsLoading] = useState(false);
   const MIN_LESSON_FEE = 60;
   const MAX_LESSON_FEE = 120;
   const MIN_DISCOUNT = 0;
@@ -116,8 +118,24 @@ export const TariffTab: React.FC = () => {
     field: keyof BulkLessonPackage,
     value: any
   ) => {
-    // Prevent negative values for numbers
-    if (typeof value === "number" && value < 0) return;
+    // Only validate discount percentage if the field is 'cost'
+    if (field === "cost") {
+      const numValue = Number(value);
+
+      // Allow empty string to permit clearing the input
+      if (value === "") {
+        const updatedPackages = [...(tariffData.bulkPackages || [])];
+        updatedPackages[index] = { ...updatedPackages[index], [field]: null };
+        setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
+        return;
+      }
+
+      // Reject non-number or out-of-range input and show toast
+      if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+        toast.error("Discount must be between 1% and 100%");
+        return;
+      }
+    }
 
     const updatedPackages = [...(tariffData.bulkPackages || [])];
     updatedPackages[index] = { ...updatedPackages[index], [field]: value };
@@ -165,6 +183,7 @@ export const TariffTab: React.FC = () => {
   // Handle form submission with validation
   const handleSaveChanges = async () => {
     // Validate lesson fee
+    setIsLoading(true);
     if (
       tariffData.lessonFee < MIN_LESSON_FEE ||
       tariffData.lessonFee > MAX_LESSON_FEE
@@ -282,6 +301,9 @@ export const TariffTab: React.FC = () => {
     } catch (error) {
       console.error("Error saving tariff:", error);
       toast.error("Failed to save tariff settings");
+    } finally {
+      // Reset loading state regardless of success or failure
+      setIsLoading(false);
     }
   };
 
@@ -732,6 +754,7 @@ export const TariffTab: React.FC = () => {
           20%
         </Typography>
       </Box>
+
       <Box
         sx={{
           display: "flex",
@@ -743,15 +766,32 @@ export const TariffTab: React.FC = () => {
         <Button
           variant="contained"
           onClick={handleSaveChanges}
+          disabled={isLoading}
           sx={{
             bgcolor: "#5ec2d2",
             "&:hover": { bgcolor: "#4ba1b0" },
             textTransform: "none",
             px: 6,
             py: 1,
+            position: "relative",
           }}
         >
-          Save Changes
+          {isLoading ? (
+            <>
+              <CircularProgress
+                size={24}
+                sx={{
+                  color: "white",
+                  position: "absolute",
+                  left: "50%",
+                  marginLeft: "-12px",
+                }}
+              />
+              <span style={{ visibility: "hidden" }}>Save Changes</span>
+            </>
+          ) : (
+            "Save Changes"
+          )}
         </Button>
       </Box>
     </Box>
