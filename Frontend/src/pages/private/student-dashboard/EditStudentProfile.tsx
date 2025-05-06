@@ -98,7 +98,7 @@ export default function EditStudentProfile() {
   useEffect(() => {
     if (data?.studentProfile) {
       const profile = data.studentProfile;
-      console.log("Profile data:", profile); // Debugging line
+
       setFormData({
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",

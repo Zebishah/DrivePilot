@@ -74,7 +74,7 @@ interface LocationSuggestion {
 export default function EditProfile() {
   const navigate = useNavigate();
   const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
-  console.log("data", data);
+
   const [updateProfile] = useMutation(UPDATE_TEACHER_PROFILE);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);

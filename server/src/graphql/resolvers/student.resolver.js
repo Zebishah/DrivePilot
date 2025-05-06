@@ -13,12 +13,9 @@ const studentResolver = {
 
       try {
         const student = await Student.findById(user.id);
-        console.log("student data from DB:", student);
-        console.log("profileImage field:", student.profileImage);
 
         // Check if the field exists but under a different name
         const studentObj = student.toObject ? student.toObject() : student;
-        console.log("All student fields:", Object.keys(studentObj));
 
         // Try to find any field that might contain profile image URL
         const possibleImageFields = Object.keys(studentObj).filter(
@@ -29,7 +26,6 @@ const studentResolver = {
               key.toLowerCase().includes("avatar") ||
               key.toLowerCase().includes("picture"))
         );
-        console.log("Possible image fields:", possibleImageFields);
 
         if (!student) {
           return null;
