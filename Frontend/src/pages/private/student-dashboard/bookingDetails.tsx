@@ -39,7 +39,9 @@ const BookingDetails: React.FC = () => {
     isCurrentBooking = true,
     status,
     bookingId,
+    instructorId
   } = location.state || {};
+
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCancelled = status === "cancelled";
@@ -47,7 +49,7 @@ const BookingDetails: React.FC = () => {
   const [createBooking] = useMutation(CREATE_BOOKING, {
     onCompleted: () => {
       handleCloseDialog();
-      navigate("/student-dashboard/overview");
+      navigate("/student-dashboard/book");
       toast.success("Booking created successfully!");
     },
     onError: (error) => {
@@ -122,7 +124,8 @@ const BookingDetails: React.FC = () => {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const handleReschedule = () => {
     if (isCurrentBooking || isCancelled) {
-      navigate(`/student-dashboard/search/instructors/${instructorData?.id?._id}`);
+
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
     }
     const firstSlot = selectedAvailability[0];
     const lessonStart = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
@@ -144,7 +147,7 @@ const BookingDetails: React.FC = () => {
       await cancelBooking({ variables: { bookingId: bookingId } });
       toast.success("Booking cancelled for rescheduling");
       // Navigate to instructor page for rebooking
-      navigate(`/student-dashboard/search/instructors/${instructorData?.id?._id}`);
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to reschedule booking");
     } finally {
@@ -159,7 +162,7 @@ const BookingDetails: React.FC = () => {
   const [cancelBooking] = useMutation(CANCEL_BOOKING);
   const handleOpenCancel = () => {
     if (isCurrentBooking) {
-      navigate(`/student-dashboard/search/instructors/${instructorData?.id}`);
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
     }
     const firstSlot = selectedAvailability[0];
     const lessonStart = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
@@ -218,15 +221,15 @@ const BookingDetails: React.FC = () => {
           </Typography>
           {!isCurrentBooking && (
             <Typography
-              variant="body1"
               sx={{
-                color:
-                  status === "confirmed"
-                    ? "green"
-                    : status === "cancelled"
-                      ? "red"
-                      : "orange",
-                fontWeight: "bold",
+                px: 2,
+                py: 0.5,
+                borderRadius: 1,
+                bgcolor: status === 'confirmed' ? 'rgba(0, 200, 83, 0.1)' :
+                  status === 'cancelled' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(255, 152, 0, 0.1)',
+                color: status === 'confirmed' ? 'rgb(0, 200, 83)' :
+                  status === 'cancelled' ? 'rgb(211, 47, 47)' : 'rgb(255, 152, 0)',
+                fontWeight: 600,
               }}
             >
               {status.toUpperCase()}

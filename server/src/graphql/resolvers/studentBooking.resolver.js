@@ -67,7 +67,12 @@ const studentBookingResolver = {
         }
 
         // 1) Create & save the booking
-        const booking = new StudentBooking(validatedInput);
+        //Temp status confirmed as there is no payment integration yet
+        //TODO: Integrate payment gateway and update status accordingly
+        const booking = new StudentBooking({
+          ...validatedInput,
+          status: "confirmed", // Set status as confirmed directly
+        });
         await booking.save();
 
         // 2) **Mark those availability slots as “booked”**
