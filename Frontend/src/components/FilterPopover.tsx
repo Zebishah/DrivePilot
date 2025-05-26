@@ -21,6 +21,8 @@ import dayjs from "dayjs";
 import { Badge } from "@mui/material";
 import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import ClearIcon from "@mui/icons-material/Clear";
+import { useAuth } from "../context/AuthContext";
+
 // Define interface for filters
 interface FilterPopoverProps {
   id: string;
@@ -46,6 +48,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
   const [filters, setFilters] = useState(initialFilters);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
+  const { user } = useAuth();
   // Predefined rows for rating
   const rows = [
     { stars: 5 },
@@ -123,7 +126,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               marginLeft: 2,
             }}
           >
-            Filters
+            Filter
           </Typography>
           <div
             className="border-b w-full mt-2"
@@ -149,12 +152,13 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                     </Box> */}
 
           {/* Address */}
-
-          <AddressSearch
-            onCoordinatesChange={(coordinates) =>
-              setFilters((prev) => ({ ...prev, coordinates }))
-            }
-          />
+          {user?.role !== "Student" && (
+            <AddressSearch
+              onCoordinatesChange={(coordinates) =>
+                setFilters((prev) => ({ ...prev, coordinates }))
+              }
+            />
+          )}
 
           {/* Area Radius */}
           <Box>
@@ -211,6 +215,13 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                 sx={{
                   width: "100%",
                   borderRadius: "25px !important",
+                  "& .MuiOutlinedInput-input": {
+                    // Add your custom styles here
+                    padding: "14px 14px !important",
+                    fontSize: "16px",
+                    fontFamily: "Poppins, sans-serif",
+                    // Add any other styles you need
+                  },
                 }}
                 value={null}
                 onChange={(newValue) => {
@@ -393,6 +404,15 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               }
               variant="outlined"
               className="rounded-lg"
+              sx={{
+                "& .MuiOutlinedInput-input": {
+                  // Add your custom styles here
+                  padding: "14px 14px !important",
+                  fontSize: "16px",
+                  fontFamily: "Poppins, sans-serif",
+                  // Add any other styles you need
+                },
+              }}
             >
               <MenuItem value="">All Types</MenuItem>
               <MenuItem value="Manual">Manual</MenuItem>
@@ -497,7 +517,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                 "&:hover": { backgroundColor: "#4AB0C0" },
               }}
             >
-              Apply Filters
+              Apply Filtersss
             </Button>
             <Button
               variant="contained"

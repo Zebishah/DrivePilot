@@ -28,10 +28,32 @@ import FilterPopover from "../FilterPopover";
 import { X } from "lucide-react";
 
 import InstructorsListSkeleton from "../loaders/InstructorsListSkeleton";
+import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
+import axios from "axios";
+
+type FiltersState = {
+  coordinates: null | number[];
+  areaRadius: number;
+  rating: number;
+  transmission: string | null;
+  gender: string | null;
+  price: number[];
+  activeFilters: Record<string, any>;
+  availability: string[];
+  city: string;
+};
+// Add this function to fetch coordinates for student's location
+
+// Updated getInitialCoordinates function
+const getInitialCoordinates = () => {
+  // This function should be synchronous for useState's initial value
+  // If you need async, use useEffect to update after mount
+  return null;
+};
 
 const InstructorsInfo: React.FC = () => {
-  const [filters, setFilters] = useState({
-    coordinates: null,
+  const [filters, setFilters] = useState<FiltersState>({
+    coordinates: getInitialCoordinates(), // Start with null, will be set by useEffect
     areaRadius: 0,
     rating: 0,
     transmission: null,
@@ -41,9 +63,13 @@ const InstructorsInfo: React.FC = () => {
     availability: [],
     city: "Berlin",
   });
+
+  // Geocode student location on component mount
+
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Add this state
   const navigate = useNavigate();
-
+  const { data: studentData, loading: studentLoading } =
+    useQuery(GET_STUDENT_PROFILE);
   const [anchorEl, setAnchorEl] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -64,24 +90,94 @@ const InstructorsInfo: React.FC = () => {
   });
 
   L.Marker.prototype.options.icon = DefaultIcon;
+  // useEffect(() => {
+  //   const fetchUserLocation = async () => {
+  //     try {
+  //       const coords = await getUserLocation();
+  //       setFilters((prev) => ({
+  //         ...prev,
+  //         coordinates: coords,
+  //       }));
+  //       setIsInitialLoad(false); // Set to false when location is loaded
+  //     } catch (error) {
+  //       console.error("Error fetching user location:", error);
+  //       setIsInitialLoad(false); // Also set to false if there's an error
+  //     }
+  //   };
+
+  //   fetchUserLocation();
+  // }, []);
+  const fetchCoordinatesForLocation = async (locationName: string) => {
+    try {
+      const response = await axios.get(
+        "https://nominatim.openstreetmap.org/search",
+        {
+          params: {
+            q: locationName,
+            format: "json",
+            addressdetails: 1,
+            limit: 1, // Only need the first result
+            countrycodes: "ch", // Restrict to Switzerland
+          },
+        }
+      );
+
+      if (response.data && response.data.length > 0) {
+        const place = response.data[0];
+
+        // Filter to ensure it's from Switzerland
+        if (place.address && place.address.country_code === "ch") {
+          // Return coordinates in the same format as AddressSearch
+          return [Number.parseFloat(place.lon), Number.parseFloat(place.lat)];
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error fetching coordinates for location:", error);
+      return null;
+    }
+  };
   useEffect(() => {
-    const fetchUserLocation = async () => {
+    const initializeCoordinates = async () => {
       try {
-        const coords = await getUserLocation();
+        // Priority 1: If student has a profile location, use that
+        if (studentData?.studentProfile?.location) {
+          console.log(
+            "Using student profile location:",
+            studentData.studentProfile.location
+          );
+          const coordinates = await fetchCoordinatesForLocation(
+            studentData.studentProfile.location
+          );
+          if (coordinates) {
+            console.log("Student location coordinates:", coordinates);
+            setFilters((prev) => ({ ...prev, coordinates }));
+            setIsInitialLoad(false);
+            return; // Exit early, don't fetch user location
+          }
+        }
+
+        // Priority 2: If no student profile location, use user's current location
+
+        const userCoords = await getUserLocation();
+
         setFilters((prev) => ({
           ...prev,
-          coordinates: coords,
+          coordinates: userCoords,
         }));
-        setIsInitialLoad(false); // Set to false when location is loaded
+        setIsInitialLoad(false);
       } catch (error) {
-        console.error("Error fetching user location:", error);
-        setIsInitialLoad(false); // Also set to false if there's an error
+        console.error("Error initializing coordinates:", error);
+        setIsInitialLoad(false);
       }
     };
 
-    fetchUserLocation();
-  }, []);
-
+    // Only run if we haven't loaded coordinates yet or if student data changes
+    if (isInitialLoad || studentData) {
+      initializeCoordinates();
+    }
+  }, [studentData?.studentProfile?.location, isInitialLoad]);
   const [filtersApplied, setFiltersApplied] = useState(false);
 
   const { loading, error, data } = useQuery(GET_NEARBY_INSTRUCTORS, {
@@ -283,7 +379,7 @@ const InstructorsInfo: React.FC = () => {
             },
           }}
         >
-          Filters
+          Filter
         </Button>
 
         <Button

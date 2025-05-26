@@ -17,6 +17,7 @@ import Reviews from "./Reviews";
 import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -24,6 +25,7 @@ const ProfileSummary: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth(); // Assuming useAuth is defined in your context
   const [activeTab, setActiveTab] = React.useState(0);
   // Define or import the AvailabilitySlot type
   type AvailabilitySlot = {
@@ -144,13 +146,17 @@ const ProfileSummary: React.FC = () => {
     );
   }
   const handleGoBack = () => {
-    navigate("/student-dashboard/search");
+    if (user) {
+      navigate("/student-dashboard/search");
+    } else {
+      navigate("/professional");
+    }
   };
   return (
     <Box sx={{ width: "100%" }}>
       <button
         onClick={handleGoBack}
-        className="flex items-center text-white px-4 bg-[#55AFBD] bg-transparent border-none cursor-pointer hover:opacity-80 py-2 ml-2 mt-2 rounded-full"
+        className="flex items-center text-white px-4 bg-[#4AB0C0] hover:bg-[#4099a7] border-none cursor-pointer py-2 ml-2 mt-2 rounded-full"
       >
         <ArrowLeft size={24} />
         <span className="ml-2 font-medium">Back</span>
