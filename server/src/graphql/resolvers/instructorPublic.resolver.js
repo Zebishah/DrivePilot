@@ -189,7 +189,7 @@ const instructorResolver = {
         const [tariff, availability] = await Promise.all([
           teacherTariffModel.findOne({ teacherId: id }),
           teacherAvailabilityModel
-            .find({ teacherId: id })
+            .find({ teacherId: id, status: "available" })
             .sort({ date: 1, startTime: 1 })
             .lean(),
         ]);

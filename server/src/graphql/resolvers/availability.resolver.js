@@ -37,6 +37,7 @@ const resolvers = {
           date: new Date(input.date),
           startTime: input.startTime,
           endTime: input.endTime,
+          status: "available",
         });
 
         return {

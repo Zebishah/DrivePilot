@@ -24,6 +24,7 @@ passport.use(
             authProvider: "google",
             providerId: profile.id,
             password: "GOOGLE_AUTH",
+            isUserVerified: true, // Automatically verify user
           });
         }
 
@@ -57,6 +58,7 @@ passport.use(
             authProvider: "facebook",
             providerId: profile.id,
             password: "FACEBOOK_AUTH",
+            isUserVerified: true, // Automatically verify user
           });
         }
 

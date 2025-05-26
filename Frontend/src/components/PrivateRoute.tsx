@@ -5,6 +5,7 @@ export const TempPrivateRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { isTempAuthenticated, user, tempUser } = useAuth();
+
   return isTempAuthenticated && user?.isUserVerified ? (
     <>{children}</>
   ) : (

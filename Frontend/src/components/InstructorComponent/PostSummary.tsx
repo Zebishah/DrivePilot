@@ -294,7 +294,8 @@ const ProfileSummary: React.FC = () => {
               color: activeTab === 0 ? "black !important" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
-            label="Profile Summary"
+            label="Availability"
+
           />
           <Tab
             sx={{
@@ -303,7 +304,7 @@ const ProfileSummary: React.FC = () => {
               color: activeTab === 1 ? "black !important" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
-            label="Availability"
+            label="Profile Summary"
           />
           <Tab
             sx={{
@@ -317,17 +318,18 @@ const ProfileSummary: React.FC = () => {
         </Tabs>
 
         {activeTab === 0 && (
-          <Summary
-            instructorData={instructor}
-            tariffData={tariff}
-            loading={loading}
-          />
-        )}
-        {activeTab === 1 && (
           <Availability
             availabilityData={availability}
             loading={loading}
             onSelectAvailability={setSelectedAvailability}
+          />
+
+        )}
+        {activeTab === 1 && (
+          <Summary
+            instructorData={instructor}
+            tariffData={tariff}
+            loading={loading}
           />
         )}
         {activeTab === 2 && <Reviews loading={loading} />}

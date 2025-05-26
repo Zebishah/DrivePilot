@@ -48,11 +48,18 @@ const instructorTypeDefs = gql`
     availableDates: [String!]
   }
 
+  enum AvailabilityStatus {
+    available
+    booked
+    cancelled
+  }
+
   type InstructorAvailability {
     _id: ID!
     date: String!
     startTime: String!
     endTime: String!
+    status: AvailabilityStatus
   }
 
   type InstructorTariff {

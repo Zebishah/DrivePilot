@@ -7,6 +7,7 @@ import {
   Grid,
   Button,
   Divider,
+  Skeleton,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -57,10 +58,6 @@ const BookLesson: React.FC = () => {
     refetch();
   }, [refetch]);
 
-  useEffect(() => {
-    if (data) {
-    }
-  }, [data]);
 
   useEffect(() => {
     // Only redirect if we're coming from search page and no availability is selected
@@ -74,7 +71,7 @@ const BookLesson: React.FC = () => {
       type: 'card',
       cardNumber: '5105 **** **** 0505'
     };
-    
+
     navigate('/student-dashboard/booking-details', {
       state: {
         selectedAvailability,
@@ -106,8 +103,118 @@ const BookLesson: React.FC = () => {
     });
   };
 
-  if (loading) return <Typography>Loading bookings...</Typography>;
-  if (error) return <Typography>Error loading bookings: {error.message}</Typography>;
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            {/* Header Skeleton */}
+            <Skeleton variant="text" width="40%" height={40} sx={{ mb: 2 }} />
+
+            {/* Overview Section Skeletons */}
+            <Box sx={{ mb: 4 }}>
+              <Skeleton variant="text" width="30%" height={32} sx={{ mb: 2 }} />
+              <Skeleton variant="text" width="60%" height={24} />
+              <Skeleton variant="text" width="40%" height={24} />
+              <Skeleton variant="text" width="50%" height={24} />
+            </Box>
+
+            {/* Scheduled Lessons Skeletons */}
+            <Box sx={{ mb: 4 }}>
+              <Skeleton variant="text" width="35%" height={32} sx={{ mb: 2 }} />
+              <Grid container spacing={2}>
+                {[1, 2, 3].map((item) => (
+                  <Grid item xs={12} sm={4} key={item}>
+                    <Skeleton
+                      variant="rectangular"
+                      height={120}
+                      sx={{
+                        borderRadius: 2,
+                        bgcolor: 'rgba(0, 0, 0, 0.06)'
+                      }}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
+            {/* Instructor Information Skeletons */}
+            <Box>
+              <Skeleton variant="text" width="35%" height={32} sx={{ mb: 2 }} />
+              <Skeleton variant="text" width="45%" height={24} />
+              <Skeleton variant="text" width="35%" height={24} />
+              <Skeleton variant="text" width="70%" height={24} sx={{ mt: 1 }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        {/* Previous Bookings Card Skeleton */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Skeleton variant="text" width="30%" height={40} sx={{ mb: 3 }} />
+            {[1, 2].map((booking) => (
+              <Box key={booking} sx={{ mb: 4 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Skeleton variant="text" width="30%" />
+                  <Skeleton variant="text" width="15%" />
+                </Box>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  {[1, 2, 3].map((slot) => (
+                    <Grid item xs={12} sm={4} key={slot}>
+                      <Skeleton
+                        variant="rectangular"
+                        height={100}
+                        sx={{
+                          borderRadius: 2,
+                          bgcolor: 'rgba(0, 0, 0, 0.06)'
+                        }}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+                <Skeleton variant="text" width="25%" />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  } // Keep the error state but enhance it
+  if (error) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '50vh',
+        }}
+      >
+        <Typography
+          variant="h6"
+          color="error"
+          sx={{ mb: 2 }}
+        >
+          Error loading bookings
+        </Typography>
+
+        <Button
+          variant="contained"
+          onClick={() => refetch()}
+          sx={{
+            bgcolor: '#5fc2d3',
+            '&:hover': {
+              bgcolor: '#4bb1c2',
+            },
+          }}
+        >
+          Try Again
+        </Button>
+      </Box>
+    );
+  }
 
   const bookings = data?.getStudentBookings || [];
 
@@ -241,9 +348,9 @@ const BookLesson: React.FC = () => {
         <CardContent>
           {bookings.length > 0 ? (
             bookings.map((booking: Booking) => (
-              <Box 
-                key={booking._id} 
-                sx={{ 
+              <Box
+                key={booking._id}
+                sx={{
                   mb: 3,
                   cursor: 'pointer',
                   '&:hover': {
@@ -258,11 +365,11 @@ const BookLesson: React.FC = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                     {booking.instructorId.firstName} {booking.instructorId.lastName}
                   </Typography>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: booking.status === 'confirmed' ? 'green' : 
-                            booking.status === 'cancelled' ? 'red' : 'orange'
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: booking.status === 'confirmed' ? 'green' :
+                        booking.status === 'cancelled' ? 'red' : 'orange'
                     }}
                   >
                     {booking.status.toUpperCase()}
