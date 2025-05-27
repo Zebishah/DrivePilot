@@ -114,8 +114,8 @@ export default function EditStudentProfile() {
         languagePreference: Array.isArray(profile.languagePreference)
           ? profile.languagePreference
           : profile.languagePreference
-          ? [profile.languagePreference]
-          : [],
+            ? [profile.languagePreference]
+            : [],
       });
 
       // Only set the avatar preview if there's a profile image
@@ -747,7 +747,7 @@ export default function EditStudentProfile() {
                   fullWidth
                 />
               </Grid>
-              <Grid
+              {/* <Grid
                 item
                 xs={12}
                 sm={6}
@@ -770,7 +770,7 @@ export default function EditStudentProfile() {
                   }}
                   fullWidth
                 />
-              </Grid>
+              </Grid> */}
             </Grid>
             <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
               <Button
