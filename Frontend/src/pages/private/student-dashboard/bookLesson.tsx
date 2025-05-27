@@ -7,13 +7,19 @@ import {
   Grid,
   Button,
   Divider,
+  Skeleton,
+  Pagination,
+  Stack,
+  Tabs,
+  Tab
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ChatIcon from "@mui/icons-material/Chat";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking";
+import { BookingList } from '../../../components/BookingList';
 
 interface AvailabilitySlot {
   date: string;
@@ -52,15 +58,15 @@ const BookLesson: React.FC = () => {
     notifyOnNetworkStatusChange: true,
   });
 
+  const [page, setPage] = useState(1);
+  const [tabValue, setTabValue] = useState(0);
+  const ITEMS_PER_PAGE = 5;
+
   useEffect(() => {
     // Fetch data when component mounts
     refetch();
   }, [refetch]);
 
-  useEffect(() => {
-    if (data) {
-    }
-  }, [data]);
 
   useEffect(() => {
     // Only redirect if we're coming from search page and no availability is selected
@@ -74,13 +80,14 @@ const BookLesson: React.FC = () => {
       type: 'card',
       cardNumber: '5105 **** **** 0505'
     };
-    
+
     navigate('/student-dashboard/booking-details', {
       state: {
         selectedAvailability,
         instructorData,
         paymentMethod: paymentData,
-        isCurrentBooking: true
+        isCurrentBooking: true,
+        instructorId: instructorData?.id,
       }
     });
   };
@@ -95,6 +102,7 @@ const BookLesson: React.FC = () => {
           email: booking.instructorId.email,
           description: booking.instructorId.description
         },
+        instructorId: booking?.instructorId?._id,
         paymentMethod: {
           type: 'card',
           cardNumber: '**** **** **** ****'
@@ -106,10 +114,140 @@ const BookLesson: React.FC = () => {
     });
   };
 
-  if (loading) return <Typography>Loading bookings...</Typography>;
-  if (error) return <Typography>Error loading bookings: {error.message}</Typography>;
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    setPage(1); // Reset to first page when changing tabs
+  };
   const bookings = data?.getStudentBookings || [];
+  const filterBookingsByStatus = (bookings: Booking[], status: string) => {
+    if (status === "all") return bookings;
+    return bookings.filter(booking => booking.status.toLowerCase() === status);
+  };
+
+  // Calculate pagination
+  const currentBookings = filterBookingsByStatus(
+    bookings,
+    tabValue === 0 ? "all" : tabValue === 1 ? "confirmed" : "cancelled"
+  ).slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            {/* Header Skeleton */}
+            <Skeleton variant="text" width="40%" height={40} sx={{ mb: 2 }} />
+
+            {/* Overview Section Skeletons */}
+            <Box sx={{ mb: 4 }}>
+              <Skeleton variant="text" width="30%" height={32} sx={{ mb: 2 }} />
+              <Skeleton variant="text" width="60%" height={24} />
+              <Skeleton variant="text" width="40%" height={24} />
+              <Skeleton variant="text" width="50%" height={24} />
+            </Box>
+
+            {/* Scheduled Lessons Skeletons */}
+            <Box sx={{ mb: 4 }}>
+              <Skeleton variant="text" width="35%" height={32} sx={{ mb: 2 }} />
+              <Grid container spacing={2}>
+                {[1, 2, 3].map((item) => (
+                  <Grid item xs={12} sm={4} key={item}>
+                    <Skeleton
+                      variant="rectangular"
+                      height={120}
+                      sx={{
+                        borderRadius: 2,
+                        bgcolor: 'rgba(0, 0, 0, 0.06)'
+                      }}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
+            {/* Instructor Information Skeletons */}
+            <Box>
+              <Skeleton variant="text" width="35%" height={32} sx={{ mb: 2 }} />
+              <Skeleton variant="text" width="45%" height={24} />
+              <Skeleton variant="text" width="35%" height={24} />
+              <Skeleton variant="text" width="70%" height={24} sx={{ mt: 1 }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        {/* Previous Bookings Card Skeleton */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Skeleton variant="text" width="30%" height={40} sx={{ mb: 3 }} />
+            {[1, 2].map((booking) => (
+              <Box key={booking} sx={{ mb: 4 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                  <Skeleton variant="text" width="30%" />
+                  <Skeleton variant="text" width="15%" />
+                </Box>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  {[1, 2, 3].map((slot) => (
+                    <Grid item xs={12} sm={4} key={slot}>
+                      <Skeleton
+                        variant="rectangular"
+                        height={100}
+                        sx={{
+                          borderRadius: 2,
+                          bgcolor: 'rgba(0, 0, 0, 0.06)'
+                        }}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+                <Skeleton variant="text" width="25%" />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  } // Keep the error state but enhance it
+  if (error) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '50vh',
+        }}
+      >
+        <Typography
+          variant="h6"
+          color="error"
+          sx={{ mb: 2 }}
+        >
+          Error loading bookings
+        </Typography>
+
+        <Button
+          variant="contained"
+          onClick={() => refetch()}
+          sx={{
+            bgcolor: '#5fc2d3',
+            '&:hover': {
+              bgcolor: '#4bb1c2',
+            },
+          }}
+        >
+          Try Again
+        </Button>
+      </Box>
+    );
+  }
+
+
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
@@ -221,118 +359,13 @@ const BookLesson: React.FC = () => {
         </Card>
       )}
 
-      {/* Previous Bookings Card */}
-      <Card sx={{ mb: 3 }}>
-        <Box
-          sx={{
-            mb: 2,
-            pb: 1.6,
-            px: 2,
-            pt: 1.3,
-            width: "100%",
-            borderBottom: 1,
-            borderBottomColor: "gray",
-          }}
-        >
-          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-            {selectedAvailability ? "PREVIOUS BOOKINGS" : "YOUR BOOKINGS"}
-          </Typography>
-        </Box>
-        <CardContent>
-          {bookings.length > 0 ? (
-            bookings.map((booking: Booking) => (
-              <Box 
-                key={booking._id} 
-                sx={{ 
-                  mb: 3,
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                    borderRadius: 1,
-                    transition: 'background-color 0.2s'
-                  }
-                }}
-                onClick={() => handleBookingClick(booking)}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                    {booking.instructorId.firstName} {booking.instructorId.lastName}
-                  </Typography>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: booking.status === 'confirmed' ? 'green' : 
-                            booking.status === 'cancelled' ? 'red' : 'orange'
-                    }}
-                  >
-                    {booking.status.toUpperCase()}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                  {booking.instructorId.email}
-                </Typography>
-                <Grid container spacing={2}>
-                  {booking.slots.map((slot: AvailabilitySlot, index: number) => (
-                    <Grid item xs={12} sm={4} key={index}>
-                      <Card
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          p: 1,
-                          bgcolor: "#f5f5f5",
-                          borderRadius: 2,
-                        }}
-                      >
-                        <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
-                        <CardContent sx={{ p: 1 }}>
-                          <Typography variant="body1">
-                            {slot.startTime} - {slot.endTime}
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            1 hr lesson
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            {new Date(slot.date).toLocaleDateString([], {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-                <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                  Booked on: {new Date(Number(booking.createdAt)).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    // hour: '2-digit',
-                    // minute: '2-digit'
-                  })}
-                </Typography>
-                <Divider sx={{ my: 2 }} />
-              </Box>
-            ))
-          ) : (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="h6" color="textSecondary">
-                No Bookings Available
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                sx={{ mt: 2 }}
-                onClick={() => navigate('/student-dashboard/search')}
-              >
-                Book a Lesson
-              </Button>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+      {/* Bookings List */}
+      <BookingList
+        bookings={bookings}
+        onBookingClick={handleBookingClick}
+        showNewBookingButton={!selectedAvailability}
+        onNewBooking={() => navigate('/student-dashboard/search')}
+      />
 
       {/* Payment Methods Card - Only show if we have selectedAvailability */}
       {selectedAvailability && selectedAvailability.length > 0 && (

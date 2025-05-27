@@ -1,38 +1,91 @@
-import type React from "react";
+import React, { useState } from "react";
 import {
   AppBar,
+  Avatar,
   Box,
+  CircularProgress,
   IconButton,
   Menu,
   MenuItem,
   Toolbar,
   Typography,
 } from "@mui/material";
-import { ChevronDown, Globe, MenuIcon } from "lucide-react";
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { ChevronDown, MenuIcon } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useQuery } from "@apollo/client";
+import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
+import { GET_TEACHER_PROFILE } from "../../graphql/mutations/profile";
 
-// Define the MenuItem type (same as in Sidebar)
-interface MenuItem {
+// Flag components
+import { US, FR, DE, IT } from "country-flag-icons/react/3x2";
+
+interface MenuItemProps {
   text: string;
   icon: React.ElementType;
   path: string;
 }
 
+interface Language {
+  code: string;
+  label: string;
+  Flag: React.ElementType;
+}
+
+const LANGUAGES: Language[] = [
+  { code: "en", label: "English", Flag: US },
+  { code: "fr", label: "French", Flag: FR },
+  { code: "de", label: "German", Flag: DE },
+  { code: "it", label: "Italian", Flag: IT },
+];
+
 interface NavbarProps {
   handleDrawerToggle: () => void;
-  menuItems: MenuItem[]; // Add menuItems as a prop
+  menuItems: MenuItemProps[];
 }
 
 export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(
+    LANGUAGES[0]
+  );
+  const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const [isImageLoading, setIsImageLoading] = useState(true);
 
-  // Find the menu item that matches the current route or its parent route
+  const isStudent = user?.role === "Student";
+  const isInstructor = user?.role === "Instructor";
+  const isAdmin = user?.role === "Admin";
+
+  const { data: studentData, loading: studentLoading } = useQuery(
+    GET_STUDENT_PROFILE,
+    {
+      skip: !isStudent,
+    }
+  );
+  const { data: teacherData, loading: teacherLoading } = useQuery(
+    GET_TEACHER_PROFILE,
+    {
+      skip: !isInstructor,
+    }
+  );
+  console.log("studentData", studentData);
+  const profileImage = isAdmin
+    ? "/admin-avatar.jpg"
+    : isStudent
+      ? studentData?.studentProfile?.profileImage
+      : isInstructor
+        ? teacherData?.teacherProfile?.profileImage
+        : "/default-avatar.jpg";
+
+  const isLoading =
+    (isStudent && studentLoading) || (isInstructor && teacherLoading);
+
   const currentMenuItem = menuItems?.find((item) =>
     location.pathname.startsWith(item.path)
   );
-  const pageTitle = currentMenuItem ? currentMenuItem.text : "Dashboard"; // Fallback title
+  const pageTitle = currentMenuItem ? currentMenuItem.text : "Dashboard";
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -40,6 +93,68 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleLanguageChange = (language: Language) => {
+    setSelectedLanguage(language);
+    setAnchorEl(null);
+    // Add actual i18n language change logic here
+  };
+  const renderAvatar = () => {
+    const handleAvatarClick = () => {
+      switch (user?.role) {
+        case "Admin":
+          navigate("/admin-dashboard/overview");
+          break;
+        case "Student":
+          navigate("/student-dashboard/overview");
+          break;
+        case "Instructor":
+          navigate("/teacher-dashboard/overview");
+          break;
+        default:
+          // Optional fallback
+          navigate("/");
+      }
+    };
+
+    return (
+      <Box
+        sx={{ position: "relative", width: 40, height: 40, cursor: "pointer" }}
+        onClick={handleAvatarClick}
+      >
+        {(isLoading || (isImageLoading && !!profileImage)) && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              bgcolor: "#e0e0e0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1,
+            }}
+          >
+            <CircularProgress size={20} />
+          </Box>
+        )}
+
+        <Avatar
+          src={profileImage || "/default-avatar.jpg"}
+          sx={{ width: 40, height: 40, zIndex: isImageLoading ? 0 : 2 }}
+          imgProps={{
+            onLoad: () => setIsImageLoading(false),
+            onError: () => {
+              setIsImageLoading(false);
+            },
+          }}
+        />
+      </Box>
+    );
   };
 
   return (
@@ -61,16 +176,22 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
         >
           <MenuIcon />
         </IconButton>
+
         <Typography
           variant="h6"
           component="div"
           sx={{ flexGrow: 1, color: "#000" }}
         >
-          {pageTitle} {/* Dynamically set the header text */}
+          {pageTitle}
         </Typography>
+
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Globe size={20} />
-          <Typography>English</Typography>
+          <selectedLanguage.Flag
+            title={selectedLanguage.label}
+            style={{ width: 24, height: 16 }}
+          />
+          <Typography>{selectedLanguage.label}</Typography>
+
           <IconButton
             size="small"
             aria-label="language"
@@ -81,26 +202,34 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
           >
             <ChevronDown size={20} />
           </IconButton>
+
           <Menu
             id="menu-appbar"
             anchorEl={anchorEl}
-            anchorOrigin={{
-              vertical: "bottom",
-              horizontal: "right",
-            }}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             keepMounted
-            transformOrigin={{
-              vertical: "top",
-              horizontal: "right",
-            }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
             open={Boolean(anchorEl)}
             onClose={handleClose}
           >
-            <MenuItem onClick={handleClose}>English</MenuItem>
-            <MenuItem onClick={handleClose}>French</MenuItem>
-            <MenuItem onClick={handleClose}>German</MenuItem>
-            <MenuItem onClick={handleClose}>Italian</MenuItem>
+            {LANGUAGES.map((lang) => (
+              <MenuItem
+                key={lang.code}
+                selected={lang.code === selectedLanguage.code}
+                onClick={() => handleLanguageChange(lang)}
+              >
+                <Box display="flex" alignItems="center" gap={1}>
+                  <lang.Flag
+                    title={lang.label}
+                    style={{ width: 24, height: 16 }}
+                  />
+                  {lang.label}
+                </Box>
+              </MenuItem>
+            ))}
           </Menu>
+
+          {renderAvatar()}
         </Box>
       </Toolbar>
     </AppBar>

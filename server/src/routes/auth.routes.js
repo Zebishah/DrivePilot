@@ -28,6 +28,7 @@ router.get(
         lastName: req.user.lastName,
         isProfileComplete: req.user.isProfileComplete,
         role: req.user.role,
+        isUserVerified: req.user.isUserVerified,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -38,7 +39,7 @@ router.get(
     res
       .status(307)
       .redirect(
-        `${frontendURL}/auth/auth-success?token=${encodeURIComponent(token)}`
+        `${frontendURL}auth/auth-success?token=${encodeURIComponent(token)}`
       );
   }
 );
@@ -60,6 +61,7 @@ router.get(
         lastName: req.user.lastName,
         isProfileComplete: req.user.isProfileComplete,
         role: req.user.role,
+        isUserVerified: req.user.isUserVerified,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -71,7 +73,7 @@ router.get(
     res
       .status(307)
       .redirect(
-        `${frontendURL}/auth/auth-success?token=${encodeURIComponent(token)}`
+        `${frontendURL}auth/auth-success?token=${encodeURIComponent(token)}`
       );
   }
 );

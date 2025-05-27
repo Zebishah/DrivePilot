@@ -48,11 +48,18 @@ const instructorTypeDefs = gql`
     availableDates: [String!]
   }
 
+  enum AvailabilityStatus {
+    available
+    booked
+    cancelled
+  }
+
   type InstructorAvailability {
     _id: ID!
     date: String!
     startTime: String!
     endTime: String!
+    status: AvailabilityStatus
   }
 
   type InstructorTariff {
@@ -65,8 +72,10 @@ const instructorTypeDefs = gql`
   }
 
   type BulkLessonPackage {
-    hours: Int
-    price: Float
+    lessons: Int!
+    cost: Float!
+    startDate: String! # ISO date
+    endDate: String! # ISO date
   }
 
   type InstructorPublicProfile {

@@ -12,14 +12,23 @@ import {
   DialogActions,
   IconButton,
   Alert,
+  CircularProgress,
+  DialogTitle,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import { useMutation } from "@apollo/client";
-import { CREATE_BOOKING } from "../../../graphql/mutations/studentBooking";
+import { CANCEL_BOOKING, CREATE_BOOKING } from "../../../graphql/mutations/studentBooking";
 import toast from "react-hot-toast";
-
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import dayjs from "dayjs";
+dayjs.extend(advancedFormat);
+import { set } from "lodash";
+function formatLessonDateTime(dateStr: string, timeStr: string) {
+  // parse the combined ISO, then format:
+  return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
+}
 const BookingDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,14 +38,18 @@ const BookingDetails: React.FC = () => {
     paymentMethod,
     isCurrentBooking = true,
     status,
+    bookingId,
+    instructorId
   } = location.state || {};
+
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isCancelled = status === "cancelled";
 
   const [createBooking] = useMutation(CREATE_BOOKING, {
     onCompleted: () => {
       handleCloseDialog();
-      navigate("/student-dashboard/overview");
+      navigate("/student-dashboard/book");
       toast.success("Booking created successfully!");
     },
     onError: (error) => {
@@ -47,23 +60,25 @@ const BookingDetails: React.FC = () => {
       setError(error.message || "Failed to create booking. Please try again.");
     },
   });
-
   // Calculate total amount based on number of lessons and lesson fee
   const lessonFee = instructorData?.lessonFee;
-  const totalAmount = Number(selectedAvailability?.length * lessonFee) || 0;
+  const totalAmount = Number(selectedAvailability?.length * lessonFee) || 10;
 
   const handleConfirm = () => {
     setError(null);
     setIsConfirmDialogOpen(true);
   };
 
+
   const handleCloseDialog = () => {
     setIsConfirmDialogOpen(false);
     setError(null);
   };
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const handleConfirmBooking = async () => {
     try {
+      setConfirmLoading(true)
       if (!selectedAvailability || selectedAvailability.length === 0) {
         throw new Error("No availability slots selected");
       }
@@ -100,14 +115,88 @@ const BookingDetails: React.FC = () => {
       setError(error.message || "Failed to create booking. Please try again.");
       toast.error("Failed to create booking. Please try again.");
     }
+    finally {
+      setConfirmLoading(false);
+    }
   };
-
+  // Add new state for reschedule dialog
+  const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const handleReschedule = () => {
-    // Handle rescheduling logic
+    if (isCurrentBooking || isCancelled) {
+
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
+    }
+    const firstSlot = selectedAvailability[0];
+    const lessonStart = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
+    const now = new Date();
+    const msUntil = lessonStart - now;
+
+    if (msUntil < 48 * 60 * 60 * 1000) {
+      setIsTooLate(true);
+    } else {
+      setIsTooLate(false);
+    }
+    setIsRescheduleDialogOpen(true);
   };
 
-  const handleCancel = () => {
-    // Handle cancellation logic
+  const handleConfirmReschedule = async () => {
+    try {
+      setRescheduleLoading(true);
+      // First cancel the current booking
+      await cancelBooking({ variables: { bookingId: bookingId } });
+      toast.success("Booking cancelled for rescheduling");
+      // Navigate to instructor page for rebooking
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reschedule booking");
+    } finally {
+      setRescheduleLoading(false);
+      setIsRescheduleDialogOpen(false);
+    }
+  };
+  const [isCancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [isTooLate, setIsTooLate] = useState(false);
+  const [cancelBooking] = useMutation(CANCEL_BOOKING);
+  const handleOpenCancel = () => {
+    if (isCurrentBooking) {
+      navigate(`/student-dashboard/search/instructors/${instructorId}`);
+    }
+    const firstSlot = selectedAvailability[0];
+    const lessonStart = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
+    const now = new Date();
+    const msUntil = lessonStart - now;
+
+    // < 48h?
+    if (msUntil < 48 * 60 * 60 * 1000) {
+      setIsTooLate(true);
+    } else {
+      setIsTooLate(false);
+    }
+    setCancelError("");
+    setCancelDialogOpen(true);
+  };
+  const handleCloseCancel = () => {
+    setCancelDialogOpen(false);
+  };
+
+  const handleCancelBooking = async () => {
+
+    try {
+      setCancelLoading(true);
+      await cancelBooking({ variables: { bookingId: bookingId } });
+      toast.success("Booking cancelled successfully");
+      navigate(`/student-dashboard/book`);
+
+      handleCloseCancel();
+      // optionally refetch queries or update cache here
+    } catch (err) {
+      toast.error(err.message || "Failed to cancel booking");
+    } finally {
+      setCancelLoading(false);
+    }
   };
 
   return (
@@ -132,15 +221,15 @@ const BookingDetails: React.FC = () => {
           </Typography>
           {!isCurrentBooking && (
             <Typography
-              variant="body1"
               sx={{
-                color:
-                  status === "confirmed"
-                    ? "green"
-                    : status === "cancelled"
-                    ? "red"
-                    : "orange",
-                fontWeight: "bold",
+                px: 2,
+                py: 0.5,
+                borderRadius: 1,
+                bgcolor: status === 'confirmed' ? 'rgba(0, 200, 83, 0.1)' :
+                  status === 'cancelled' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(255, 152, 0, 0.1)',
+                color: status === 'confirmed' ? 'rgb(0, 200, 83)' :
+                  status === 'cancelled' ? 'rgb(211, 47, 47)' : 'rgb(255, 152, 0)',
+                fontWeight: 600,
               }}
             >
               {status.toUpperCase()}
@@ -154,9 +243,11 @@ const BookingDetails: React.FC = () => {
             >
               Rescheduling
             </Button>
-            <Button variant="contained" color="error" onClick={handleCancel}>
-              Cancel Booking
-            </Button>
+            {!isCancelled && (
+              <Button variant="contained" color="error" onClick={handleOpenCancel}>
+                Cancel Booking
+              </Button>
+            )}
           </Box>
         </Box>
         <CardContent>
@@ -189,25 +280,25 @@ const BookingDetails: React.FC = () => {
             <strong>Start Date:</strong>{" "}
             {selectedAvailability?.[0]?.date
               ? new Date(selectedAvailability[0].date).toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  }
-                )
+                "en-US",
+                {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                }
+              )
               : "Not selected"}
           </Typography>
           <Typography variant="body1">
             <strong>End Date:</strong>{" "}
             {selectedAvailability?.[selectedAvailability.length - 1]?.date
               ? new Date(
-                  selectedAvailability[selectedAvailability.length - 1].date
-                ).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })
+                selectedAvailability[selectedAvailability.length - 1].date
+              ).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
               : "Not selected"}
           </Typography>
 
@@ -362,28 +453,21 @@ const BookingDetails: React.FC = () => {
                 <strong>Amount:</strong> ${totalAmount}
               </Typography>
               <Typography variant="body1" gutterBottom>
-                <strong>Start Date:</strong>{" "}
-                {selectedAvailability?.[0]?.date
-                  ? new Date(selectedAvailability[0].date).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      }
-                    )
+                <strong>Start:</strong>{" "}
+                {selectedAvailability?.[0]
+                  ? formatLessonDateTime(
+                    selectedAvailability[0].date,
+                    selectedAvailability[0].startTime
+                  )
                   : "Not selected"}
               </Typography>
               <Typography variant="body1" gutterBottom>
-                <strong>End Date:</strong>{" "}
-                {selectedAvailability?.[selectedAvailability.length - 1]?.date
-                  ? new Date(
-                      selectedAvailability[selectedAvailability.length - 1].date
-                    ).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })
+                <strong>End:</strong>{" "}
+                {selectedAvailability?.length
+                  ? formatLessonDateTime(
+                    selectedAvailability[selectedAvailability.length - 1].date,
+                    selectedAvailability[selectedAvailability.length - 1].endTime
+                  )
                   : "Not selected"}
               </Typography>
 
@@ -398,7 +482,7 @@ const BookingDetails: React.FC = () => {
             <Button
               variant="contained"
               onClick={handleConfirmBooking}
-              disabled={!!error}
+              disabled={!!error || confirmLoading}
               sx={{
                 width: "200px",
                 bgcolor: "#5ec2d2",
@@ -407,11 +491,206 @@ const BookingDetails: React.FC = () => {
                 },
               }}
             >
-              Yes
+              {confirmLoading ? <CircularProgress size={20} /> : "Confirm"}
             </Button>
           </DialogActions>
         </Dialog>
       )}
+
+      <Dialog
+        open={isCancelDialogOpen}
+        onClose={handleCloseCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {isTooLate ? "Cannot Cancel Lesson" : "Cancel Lesson"}
+          <IconButton
+            onClick={handleCloseCancel}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent>
+          {cancelError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {cancelError}
+            </Alert>
+          )}
+          {isTooLate ? (
+
+            <Alert severity="error">
+              You can’t cancel your lesson now because it’s less than 48
+              hours before start.
+            </Alert>
+          ) : (
+            <>
+
+              <Typography align="center" gutterBottom>
+                Are you sure you want to cancel your lesson scheduled on{" "}
+                {selectedAvailability?.[0]
+                  ? formatLessonDateTime(
+                    selectedAvailability[0].date,
+                    selectedAvailability[0].startTime
+                  )
+                  : "Not selected"}
+              </Typography>
+              <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Details
+                </Typography>
+
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
+                  <Box>
+                    <Typography variant="body1">
+                      {paymentMethod?.type || "Credit card"}
+                      <Typography variant="caption" color="textSecondary">
+                        (Debug - type: {JSON.stringify(paymentMethod?.type)})
+                      </Typography>
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {paymentMethod?.cardNumber || "5105 **** **** 0505"}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Typography variant="body1" gutterBottom>
+                  <strong>Lesson Number:</strong>{" "}
+                  {selectedAvailability?.length || 0}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  <strong>Duration:</strong> {selectedAvailability?.length || 0}{" "}
+                  Hours
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  <strong>Start:</strong>{" "}
+                  {selectedAvailability?.[0]
+                    ? formatLessonDateTime(
+                      selectedAvailability[0].date,
+                      selectedAvailability[0].startTime
+                    )
+                    : "Not selected"}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  <strong>End:</strong>{" "}
+                  {selectedAvailability?.length
+                    ? formatLessonDateTime(
+                      selectedAvailability[selectedAvailability.length - 1].date,
+                      selectedAvailability[selectedAvailability.length - 1].endTime
+                    )
+                    : "Not selected"}
+                </Typography>
+
+                <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+                  <strong>Attention:</strong> If you cancel a lesson less than 48
+                  hours in advance, the teacher will be informed, but no refund
+                  will be issued for the missed session.
+                </Typography>
+              </Box>
+            </>
+          )}
+
+
+        </DialogContent>
+
+        <DialogActions sx={{ justifyContent: "center", pb: 3, gap: 5 }}>
+          {!isTooLate && (
+            <Button
+              variant="contained"
+              onClick={handleCancelBooking}
+              disabled={cancelLoading}
+              sx={{ width: "200px" }}
+            >
+              {cancelLoading ? <CircularProgress size={20} /> : "Confirm Cancel"}
+            </Button>
+          )}
+          <Button onClick={handleCloseCancel}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reschedule Dialog */}
+      <Dialog
+        open={isRescheduleDialogOpen}
+        onClose={() => setIsRescheduleDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {isTooLate ? "Cannot Reschedule Lesson" : "Reschedule Lesson"}
+          <IconButton
+            onClick={() => setIsRescheduleDialogOpen(false)}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent>
+          {isTooLate ? (
+            <Alert severity="error">
+              You can't reschedule your lesson now because it's less than 48 hours before start.
+            </Alert>
+          ) : (
+            <>
+              <Typography align="center" gutterBottom>
+                Are you sure you want to reschedule your lesson scheduled for{" "}
+                {selectedAvailability?.[0]
+                  ? formatLessonDateTime(
+                    selectedAvailability[0].date,
+                    selectedAvailability[0].startTime
+                  )
+                  : "Not selected"}
+                ?
+              </Typography>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                By confirming, your current booking will be cancelled and you'll be redirected to select new time slots.
+              </Alert>
+              <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Current Booking Details
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  <strong>Lesson Number:</strong> {selectedAvailability?.length || 0}
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  <strong>Duration:</strong> {selectedAvailability?.length || 0} Hours
+                </Typography>
+                <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+                  <strong>Note:</strong> After confirming, you'll need to select new available time slots.
+                </Typography>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ justifyContent: "center", pb: 3, gap: 2 }}>
+          {!isTooLate && (
+            <Button
+              variant="contained"
+              onClick={handleConfirmReschedule}
+              disabled={rescheduleLoading}
+              sx={{
+                width: "200px",
+                bgcolor: "#5ec2d2",
+                "&:hover": {
+                  bgcolor: "rgba(65, 135, 147)",
+                },
+              }}
+            >
+              {rescheduleLoading ? <CircularProgress size={20} /> : "Confirm Reschedule"}
+            </Button>
+          )}
+          <Button
+            onClick={() => setIsRescheduleDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
