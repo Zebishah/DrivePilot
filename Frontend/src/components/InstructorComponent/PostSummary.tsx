@@ -165,7 +165,7 @@ const ProfileSummary: React.FC = () => {
     <Box sx={{ width: "100%" }}>
       <button
         onClick={handleGoBack}
-        className="flex items-center text-white px-4 bg-[#4AB0C0] hover:bg-[#4099a7] border-none cursor-pointer py-2 ml-2 mt-2 rounded-full"
+        className="flex items-center text-white px-4 m-2 bg-[#4AB0C0] hover:bg-[#4099a7] border-none cursor-pointer py-2 ml-2 mt-2 rounded-full"
       >
         <ArrowLeft size={24} />
         <span className="ml-2 font-medium">Back</span>
