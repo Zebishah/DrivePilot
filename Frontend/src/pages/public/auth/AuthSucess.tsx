@@ -27,6 +27,7 @@ const AuthSuccess = () => {
           lastName: string;
           role: string;
           isProfileComplete: boolean;
+          isUserVerified: boolean;
         }>(token);
         const isProfileComplete = decodedToken.isProfileComplete;
 
@@ -38,6 +39,7 @@ const AuthSuccess = () => {
             firstName: decodedToken.firstName,
             lastName: decodedToken.lastName,
             role: decodedToken.role,
+            isUserVerified: decodedToken.isUserVerified,
             isProfileComplete,
           },
         };

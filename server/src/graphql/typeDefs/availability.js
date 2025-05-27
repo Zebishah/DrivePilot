@@ -6,12 +6,19 @@ const typeDefs = gql`
     date: String!
     startTime: String!
     endTime: String!
+    status: AvailabilityStatus
+  }
+  enum AvailabilityStatus {
+    available
+    booked
+    cancelled
   }
 
   input AvailabilitySlotInput {
     date: String!
     startTime: String!
     endTime: String!
+    status: AvailabilityStatus
   }
 
   type Query {

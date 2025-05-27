@@ -5,6 +5,8 @@ const {
   UserInputError,
 } = require("apollo-server-express");
 const { validateUser } = require("../../utils/auth");
+const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
+const { default: mongoose } = require("mongoose");
 
 const studentBookingResolver = {
   Query: {
@@ -33,11 +35,12 @@ const studentBookingResolver = {
         });
 
         // Extract slots from the input
-        const { slots } = validatedInput;
+        const { slots, instructorId } = validatedInput;
 
         // Check if student has already booked any lessons with overlapping dates and times
         const existingBookings = await StudentBooking.find({
           studentId: user.id,
+          status: { $ne: "cancelled" }, // Exclude cancelled bookings
         });
 
         // Check for each slot if there's an existing booking with the same date and time
@@ -63,9 +66,31 @@ const studentBookingResolver = {
           }
         }
 
-        const booking = new StudentBooking(validatedInput);
+        // 1) Create & save the booking
+        //Temp status confirmed as there is no payment integration yet
+        //TODO: Integrate payment gateway and update status accordingly
+        const booking = new StudentBooking({
+          ...validatedInput,
+          status: "confirmed", // Set status as confirmed directly
+        });
         await booking.save();
 
+        // 2) **Mark those availability slots as “booked”**
+        // finding the booking
+        const bulkConditions = slots.map((s) => ({
+          teacherId: instructorId,
+          date: s.date,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          status: "available",
+        }));
+
+        await teacherAvailabilityModel.updateMany(
+          { $or: bulkConditions },
+          { $set: { status: "booked" } }
+        );
+
+        // 3) Populate and return
         await booking.populate(
           "instructorId",
           "_id firstName lastName email description"
@@ -94,22 +119,59 @@ const studentBookingResolver = {
       await booking.save();
       return booking;
     },
-
     cancelBooking: async (_, { bookingId }, { user }) => {
       validateUser(user);
-      const booking = await StudentBooking.findById(bookingId);
-      if (!booking) {
-        throw new UserInputError("Booking not found");
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        // 1) Load & auth
+        const booking = await StudentBooking.findById(bookingId).session(
+          session
+        );
+        if (!booking) {
+          throw new UserInputError("Booking not found");
+        }
+        const uid = user.id.toString();
+        if (
+          booking.studentId.toString() !== uid &&
+          booking.instructorId.toString() !== uid
+        ) {
+          throw new AuthenticationError(
+            "Not authorized to cancel this booking"
+          );
+        }
+
+        // 2) Flip booking status
+        booking.status = "cancelled";
+        await booking.save({ session });
+
+        // 3) Build bulk‐update conditions for each slot
+        const bulkConditions = booking.slots.map((slot) => ({
+          teacherId: booking.instructorId,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          status: "booked", // only reset those that were booked
+        }));
+
+        // 4) Mark them available again
+        await teacherAvailabilityModel.updateMany(
+          { $or: bulkConditions },
+          { $set: { status: "available" } },
+          { session }
+        );
+
+        // 5) Commit & return
+        await session.commitTransaction();
+        session.endSession();
+
+        return booking;
+      } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        throw err;
       }
-      if (
-        booking.studentId.toString() !== user.id.toString() &&
-        booking.instructorId.toString() !== user.id.toString()
-      ) {
-        throw new AuthenticationError("Not authorized to cancel this booking");
-      }
-      booking.status = "cancelled";
-      await booking.save();
-      return booking;
     },
   },
 };

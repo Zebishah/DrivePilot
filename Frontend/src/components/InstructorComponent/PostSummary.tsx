@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -17,6 +17,8 @@ import Reviews from "./Reviews";
 import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
+import BulkLessonPackages from "./BulkPackageCard";
+import { useAuth } from "../../context/AuthContext";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -24,7 +26,10 @@ const ProfileSummary: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth(); // Assuming useAuth is defined in your context
   const [activeTab, setActiveTab] = React.useState(0);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+
   // Define or import the AvailabilitySlot type
   type AvailabilitySlot = {
     startTime: string;
@@ -44,6 +49,12 @@ const ProfileSummary: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
+  };
+
+  const handlePackageSelect = (packageData) => {
+    setSelectedPackage(packageData);
+    // Auto switch to availability tab when package is selected
+    setActiveTab(0);
   };
 
   // Fallback data for when no data is available
@@ -144,13 +155,17 @@ const ProfileSummary: React.FC = () => {
     );
   }
   const handleGoBack = () => {
-    navigate("/student-dashboard/search");
+    if (user) {
+      navigate("/student-dashboard/search");
+    } else {
+      navigate("/professional");
+    }
   };
   return (
     <Box sx={{ width: "100%" }}>
       <button
         onClick={handleGoBack}
-        className="flex items-center text-white px-4 bg-[#55AFBD] bg-transparent border-none cursor-pointer hover:opacity-80 py-2 ml-2 mt-2 rounded-full"
+        className="flex items-center text-white px-4 m-2 bg-[#4AB0C0] hover:bg-[#4099a7] border-none cursor-pointer py-2 ml-2 mt-2 rounded-full"
       >
         <ArrowLeft size={24} />
         <span className="ml-2 font-medium">Back</span>
@@ -272,6 +287,14 @@ const ProfileSummary: React.FC = () => {
             {loading ? "Loading..." : "Book Now"}
           </Button>
         </Card>
+        {tariff?.bulkPackages.length > 0 && (
+          <Card sx={{ marginTop: "0.5rem", padding: "0.5rem" }}>
+            <BulkLessonPackages
+              tariff={tariff}
+              onPackageSelect={handlePackageSelect}
+            />
+          </Card>
+        )}
 
         <Tabs
           sx={{
@@ -294,7 +317,7 @@ const ProfileSummary: React.FC = () => {
               color: activeTab === 0 ? "black !important" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
-            label="Profile Summary"
+            label="Availability"
           />
           <Tab
             sx={{
@@ -303,7 +326,7 @@ const ProfileSummary: React.FC = () => {
               color: activeTab === 1 ? "black !important" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
-            label="Availability"
+            label="Profile Summary"
           />
           <Tab
             sx={{
@@ -317,17 +340,18 @@ const ProfileSummary: React.FC = () => {
         </Tabs>
 
         {activeTab === 0 && (
-          <Summary
-            instructorData={instructor}
-            tariffData={tariff}
-            loading={loading}
-          />
-        )}
-        {activeTab === 1 && (
           <Availability
             availabilityData={availability}
             loading={loading}
             onSelectAvailability={setSelectedAvailability}
+            selectedPackage={selectedPackage}
+          />
+        )}
+        {activeTab === 1 && (
+          <Summary
+            instructorData={instructor}
+            tariffData={tariff}
+            loading={loading}
           />
         )}
         {activeTab === 2 && <Reviews loading={loading} />}
