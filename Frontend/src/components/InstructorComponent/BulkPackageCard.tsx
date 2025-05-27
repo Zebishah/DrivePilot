@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import {
     Card,
@@ -7,15 +7,17 @@ import {
     Button,
     Grid,
     Box,
+    IconButton,
 } from '@mui/material';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import ClearIcon from '@mui/icons-material/Clear';
 
 /**
  * Single bulk package card with two-column rows
  */
-const BulkPackageCard = ({ lessons, cost, startDate, endDate, lessonFee, packageDiscount, variant }) => {
+const BulkPackageCard = ({ lessons, cost, startDate, endDate, lessonFee, packageDiscount, variant, onSelect, isSelected }) => {
     const calculatedSave = Math.round((1 - cost / (lessonFee * lessons)) * 100);
     const save = packageDiscount != null ? packageDiscount : calculatedSave;
     const start = new Date(startDate);
@@ -45,9 +47,12 @@ const BulkPackageCard = ({ lessons, cost, startDate, endDate, lessonFee, package
                 minWidth: 310,
                 maxWidth: 420,
                 mx: 'auto',
-                mb: 2,
+                mb: 1,
                 borderRadius: 2,
                 ...cardStyles,
+                border: isSelected ? '2px solid #5FC2D3' : cardStyles.border,
+                transform: isSelected ? 'scale(1.005)' : 'scale(1)',
+                transition: 'all 0.2s ease',
                 '& .MuiTypography-root': {
                     color: cardStyles.color,
                 },
@@ -73,15 +78,16 @@ const BulkPackageCard = ({ lessons, cost, startDate, endDate, lessonFee, package
                 <Button
                     fullWidth
                     variant="contained"
+                    onClick={() => onSelect({ lessons, cost, startDate, endDate })}
                     sx={{
-                        backgroundColor: variant === 'first' ? 'white' : '#5FC2D3',
-                        color: variant === 'first' ? '#5FC2D3' : 'white',
+                        backgroundColor: isSelected ? '#4bb1c2' : '#5FC2D3',
+                        color: 'white',
                         '&:hover': {
-                            backgroundColor: variant === 'first' ? '#f5f5f5' : '#4bb1c2',
+                            backgroundColor: '#4bb1c2',
                         },
                     }}
                 >
-                    Get This Offer Now
+                    {isSelected ? 'Selected' : 'Get This Offer Now'}
                 </Button>
             </CardContent>
         </Card>
@@ -102,7 +108,19 @@ BulkPackageCard.propTypes = {
 /**
  * Renders a grid of bulk lesson packages
  */
-const BulkLessonPackages = ({ tariff }) => {
+const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
+    const [selectedPackage, setSelectedPackage] = useState(null);
+
+    const handlePackageSelect = (packageData) => {
+        setSelectedPackage(packageData);
+        onPackageSelect(packageData);
+    };
+
+    const handleClearSelection = () => {
+        setSelectedPackage(null);
+        onPackageSelect(null);
+    };
+
     if (!tariff || !Array.isArray(tariff.bulkPackages) || tariff.bulkPackages.length === 0) {
         return null;
     }
@@ -136,7 +154,7 @@ const BulkLessonPackages = ({ tariff }) => {
 
     const renderPackages = () => {
         return bulkPackages.map((pkg, idx) => (
-            <Grid item key={idx} sx={{ px: 1 }}> {/* Increase horizontal padding */}
+            <Grid item key={idx} sx={{ px: 1 }}>
                 <BulkPackageCard
                     lessons={pkg.lessons}
                     cost={pkg.cost}
@@ -145,6 +163,8 @@ const BulkLessonPackages = ({ tariff }) => {
                     lessonFee={lessonFee}
                     packageDiscount={pkg?.cost}
                     variant={idx % 2 === 0 ? 'highlighted' : 'default'}
+                    onSelect={handlePackageSelect}
+                    isSelected={selectedPackage && selectedPackage.lessons === pkg.lessons}
                 />
             </Grid>
         ));
@@ -153,10 +173,31 @@ const BulkLessonPackages = ({ tariff }) => {
     return (
         <Box sx={{
             width: '100%',
-            maxWidth: 1400, // Increase maximum width of container
+            maxWidth: 1400,
             margin: '0 auto',
-            px: { xs: 2, md: 4 } // Add horizontal padding
+            px: { xs: 2, md: 4 }
         }}>
+            {selectedPackage && (
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+
+                }}>
+                    <Button
+                        startIcon={<ClearIcon />}
+                        onClick={handleClearSelection}
+                        sx={{
+                            color: '#666',
+                            '&:hover': {
+                                backgroundColor: 'rgba(0,0,0,0.04)',
+                            },
+                        }}
+                    >
+                        Clear Selection
+                    </Button>
+                </Box>
+            )}
             {bulkPackages.length <= 3 ? (
                 <Grid container spacing={4} justifyContent="center">
                     {renderPackages()}

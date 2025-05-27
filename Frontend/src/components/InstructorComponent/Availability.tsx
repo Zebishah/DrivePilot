@@ -32,6 +32,11 @@ interface AvailabilityProps {
   availabilityData: AvailabilitySlot[];
   loading: boolean;
   onSelectAvailability?: (availability: AvailabilitySlot[]) => void;
+  selectedPackage?: {
+    startDate: string;
+    endDate: string;
+    lessons: number;
+  } | null;
 }
 
 const CalendarIconWrapper = styled.div`
@@ -60,6 +65,7 @@ const Availability: React.FC<AvailabilityProps> = ({
   availabilityData,
   loading,
   onSelectAvailability,
+  selectedPackage
 }) => {
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
@@ -87,23 +93,37 @@ const Availability: React.FC<AvailabilityProps> = ({
   const transformedSlots = useMemo(() => {
     if (!availabilityData || availabilityData.length === 0) return [];
 
-    return availabilityData
-      .filter((slot) => {
-        // Filter out past dates
-        if (dayjs(slot.date).isBefore(dayjs(), 'day')) return false;
-        // If no date selected, show all future slots
-        if (!selectedDate) return true;
-        // If date selected, show slots for that date
-        return dayjs(slot.date).isSame(selectedDate, 'day');
-      })
-      .map((slot) => ({
-        id: slot._id,
-        time: `${slot.startTime} - ${slot.endTime}`,
-        duration: calculateDuration(slot.startTime, slot.endTime),
-        location: "Location Not Specified",
-        date: slot.date,
-      }));
-  }, [availabilityData, selectedDate]);
+    let filteredSlots = availabilityData.filter((slot) => {
+      // Filter out past dates
+      if (dayjs(slot.date).isBefore(dayjs(), 'day')) return false;
+
+      // If package selected, only show slots within package date range
+      if (selectedPackage) {
+        const slotDate = dayjs(slot.date);
+        const packageStart = dayjs(selectedPackage.startDate);
+        const packageEnd = dayjs(selectedPackage.endDate);
+        return slotDate.isBetween(packageStart, packageEnd, 'day', '[]');
+      }
+
+      // If no date selected, show all future slots
+      if (!selectedDate) return true;
+      // If date selected, show slots for that date
+      return dayjs(slot.date).isSame(selectedDate, 'day');
+    });
+
+    // If package selected, limit number of selectable slots
+    if (selectedPackage) {
+      filteredSlots = filteredSlots.slice(0, selectedPackage.lessons);
+    }
+
+    return filteredSlots.map((slot) => ({
+      id: slot._id,
+      time: `${slot.startTime} - ${slot.endTime}`,
+      duration: calculateDuration(slot.startTime, slot.endTime),
+      location: "Location Not Specified",
+      date: slot.date,
+    }));
+  }, [availabilityData, selectedDate, selectedPackage]);
 
   // Custom date validation
   const shouldDisableDate = (date: dayjs.Dayjs) => {
@@ -139,6 +159,25 @@ const Availability: React.FC<AvailabilityProps> = ({
 
       return newSelection;
     });
+  };
+
+  // Add package info message
+  const renderPackageInfo = () => {
+    if (!selectedPackage) return null;
+
+    return (
+      <Typography
+        sx={{
+          fontFamily: "Poppins, sans-serif",
+          color: '#5FC2D3',
+          mb: 2
+        }}
+      >
+        {`Selected package: ${selectedPackage.lessons} lessons between 
+        ${dayjs(selectedPackage.startDate).format('MMM D, YYYY')} and 
+        ${dayjs(selectedPackage.endDate).format('MMM D, YYYY')}`}
+      </Typography>
+    );
   };
 
   // Render loading state
@@ -334,6 +373,7 @@ const Availability: React.FC<AvailabilityProps> = ({
 
             </Box>
           </Box>
+          {renderPackageInfo()}
           <Typography
             sx={{
               fontFamily: "Poppins, sans-serif",

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@apollo/client";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -26,6 +26,8 @@ const ProfileSummary: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = React.useState(0);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+
   // Define or import the AvailabilitySlot type
   type AvailabilitySlot = {
     startTime: string;
@@ -45,6 +47,12 @@ const ProfileSummary: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
+  };
+
+  const handlePackageSelect = (packageData) => {
+    setSelectedPackage(packageData);
+    // Auto switch to availability tab when package is selected
+    setActiveTab(0);
   };
 
   // Fallback data for when no data is available
@@ -72,7 +80,6 @@ const ProfileSummary: React.FC = () => {
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability =
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
-
 
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
@@ -273,13 +280,13 @@ const ProfileSummary: React.FC = () => {
           >
             {loading ? "Loading..." : "Book Now"}
           </Button>
-
-
         </Card>
         {tariff?.bulkPackages.length > 0 && (
           <Card sx={{ marginTop: "0.5rem", padding: "0.5rem" }}>
-
-            <BulkLessonPackages tariff={tariff} />
+            <BulkLessonPackages
+              tariff={tariff}
+              onPackageSelect={handlePackageSelect}
+            />
           </Card>
         )}
 
@@ -305,7 +312,6 @@ const ProfileSummary: React.FC = () => {
               fontFamily: "Poppins, sans-serif",
             }}
             label="Availability"
-
           />
           <Tab
             sx={{
@@ -332,8 +338,8 @@ const ProfileSummary: React.FC = () => {
             availabilityData={availability}
             loading={loading}
             onSelectAvailability={setSelectedAvailability}
+            selectedPackage={selectedPackage}
           />
-
         )}
         {activeTab === 1 && (
           <Summary
