@@ -17,6 +17,7 @@ import Reviews from "./Reviews";
 import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
+import BulkLessonPackages from "./BulkPackageCard";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -71,6 +72,7 @@ const ProfileSummary: React.FC = () => {
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability =
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
+
 
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
@@ -271,7 +273,15 @@ const ProfileSummary: React.FC = () => {
           >
             {loading ? "Loading..." : "Book Now"}
           </Button>
+
+
         </Card>
+        {tariff?.bulkPackages.length > 0 && (
+          <Card sx={{ marginTop: "0.5rem", padding: "0.5rem" }}>
+
+            <BulkLessonPackages tariff={tariff} />
+          </Card>
+        )}
 
         <Tabs
           sx={{

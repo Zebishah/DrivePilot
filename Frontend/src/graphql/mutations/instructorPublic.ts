@@ -58,8 +58,10 @@ export const GET_INSTRUCTOR_PROFILE = gql`
       tariff {
         lessonFee
         bulkPackages {
-          hours
-          price
+          lessons
+          cost
+          startDate
+          endDate
         }
         packageDiscount
         discountStartDate

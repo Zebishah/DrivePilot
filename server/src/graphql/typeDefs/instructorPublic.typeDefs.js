@@ -72,8 +72,10 @@ const instructorTypeDefs = gql`
   }
 
   type BulkLessonPackage {
-    hours: Int
-    price: Float
+    lessons: Int!
+    cost: Float!
+    startDate: String! # ISO date
+    endDate: String! # ISO date
   }
 
   type InstructorPublicProfile {
