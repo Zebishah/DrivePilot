@@ -52,6 +52,7 @@ const typeDefs = gql`
     role: UserRole
     isProfileComplete: Boolean!
     isUserVerified: Boolean
+    adminLevel: String
     isUserAuthenticated: Boolean
     authProvider: AuthProvider!
     createdAt: String!
@@ -66,6 +67,7 @@ const typeDefs = gql`
     role: UserRole!
     isProfileComplete: Boolean!
     authProvider: AuthProvider!
+    adminLevel: String
     createdAt: String!
     updatedAt: String!
     homeAddress: String
@@ -93,6 +95,7 @@ const typeDefs = gql`
     role: UserRole!
     isProfileComplete: Boolean!
     authProvider: AuthProvider!
+    adminLevel: String
     createdAt: String!
     updatedAt: String!
     address: String
@@ -153,6 +156,7 @@ const typeDefs = gql`
     authProvider: AuthProvider!
     createdAt: String!
     updatedAt: String!
+    adminLevel: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
   }

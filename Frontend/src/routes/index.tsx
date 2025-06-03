@@ -32,6 +32,9 @@ import StudentBookings from "../pages/private/student-dashboard/bookLesson";
 import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
 import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
 import EditStudentProfile from "../pages/private/student-dashboard/EditStudentProfile";
+import QuestionsAnswers from "../pages/private/admin-dashboard/HelpSupport";
+import FAQPage from "../pages/private/teacher-dashboard/HelpSuportPage";
+import SuperAdminRoute from "./SuperAdminRoutes";
 
 const router = createBrowserRouter([
   {
@@ -89,6 +92,7 @@ const router = createBrowserRouter([
       },
       { path: "search/instructors/:id", element: <OurInstructor /> },
       { path: "booking-details", element: <BookingDetails /> },
+      { path: "help-support", element: <FAQPage /> },
     ],
   },
   {
@@ -101,6 +105,7 @@ const router = createBrowserRouter([
         element: <ProfileSetting />,
         children: [
           { path: "edit-profile", element: <EditProfile /> }, // Nested under settings
+          { path: "help-support", element: <FAQPage /> },
         ],
       },
     ],
@@ -111,6 +116,14 @@ const router = createBrowserRouter([
     children: [
       { path: "overview", element: <AdminOverview /> },
       { path: "admin-access", element: <AdminAccess /> },
+      {
+        path: "help-support",
+        element: (
+          <SuperAdminRoute>
+            <QuestionsAnswers />
+          </SuperAdminRoute>
+        ),
+      },
     ],
   },
   {

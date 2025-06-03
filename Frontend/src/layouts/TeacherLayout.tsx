@@ -45,6 +45,11 @@ const menuItems: MenuItem[] = [
     icon: Settings,
     path: "/teacher-dashboard/settings",
   },
+  {
+    text: "Help & Support",
+    icon: HelpCircle,
+    path: "/teacher-dashboard/help-support",
+  },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 const DRAWER_WIDTH = 280;

@@ -55,7 +55,11 @@ const menuItems: MenuItem[] = [
     icon: Settings,
     path: "/student-dashboard/settings",
   },
-
+  {
+    text: "Help & Support",
+    icon: HelpCircle,
+    path: "/student-dashboard/help-support",
+  },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 

@@ -15,12 +15,12 @@ const authMiddleware = async (req) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return { 
+    return {
       user: {
         id: decoded.id,
         email: decoded.email,
-        role: decoded.role
-      }
+        role: decoded.role,
+      },
     };
   } catch (err) {
     throw new AuthenticationError("Invalid/Expired token");
