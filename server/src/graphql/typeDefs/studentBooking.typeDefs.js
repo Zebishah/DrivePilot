@@ -1,4 +1,4 @@
-const { gql } = require('apollo-server-express');
+const { gql } = require("apollo-server-express");
 
 const studentBookingTypeDefs = gql`
   enum BookingStatus {
@@ -7,7 +7,10 @@ const studentBookingTypeDefs = gql`
     cancelled
     completed
   }
-
+  enum feedBackStatusEnum {
+    pending
+    completed
+  }
   type Slot {
     date: String!
     startTime: String!
@@ -22,6 +25,7 @@ const studentBookingTypeDefs = gql`
   type UserBooking {
     _id: ID!
     firstName: String!
+    profileImage: String
     lastName: String!
     email: String!
     description: String
@@ -35,8 +39,10 @@ const studentBookingTypeDefs = gql`
     totalAmount: Int!
     paymentMethod: PaymentMethod!
     status: BookingStatus!
+    profileImage: String
+    feedBackStatus: feedBackStatusEnum
     createdAt: String!
-    updatedAt: String!    
+    updatedAt: String!
   }
 
   input SlotInput {
@@ -59,6 +65,7 @@ const studentBookingTypeDefs = gql`
 
   type Query {
     getStudentBookings: [StudentBooking!]!
+    getCompletedStudentBookings: [StudentBooking!]!
     getInstructorBookings: [StudentBooking!]!
   }
 

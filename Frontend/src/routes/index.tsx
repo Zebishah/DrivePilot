@@ -35,6 +35,8 @@ import EditStudentProfile from "../pages/private/student-dashboard/EditStudentPr
 import QuestionsAnswers from "../pages/private/admin-dashboard/HelpSupport";
 import FAQPage from "../pages/private/teacher-dashboard/HelpSuportPage";
 import SuperAdminRoute from "./SuperAdminRoutes";
+import StudentFeedback from "../pages/private/teacher-dashboard/CompleteBookings";
+import FeedbackForm from "../pages/private/teacher-dashboard/FeedBackForm";
 
 const router = createBrowserRouter([
   {
@@ -105,9 +107,11 @@ const router = createBrowserRouter([
         element: <ProfileSetting />,
         children: [
           { path: "edit-profile", element: <EditProfile /> }, // Nested under settings
-          { path: "help-support", element: <FAQPage /> },
         ],
       },
+      { path: "help-support", element: <FAQPage /> },
+      { path: "feedback", element: <StudentFeedback /> },
+      { path: "feedbackForm/:lessonId", element: <FeedbackForm /> },
     ],
   },
   {

@@ -10,6 +10,8 @@ const instructorResolver = {
   Query: {
     getNearbyInstructors: async (_, { filter = {}, offset = 0 }) => {
       try {
+        console.log("Received filter:", filter); // Debug log
+
         // Build the base query
         let query = {
           role: "Instructor",
@@ -36,7 +38,6 @@ const instructorResolver = {
         // Date availability filter
         let instructorIdsWithAvailability = [];
         if (filter.availableDates?.length) {
-          // Create date ranges for each requested date
           const dateRanges = filter.availableDates.map((dateStr) => {
             const date = new Date(dateStr);
             const start = new Date(date);
@@ -46,7 +47,6 @@ const instructorResolver = {
             return { $gte: start, $lte: end };
           });
 
-          // Find instructors with availability on ANY of the requested dates
           const availabilityResults = await teacherAvailabilityModel
             .find({
               $or: dateRanges.map((range) => ({ date: range })),
@@ -57,7 +57,6 @@ const instructorResolver = {
             id.toString()
           );
 
-          // Add to our query
           if (instructorIdsWithAvailability.length) {
             query._id = query._id
               ? {
@@ -67,7 +66,6 @@ const instructorResolver = {
                 }
               : { $in: instructorIdsWithAvailability };
           } else {
-            // If no instructors available on these dates, return empty
             return {
               instructors: [],
               totalCount: 0,
@@ -79,30 +77,65 @@ const instructorResolver = {
         let instructors = [];
         let totalCount = 0;
 
-        if (filter.coordinates && filter.areaRadius) {
-          // Geo query logic
-          const maxDistance = filter.areaRadius * 1609.34;
+        // FIXED: Geographic query logic
+        if (filter.coordinates && filter.areaRadius && filter.areaRadius > 0) {
+          console.log("Applying geographic filter:", {
+            coordinates: filter.coordinates,
+            areaRadius: filter.areaRadius,
+          });
+
+          // Convert miles to meters (if using miles) or keep in meters
+          const maxDistanceInMeters = filter.areaRadius * 1609.34; // Convert miles to meters
+
+          // Ensure coordinates are in [longitude, latitude] format
+          const [longitude, latitude] = filter.coordinates;
+
+          // Create the geoNear aggregation stage
           const geoNearStage = {
             $geoNear: {
-              near: { type: "Point", coordinates: filter.coordinates },
+              near: {
+                type: "Point",
+                coordinates: [longitude, latitude], // Ensure correct format
+              },
               distanceField: "distance",
-              maxDistance: maxDistance,
+              maxDistance: maxDistanceInMeters,
               spherical: true,
               query: query,
             },
           };
 
-          const [results, countResult] = await Promise.all([
-            User.Instructor.aggregate([geoNearStage]),
-            User.Instructor.aggregate([geoNearStage, { $count: "totalCount" }]),
-          ]);
+          console.log("GeoNear stage:", JSON.stringify(geoNearStage, null, 2));
 
-          instructors = results;
-          totalCount = countResult[0]?.totalCount || 0;
+          try {
+            // Execute the geographic query
+            const [results, countResult] = await Promise.all([
+              User.Instructor.aggregate([
+                geoNearStage,
+                { $skip: offset },
+                // Add limit if needed: { $limit: limit }
+              ]),
+              User.Instructor.aggregate([
+                geoNearStage,
+                { $count: "totalCount" },
+              ]),
+            ]);
+
+            instructors = results;
+            totalCount = countResult[0]?.totalCount || 0;
+
+            console.log(
+              `Found ${instructors.length} instructors within ${filter.areaRadius} miles`
+            );
+          } catch (geoError) {
+            console.error("Geographic query failed:", geoError);
+            // Fallback to non-geographic query
+            instructors = await User.Instructor.find(query).skip(offset);
+            totalCount = await User.Instructor.countDocuments(query);
+          }
         } else {
-          // Non-geo query
-          instructors = await User.Instructor.find(query);
-
+          // Non-geographic query (when no coordinates or areaRadius provided)
+          console.log("Applying non-geographic query");
+          instructors = await User.Instructor.find(query).skip(offset);
           totalCount = await User.Instructor.countDocuments(query);
         }
 
@@ -116,6 +149,7 @@ const instructorResolver = {
             $in: filter.availableDates.map((d) => new Date(d)),
           };
         }
+
         const [tariffs, availability] = await Promise.all([
           teacherTariffModel.find({ teacherId: { $in: instructorIds } }),
           teacherAvailabilityModel.find(availabilityQuery),
@@ -132,7 +166,7 @@ const instructorResolver = {
           return map;
         }, new Map());
 
-        return {
+        const result = {
           instructors: instructors.map((instructor) => {
             const instructorId = instructor._id.toString();
             return {
@@ -150,6 +184,7 @@ const instructorResolver = {
               coordinates: instructor.coordinates,
               gender: instructor.gender,
               transmissionType: instructor.transmissionType,
+              distance: instructor.distance, // This will be added by $geoNear
               details: {
                 degree: instructor.experience,
                 car: instructor.carName,
@@ -158,15 +193,19 @@ const instructorResolver = {
                   ? `$${tariffMap.get(instructorId).lessonFee}/hr`
                   : "Not specified",
               },
-              // Add availability slots for the requested dates
               availability: availabilityMap.get(instructorId) || [],
             };
           }),
           totalCount,
-          // hasMore: offset + limit < totalCount,
         };
+
+        console.log(
+          `Returning ${result.instructors.length} instructors out of ${totalCount} total`
+        );
+        return result;
       } catch (error) {
-        throw new Error("Failed to fetch instructors");
+        console.error("Error in getNearbyInstructors:", error);
+        throw new Error(`Failed to fetch instructors: ${error.message}`);
       }
     },
     getInstructorPublicProfile: async (_, { id }) => {

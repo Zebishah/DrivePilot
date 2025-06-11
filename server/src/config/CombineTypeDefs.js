@@ -9,7 +9,7 @@ const studentTypeDefs = require("../graphql/typeDefs/student.typeDefs");
 const studentBookingTypeDefs = require("../graphql/typeDefs/studentBooking.typeDefs");
 const contactDetailType = require("../graphql/typeDefs/AdminContactTypes");
 const faqTypeDefs = require("../graphql/typeDefs/Faq'sTypes");
-
+const LessonFeedbackTypeDefs = require("../graphql/typeDefs/LessonFeedbackTypes");
 const typeDefs = mergeTypeDefs([
   userTypeDefs,
   SignupLinkTypedef,
@@ -20,6 +20,7 @@ const typeDefs = mergeTypeDefs([
   studentBookingTypeDefs,
   contactDetailType,
   faqTypeDefs,
+  LessonFeedbackTypeDefs,
 ]);
 
 module.exports = typeDefs;

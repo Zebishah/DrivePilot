@@ -14,6 +14,7 @@ import { useMutation } from "@apollo/client";
 import { GET_FAQS_BY_ADMIN } from "../../graphql/Queries/Faqs";
 import { CREATE_FAQ } from "../../graphql/mutations/Faqs";
 import { CreateFaqInput } from "../../types/Faq";
+import toast from "react-hot-toast";
 
 interface FaqFormProps {
   open: boolean;
@@ -47,6 +48,7 @@ const FaqForm: React.FC<FaqFormProps> = ({ open, onClose, adminId }) => {
           adminId,
         } as CreateFaqInput,
       });
+      toast.success("FAQ added successfully!");
     } catch (error) {
       console.error("Error submitting FAQ:", error);
     }

@@ -50,6 +50,11 @@ const menuItems: MenuItem[] = [
     icon: HelpCircle,
     path: "/teacher-dashboard/help-support",
   },
+  {
+    text: "Feedback",
+    icon: MessageSquare,
+    path: "/teacher-dashboard/feedback",
+  },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 const DRAWER_WIDTH = 280;

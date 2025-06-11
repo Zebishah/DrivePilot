@@ -198,8 +198,10 @@ const InstructorsInfo: React.FC = () => {
         priceMin: filters.price[0],
         priceMax: filters.price[1],
       }),
+      // Fix: Ensure areaRadius is always > 0 when coordinates are provided
       ...(filters.coordinates &&
-        filters.coordinates[0] !== 0 && {
+        filters.coordinates[0] !== 0 &&
+        filters.areaRadius > 0 && {
           coordinates: filters.coordinates,
           areaRadius: filters.areaRadius,
         }),
@@ -207,6 +209,8 @@ const InstructorsInfo: React.FC = () => {
         availableDates: filters.availability,
       }),
     };
+
+    console.log("Applying filters:", activeFilters); // Debug log
 
     setFilters((prev) => ({
       ...prev,

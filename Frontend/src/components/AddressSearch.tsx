@@ -45,7 +45,7 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
       abortControllerRef.current = controller;
       const requestId = Date.now();
       lastRequestTime.current = requestId;
-      console.log("ok bedounve Input value:");
+
       try {
         const response = await axios.get(
           "https://nominatim.openstreetmap.org/search",
@@ -77,7 +77,6 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
           setSuggestions(swissLocations);
           setShowSuggestions(true);
         }
-        console.log("ok bedounve Input valu23e:");
       } catch (error) {
         if (!axios.isCancel(error)) {
           console.error("Error fetching locations:", error);
@@ -89,7 +88,7 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    console.log("Input value:", value);
+
     setInputValue(value);
     debouncedFetchLocations(value);
   };
@@ -120,7 +119,7 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
   return (
     <Box sx={{ position: "relative" }} className="unstyled">
       <Typography sx={{ fontFamily: "Poppins, sans-serif", mb: 1 }}>
-        Address
+        My Address
       </Typography>
       <TextField
         fullWidth
@@ -162,7 +161,6 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
           <List>
             {suggestions.map((place) => (
               <ListItem
-                button
                 key={place.place_id}
                 onClick={() => handleSelectSuggestion(place)}
                 sx={{

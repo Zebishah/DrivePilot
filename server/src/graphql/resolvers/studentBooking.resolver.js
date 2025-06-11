@@ -16,7 +16,78 @@ const studentBookingResolver = {
         .populate("instructorId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
     },
+    getCompletedStudentBookings: async (_, __, { user }) => {
+      validateUser(user);
 
+      const now = new Date();
+
+      // Populate both instructorId and studentId (booker) with profileImage included
+      const allBookings = await StudentBooking.find({
+        status: "confirmed", // Only confirmed bookings
+      })
+        .populate(
+          "instructorId",
+          "_id firstName lastName email description profileImage"
+        )
+        .populate("studentId", "_id firstName lastName email profileImage");
+
+      const completedBookings = allBookings.filter((booking) => {
+        if (!booking.slots || booking.slots.length === 0) return false;
+
+        // Get the latest slot by end time
+        const lastSlot = booking.slots.reduce((latest, current) => {
+          const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
+          const currentEnd = new Date(`${current.date}T${current.endTime}:00`);
+          return currentEnd > latestEnd ? current : latest;
+        });
+
+        const lastEndDateTime = new Date(
+          `${lastSlot.date}T${lastSlot.endTime}:00`
+        );
+
+        return lastEndDateTime <= now;
+      });
+
+      // Sort by latest completed first
+      const sortedBookings = completedBookings.sort((a, b) => {
+        const getLastEndTime = (slots) => {
+          return slots.reduce((latest, current) => {
+            const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
+            const currentEnd = new Date(
+              `${current.date}T${current.endTime}:00`
+            );
+            return currentEnd > latestEnd ? current : latest;
+          });
+        };
+
+        const aEnd = new Date(
+          `${getLastEndTime(a.slots).date}T${getLastEndTime(a.slots).endTime}:00`
+        );
+        const bEnd = new Date(
+          `${getLastEndTime(b.slots).date}T${getLastEndTime(b.slots).endTime}:00`
+        );
+
+        return bEnd - aEnd; // Descending
+      });
+
+      // Add bookerProfileImage to each booking object
+      const bookingsWithStudentProfile = sortedBookings.map((booking) => {
+        const bookingObj = booking.toObject(); // Convert to plain object
+
+        return {
+          ...bookingObj,
+          // Add the student's (booker's) profile image
+          bookerProfileImage: booking.studentId?.profileImage || "",
+          // Also fix the instructor's profile image in the response
+          instructorId: {
+            ...bookingObj.instructorId,
+            profileImage: booking.instructorId?.profileImage || "",
+          },
+        };
+      });
+
+      return bookingsWithStudentProfile;
+    },
     getInstructorBookings: async (_, __, { user }) => {
       validateUser(user);
       return await StudentBooking.find({ instructorId: user.id })
@@ -126,9 +197,8 @@ const studentBookingResolver = {
       session.startTransaction();
       try {
         // 1) Load & auth
-        const booking = await StudentBooking.findById(bookingId).session(
-          session
-        );
+        const booking =
+          await StudentBooking.findById(bookingId).session(session);
         if (!booking) {
           throw new UserInputError("Booking not found");
         }

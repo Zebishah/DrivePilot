@@ -1,30 +1,22 @@
-// components/ContactModal.tsx
+// components/ContactForm.tsx
 
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  Typography,
-  IconButton,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import { Close as CloseIcon, Send as SendIcon } from "@mui/icons-material";
+import { TextField, Button, Box, Alert, CircularProgress } from "@mui/material";
+import { Send as SendIcon } from "@mui/icons-material";
 import { useMutation } from "@apollo/client";
 
-import { ContactFormData, ContactModalProps } from "../../types/Faq";
+import { ContactFormData } from "../../types/Faq";
 import {
   SendContactEmailMutation,
   SendContactEmailVariables,
 } from "../../types/AdminContact";
 import { SEND_CONTACT_EMAIL } from "../../graphql/mutations/AdminContact";
 
-const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => {
+interface ContactFormProps {
+  onSubmit?: (formData: ContactFormData) => void;
+}
+
+const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
@@ -50,10 +42,15 @@ const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => {
         setFormData({ name: "", email: "", description: "" });
         setErrors({});
 
-        // Close modal after 2 seconds on success
+        // Call onSubmit if provided
+        if (onSubmit) {
+          onSubmit(formData);
+        }
+
+        // Clear success message after 5 seconds
         setTimeout(() => {
-          handleClose();
-        }, 2000);
+          setAlertMessage(null);
+        }, 5000);
       } else {
         setAlertMessage({
           type: "error",
@@ -127,117 +124,118 @@ const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => {
     }
   };
 
-  const handleClose = () => {
-    setFormData({ name: "", email: "", description: "" });
-    setErrors({});
-    setAlertMessage(null);
-    onClose();
-  };
-
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          p: 2,
-        },
-      }}
-    >
-      <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
-        <Typography variant="h5" component="h2" fontWeight="bold">
-          Need more Help?
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Please Contact Us.
-        </Typography>
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-          }}
-          disabled={loading}
+    <Box>
+      {alertMessage && (
+        <Alert
+          severity={alertMessage.type}
+          sx={{ mb: 3 }}
+          onClose={() => setAlertMessage(null)}
         >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+          {alertMessage.message}
+        </Alert>
+      )}
 
-      <DialogContent sx={{ pt: 2 }}>
-        {alertMessage && (
-          <Alert
-            severity={alertMessage.type}
-            sx={{ mb: 2 }}
-            onClose={() => setAlertMessage(null)}
-          >
-            {alertMessage.message}
-          </Alert>
-        )}
-
-        <Box component="form" onSubmit={handleSubmit} noValidate>
-          <TextField
-            fullWidth
-            label="Name"
-            variant="outlined"
-            value={formData.name}
-            onChange={handleChange("name")}
-            error={!!errors.name}
-            helperText={errors.name}
-            disabled={loading}
-            sx={{
-              mb: 2,
-              borderRadius: 1,
-              "& .MuiInputBase-root": {
-                padding: "12px",
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        <TextField
+          fullWidth
+          label="Name"
+          variant="outlined"
+          value={formData.name}
+          onChange={handleChange("name")}
+          error={!!errors.name}
+          helperText={errors.name}
+          disabled={loading}
+          sx={{
+            mb: 3,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#4db6ac",
               },
-            }}
-          />
-
-          <TextField
-            fullWidth
-            label="Email Address"
-            type="email"
-            variant="outlined"
-            value={formData.email}
-            onChange={handleChange("email")}
-            error={!!errors.email}
-            helperText={errors.email}
-            disabled={loading}
-            sx={{
-              mb: 2,
-              borderRadius: 1,
-              "& .MuiInputBase-root": {
-                padding: "12px",
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#4db6ac",
               },
-            }}
-          />
+              "& .MuiOutlinedInput-input": {
+                padding: "14px 16px !important",
+                fontSize: "1rem",
+              },
+            },
+            "& .MuiInputLabel-root": {
+              fontSize: "1rem",
+              "&.Mui-focused": {
+                color: "#4db6ac",
+              },
+            },
+          }}
+        />
 
-          <TextField
-            fullWidth
-            label="Description"
-            multiline
-            rows={4}
-            variant="outlined"
-            value={formData.description}
-            onChange={handleChange("description")}
-            error={!!errors.description}
-            helperText={errors.description}
-            disabled={loading}
-            sx={{ mb: 2 }}
-          />
-        </Box>
-      </DialogContent>
+        <TextField
+          fullWidth
+          label="Email Address"
+          type="email"
+          variant="outlined"
+          value={formData.email}
+          onChange={handleChange("email")}
+          error={!!errors.email}
+          helperText={errors.email}
+          disabled={loading}
+          sx={{
+            mb: 3,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#4db6ac",
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#4db6ac",
+              },
+              "& .MuiOutlinedInput-input": {
+                padding: "14px 16px !important",
+                fontSize: "1rem",
+              },
+            },
+            "& .MuiInputLabel-root": {
+              fontSize: "1rem",
+              "&.Mui-focused": {
+                color: "#4db6ac",
+              },
+            },
+          }}
+        />
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <TextField
+          fullWidth
+          label="Description"
+          multiline
+          rows={4}
+          variant="outlined"
+          value={formData.description}
+          onChange={handleChange("description")}
+          error={!!errors.description}
+          helperText={errors.description}
+          disabled={loading}
+          sx={{
+            mb: 3,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#4db6ac",
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#4db6ac",
+              },
+            },
+            "& .MuiInputLabel-root.Mui-focused": {
+              color: "#4db6ac",
+            },
+          }}
+        />
+
         <Button
           fullWidth
           variant="contained"
-          onClick={handleSubmit}
+          type="submit"
           size="large"
           disabled={loading}
           startIcon={
@@ -248,22 +246,25 @@ const ContactModal: React.FC<ContactModalProps> = ({ open, onClose }) => {
             )
           }
           sx={{
-            bgcolor: "#4DD0E1",
+            backgroundColor: "#4db6ac",
             "&:hover": {
-              bgcolor: "#26C6DA",
+              backgroundColor: "#26a69a",
             },
             "&:disabled": {
-              bgcolor: "#B0BEC5",
+              backgroundColor: "#B0BEC5",
             },
             py: 1.5,
-            borderRadius: 1,
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "1rem",
           }}
         >
-          {loading ? "Sending..." : "Send"}
+          {loading ? "Sending..." : "Send Message"}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </Box>
   );
 };
 
-export default ContactModal;
+export default ContactForm;

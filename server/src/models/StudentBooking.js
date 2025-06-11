@@ -64,6 +64,11 @@ const studentBookingSchema = new Schema(
       enum: ["pending", "confirmed", "cancelled", "completed"],
       default: "pending",
     },
+    feedBackStatus: {
+      type: String,
+      enum: ["pending", "completed"],
+      default: "pending",
+    },
     createdAt: {
       type: Date,
       default: Date.now,

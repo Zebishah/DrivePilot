@@ -18,6 +18,7 @@ export interface AuthPayload {
     isProfileComplete: boolean;
     isUserVerified: boolean;
     isUserAuthenticated: boolean;
+    profileImage?: string;
     adminLevel?: string;
   };
 }
