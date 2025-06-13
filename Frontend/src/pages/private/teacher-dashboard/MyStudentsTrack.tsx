@@ -52,7 +52,7 @@ const StudentsProgressDashboard: React.FC = () => {
     );
   }
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className=" bg-gray-50">
       <div className=" mx-auto py-6 px-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

@@ -16,6 +16,7 @@ export const useStudentDashboard = () => {
   }>(GET_STUDENT_DASHBOARD, {
     variables: { studentId },
     skip: !studentId,
+    fetchPolicy: "cache-and-network",
   });
 
   const getDateRange = (filter: DateFilter): { start: Date; end: Date } => {

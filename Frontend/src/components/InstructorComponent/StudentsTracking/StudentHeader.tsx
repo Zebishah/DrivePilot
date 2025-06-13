@@ -41,8 +41,8 @@ export const StudentHeader = ({ studentInfo, lessonStats, loading }) => {
             </h2>
             <p className="text-gray-600">{studentInfo.location}</p>
             <div className="flex space-x-2 mt-3">
-              <button className="bg-teal-500 text-white px-4 py-2 rounded-md text-sm hover:bg-teal-600 transition-colors">
-                Message
+              <button className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm transition-colors">
+                Message(pending)
               </button>
               <button className="bg-teal-500 text-white px-4 py-2 rounded-md text-sm hover:bg-teal-600 transition-colors">
                 Feedback
