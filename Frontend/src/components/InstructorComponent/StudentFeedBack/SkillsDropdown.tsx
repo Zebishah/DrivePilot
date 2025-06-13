@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { skillOptions } from "../../types/LessonFeedback";
+import { skillOptions } from "../../../types/LessonFeedback";
 
 interface SkillsDropdownProps {
   selectedSkills: string[];

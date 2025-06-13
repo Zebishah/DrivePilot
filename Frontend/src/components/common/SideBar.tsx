@@ -20,13 +20,13 @@ import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+import type { IconType } from "react-icons/lib";
 
-export interface MenuItem {
+interface MenuItem {
   text: string;
-  icon: LucideIcon;
+  icon: LucideIcon | IconType;
   path: string;
 }
-
 interface SidebarProps {
   drawerWidth: number;
   mobileOpen: boolean;
@@ -107,7 +107,7 @@ export default function Sidebar({
         {menuItems.map((item, index) => {
           const isActive = router.pathname.startsWith(item.path); // Updated to handle nested routes
           const isLogout = item.text.toLowerCase() === "logout";
-
+          const icon = item.icon;
           return (
             <MotionListItem
               key={item.text}

@@ -33,7 +33,7 @@ const DRAWER_WIDTH = 280;
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-  console.log("User:", user);
+
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuItems: MenuItem[] = [

@@ -37,6 +37,8 @@ import FAQPage from "../pages/private/teacher-dashboard/HelpSuportPage";
 import SuperAdminRoute from "./SuperAdminRoutes";
 import StudentFeedback from "../pages/private/teacher-dashboard/CompleteBookings";
 import FeedbackForm from "../pages/private/teacher-dashboard/FeedBackForm";
+import StudentsProgressDashboard from "../pages/private/teacher-dashboard/MyStudentsTrack";
+import StudentDashboard from "../pages/private/teacher-dashboard/StudentProgress";
 
 const router = createBrowserRouter([
   {
@@ -112,6 +114,8 @@ const router = createBrowserRouter([
       { path: "help-support", element: <FAQPage /> },
       { path: "feedback", element: <StudentFeedback /> },
       { path: "feedbackForm/:lessonId", element: <FeedbackForm /> },
+      { path: "studentProgress/:studentId", element: <StudentDashboard /> },
+      { path: "my-students", element: <StudentsProgressDashboard /> },
     ],
   },
   {

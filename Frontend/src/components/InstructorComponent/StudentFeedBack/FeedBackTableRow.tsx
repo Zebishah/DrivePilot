@@ -1,4 +1,4 @@
-import { StudentBooking } from "../../types/Bookings";
+import { StudentBooking } from "../../../types/Bookings";
 import { FeedbackButton } from "./FeedBackButton";
 import { FeedbackStatus } from "./FeedBackStatus";
 import { StudentAvatar } from "./StudentAvatar";

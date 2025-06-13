@@ -46,7 +46,7 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PopupState, { bindTrigger, bindMenu } from "material-ui-popup-state";
-import { BackButton } from "../../../components/InstructorComponent/BackButton";
+import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 // Define the interfaces for the data
 interface ProfileData {
   firstName: string;
@@ -495,7 +495,7 @@ export default function EditProfile() {
   ); //
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
-      <BackButton variant="outline" label="Default" />
+      <BackButton variant="outline" label="Back" />
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 3 }}>
         {/* My Profile Card */}

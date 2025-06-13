@@ -6,9 +6,9 @@ import {
 } from "@mui/icons-material";
 import { useFAQs } from "../../../hooks/UseFaqs's";
 import { ContactFormData } from "../../../types/Faq";
-import { TabPanel } from "../../../components/InstructorComponent/TabPanel";
-import { FAQList } from "../../../components/InstructorComponent/FaqList";
-import { ContactSection } from "../../../components/InstructorComponent/ContactSection";
+import { TabPanel } from "../../../components/InstructorComponent/Help&Support/TabPanel";
+import { FAQList } from "../../../components/InstructorComponent/Help&Support/FaqList";
+import { ContactSection } from "../../../components/InstructorComponent/Help&Support/ContactSection";
 
 const FAQPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -25,7 +25,14 @@ const FAQPage: React.FC = () => {
 
   return (
     <Container
-      sx={{ py: 4, minHeight: "90vh", position: "relative", width: "100%" }}
+      sx={{
+        py: 4,
+        px: 20,
+        minHeight: "90vh",
+        position: "relative",
+        width: "95% !important",
+        maxWidth: "100% !important",
+      }}
     >
       <Typography
         variant="h4"
@@ -36,8 +43,8 @@ const FAQPage: React.FC = () => {
         Help & Support
       </Typography>
 
-      <Paper sx={{ mb: 2, backgroundColor: "#f8f9fa" }}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+      <Paper sx={{ mb: 2, backgroundColor: "#f8f9fa", width: "100%" }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider", width: "100%" }}>
           <Tabs
             value={tabValue}
             onChange={handleTabChange}

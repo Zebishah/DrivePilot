@@ -1,8 +1,8 @@
 import React from "react";
-import { FeedbackTable } from "../../../components/InstructorComponent/FeedBackTable";
-import { ComingSoonSection } from "../../../components/InstructorComponent/ComingSoonSection";
-import { ErrorMessage } from "../../../components/InstructorComponent/ErrorMessage";
-import { LoadingSpinner } from "../../../components/InstructorComponent/LoadingSpinner";
+import { FeedbackTable } from "../../../components/InstructorComponent/StudentFeedBack/FeedBackTable";
+import { ComingSoonSection } from "../../../components/InstructorComponent/StudentFeedBack/ComingSoonSection";
+import { ErrorMessage } from "../../../components/InstructorComponent/Help&Support/ErrorMessage";
+import { LoadingSpinner } from "../../../components/InstructorComponent/common/LoadingSpinner";
 import { useCompletedBookings } from "../../../hooks/UseCompleteBookings";
 interface LessonBookingHistoryProps {
   studentId: string;

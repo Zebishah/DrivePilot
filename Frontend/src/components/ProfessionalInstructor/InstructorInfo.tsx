@@ -143,15 +143,10 @@ const InstructorsInfo: React.FC = () => {
       try {
         // Priority 1: If student has a profile location, use that
         if (studentData?.studentProfile?.location) {
-          console.log(
-            "Using student profile location:",
-            studentData.studentProfile.location
-          );
           const coordinates = await fetchCoordinatesForLocation(
             studentData.studentProfile.location
           );
           if (coordinates) {
-            console.log("Student location coordinates:", coordinates);
             setFilters((prev) => ({ ...prev, coordinates }));
             setIsInitialLoad(false);
             return; // Exit early, don't fetch user location
@@ -209,8 +204,6 @@ const InstructorsInfo: React.FC = () => {
         availableDates: filters.availability,
       }),
     };
-
-    console.log("Applying filters:", activeFilters); // Debug log
 
     setFilters((prev) => ({
       ...prev,

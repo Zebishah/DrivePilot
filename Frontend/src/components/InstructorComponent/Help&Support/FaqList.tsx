@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Paper } from "@mui/material";
-import { FAQ } from "../../types/Faq";
+import { FAQ } from "../../../types/Faq";
 import {
   EmptyFAQState,
   FAQListActions,

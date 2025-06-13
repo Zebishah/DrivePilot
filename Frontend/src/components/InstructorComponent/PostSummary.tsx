@@ -13,12 +13,13 @@ import {
 } from "@mui/material";
 import Availability from "./Availability";
 import Summary from "./Summary";
-import Reviews from "./Reviews";
+
 import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import BulkLessonPackages from "./BulkPackageCard";
 import { useAuth } from "../../context/AuthContext";
+import { Reviews } from "@mui/icons-material";
 
 // GraphQL Query remains the same as previous implementation
 

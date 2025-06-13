@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import ContactForm from "./ContactForm";
-import { ContactFormData } from "../../types/Faq";
+import { ContactFormData } from "../../../types/Faq";
 
 interface ContactSectionProps {
   onSubmit: (formData: ContactFormData) => void;

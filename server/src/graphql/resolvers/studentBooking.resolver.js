@@ -7,6 +7,7 @@ const {
 const { validateUser } = require("../../utils/auth");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { default: mongoose } = require("mongoose");
+const { User } = require("../../models/User");
 
 const studentBookingResolver = {
   Query: {
@@ -23,8 +24,10 @@ const studentBookingResolver = {
 
       // Populate both instructorId and studentId (booker) with profileImage included
       const allBookings = await StudentBooking.find({
+        instructorId: user?.id,
         status: "confirmed", // Only confirmed bookings
       })
+
         .populate(
           "instructorId",
           "_id firstName lastName email description profileImage"
@@ -69,7 +72,7 @@ const studentBookingResolver = {
 
         return bEnd - aEnd; // Descending
       });
-
+      console.log("allBookings", sortedBookings);
       // Add bookerProfileImage to each booking object
       const bookingsWithStudentProfile = sortedBookings.map((booking) => {
         const bookingObj = booking.toObject(); // Convert to plain object
@@ -93,6 +96,107 @@ const studentBookingResolver = {
       return await StudentBooking.find({ instructorId: user.id })
         .populate("studentId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
+    },
+    getStudentDashboardDetails: async (_, { studentId }, { user }) => {
+      validateUser(user);
+
+      const student = await User.findById(studentId).lean();
+      if (!student) throw new Error("Student not found");
+
+      const allBookings = await StudentBooking.find({
+        studentId,
+        status: "confirmed",
+      })
+        .populate("instructorId", "_id firstName lastName email profileImage")
+        .populate("studentId", "_id firstName lastName email profileImage") // Add this line
+        .lean();
+
+      const now = new Date();
+
+      let totalLessonCount = 0;
+      let totalDurationMinutes = 0;
+      const graphMap = new Map();
+
+      const completedBookings = [];
+      const uncompletedBookings = [];
+
+      for (const booking of allBookings) {
+        if (!booking.slots || booking.slots.length === 0) continue;
+
+        totalLessonCount += 1;
+
+        // Calculate total duration per booking
+        for (const slot of booking.slots) {
+          const start = new Date(`${slot.date}T${slot.startTime}:00`);
+          const end = new Date(`${slot.date}T${slot.endTime}:00`);
+          const duration = (end - start) / (1000 * 60); // minutes
+          totalDurationMinutes += duration;
+
+          // Track for graph
+          const count = graphMap.get(slot.date) || 0;
+          graphMap.set(slot.date, count + 1);
+        }
+
+        // Check if completed
+        const latestSlot = booking.slots.reduce((latest, curr) => {
+          const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
+          const currentEnd = new Date(`${curr.date}T${curr.endTime}:00`);
+          return currentEnd > latestEnd ? curr : latest;
+        });
+
+        const lastEndTime = new Date(
+          `${latestSlot.date}T${latestSlot.endTime}:00`
+        );
+        const isCompleted = lastEndTime <= now;
+
+        const finalBooking = {
+          ...booking,
+          profileImage: student.profileImage || "", // Changed from bookerProfileImage
+          instructorId: {
+            ...booking.instructorId,
+            profileImage: booking.instructorId?.profileImage || "",
+          },
+        };
+
+        if (isCompleted) {
+          completedBookings.push(finalBooking);
+        } else {
+          uncompletedBookings.push(finalBooking);
+        }
+      }
+
+      const graphStats = Array.from(graphMap.entries()).map(
+        ([date, lessonsBooked]) => ({
+          date,
+          lessonsBooked,
+        })
+      );
+
+      return {
+        studentInfo: {
+          _id: student._id,
+          // Fix: Use fallback values and check multiple possible locations for firstName/lastName
+          firstName: student.firstName || student.firstName || "N/A",
+          lastName: student.lastName || student.lastName || "N/A",
+          email: student.paymentInfo?.email || student.email || "N/A",
+          phone: student.phone || "",
+          profileImage: student.profileImage || "",
+          dateOfBirth: student.dateOfBirth || "",
+          fatherName: student.fatherName || "",
+          description: student.description || "",
+          homeAddress: student.homeAddress || "",
+          location: student.location || "",
+          zipCode: student.zipCode || "",
+          languagePreference: student.languagePreference || [],
+        },
+        lessonStats: {
+          totalLessons: totalLessonCount,
+          totalLessonDurationInMinutes: totalDurationMinutes,
+        },
+        graphStats,
+        completedBookings,
+        uncompletedBookings,
+      };
     },
   },
 

@@ -5,12 +5,12 @@ import { TextField, Button, Box, Alert, CircularProgress } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
 import { useMutation } from "@apollo/client";
 
-import { ContactFormData } from "../../types/Faq";
+import { ContactFormData } from "../../../types/Faq";
 import {
   SendContactEmailMutation,
   SendContactEmailVariables,
-} from "../../types/AdminContact";
-import { SEND_CONTACT_EMAIL } from "../../graphql/mutations/AdminContact";
+} from "../../../types/AdminContact";
+import { SEND_CONTACT_EMAIL } from "../../../graphql/mutations/AdminContact";
 
 interface ContactFormProps {
   onSubmit?: (formData: ContactFormData) => void;

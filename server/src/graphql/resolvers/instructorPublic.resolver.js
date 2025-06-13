@@ -10,8 +10,6 @@ const instructorResolver = {
   Query: {
     getNearbyInstructors: async (_, { filter = {}, offset = 0 }) => {
       try {
-        console.log("Received filter:", filter); // Debug log
-
         // Build the base query
         let query = {
           role: "Instructor",
@@ -79,11 +77,6 @@ const instructorResolver = {
 
         // FIXED: Geographic query logic
         if (filter.coordinates && filter.areaRadius && filter.areaRadius > 0) {
-          console.log("Applying geographic filter:", {
-            coordinates: filter.coordinates,
-            areaRadius: filter.areaRadius,
-          });
-
           // Convert miles to meters (if using miles) or keep in meters
           const maxDistanceInMeters = filter.areaRadius * 1609.34; // Convert miles to meters
 
@@ -104,8 +97,6 @@ const instructorResolver = {
             },
           };
 
-          console.log("GeoNear stage:", JSON.stringify(geoNearStage, null, 2));
-
           try {
             // Execute the geographic query
             const [results, countResult] = await Promise.all([
@@ -122,10 +113,6 @@ const instructorResolver = {
 
             instructors = results;
             totalCount = countResult[0]?.totalCount || 0;
-
-            console.log(
-              `Found ${instructors.length} instructors within ${filter.areaRadius} miles`
-            );
           } catch (geoError) {
             console.error("Geographic query failed:", geoError);
             // Fallback to non-geographic query
@@ -134,7 +121,7 @@ const instructorResolver = {
           }
         } else {
           // Non-geographic query (when no coordinates or areaRadius provided)
-          console.log("Applying non-geographic query");
+
           instructors = await User.Instructor.find(query).skip(offset);
           totalCount = await User.Instructor.countDocuments(query);
         }
@@ -199,9 +186,6 @@ const instructorResolver = {
           totalCount,
         };
 
-        console.log(
-          `Returning ${result.instructors.length} instructors out of ${totalCount} total`
-        );
         return result;
       } catch (error) {
         console.error("Error in getNearbyInstructors:", error);

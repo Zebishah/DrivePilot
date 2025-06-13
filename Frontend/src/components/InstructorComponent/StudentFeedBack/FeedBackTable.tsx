@@ -1,5 +1,5 @@
-import { StudentBooking } from "../../types/Bookings";
-import { EmptyState } from "./EmptyState";
+import { StudentBooking } from "../../../types/Bookings";
+import { EmptyState } from "../Help&Support/EmptyState";
 import { FeedbackTableRow } from "./FeedBackTableRow";
 
 interface FeedbackTableProps {

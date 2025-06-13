@@ -1,5 +1,5 @@
 import React from "react";
-import { ViewMode } from "../../types/LessonFeedback";
+import { ViewMode } from "../../../types/LessonFeedback";
 
 interface ActionButtonsProps {
   viewMode: ViewMode;

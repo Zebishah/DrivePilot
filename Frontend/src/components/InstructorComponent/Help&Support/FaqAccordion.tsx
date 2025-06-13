@@ -9,7 +9,7 @@ import {
   Box,
 } from "@mui/material";
 import { Add as AddIcon, Remove as RemoveIcon } from "@mui/icons-material";
-import { FAQAccordionProps } from "../../types/Faq";
+import { FAQAccordionProps } from "../../../types/Faq";
 
 const FAQAccordion: React.FC<FAQAccordionProps> = ({
   faq,

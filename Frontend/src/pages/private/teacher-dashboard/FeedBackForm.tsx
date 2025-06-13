@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 
 import { useFeedback } from "../../../hooks/UseFeedBack";
-import { SkillsDropdown } from "../../../components/InstructorComponent/SkillsDropdown";
-import { FormInput } from "../../../components/InstructorComponent/FormInput";
-import { RichTextEditor } from "../../../components/InstructorComponent/RichTextBox";
-import { ActionButtons } from "../../../components/InstructorComponent/ActionButtons";
-import { DeleteModal } from "../../../components/InstructorComponent/DeleteModal";
-import { BackButton } from "../../../components/InstructorComponent/BackButton";
+import { SkillsDropdown } from "../../../components/InstructorComponent/StudentFeedBack/SkillsDropdown";
+import { FormInput } from "../../../components/InstructorComponent/StudentFeedBack/FormInput";
+
+import { ActionButtons } from "../../../components/InstructorComponent/StudentFeedBack/ActionButtons";
+import { DeleteModal } from "../../../components/InstructorComponent/StudentFeedBack/DeleteModal";
+import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
+import { RichTextEditor } from "../../../components/InstructorComponent/StudentFeedBack/RichTextBox";
 
 const FeedbackForm: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -80,7 +81,7 @@ const FeedbackForm: React.FC = () => {
 
   return (
     <div className="bg-gray-50  px-4">
-      <BackButton variant="outline" label="Default" />
+      <BackButton variant="outline" label="Back" />
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6">
           {/* Header */}

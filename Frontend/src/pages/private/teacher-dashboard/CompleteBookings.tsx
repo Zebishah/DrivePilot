@@ -3,11 +3,8 @@ import { useQuery } from "@apollo/client";
 import { GET_COMPLETED_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking";
 import { StudentBooking } from "../../../types/Bookings";
 import { Link } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
-import { BackButton } from "../../../components/InstructorComponent/BackButton";
 
 const StudentFeedback: React.FC = () => {
-  const { user } = useAuth();
   const { data, loading, error, refetch } = useQuery(
     GET_COMPLETED_STUDENT_BOOKINGS,
     {
@@ -117,7 +114,7 @@ const StudentFeedback: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {completedBookings.map((booking, index) => (
+                {completedBookings.map((booking) => (
                   <tr key={booking._id} className="border-b border-gray-100">
                     <td className="py-4 px-2">
                       <div className="flex items-center space-x-3">
