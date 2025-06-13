@@ -32,6 +32,13 @@ import StudentBookings from "../pages/private/student-dashboard/bookLesson";
 import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
 import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
 import EditStudentProfile from "../pages/private/student-dashboard/EditStudentProfile";
+import QuestionsAnswers from "../pages/private/admin-dashboard/HelpSupport";
+import FAQPage from "../pages/private/teacher-dashboard/HelpSuportPage";
+import SuperAdminRoute from "./SuperAdminRoutes";
+import StudentFeedback from "../pages/private/teacher-dashboard/CompleteBookings";
+import FeedbackForm from "../pages/private/teacher-dashboard/FeedBackForm";
+import StudentsProgressDashboard from "../pages/private/teacher-dashboard/MyStudentsTrack";
+import StudentDashboard from "../pages/private/teacher-dashboard/StudentProgress";
 
 const router = createBrowserRouter([
   {
@@ -89,6 +96,7 @@ const router = createBrowserRouter([
       },
       { path: "search/instructors/:id", element: <OurInstructor /> },
       { path: "booking-details", element: <BookingDetails /> },
+      { path: "help-support", element: <FAQPage /> },
     ],
   },
   {
@@ -103,6 +111,11 @@ const router = createBrowserRouter([
           { path: "edit-profile", element: <EditProfile /> }, // Nested under settings
         ],
       },
+      { path: "help-support", element: <FAQPage /> },
+      { path: "feedback", element: <StudentFeedback /> },
+      { path: "feedbackForm/:lessonId", element: <FeedbackForm /> },
+      { path: "studentProgress/:studentId", element: <StudentDashboard /> },
+      { path: "my-students", element: <StudentsProgressDashboard /> },
     ],
   },
   {
@@ -111,6 +124,14 @@ const router = createBrowserRouter([
     children: [
       { path: "overview", element: <AdminOverview /> },
       { path: "admin-access", element: <AdminAccess /> },
+      {
+        path: "help-support",
+        element: (
+          <SuperAdminRoute>
+            <QuestionsAnswers />
+          </SuperAdminRoute>
+        ),
+      },
     ],
   },
   {

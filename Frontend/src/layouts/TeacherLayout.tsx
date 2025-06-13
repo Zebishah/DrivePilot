@@ -20,7 +20,7 @@ import Navbar from "../components/common/DashNavBar";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-
+import { FaUserGraduate } from "react-icons/fa6";
 const theme = createTheme({
   palette: {
     primary: {
@@ -44,6 +44,21 @@ const menuItems: MenuItem[] = [
     text: "Profile Setting",
     icon: Settings,
     path: "/teacher-dashboard/settings",
+  },
+  {
+    text: "Help & Support",
+    icon: HelpCircle,
+    path: "/teacher-dashboard/help-support",
+  },
+  {
+    text: "Feedback",
+    icon: MessageSquare,
+    path: "/teacher-dashboard/feedback",
+  },
+  {
+    text: "My Students",
+    icon: FaUserGraduate,
+    path: "/teacher-dashboard/my-students",
   },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];

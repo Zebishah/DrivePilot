@@ -67,6 +67,7 @@ export const SIGN_IN = gql`
         isProfileComplete
         isUserVerified
         isUserAuthenticated
+        adminLevel
       }
     }
   }
@@ -240,6 +241,7 @@ export const VERIFY_OTP = gql`
         isUserVerified
         isUserAuthenticated
         isProfileComplete
+        adminLevel
         role
       }
     }

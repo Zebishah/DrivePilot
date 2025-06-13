@@ -64,9 +64,131 @@ const studentTypeDefs = gql`
     dateOfBirth: String
     languagePreference: [String] # Changed from String to [String]
   }
+  type Document {
+    documentType: String!
+    documentUrl: String!
+  }
+
+  type PaymentInfo {
+    isPaid: Boolean!
+    paymentDate: String
+  }
+  type LessonStats {
+    totalLessons: Int!
+    totalLessonDurationInMinutes: Int
+    remainingLessonDurationInMinutes: Int
+  }
+  type Student {
+    _id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    role: UserRole!
+    isProfileComplete: Boolean!
+    isUserVerified: Boolean!
+    isUserAuthenticated: Boolean!
+    authProvider: AuthProvider!
+    createdAt: String!
+    updatedAt: String!
+    homeAddress: String
+    location: String
+    zipCode: String
+    documents: [Document!]
+    paymentInfo: PaymentInfo
+    description: String
+    experience: String
+    phone: String
+    fatherName: String
+    profileImage: String
+    dateOfBirth: String
+    languagePreference: [String!]
+    lessonStats: LessonStats
+  }
+
+  type StudentProgress {
+    student: StudentInfo!
+    statistics: StudentStatistics!
+    chartData: [ChartDataPoint!]!
+    bookings: StudentBookings!
+  }
+
+  type StudentInfo {
+    _id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    profileImage: String
+    location: String
+    description: String
+  }
+
+  type StudentStatistics {
+    totalBookedLessons: Int!
+    totalLessonHours: Float!
+    completedLessons: Int!
+    upcomingLessons: Int!
+  }
+
+  type ChartDataPoint {
+    date: String!
+    lessons: Int!
+  }
+
+  type StudentBookings {
+    completed: [BookingDetail!]!
+    upcoming: [BookingDetail!]!
+  }
+
+  type BookingDetail {
+    _id: ID!
+    studentId: ID!
+    instructorId: InstructorInfo!
+    slots: [SlotDetail!]!
+    totalAmount: Float!
+    totalHours: Float!
+    status: String!
+    createdAt: String!
+    updatedAt: String!
+    feedBackStatus: String
+    bookerProfileImage: String
+  }
+
+  type InstructorInfo {
+    _id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    description: String
+    profileImage: String
+  }
+
+  type SlotDetail {
+    _id: ID!
+    date: String!
+    startTime: String!
+    endTime: String!
+  }
+
+  enum SortOrder {
+    RECENT_TO_OLDEST
+    OLDEST_TO_RECENT
+    A_TO_Z_ORDER
+    Z_TO_A_ORDER
+    REMAINING_HOURS
+  }
+
+  input StudentFilter {
+    sortBy: SortOrder
+    isProfileComplete: Boolean
+    isUserVerified: Boolean
+    authProvider: String
+    location: String
+  }
   extend type Query {
     me: User
     studentProfile: StudentProfile
+    getAllStudents(filter: StudentFilter): [Student!]!
+    getStudentProgress(studentId: ID!): StudentProgress!
     getStudentLessons(studentId: ID!): [StudentLesson]
     getStudentLessonHistory(studentId: ID!): [LessonBookingHistory]
   }

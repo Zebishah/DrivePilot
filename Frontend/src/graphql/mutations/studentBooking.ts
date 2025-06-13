@@ -49,7 +49,41 @@ export const GET_STUDENT_BOOKINGS = gql`
     }
   }
 `;
+export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
+  query GetCompletedStudentBookings {
+    getCompletedStudentBookings {
+      _id
+      totalAmount
+      status
+      createdAt
+      updatedAt
 
+      instructorId {
+        _id
+        firstName
+        lastName
+        email
+        description
+      }
+      studentId {
+        _id
+        firstName
+        lastName
+        profileImage
+      }
+      slots {
+        date
+        startTime
+        endTime
+      }
+      paymentMethod {
+        type
+        cardNumber
+      }
+      feedBackStatus
+    }
+  }
+`;
 export const GET_INSTRUCTOR_BOOKINGS = gql`
   query GetInstructorBookings {
     getInstructorBookings {

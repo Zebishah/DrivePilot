@@ -18,6 +18,8 @@ export interface AuthPayload {
     isProfileComplete: boolean;
     isUserVerified: boolean;
     isUserAuthenticated: boolean;
+    profileImage?: string;
+    adminLevel?: string;
   };
 }
 export interface TempAuthPayload {
@@ -30,6 +32,7 @@ export interface TempAuthPayload {
     lastName: string;
     role: string;
     isUserVerified: boolean;
+    adminLevel?: string;
     isUserAuthenticated: boolean;
     isProfileComplete: boolean;
   };

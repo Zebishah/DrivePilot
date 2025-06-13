@@ -1,4 +1,4 @@
-const { gql } = require('apollo-server-express');
+const { gql } = require("apollo-server-express");
 
 const studentBookingTypeDefs = gql`
   enum BookingStatus {
@@ -7,7 +7,10 @@ const studentBookingTypeDefs = gql`
     cancelled
     completed
   }
-
+  enum feedBackStatusEnum {
+    pending
+    completed
+  }
   type Slot {
     date: String!
     startTime: String!
@@ -22,6 +25,7 @@ const studentBookingTypeDefs = gql`
   type UserBooking {
     _id: ID!
     firstName: String!
+    profileImage: String
     lastName: String!
     email: String!
     description: String
@@ -35,8 +39,10 @@ const studentBookingTypeDefs = gql`
     totalAmount: Int!
     paymentMethod: PaymentMethod!
     status: BookingStatus!
+    profileImage: String
+    feedBackStatus: feedBackStatusEnum
     createdAt: String!
-    updatedAt: String!    
+    updatedAt: String!
   }
 
   input SlotInput {
@@ -56,9 +62,63 @@ const studentBookingTypeDefs = gql`
     totalAmount: Float!
     paymentMethod: PaymentMethodInput!
   }
+  type StudentDashboardDetails {
+    studentInfo: StudentInfo!
+    lessonStats: LessonStats!
+    graphStats: [GraphPoint!]!
+    completedBookings: [StudentBooking!]!
+    uncompletedBookings: [StudentBooking!]!
+  }
 
+  type StudentInfo {
+    _id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    profileImage: String
+    phone: String
+    dateOfBirth: String
+    fatherName: String
+    description: String
+    homeAddress: String
+    location: String
+    zipCode: String
+    languagePreference: [String]
+  }
+
+  type LessonStats {
+    totalLessons: Int!
+    totalLessonDurationInMinutes: Int!
+  }
+
+  type GraphPoint {
+    date: String! # "2025-06-05"
+    lessonsBooked: Int! # 3
+  }
+
+  type InstructorInfo {
+    _id: ID!
+    firstName: String
+    lastName: String
+    email: String
+    profileImage: String
+  }
+
+  type Slot {
+    date: String!
+    startTime: String!
+    endTime: String!
+  }
+
+  type PaymentInfo {
+    status: String
+    createdAt: String
+    updatedAt: String
+  }
   type Query {
     getStudentBookings: [StudentBooking!]!
+    getCompletedStudentBookings: [StudentBooking!]!
+    getStudentDashboardDetails(studentId: ID!): StudentDashboardDetails
     getInstructorBookings: [StudentBooking!]!
   }
 

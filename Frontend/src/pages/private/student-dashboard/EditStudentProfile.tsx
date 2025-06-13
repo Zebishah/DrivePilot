@@ -19,6 +19,7 @@ import {
   Select,
   MenuItem,
   Skeleton,
+  FormHelperText,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
@@ -400,6 +401,12 @@ export default function EditStudentProfile() {
     );
   }
 
+  const maxAllowedDOB = new Date(
+    today.getFullYear() - 23,
+    today.getMonth(),
+    today.getDate()
+  ); // Must be at least 23
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f5f7fa" }}>
       {/* Main Content */}
@@ -661,7 +668,7 @@ export default function EditStudentProfile() {
                     }
                     onChange={handleDateOfBirthChange}
                     disabled={!!data.studentProfile.dateOfBirth} // Disable if value exists
-                    maxDate={today}
+                    maxDate={maxAllowedDOB} // Max = must be born on or before this date
                     slotProps={{
                       textField: {
                         fullWidth: true,
@@ -682,12 +689,26 @@ export default function EditStudentProfile() {
                 sm={6}
                 sx={{ display: "flex", flexDirection: "column", gap: 1 }}
               >
-                <InputLabel
-                  htmlFor="languagePreference"
-                  sx={{ fontSize: "16px" }}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "row",
+
+                    gap: 1,
+                  }}
                 >
-                  Language Preferences
-                </InputLabel>
+                  <InputLabel
+                    htmlFor="languagePreference"
+                    sx={{ fontSize: "16px" }}
+                  >
+                    Language Preferences
+                  </InputLabel>
+
+                  <FormHelperText sx={{ mt: 0.2 }}>
+                    (You can select multiple languages)
+                  </FormHelperText>
+                </Box>
+
                 <Select
                   id="languagePreference"
                   fullWidth

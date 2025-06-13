@@ -143,15 +143,10 @@ const InstructorsInfo: React.FC = () => {
       try {
         // Priority 1: If student has a profile location, use that
         if (studentData?.studentProfile?.location) {
-          console.log(
-            "Using student profile location:",
-            studentData.studentProfile.location
-          );
           const coordinates = await fetchCoordinatesForLocation(
             studentData.studentProfile.location
           );
           if (coordinates) {
-            console.log("Student location coordinates:", coordinates);
             setFilters((prev) => ({ ...prev, coordinates }));
             setIsInitialLoad(false);
             return; // Exit early, don't fetch user location
@@ -198,8 +193,10 @@ const InstructorsInfo: React.FC = () => {
         priceMin: filters.price[0],
         priceMax: filters.price[1],
       }),
+      // Fix: Ensure areaRadius is always > 0 when coordinates are provided
       ...(filters.coordinates &&
-        filters.coordinates[0] !== 0 && {
+        filters.coordinates[0] !== 0 &&
+        filters.areaRadius > 0 && {
           coordinates: filters.coordinates,
           areaRadius: filters.areaRadius,
         }),

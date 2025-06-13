@@ -70,7 +70,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
       skip: !isInstructor,
     }
   );
-  console.log("studentData", studentData);
+
   const profileImage = isAdmin
     ? "/admin-avatar.jpg"
     : isStudent

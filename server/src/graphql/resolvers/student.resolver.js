@@ -1,9 +1,9 @@
-const { Student } = require("../../models/User");
+const { Student, User } = require("../../models/User");
 const { AuthenticationError } = require("apollo-server-express");
 const { updateStudentProfileSchema } = require("../../schemas/validation");
 const { Mutation } = require("../resolvers");
 const studentBookingModel = require("../../models/studentBooking.model");
-
+const StudentBooking = require("../../models/studentBooking.model");
 const studentResolver = {
   Query: {
     studentProfile: async (_, __, { user }) => {
@@ -96,6 +96,304 @@ const studentResolver = {
         });
       } catch (error) {
         throw new Error(`Error fetching lesson history: ${error.message}`);
+      }
+    },
+
+    getStudentProgress: async (_, { studentId }, { user }) => {
+      validateUser(user);
+
+      try {
+        // Fetch student details
+        const student = await Student.findById(studentId);
+        if (!student) {
+          throw new Error("Student not found");
+        }
+
+        const now = new Date();
+
+        // Fetch all bookings for this student
+        const allBookings = await StudentBooking.find({
+          studentId: studentId,
+          status: "confirmed",
+        })
+          .populate(
+            "instructorId",
+            "_id firstName lastName email description profileImage"
+          )
+          .populate("studentId", "_id firstName lastName email profileImage")
+          .sort({ createdAt: -1 });
+
+        // Separate completed and uncompleted bookings
+        const completedBookings = [];
+        const uncompletedBookings = [];
+
+        allBookings.forEach((booking) => {
+          if (!booking.slots || booking.slots.length === 0) {
+            uncompletedBookings.push(booking);
+            return;
+          }
+
+          // Get the latest slot by end time
+          const lastSlot = booking.slots.reduce((latest, current) => {
+            const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
+            const currentEnd = new Date(
+              `${current.date}T${current.endTime}:00`
+            );
+            return currentEnd > latestEnd ? current : latest;
+          });
+
+          const lastEndDateTime = new Date(
+            `${lastSlot.date}T${lastSlot.endTime}:00`
+          );
+
+          if (lastEndDateTime <= now) {
+            completedBookings.push(booking);
+          } else {
+            uncompletedBookings.push(booking);
+          }
+        });
+
+        // Calculate statistics
+        const totalBookedLessons = allBookings.length;
+
+        // Calculate total lesson hours across all bookings
+        const totalLessonHours = allBookings.reduce((total, booking) => {
+          const bookingHours = booking.slots.reduce((slotTotal, slot) => {
+            const startTime = new Date(`2000-01-01T${slot.startTime}:00`);
+            const endTime = new Date(`2000-01-01T${slot.endTime}:00`);
+            const hoursDiff = (endTime - startTime) / (1000 * 60 * 60);
+            return slotTotal + hoursDiff;
+          }, 0);
+          return total + bookingHours;
+        }, 0);
+
+        // Create chart data for lessons booked by date
+        const chartData = {};
+        allBookings.forEach((booking) => {
+          booking.slots.forEach((slot) => {
+            const date = slot.date;
+            if (chartData[date]) {
+              chartData[date]++;
+            } else {
+              chartData[date] = 1;
+            }
+          });
+        });
+
+        // Convert chart data to array format
+        const lessonsChartData = Object.entries(chartData)
+          .map(([date, count]) => ({
+            date,
+            lessons: count,
+          }))
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Format bookings with additional info
+        const formatBookings = (bookings) => {
+          return bookings.map((booking) => {
+            const bookingObj = booking.toObject();
+
+            // Calculate total hours for this booking
+            const totalHours = booking.slots.reduce((total, slot) => {
+              const startTime = new Date(`2000-01-01T${slot.startTime}:00`);
+              const endTime = new Date(`2000-01-01T${slot.endTime}:00`);
+              const hoursDiff = (endTime - startTime) / (1000 * 60 * 60);
+              return total + hoursDiff;
+            }, 0);
+
+            return {
+              ...bookingObj,
+              totalHours: Math.round(totalHours * 100) / 100, // Round to 2 decimal places
+              bookerProfileImage: booking.studentId?.profileImage || "",
+              instructorId: {
+                ...bookingObj.instructorId,
+                profileImage: booking.instructorId?.profileImage || "",
+              },
+            };
+          });
+        };
+
+        return {
+          student: {
+            _id: student._id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+            profileImage: student.profileImage,
+            location: student.location,
+            description: student.description,
+          },
+          statistics: {
+            totalBookedLessons,
+            totalLessonHours: Math.round(totalLessonHours * 100) / 100,
+            completedLessons: completedBookings.length,
+            upcomingLessons: uncompletedBookings.length,
+          },
+          chartData: lessonsChartData,
+          bookings: {
+            completed: formatBookings(completedBookings),
+            upcoming: formatBookings(uncompletedBookings),
+          },
+        };
+      } catch (error) {
+        console.error("Error fetching student progress:", error);
+        throw new Error("Failed to fetch student progress");
+      }
+    },
+
+    getAllStudents: async (_, { filter }, { user }) => {
+      try {
+        const confirmedBookings = await StudentBooking.find({
+          instructorId: user?.id,
+          status: "confirmed",
+        }).select("studentId");
+
+        const studentIdsWithConfirmedBookings = [
+          ...new Set(confirmedBookings.map((b) => b.studentId.toString())),
+        ];
+
+        // Step 2: Prepare query to fetch only students with those IDs
+        let query = {
+          role: "Student",
+          _id: { $in: studentIdsWithConfirmedBookings },
+        };
+        // Apply filters
+        if (filter) {
+          if (filter.isProfileComplete !== undefined) {
+            query.isProfileComplete = filter.isProfileComplete;
+          }
+          if (filter.isUserVerified !== undefined) {
+            query.isUserVerified = filter.isUserVerified;
+          }
+          if (filter.authProvider) {
+            query.authProvider = filter.authProvider;
+          }
+          if (filter.location) {
+            query.location = { $regex: filter.location, $options: "i" };
+          }
+        }
+
+        let students = await User.find(query).lean();
+
+        // Attach lesson stats and booking details for each student
+        const now = new Date();
+        const enrichedStudents = await Promise.all(
+          students.map(async (student) => {
+            const bookings = await StudentBooking.find({
+              studentId: student._id,
+              instructorId: user?.id,
+              status: "confirmed",
+            })
+              .populate(
+                "instructorId",
+                "_id firstName lastName email profileImage"
+              )
+              .lean();
+
+            let totalLessonCount = 0;
+            let totalDurationMinutes = 0;
+            let remainingDurationMinutes = 0;
+
+            const completedBookings = [];
+            const uncompletedBookings = [];
+
+            for (const booking of bookings) {
+              if (!booking.slots || booking.slots.length === 0) continue;
+
+              totalLessonCount += 1;
+
+              const finalBooking = {
+                ...booking,
+                instructorId: {
+                  ...booking.instructorId,
+                  profileImage: booking.instructorId?.profileImage || "",
+                },
+              };
+
+              let latestEnd = null;
+
+              for (const slot of booking.slots) {
+                const start = new Date(`${slot.date}T${slot.startTime}:00`);
+                const end = new Date(`${slot.date}T${slot.endTime}:00`);
+                const duration = (end - start) / (1000 * 60); // in minutes
+                totalDurationMinutes += duration;
+
+                if (end > now) {
+                  // Slot is ongoing or upcoming
+                  if (now < start) {
+                    // Entire slot is remaining
+                    remainingDurationMinutes += duration;
+                  } else {
+                    // Partially remaining
+                    remainingDurationMinutes += (end - now) / (1000 * 60);
+                  }
+                }
+
+                if (!latestEnd || end > latestEnd) {
+                  latestEnd = end;
+                }
+              }
+
+              if (latestEnd && latestEnd <= now) {
+                completedBookings.push(finalBooking);
+              } else {
+                uncompletedBookings.push(finalBooking);
+              }
+            }
+
+            return {
+              ...student,
+              lessonStats: {
+                totalLessons: totalLessonCount,
+                totalLessonDurationInMinutes: totalDurationMinutes,
+                remainingLessonDurationInMinutes: Math.round(
+                  remainingDurationMinutes
+                ),
+              },
+            };
+          })
+        );
+
+        // Apply sorting
+        if (filter?.sortBy) {
+          switch (filter.sortBy) {
+            case "RECENT_TO_OLDEST":
+              enrichedStudents.sort(
+                (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+              );
+              break;
+            case "OLDEST_TO_RECENT":
+              enrichedStudents.sort(
+                (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+              );
+              break;
+            case "A_TO_Z_ORDER":
+              enrichedStudents.sort((a, b) =>
+                `${a.firstName} ${a.lastName}`.localeCompare(
+                  `${b.firstName} ${b.lastName}`
+                )
+              );
+              break;
+            case "Z_TO_A_ORDER":
+              enrichedStudents.sort((a, b) =>
+                `${b.firstName} ${b.lastName}`.localeCompare(
+                  `${a.firstName} ${a.lastName}`
+                )
+              );
+              break;
+            case "REMAINING_HOURS":
+              enrichedStudents.sort(
+                (a, b) => (b.remainingHours || 0) - (a.remainingHours || 0)
+              );
+              break;
+            default:
+              break;
+          }
+        }
+
+        return enrichedStudents;
+      } catch (error) {
+        throw new Error(`Error fetching students: ${error.message}`);
       }
     },
   },

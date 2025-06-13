@@ -52,6 +52,8 @@ const typeDefs = gql`
     role: UserRole
     isProfileComplete: Boolean!
     isUserVerified: Boolean
+    profileImage: String
+    adminLevel: String
     isUserAuthenticated: Boolean
     authProvider: AuthProvider!
     createdAt: String!
@@ -66,10 +68,12 @@ const typeDefs = gql`
     role: UserRole!
     isProfileComplete: Boolean!
     authProvider: AuthProvider!
+    adminLevel: String
     createdAt: String!
     updatedAt: String!
     homeAddress: String
     location: String
+    profileImage: String
     zipCode: String
     documentType: String # Keep for backward compatibility
     documentUrl: String # Keep for backward compatibility
@@ -93,11 +97,13 @@ const typeDefs = gql`
     role: UserRole!
     isProfileComplete: Boolean!
     authProvider: AuthProvider!
+    adminLevel: String
     createdAt: String!
     updatedAt: String!
     address: String
     location: String
     zipCode: String
+    profileImage: String
     description: String
     experience: String
     phone: String
@@ -116,6 +122,7 @@ const typeDefs = gql`
     email: String!
     role: UserRole!
     isProfileComplete: Boolean!
+    profileImage: String
     authProvider: AuthProvider!
     createdAt: String!
     isUserVerified: Boolean
@@ -153,6 +160,8 @@ const typeDefs = gql`
     authProvider: AuthProvider!
     createdAt: String!
     updatedAt: String!
+    profileImage: String
+    adminLevel: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
   }
