@@ -194,12 +194,10 @@ const instructorResolver = {
     },
     getInstructorPublicProfile: async (_, { id }) => {
       try {
-        // Validate ID format
         if (!mongoose.Types.ObjectId.isValid(id)) {
           throw new Error("Invalid instructor ID");
         }
 
-        // Get instructor basic info
         const instructor = await User.Instructor.findById(id)
           .select("-password -resetToken -resetTokenExpiry -providerId -__v")
           .lean();
@@ -208,7 +206,6 @@ const instructorResolver = {
           throw new Error("Instructor not found");
         }
 
-        // Get tariff details in parallel with availability
         const [tariff, availability] = await Promise.all([
           teacherTariffModel.findOne({ teacherId: id }),
           teacherAvailabilityModel
@@ -216,6 +213,55 @@ const instructorResolver = {
             .sort({ date: 1, startTime: 1 })
             .lean(),
         ]);
+
+        // Build hourly slot chunks with accurate booking status
+        const formattedAvailability = availability.map((slot) => {
+          const resultSlots = [];
+
+          const [startHour, startMinute] = slot.startTime
+            .split(":")
+            .map(Number);
+          const [endHour, endMinute] = slot.endTime.split(":").map(Number);
+
+          const startInMinutes = startHour * 60 + startMinute;
+          const endInMinutes = endHour * 60 + endMinute;
+
+          for (
+            let time = startInMinutes;
+            time + 60 <= endInMinutes;
+            time += 60
+          ) {
+            const hour = Math.floor(time / 60);
+            const minute = time % 60;
+            const nextHour = Math.floor((time + 60) / 60);
+            const nextMinute = (time + 60) % 60;
+
+            const subSlotStart = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+            const subSlotEnd = `${nextHour.toString().padStart(2, "0")}:${nextMinute.toString().padStart(2, "0")}`;
+
+            const matchingSlot = slot.slots?.find(
+              (s) => s.startTime === subSlotStart && s.endTime === subSlotEnd
+            );
+
+            resultSlots.push({
+              id: `${slot._id.toString()}_${subSlotStart}_${subSlotEnd}`,
+              startTime: subSlotStart,
+              endTime: subSlotEnd,
+              booked: matchingSlot?.booked ?? false,
+              date: slot.date.toISOString().split("T")[0],
+              originalSlotId: slot._id.toString(),
+            });
+          }
+
+          return {
+            ...slot,
+            _id: slot._id.toString(),
+            date: slot.date.toISOString().split("T")[0],
+            hourlySlots: resultSlots,
+          };
+        });
+
+        console.log("formatted ", JSON.stringify(formattedAvailability));
         return {
           instructor: {
             ...instructor,
@@ -223,13 +269,10 @@ const instructorResolver = {
             coordinates: instructor.coordinates || null,
           },
           tariff,
-          availability: availability.map((slot) => ({
-            ...slot,
-            _id: slot._id.toString(),
-            date: slot.date.toISOString().split("T")[0], // Format as YYYY-MM-DD
-          })),
+          availability: formattedAvailability,
         };
       } catch (error) {
+        console.error("Error fetching instructor profile:", error);
         throw new Error("Failed to fetch instructor profile");
       }
     },

@@ -1,4 +1,3 @@
-// src/graphql/typeDefs/instructor.typeDefs.js
 const { gql } = require("apollo-server-express");
 
 const instructorTypeDefs = gql`
@@ -7,6 +6,39 @@ const instructorTypeDefs = gql`
     car: String
     type: String
     rate: String
+  }
+
+  type Slot {
+    startTime: String!
+    endTime: String!
+    date: String!
+    booked: Boolean
+  }
+
+  type HourlySlot {
+    id: String!
+    startTime: String!
+    endTime: String!
+    date: String!
+    booked: Boolean
+    originalSlotId: ID
+  }
+
+  type InstructorAvailability {
+    _id: ID!
+    date: String!
+    startTime: String!
+    endTime: String!
+    booked: Boolean # Changed from Boolean to Boolean (nullable)
+    status: AvailabilityStatus
+    slots: [Slot!]
+    hourlySlots: [HourlySlot!]
+  }
+
+  enum AvailabilityStatus {
+    available
+    booked
+    cancelled
   }
 
   type Instructor {
@@ -48,20 +80,6 @@ const instructorTypeDefs = gql`
     availableDates: [String!]
   }
 
-  enum AvailabilityStatus {
-    available
-    booked
-    cancelled
-  }
-
-  type InstructorAvailability {
-    _id: ID!
-    date: String!
-    startTime: String!
-    endTime: String!
-    status: AvailabilityStatus
-  }
-
   type InstructorTariff {
     _id: ID!
     lessonFee: Float!
@@ -74,8 +92,8 @@ const instructorTypeDefs = gql`
   type BulkLessonPackage {
     lessons: Int!
     cost: Float!
-    startDate: String! # ISO date
-    endDate: String! # ISO date
+    startDate: String!
+    endDate: String!
   }
 
   type InstructorPublicProfile {
@@ -89,6 +107,7 @@ const instructorTypeDefs = gql`
       filter: InstructorFilterInput
       offset: Int = 0
     ): InstructorPaginationResult
+
     getInstructorPublicProfile(id: ID!): InstructorPublicProfile
   }
 `;

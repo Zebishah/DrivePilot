@@ -81,6 +81,7 @@ export interface GraphStats {
 export interface Slot {
   _id: string;
   date: string;
+  booked: boolean;
   startTime: string;
   endTime: string;
 }

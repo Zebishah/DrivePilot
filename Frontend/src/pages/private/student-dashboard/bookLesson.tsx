@@ -11,7 +11,7 @@ import {
   Pagination,
   Stack,
   Tabs,
-  Tab
+  Tab,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -19,7 +19,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking";
-import { BookingList } from '../../../components/BookingList';
+import { BookingList } from "../../../components/BookingList";
+import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 
 interface AvailabilitySlot {
   date: string;
@@ -50,11 +51,12 @@ interface Booking {
 
 const BookLesson: React.FC = () => {
   const location = useLocation();
-  const { selectedAvailability, instructorData, fromSearch } = location.state || {};
+  const { selectedAvailability, instructorData, fromSearch } =
+    location.state || {};
   const navigate = useNavigate();
 
   const { loading, error, data, refetch } = useQuery(GET_STUDENT_BOOKINGS, {
-    fetchPolicy: 'network-only',
+    fetchPolicy: "network-only",
     notifyOnNetworkStatusChange: true,
   });
 
@@ -67,54 +69,59 @@ const BookLesson: React.FC = () => {
     refetch();
   }, [refetch]);
 
-
   useEffect(() => {
     // Only redirect if we're coming from search page and no availability is selected
-    if (fromSearch && (!selectedAvailability || selectedAvailability.length === 0)) {
-      navigate('/student-dashboard/search');
+    if (
+      fromSearch &&
+      (!selectedAvailability || selectedAvailability.length === 0)
+    ) {
+      navigate("/student-dashboard/search");
     }
   }, [selectedAvailability, fromSearch, navigate]);
 
   const handleConfirmPay = () => {
     const paymentData = {
-      type: 'card',
-      cardNumber: '5105 **** **** 0505'
+      type: "card",
+      cardNumber: "5105 **** **** 0505",
     };
 
-    navigate('/student-dashboard/booking-details', {
+    navigate("/student-dashboard/booking-details", {
       state: {
         selectedAvailability,
         instructorData,
         paymentMethod: paymentData,
         isCurrentBooking: true,
         instructorId: instructorData?.id,
-      }
+      },
     });
   };
 
   const handleBookingClick = (booking: Booking) => {
-    navigate('/student-dashboard/booking-details', {
+    navigate("/student-dashboard/booking-details", {
       state: {
         selectedAvailability: booking.slots,
         instructorData: {
           id: booking.instructorId,
           name: `${booking.instructorId.firstName} ${booking.instructorId.lastName}`,
           email: booking.instructorId.email,
-          description: booking.instructorId.description
+          description: booking.instructorId.description,
         },
         instructorId: booking?.instructorId?._id,
         paymentMethod: {
-          type: 'card',
-          cardNumber: '**** **** **** ****'
+          type: "card",
+          cardNumber: "**** **** **** ****",
         },
         isCurrentBooking: false,
         bookingId: booking._id,
-        status: booking.status
-      }
+        status: booking.status,
+      },
     });
   };
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    value: number
+  ) => {
     setPage(value);
   };
 
@@ -125,7 +132,9 @@ const BookLesson: React.FC = () => {
   const bookings = data?.getStudentBookings || [];
   const filterBookingsByStatus = (bookings: Booking[], status: string) => {
     if (status === "all") return bookings;
-    return bookings.filter(booking => booking.status.toLowerCase() === status);
+    return bookings.filter(
+      (booking) => booking.status.toLowerCase() === status
+    );
   };
 
   // Calculate pagination
@@ -161,7 +170,7 @@ const BookLesson: React.FC = () => {
                       height={120}
                       sx={{
                         borderRadius: 2,
-                        bgcolor: 'rgba(0, 0, 0, 0.06)'
+                        bgcolor: "rgba(0, 0, 0, 0.06)",
                       }}
                     />
                   </Grid>
@@ -185,7 +194,13 @@ const BookLesson: React.FC = () => {
             <Skeleton variant="text" width="30%" height={40} sx={{ mb: 3 }} />
             {[1, 2].map((booking) => (
               <Box key={booking} sx={{ mb: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}
+                >
                   <Skeleton variant="text" width="30%" />
                   <Skeleton variant="text" width="15%" />
                 </Box>
@@ -197,7 +212,7 @@ const BookLesson: React.FC = () => {
                         height={100}
                         sx={{
                           borderRadius: 2,
-                          bgcolor: 'rgba(0, 0, 0, 0.06)'
+                          bgcolor: "rgba(0, 0, 0, 0.06)",
                         }}
                       />
                     </Grid>
@@ -216,18 +231,14 @@ const BookLesson: React.FC = () => {
       <Box
         sx={{
           p: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '50vh',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "50vh",
         }}
       >
-        <Typography
-          variant="h6"
-          color="error"
-          sx={{ mb: 2 }}
-        >
+        <Typography variant="h6" color="error" sx={{ mb: 2 }}>
           Error loading bookings
         </Typography>
 
@@ -235,9 +246,9 @@ const BookLesson: React.FC = () => {
           variant="contained"
           onClick={() => refetch()}
           sx={{
-            bgcolor: '#5fc2d3',
-            '&:hover': {
-              bgcolor: '#4bb1c2',
+            bgcolor: "#5fc2d3",
+            "&:hover": {
+              bgcolor: "#4bb1c2",
             },
           }}
         >
@@ -246,8 +257,6 @@ const BookLesson: React.FC = () => {
       </Box>
     );
   }
-
-
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
@@ -279,20 +288,28 @@ const BookLesson: React.FC = () => {
                 <strong>Lesson Number:</strong> {selectedAvailability.length}
               </Typography>
               <Typography variant="body1">
-                <strong>Total Duration:</strong> {selectedAvailability.length} Hours
+                <strong>Total Duration:</strong> {selectedAvailability.length}{" "}
+                Hours
               </Typography>
               <Typography variant="body1">
-                <strong>Start Date:</strong> {new Date(selectedAvailability[0].date).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
+                <strong>Start Date:</strong>{" "}
+                {new Date(selectedAvailability[0].date).toLocaleDateString(
+                  "en-US",
+                  {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  }
+                )}
               </Typography>
               <Typography variant="body1">
-                <strong>End Date:</strong> {new Date(selectedAvailability[selectedAvailability.length - 1].date).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
+                <strong>End Date:</strong>{" "}
+                {new Date(
+                  selectedAvailability[selectedAvailability.length - 1].date
+                ).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
                 })}
               </Typography>
             </Box>
@@ -303,37 +320,39 @@ const BookLesson: React.FC = () => {
                 Scheduled Lessons
               </Typography>
               <Grid container spacing={2}>
-                {selectedAvailability.map((slot: AvailabilitySlot, index: number) => (
-                  <Grid item xs={12} sm={4} key={index}>
-                    <Card
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        p: 1,
-                        bgcolor: "#e6f0fa",
-                        borderRadius: 2,
-                      }}
-                    >
-                      <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
-                      <CardContent sx={{ p: 1 }}>
-                        <Typography variant="body1">
-                          {slot.startTime} - {slot.endTime}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          1 hr lesson
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {new Date(slot.date).toLocaleDateString([], {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+                {selectedAvailability.map(
+                  (slot: AvailabilitySlot, index: number) => (
+                    <Grid item xs={12} sm={4} key={index}>
+                      <Card
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          p: 1,
+                          bgcolor: "#e6f0fa",
+                          borderRadius: 2,
+                        }}
+                      >
+                        <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
+                        <CardContent sx={{ p: 1 }}>
+                          <Typography variant="body1">
+                            {slot.startTime} - {slot.endTime}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            {getSlotDurationInHours(slot)} hours lesson
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            {new Date(slot.date).toLocaleDateString([], {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  )
+                )}
               </Grid>
             </Box>
 
@@ -343,16 +362,17 @@ const BookLesson: React.FC = () => {
                 Instructor Information
               </Typography>
               <Typography variant="body1">
-                <strong>Name:</strong> {instructorData?.name || 'Not available'}
+                <strong>Name:</strong> {instructorData?.name || "Not available"}
               </Typography>
               <Typography variant="body1">
                 <strong>Contact:</strong>{" "}
                 <a href={`mailto:${instructorData?.email}`}>
-                  {instructorData?.email || 'Not available'}
+                  {instructorData?.email || "Not available"}
                 </a>
               </Typography>
               <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                <strong>Description:</strong> {instructorData?.description || 'No description available'}
+                <strong>Description:</strong>{" "}
+                {instructorData?.description || "No description available"}
               </Typography>
             </Box>
           </CardContent>
@@ -364,7 +384,7 @@ const BookLesson: React.FC = () => {
         bookings={bookings}
         onBookingClick={handleBookingClick}
         showNewBookingButton={!selectedAvailability}
-        onNewBooking={() => navigate('/student-dashboard/search')}
+        onNewBooking={() => navigate("/student-dashboard/search")}
       />
 
       {/* Payment Methods Card - Only show if we have selectedAvailability */}

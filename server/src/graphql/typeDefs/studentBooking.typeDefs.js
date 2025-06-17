@@ -15,6 +15,7 @@ const studentBookingTypeDefs = gql`
     date: String!
     startTime: String!
     endTime: String!
+    booked: Boolean
   }
 
   type PaymentMethod {
@@ -108,6 +109,7 @@ const studentBookingTypeDefs = gql`
     date: String!
     startTime: String!
     endTime: String!
+    booked: Boolean
   }
 
   type PaymentInfo {

@@ -22,6 +22,7 @@ const studentTypeDefs = gql`
     date: String!
     startTime: String!
     endTime: String!
+    booked: Boolean
   }
 
   type PaymentMethod {

@@ -8,6 +8,7 @@ const { validateUser } = require("../../utils/auth");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { default: mongoose } = require("mongoose");
 const { User } = require("../../models/User");
+const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 
 const studentBookingResolver = {
   Query: {
@@ -209,22 +210,21 @@ const studentBookingResolver = {
           studentId: user.id,
         });
 
-        // Extract slots from the input
         const { slots, instructorId } = validatedInput;
 
-        // Check if student has already booked any lessons with overlapping dates and times
+        // 1. Check for overlapping bookings WITH THE SAME INSTRUCTOR
         const existingBookings = await StudentBooking.find({
           studentId: user.id,
-          status: { $ne: "cancelled" }, // Exclude cancelled bookings
+          instructorId: instructorId, // Add instructorId to the query
+          status: { $ne: "cancelled" },
         });
 
-        // Check for each slot if there's an existing booking with the same date and time
         for (const newSlot of slots) {
           const conflictingBooking = existingBookings.find((booking) =>
             booking.slots.some(
               (existingSlot) =>
                 existingSlot.date === newSlot.date &&
-                // Check if times overlap
+                existingSlot.booked &&
                 ((newSlot.startTime >= existingSlot.startTime &&
                   newSlot.startTime < existingSlot.endTime) ||
                   (newSlot.endTime > existingSlot.startTime &&
@@ -236,36 +236,60 @@ const studentBookingResolver = {
 
           if (conflictingBooking) {
             throw new UserInputError(
-              `You already have a booking on ${newSlot.date} between ${newSlot.startTime} and ${newSlot.endTime}`
+              `You already have a booking with this instructor on ${newSlot.date} between ${newSlot.startTime} and ${newSlot.endTime}`
             );
           }
         }
 
-        // 1) Create & save the booking
-        //Temp status confirmed as there is no payment integration yet
-        //TODO: Integrate payment gateway and update status accordingly
+        // 2. Create booking
         const booking = new StudentBooking({
           ...validatedInput,
-          status: "confirmed", // Set status as confirmed directly
+          slots: slots.map((slot) => ({ ...slot, booked: true })),
+          status: "confirmed",
         });
+
         await booking.save();
 
-        // 2) **Mark those availability slots as “booked”**
-        // finding the booking
-        const bulkConditions = slots.map((s) => ({
-          teacherId: instructorId,
-          date: s.date,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          status: "available",
-        }));
+        // 3. Update availability and push booked sub-slots
+        await Promise.all(
+          slots.map(async (slot) => {
+            const availability = await teacherAvailabilityModel.findOne({
+              teacherId: instructorId,
+              date: slot.date,
+              startTime: { $lte: slot.startTime },
+              endTime: { $gte: slot.endTime },
+            });
 
-        await teacherAvailabilityModel.updateMany(
-          { $or: bulkConditions },
-          { $set: { status: "booked" } }
+            if (!availability) return;
+
+            // Only push if not already present
+            const alreadyExists = availability.slots.some(
+              (s) =>
+                s.date === slot.date &&
+                s.startTime === slot.startTime &&
+                s.endTime === slot.endTime
+            );
+
+            if (!alreadyExists) {
+              availability.slots.push({
+                date: slot.date,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                booked: true,
+              });
+
+              // Check if all hourly slots are now booked
+              const allSlotsBooked = checkAllSlotsBooked(availability);
+              if (allSlotsBooked) {
+                availability.status = "booked";
+              }
+
+              await availability.save();
+            }
+          })
         );
 
-        // 3) Populate and return
+        // 4. Optional: populate instructor
         await booking.populate(
           "instructorId",
           "_id firstName lastName email description"
@@ -280,7 +304,6 @@ const studentBookingResolver = {
         throw error;
       }
     },
-
     updateBookingStatus: async (_, { bookingId, status }, { user }) => {
       validateUser(user);
       const booking = await StudentBooking.findById(bookingId);

@@ -19,12 +19,20 @@ import { useLocation, useNavigate } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import { useMutation } from "@apollo/client";
-import { CANCEL_BOOKING, CREATE_BOOKING } from "../../../graphql/mutations/studentBooking";
+import {
+  CANCEL_BOOKING,
+  CREATE_BOOKING,
+} from "../../../graphql/mutations/studentBooking";
 import toast from "react-hot-toast";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import dayjs from "dayjs";
 dayjs.extend(advancedFormat);
 import { set } from "lodash";
+import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
+import {
+  getSlotDurationInHours,
+  getSlotDurations,
+} from "../../../components/StudentComponents/GetSlotDurationInHours";
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -39,7 +47,7 @@ const BookingDetails: React.FC = () => {
     isCurrentBooking = true,
     status,
     bookingId,
-    instructorId
+    instructorId,
   } = location.state || {};
 
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
@@ -69,16 +77,15 @@ const BookingDetails: React.FC = () => {
     setIsConfirmDialogOpen(true);
   };
 
-
   const handleCloseDialog = () => {
     setIsConfirmDialogOpen(false);
     setError(null);
   };
-  const [confirmLoading, setConfirmLoading] = useState(false)
-
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  console.log("instructorData", instructorData);
   const handleConfirmBooking = async () => {
     try {
-      setConfirmLoading(true)
+      setConfirmLoading(true);
       if (!selectedAvailability || selectedAvailability.length === 0) {
         throw new Error("No availability slots selected");
       }
@@ -114,8 +121,7 @@ const BookingDetails: React.FC = () => {
       console.error("Error creating booking:", error);
       setError(error.message || "Failed to create booking. Please try again.");
       toast.error("Failed to create booking. Please try again.");
-    }
-    finally {
+    } finally {
       setConfirmLoading(false);
     }
   };
@@ -124,7 +130,6 @@ const BookingDetails: React.FC = () => {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const handleReschedule = () => {
     if (isCurrentBooking || isCancelled) {
-
       navigate(`/student-dashboard/search/instructors/${instructorId}`);
     }
     const firstSlot = selectedAvailability[0];
@@ -183,7 +188,6 @@ const BookingDetails: React.FC = () => {
   };
 
   const handleCancelBooking = async () => {
-
     try {
       setCancelLoading(true);
       await cancelBooking({ variables: { bookingId: bookingId } });
@@ -198,10 +202,11 @@ const BookingDetails: React.FC = () => {
       setCancelLoading(false);
     }
   };
-
+  console.log("selectedAvailability", selectedAvailability);
   return (
-    <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
-      <Card sx={{ mb: 3 }}>
+    <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+      <BackButton variant="outline" showIcon={true} />
+      <Card sx={{ mb: 3, mt: 2 }}>
         <Box
           sx={{
             mb: 2,
@@ -225,10 +230,18 @@ const BookingDetails: React.FC = () => {
                 px: 2,
                 py: 0.5,
                 borderRadius: 1,
-                bgcolor: status === 'confirmed' ? 'rgba(0, 200, 83, 0.1)' :
-                  status === 'cancelled' ? 'rgba(211, 47, 47, 0.1)' : 'rgba(255, 152, 0, 0.1)',
-                color: status === 'confirmed' ? 'rgb(0, 200, 83)' :
-                  status === 'cancelled' ? 'rgb(211, 47, 47)' : 'rgb(255, 152, 0)',
+                bgcolor:
+                  status === "confirmed"
+                    ? "rgba(0, 200, 83, 0.1)"
+                    : status === "cancelled"
+                      ? "rgba(211, 47, 47, 0.1)"
+                      : "rgba(255, 152, 0, 0.1)",
+                color:
+                  status === "confirmed"
+                    ? "rgb(0, 200, 83)"
+                    : status === "cancelled"
+                      ? "rgb(211, 47, 47)"
+                      : "rgb(255, 152, 0)",
                 fontWeight: 600,
               }}
             >
@@ -244,7 +257,11 @@ const BookingDetails: React.FC = () => {
               Rescheduling
             </Button>
             {!isCancelled && (
-              <Button variant="contained" color="error" onClick={handleOpenCancel}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleOpenCancel}
+              >
                 Cancel Booking
               </Button>
             )}
@@ -280,25 +297,25 @@ const BookingDetails: React.FC = () => {
             <strong>Start Date:</strong>{" "}
             {selectedAvailability?.[0]?.date
               ? new Date(selectedAvailability[0].date).toLocaleDateString(
-                "en-US",
-                {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                }
-              )
+                  "en-US",
+                  {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  }
+                )
               : "Not selected"}
           </Typography>
           <Typography variant="body1">
             <strong>End Date:</strong>{" "}
             {selectedAvailability?.[selectedAvailability.length - 1]?.date
               ? new Date(
-                selectedAvailability[selectedAvailability.length - 1].date
-              ).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })
+                  selectedAvailability[selectedAvailability.length - 1].date
+                ).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })
               : "Not selected"}
           </Typography>
 
@@ -324,7 +341,7 @@ const BookingDetails: React.FC = () => {
                         {slot.startTime} - {slot.endTime}
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
-                        1 hr lesson
+                        {getSlotDurationInHours(slot)} hours lesson
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
                         {new Date(slot.date).toLocaleDateString([], {
@@ -446,8 +463,8 @@ const BookingDetails: React.FC = () => {
                 {selectedAvailability?.length || 0}
               </Typography>
               <Typography variant="body1" gutterBottom>
-                <strong>Duration:</strong> {selectedAvailability?.length || 0}{" "}
-                Hours
+                <strong>Duration:</strong>{" "}
+                {getSlotDurations(selectedAvailability).totalDuration} Hours
               </Typography>
               <Typography variant="body1" gutterBottom>
                 <strong>Amount:</strong> ${totalAmount}
@@ -456,18 +473,20 @@ const BookingDetails: React.FC = () => {
                 <strong>Start:</strong>{" "}
                 {selectedAvailability?.[0]
                   ? formatLessonDateTime(
-                    selectedAvailability[0].date,
-                    selectedAvailability[0].startTime
-                  )
+                      selectedAvailability[0].date,
+                      selectedAvailability[0].startTime
+                    )
                   : "Not selected"}
               </Typography>
               <Typography variant="body1" gutterBottom>
                 <strong>End:</strong>{" "}
                 {selectedAvailability?.length
                   ? formatLessonDateTime(
-                    selectedAvailability[selectedAvailability.length - 1].date,
-                    selectedAvailability[selectedAvailability.length - 1].endTime
-                  )
+                      selectedAvailability[selectedAvailability.length - 1]
+                        .date,
+                      selectedAvailability[selectedAvailability.length - 1]
+                        .endTime
+                    )
                   : "Not selected"}
               </Typography>
 
@@ -520,21 +539,19 @@ const BookingDetails: React.FC = () => {
             </Alert>
           )}
           {isTooLate ? (
-
             <Alert severity="error">
-              You can’t cancel your lesson now because it’s less than 48
-              hours before start.
+              You can’t cancel your lesson now because it’s less than 48 hours
+              before start.
             </Alert>
           ) : (
             <>
-
               <Typography align="center" gutterBottom>
                 Are you sure you want to cancel your lesson scheduled on{" "}
                 {selectedAvailability?.[0]
                   ? formatLessonDateTime(
-                    selectedAvailability[0].date,
-                    selectedAvailability[0].startTime
-                  )
+                      selectedAvailability[0].date,
+                      selectedAvailability[0].startTime
+                    )
                   : "Not selected"}
               </Typography>
               <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
@@ -569,31 +586,31 @@ const BookingDetails: React.FC = () => {
                   <strong>Start:</strong>{" "}
                   {selectedAvailability?.[0]
                     ? formatLessonDateTime(
-                      selectedAvailability[0].date,
-                      selectedAvailability[0].startTime
-                    )
+                        selectedAvailability[0].date,
+                        selectedAvailability[0].startTime
+                      )
                     : "Not selected"}
                 </Typography>
                 <Typography variant="body1" gutterBottom>
                   <strong>End:</strong>{" "}
                   {selectedAvailability?.length
                     ? formatLessonDateTime(
-                      selectedAvailability[selectedAvailability.length - 1].date,
-                      selectedAvailability[selectedAvailability.length - 1].endTime
-                    )
+                        selectedAvailability[selectedAvailability.length - 1]
+                          .date,
+                        selectedAvailability[selectedAvailability.length - 1]
+                          .endTime
+                      )
                     : "Not selected"}
                 </Typography>
 
                 <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                  <strong>Attention:</strong> If you cancel a lesson less than 48
-                  hours in advance, the teacher will be informed, but no refund
-                  will be issued for the missed session.
+                  <strong>Attention:</strong> If you cancel a lesson less than
+                  48 hours in advance, the teacher will be informed, but no
+                  refund will be issued for the missed session.
                 </Typography>
               </Box>
             </>
           )}
-
-
         </DialogContent>
 
         <DialogActions sx={{ justifyContent: "center", pb: 3, gap: 5 }}>
@@ -604,7 +621,11 @@ const BookingDetails: React.FC = () => {
               disabled={cancelLoading}
               sx={{ width: "200px" }}
             >
-              {cancelLoading ? <CircularProgress size={20} /> : "Confirm Cancel"}
+              {cancelLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                "Confirm Cancel"
+              )}
             </Button>
           )}
           <Button onClick={handleCloseCancel}>Close</Button>
@@ -631,7 +652,8 @@ const BookingDetails: React.FC = () => {
         <DialogContent>
           {isTooLate ? (
             <Alert severity="error">
-              You can't reschedule your lesson now because it's less than 48 hours before start.
+              You can't reschedule your lesson now because it's less than 48
+              hours before start.
             </Alert>
           ) : (
             <>
@@ -639,27 +661,31 @@ const BookingDetails: React.FC = () => {
                 Are you sure you want to reschedule your lesson scheduled for{" "}
                 {selectedAvailability?.[0]
                   ? formatLessonDateTime(
-                    selectedAvailability[0].date,
-                    selectedAvailability[0].startTime
-                  )
+                      selectedAvailability[0].date,
+                      selectedAvailability[0].startTime
+                    )
                   : "Not selected"}
                 ?
               </Typography>
               <Alert severity="info" sx={{ mt: 2 }}>
-                By confirming, your current booking will be cancelled and you'll be redirected to select new time slots.
+                By confirming, your current booking will be cancelled and you'll
+                be redirected to select new time slots.
               </Alert>
               <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
                 <Typography variant="h6" gutterBottom>
                   Current Booking Details
                 </Typography>
                 <Typography variant="body1" gutterBottom>
-                  <strong>Lesson Number:</strong> {selectedAvailability?.length || 0}
+                  <strong>Lesson Number:</strong>{" "}
+                  {selectedAvailability?.length || 0}
                 </Typography>
                 <Typography variant="body1" gutterBottom>
-                  <strong>Duration:</strong> {selectedAvailability?.length || 0} Hours
+                  <strong>Duration:</strong> {selectedAvailability?.length || 0}{" "}
+                  Hours
                 </Typography>
                 <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                  <strong>Note:</strong> After confirming, you'll need to select new available time slots.
+                  <strong>Note:</strong> After confirming, you'll need to select
+                  new available time slots.
                 </Typography>
               </Box>
             </>
@@ -680,7 +706,11 @@ const BookingDetails: React.FC = () => {
                 },
               }}
             >
-              {rescheduleLoading ? <CircularProgress size={20} /> : "Confirm Reschedule"}
+              {rescheduleLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                "Confirm Reschedule"
+              )}
             </Button>
           )}
           <Button

@@ -9,6 +9,7 @@ export const CREATE_BOOKING = gql`
         date
         startTime
         endTime
+        booked
       }
       totalAmount
       paymentMethod {
@@ -41,6 +42,7 @@ export const GET_STUDENT_BOOKINGS = gql`
         date
         startTime
         endTime
+        booked
       }
       paymentMethod {
         type
@@ -75,6 +77,7 @@ export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
         date
         startTime
         endTime
+        booked
       }
       paymentMethod {
         type
@@ -97,6 +100,7 @@ export const GET_INSTRUCTOR_BOOKINGS = gql`
         date
         startTime
         endTime
+        booked
       }
       totalAmount
       paymentMethod {

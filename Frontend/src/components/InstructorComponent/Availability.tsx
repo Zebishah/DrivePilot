@@ -7,6 +7,7 @@ import {
   Box,
   Skeleton,
   IconButton,
+  Chip,
 } from "@mui/material";
 import { FaRegCheckCircle } from "react-icons/fa";
 import { IoMdTime } from "react-icons/io";
@@ -19,6 +20,20 @@ import dayjs from "dayjs";
 import styled from "styled-components";
 import { CalendarCheck2 } from "lucide-react";
 import { Clear } from "@mui/icons-material";
+import {
+  fallbackInstructor,
+  fallbackTariff,
+  HourSlot,
+} from "../../types/HourSlots";
+
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import HourSlotModal from "../StudentComponents/HourSlotModal";
+import { getDurationInHours } from "../../utils/HourSlotsUtills";
+import { IoTimeOutline } from "react-icons/io5";
+import { Slot } from "../../types/Student";
+import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
+import { useQuery } from "@apollo/client";
 
 // Types for Availability
 interface AvailabilitySlot {
@@ -26,6 +41,7 @@ interface AvailabilitySlot {
   date: string;
   startTime: string;
   endTime: string;
+  booked: boolean;
 }
 
 interface AvailabilityProps {
@@ -37,6 +53,7 @@ interface AvailabilityProps {
     endDate: string;
     lessons: number;
   } | null;
+  instructorData: string;
 }
 
 const CalendarIconWrapper = styled.div`
@@ -65,71 +82,82 @@ const Availability: React.FC<AvailabilityProps> = ({
   availabilityData,
   loading,
   onSelectAvailability,
-  selectedPackage
+  selectedPackage,
+  instructorData,
 }) => {
+  const { error, data } = useQuery(GET_INSTRUCTOR_PROFILE, {
+    variables: { id: instructorData || "" },
+    errorPolicy: "all",
+    fetchPolicy: "cache-and-network", // Ensures fresh data
+  });
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedSlotForModal, setSelectedSlotForModal] = useState<any>(null);
+  const [hourSlotLoading, setHourSlotLoading] = useState(false);
+  const navigate = useNavigate();
+  console.log("availabilityData22", data);
+  const instructor =
+    data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
+  const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   // Create an array of available dates from availabilityData
   const availableDates = useMemo(() => {
     return availabilityData
-      .filter(slot => dayjs(slot.date).isAfter(dayjs(), 'day'))
-      .map(slot => dayjs(slot.date));
+      .filter((slot) => dayjs(slot.date).isAfter(dayjs(), "day"))
+      .map((slot) => dayjs(slot.date));
   }, [availabilityData]);
 
   const calculateDuration = (startTime: string, endTime: string) => {
     const start = dayjs(`2000-01-01 ${startTime}`);
     const end = dayjs(`2000-01-01 ${endTime}`);
-    const hours = end.diff(start, 'hour', true);
+    const hours = end.diff(start, "hour", true);
 
     // Round to nearest 0.5 hour and format
     const roundedHours = Math.round(hours * 2) / 2;
-    const hoursText = roundedHours === 1 ? 'hr' : 'hrs';
+    const hoursText = roundedHours === 1 ? "hr" : "hrs";
     return `${roundedHours.toFixed(1)} ${hoursText} lesson`;
   };
 
-
   // Filter slots based on selected date
   const transformedSlots = useMemo(() => {
-    if (!availabilityData || availabilityData.length === 0) return [];
+    const availability = data?.getInstructorPublicProfile?.availability || [];
 
-    let filteredSlots = availabilityData.filter((slot) => {
-      // Filter out past dates
-      if (dayjs(slot.date).isBefore(dayjs(), 'day')) return false;
+    return availability
+      .filter((slot: any) => {
+        // Filter out past dates
+        if (dayjs(slot.date).isBefore(dayjs(), "day")) return false;
 
-      // If package selected, only show slots within package date range
-      if (selectedPackage) {
-        const slotDate = dayjs(slot.date);
-        const packageStart = dayjs(selectedPackage.startDate);
-        const packageEnd = dayjs(selectedPackage.endDate);
-        return slotDate.isBetween(packageStart, packageEnd, 'day', '[]');
-      }
+        // If package selected, only show slots within package date range
+        if (selectedPackage) {
+          const slotDate = dayjs(slot.date);
+          const packageStart = dayjs(selectedPackage.startDate);
+          const packageEnd = dayjs(selectedPackage.endDate);
+          return slotDate.isBetween(packageStart, packageEnd, "day", "[]");
+        }
 
-      // If no date selected, show all future slots
-      if (!selectedDate) return true;
-      // If date selected, show slots for that date
-      return dayjs(slot.date).isSame(selectedDate, 'day');
-    });
+        // If date selected, show slots for that date
+        if (selectedDate) {
+          return dayjs(slot.date).isSame(selectedDate, "day");
+        }
 
-    // If package selected, limit number of selectable slots
-    if (selectedPackage) {
-      filteredSlots = filteredSlots.slice(0, selectedPackage.lessons);
-    }
-
-    return filteredSlots.map((slot) => ({
-      id: slot._id,
-      time: `${slot.startTime} - ${slot.endTime}`,
-      duration: calculateDuration(slot.startTime, slot.endTime),
-      location: "Location Not Specified",
-      date: slot.date,
-    }));
-  }, [availabilityData, selectedDate, selectedPackage]);
+        // Otherwise show all future slots
+        return true;
+      })
+      .map((slot: any) => ({
+        id: slot._id,
+        time: `${slot.startTime} - ${slot.endTime}`,
+        duration: calculateDuration(slot.startTime, slot.endTime),
+        date: slot.date,
+        booked: slot.hourlySlots?.every((hSlot: any) => hSlot.booked) || false,
+        hourlySlots: slot.hourlySlots || [],
+      }));
+  }, [data, selectedDate, selectedPackage]);
 
   // Custom date validation
   const shouldDisableDate = (date: dayjs.Dayjs) => {
-    const isPastDate = date.isBefore(dayjs(), 'day');
-    const isAvailable = availableDates.some(availableDate =>
-      availableDate.isSame(date, 'day')
+    const isPastDate = date.isBefore(dayjs(), "day");
+    const isAvailable = availableDates.some((availableDate) =>
+      availableDate.isSame(date, "day")
     );
     return isPastDate || !isAvailable;
   };
@@ -169,17 +197,67 @@ const Availability: React.FC<AvailabilityProps> = ({
       <Typography
         sx={{
           fontFamily: "Poppins, sans-serif",
-          color: '#5FC2D3',
-          mb: 2
+          color: "#5FC2D3",
+          mb: 2,
         }}
       >
         {`Selected package: ${selectedPackage.lessons} lessons between 
-        ${dayjs(selectedPackage.startDate).format('MMM D, YYYY')} and 
-        ${dayjs(selectedPackage.endDate).format('MMM D, YYYY')}`}
+        ${dayjs(selectedPackage.startDate).format("MMM D, YYYY")} and 
+        ${dayjs(selectedPackage.endDate).format("MMM D, YYYY")}`}
       </Typography>
     );
   };
+  const handleSelectHours = (slot: Slot) => {
+    setSelectedSlotForModal(slot);
+    setModalOpen(true);
+  };
 
+  // Add this function to handle hour slot confirmation
+  const handleHourSlotConfirm = async (selectedHourSlots: HourSlot[]) => {
+    setHourSlotLoading(true);
+
+    try {
+      // Convert hour slots back to availability format for consistency
+      const formattedAvailability = selectedHourSlots.map((hourSlot) => ({
+        _id: hourSlot.id,
+        date: hourSlot.date,
+        startTime: hourSlot.startTime,
+        endTime: hourSlot.endTime,
+      }));
+
+      // Call your existing handleBookNow logic
+      if (formattedAvailability.length === 0) {
+        toast.error("Please select an availability slot before booking.");
+        return;
+      }
+      console.log("confirm mai", instructor, instructorData);
+      if (location.pathname.includes("/student-dashboard/search")) {
+        navigate("/student-dashboard/book", {
+          state: {
+            instructorId: instructorData,
+            selectedAvailability: formattedAvailability,
+            instructorData: {
+              id: instructor._id,
+              name: `${instructor.firstName} ${instructor.lastName}`,
+              email: instructor.email,
+              description: instructor.description,
+              lessonFee: tariff.lessonFee,
+            },
+          },
+        });
+      } else {
+        navigate("/auth/signin", {
+          state: { from: location.pathname },
+          replace: true,
+        });
+      }
+    } catch (error) {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setHourSlotLoading(false);
+      setModalOpen(false);
+    }
+  };
   // Render loading state
   if (loading) {
     return (
@@ -279,14 +357,14 @@ const Availability: React.FC<AvailabilityProps> = ({
             >
               Availability
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
               {selectedDate && (
                 <IconButton
                   onClick={() => setSelectedDate(null)}
                   size="small"
                   sx={{
-                    bgcolor: '#f0f0f0',
-                    '&:hover': { bgcolor: '#e0e0e0' }
+                    bgcolor: "#f0f0f0",
+                    "&:hover": { bgcolor: "#e0e0e0" },
                   }}
                 >
                   <Clear fontSize="small" />
@@ -298,48 +376,48 @@ const Availability: React.FC<AvailabilityProps> = ({
                   onChange={(newValue) => setSelectedDate(newValue)}
                   shouldDisableDate={shouldDisableDate}
                   disablePast
-                  views={['year', 'month', 'day']}
+                  views={["year", "month", "day"]}
                   sx={{
-                    '& .MuiInputBase-root': {
-                      height: '40px',
-                      borderRadius: '8px',
-                      backgroundColor: '#5fc2d3',
-                      '& .MuiInputBase-input': {
-                        color: 'black',
+                    "& .MuiInputBase-root": {
+                      height: "40px",
+                      borderRadius: "8px",
+                      backgroundColor: "#5fc2d3",
+                      "& .MuiInputBase-input": {
+                        color: "black",
                         fontWeight: 500,
-                        padding: '8px',
+                        padding: "8px",
                       },
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        border: 'none',
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        border: "none",
                       },
                     },
                   }}
                   slotProps={{
                     textField: {
-                      size: 'small',
-                      placeholder: 'Select date',
+                      size: "small",
+                      placeholder: "Select date",
                     },
                     day: {
                       sx: (ownerState: any) => {
                         const day = ownerState.day as dayjs.Dayjs;
-                        const isAvailable = availableDates.some(d =>
-                          d.isSame(day, 'day')
+                        const isAvailable = availableDates.some((d) =>
+                          d.isSame(day, "day")
                         );
 
                         // Base overrides for every day cell
                         const base: any = {
-                          '&.MuiPickersDay-root': {
-                            borderRadius: '50%',
+                          "&.MuiPickersDay-root": {
+                            borderRadius: "50%",
                             // Highlight today with a subtle outline
                             '&[aria-current="date"]': {
-                              border: '2px solid #5fc2d3 !important',
+                              border: "2px solid #5fc2d3 !important",
                             },
                             // Selected state
-                            '&.Mui-selected': {
-                              backgroundColor: '#5fc2d3 !important',
-                              color: '#fff !important',
-                              '&:hover': {
-                                backgroundColor: '#4bb1c2 !important',
+                            "&.Mui-selected": {
+                              backgroundColor: "#5fc2d3 !important",
+                              color: "#fff !important",
+                              "&:hover": {
+                                backgroundColor: "#4bb1c2 !important",
                               },
                             },
                           },
@@ -349,14 +427,14 @@ const Availability: React.FC<AvailabilityProps> = ({
                         if (isAvailable) {
                           return {
                             ...base,
-                            '&.MuiPickersDay-root': {
-                              ...base['&.MuiPickersDay-root'],
-                              color: '#00966D !important',            // force green text
+                            "&.MuiPickersDay-root": {
+                              ...base["&.MuiPickersDay-root"],
+                              color: "#00966D !important", // force green text
                               fontWeight: 700,
-                              border: '2px solid #00966D !important', // strong green border
-                              backgroundColor: 'rgba(0,150,110,0.1) !important', // faint bg
-                              '&:hover': {
-                                backgroundColor: '#d1f0f7 !important',
+                              border: "2px solid #00966D !important", // strong green border
+                              backgroundColor: "rgba(0,150,110,0.1) !important", // faint bg
+                              "&:hover": {
+                                backgroundColor: "#d1f0f7 !important",
                               },
                             },
                           };
@@ -369,8 +447,6 @@ const Availability: React.FC<AvailabilityProps> = ({
                   }}
                 />
               </LocalizationProvider>
-
-
             </Box>
           </Box>
           {renderPackageInfo()}
@@ -417,7 +493,10 @@ const Availability: React.FC<AvailabilityProps> = ({
                           gap: 1,
                         }}
                       >
-                        <CalendarCheck2 size={18} style={{ color: "#25D422" }} />
+                        <CalendarCheck2
+                          size={18}
+                          style={{ color: "#25D422" }}
+                        />
                         <Typography
                           variant="body1"
                           sx={{
@@ -428,6 +507,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                           {slot.date}
                         </Typography>
                       </Box>
+
                       <Box
                         sx={{
                           display: "flex",
@@ -447,54 +527,86 @@ const Availability: React.FC<AvailabilityProps> = ({
                           {slot.time}
                         </Typography>
                       </Box>
+
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
+                          justifyContent: "space-between",
                           marginBottom: "0.5rem",
-                          gap: 1,
                         }}
                       >
-                        <IoMdTime />
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontFamily: "Poppins, sans-serif",
-                          }}
-                          variant="body2"
-                          fontWeight="bold"
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
                         >
-                          {slot.duration}
-                        </Typography>
+                          <IoMdTime />
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontFamily: "Poppins, sans-serif",
+                            }}
+                            variant="body2"
+                            fontWeight="bold"
+                          >
+                            {slot.duration}
+                          </Typography>
+                        </Box>
+
+                        {/* Add hour selection button for multi-hour slots */}
+                        {getDurationInHours(slot.time) > 1 && (
+                          <Chip
+                            icon={<IoTimeOutline size={14} />}
+                            label="Select Hours"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent card click
+                              handleSelectHours(slot);
+                            }}
+                            sx={{
+                              backgroundColor: "#e0f2fe",
+                              color: "#0369a1",
+                              fontSize: "11px",
+                              fontFamily: "Poppins, sans-serif",
+                              fontWeight: "500",
+                              height: "24px",
+                              cursor: "pointer",
+                              "&:hover": {
+                                backgroundColor: "#bae6fd",
+                              },
+                            }}
+                          />
+                        )}
                       </Box>
-                      {/* <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: 1 }}>
-                        <TiLocationOutline />
-                        <Typography
-                          sx={{
-                            fontWeight: '500',
-                            fontFamily: 'Poppins, sans-serif',
-                          }}
-                          variant="body2"
-                          fontWeight="bold"
-                        >
-                          {slot.location}
-                        </Typography>
-                      </Box> */}
                     </CardContent>
                   </Card>
+
+                  <HourSlotModal
+                    open={modalOpen}
+                    onClose={() => setModalOpen(false)}
+                    onConfirm={handleHourSlotConfirm}
+                    originalSlot={
+                      selectedSlotForModal || {
+                        id: "",
+                        time: "",
+                        duration: "",
+                        date: "",
+                        booked: false,
+                      }
+                    }
+                    loading={hourSlotLoading}
+                  />
                 </Grid>
               ))
             ) : (
               <Grid item xs={12}>
                 <Box
                   sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '200px',
-                    width: '100%',
-                    bgcolor: '#f5f5f5',
-                    borderRadius: '10px',
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "200px",
+                    width: "100%",
+                    bgcolor: "#f5f5f5",
+                    borderRadius: "10px",
                   }}
                 >
                   <Typography
@@ -506,8 +618,8 @@ const Availability: React.FC<AvailabilityProps> = ({
                     }}
                   >
                     {selectedDate
-                      ? `No availability for ${selectedDate.format('MMMM D, YYYY')}`
-                      : 'No upcoming availability'}
+                      ? `No availability for ${selectedDate.format("MMMM D, YYYY")}`
+                      : "No upcoming availability"}
                   </Typography>
                 </Box>
               </Grid>

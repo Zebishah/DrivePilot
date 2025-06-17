@@ -26,6 +26,10 @@ const studentBookingSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        booked: {
+          type: Boolean,
+          default: false,
+        },
       },
     ],
     totalAmount: {

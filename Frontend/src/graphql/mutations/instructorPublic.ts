@@ -72,11 +72,26 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         date
         startTime
         endTime
+        booked
+        status
+        slots {
+          date
+          startTime
+          endTime
+          booked
+        }
+        hourlySlots {
+          id
+          date
+          startTime
+          endTime
+          booked
+          originalSlotId
+        }
       }
     }
   }
 `;
-
 // Utility function to get user's current location
 export const getUserLocation = (): Promise<[number, number] | null> => {
   return new Promise((resolve) => {

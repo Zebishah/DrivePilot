@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import BulkLessonPackages from "./BulkPackageCard";
 import { useAuth } from "../../context/AuthContext";
 import { Reviews } from "@mui/icons-material";
+import { fallbackInstructor, fallbackTariff } from "../../types/HourSlots";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -36,6 +37,7 @@ const ProfileSummary: React.FC = () => {
     startTime: string;
     endTime: string;
     date: string;
+    booked: boolean;
   };
 
   const [selectedAvailability, setSelectedAvailability] = React.useState<
@@ -59,21 +61,6 @@ const ProfileSummary: React.FC = () => {
   };
 
   // Fallback data for when no data is available
-  const fallbackInstructor = {
-    firstName: "Instructor",
-    lastName: "Not Found",
-    location: "N/A",
-    imageUrl: "/images/instructorprofile.png",
-    experience: 0,
-    description: "No description available",
-    rating: 0,
-  };
-
-  const fallbackTariff = {
-    lessonFee: 0,
-    bulkPackages: [],
-    packageDiscount: 0,
-  };
 
   const fallbackAvailability = [];
 
@@ -344,6 +331,7 @@ const ProfileSummary: React.FC = () => {
           <Availability
             availabilityData={availability}
             loading={loading}
+            instructorData={instructor._id}
             onSelectAvailability={setSelectedAvailability}
             selectedPackage={selectedPackage}
           />

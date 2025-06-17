@@ -149,6 +149,7 @@ export const GET_STUDENT_DASHBOARD = gql`
           date
           startTime
           endTime
+          booked
         }
         totalAmount
         status
@@ -179,6 +180,7 @@ export const GET_STUDENT_DASHBOARD = gql`
           date
           startTime
           endTime
+          booked
         }
         totalAmount
         status
