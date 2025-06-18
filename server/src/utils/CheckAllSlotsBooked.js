@@ -1,62 +1,39 @@
 const dayjs = require("dayjs"); // Add this import at the top
 
 function checkAllSlotsBooked(availability) {
-  // If using hourlySlots array (recommended approach)
-  if (availability.hourlySlots && availability.hourlySlots.length > 0) {
-    return availability.hourlySlots.every((slot) => slot.booked);
+  console.log(`Checking availability ${availability._id}:`, {
+    availabilityTime: `${availability.startTime}-${availability.endTime}`,
+    totalSlots: availability.slots.length,
+    bookedSlots: availability.slots.filter((s) => s.booked).length,
+  });
+
+  // If there are no slots at all, consider it not booked
+  if (!availability.slots || availability.slots.length === 0) {
+    return false;
   }
 
-  // Fallback to checking slots array if hourlySlots doesn't exist
-  if (availability.slots && availability.slots.length > 0) {
-    try {
-      // Get the total duration of the availability block
-      const start = dayjs(
-        `2000-01-01 ${availability.startTime}`,
-        "YYYY-MM-DD HH:mm"
-      );
-      const end = dayjs(
-        `2000-01-01 ${availability.endTime}`,
-        "YYYY-MM-DD HH:mm"
-      );
+  // Convert availability block to minutes
+  const availabilityStart = dayjs(`2000-01-01 ${availability.startTime}`);
+  const availabilityEnd = dayjs(`2000-01-01 ${availability.endTime}`);
+  const totalMinutes = availabilityEnd.diff(availabilityStart, "minute");
 
-      if (!start.isValid() || !end.isValid()) {
-        console.error("Invalid time format in availability:", availability);
-        return false;
-      }
-
-      const totalMinutes = end.diff(start, "minute");
-
-      // Calculate total booked minutes
-      let bookedMinutes = 0;
-      for (const slot of availability.slots) {
-        if (slot.booked) {
-          const slotStart = dayjs(
-            `2000-01-01 ${slot.startTime}`,
-            "YYYY-MM-DD HH:mm"
-          );
-          const slotEnd = dayjs(
-            `2000-01-01 ${slot.endTime}`,
-            "YYYY-MM-DD HH:mm"
-          );
-
-          if (!slotStart.isValid() || !slotEnd.isValid()) {
-            console.error("Invalid time format in slot:", slot);
-            continue;
-          }
-
-          bookedMinutes += slotEnd.diff(slotStart, "minute");
-        }
-      }
-
-      // Consider it fully booked if at least 95% is booked
-      return bookedMinutes >= totalMinutes * 0.95;
-    } catch (error) {
-      console.error("Error checking slots:", error);
-      return false;
+  // Calculate total booked minutes (only count booked slots)
+  let bookedMinutes = 0;
+  availability.slots.forEach((slot) => {
+    if (slot.booked) {
+      const slotStart = dayjs(`2000-01-01 ${slot.startTime}`);
+      const slotEnd = dayjs(`2000-01-01 ${slot.endTime}`);
+      const slotDuration = slotEnd.diff(slotStart, "minute");
+      bookedMinutes += slotDuration;
     }
-  }
+  });
 
-  return false;
+  console.log(
+    `Total minutes: ${totalMinutes}, Booked minutes: ${bookedMinutes}, Percentage: ${((bookedMinutes / totalMinutes) * 100).toFixed(1)}%`
+  );
+
+  // Consider it fully booked if 100% is booked
+  return bookedMinutes >= totalMinutes;
 }
 
 module.exports = checkAllSlotsBooked;

@@ -177,8 +177,17 @@ const instructorResolver = {
                 car: instructor.carName,
                 type: instructor.transmissionType,
                 rate: tariffMap.has(instructorId)
-                  ? `$${tariffMap.get(instructorId).lessonFee}/hr`
+                  ? tariffMap.get(instructorId).lessonFee
                   : "Not specified",
+                lessonDiscount: tariffMap.has(instructorId)
+                  ? tariffMap.get(instructorId).lessonDiscount
+                  : 0,
+                discountStartDate: tariffMap.has(instructorId)
+                  ? tariffMap.get(instructorId).discountStartDate
+                  : "",
+                discountEndDate: tariffMap.has(instructorId)
+                  ? tariffMap.get(instructorId).discountEndDate
+                  : "",
               },
               availability: availabilityMap.get(instructorId) || [],
             };

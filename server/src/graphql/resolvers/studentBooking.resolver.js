@@ -106,6 +106,7 @@ const studentBookingResolver = {
 
       const allBookings = await StudentBooking.find({
         studentId,
+        instructorId: user.id,
         status: "confirmed",
       })
         .populate("instructorId", "_id firstName lastName email profileImage")
@@ -215,7 +216,7 @@ const studentBookingResolver = {
         // 1. Check for overlapping bookings WITH THE SAME INSTRUCTOR
         const existingBookings = await StudentBooking.find({
           studentId: user.id,
-          instructorId: instructorId, // Add instructorId to the query
+          instructorId: instructorId,
           status: { $ne: "cancelled" },
         });
 
@@ -251,42 +252,71 @@ const studentBookingResolver = {
         await booking.save();
 
         // 3. Update availability and push booked sub-slots
+        // Group slots by date and availability block
+        const slotsByAvailability = {};
+
+        for (const slot of slots) {
+          const availability = await teacherAvailabilityModel.findOne({
+            teacherId: instructorId,
+            date: slot.date,
+            startTime: { $lte: slot.startTime },
+            endTime: { $gte: slot.endTime },
+          });
+
+          if (!availability) continue;
+
+          const availabilityKey = `${availability._id}`;
+          if (!slotsByAvailability[availabilityKey]) {
+            slotsByAvailability[availabilityKey] = {
+              availability,
+              slotsToAdd: [],
+            };
+          }
+
+          slotsByAvailability[availabilityKey].slotsToAdd.push(slot);
+        }
+
+        // Process each availability block
         await Promise.all(
-          slots.map(async (slot) => {
-            const availability = await teacherAvailabilityModel.findOne({
-              teacherId: instructorId,
-              date: slot.date,
-              startTime: { $lte: slot.startTime },
-              endTime: { $gte: slot.endTime },
-            });
+          Object.values(slotsByAvailability).map(
+            async ({ availability, slotsToAdd }) => {
+              let hasChanges = false;
 
-            if (!availability) return;
+              // Add new slots if they don't already exist
+              for (const slot of slotsToAdd) {
+                const alreadyExists = availability.slots.some(
+                  (s) =>
+                    s.date === slot.date &&
+                    s.startTime === slot.startTime &&
+                    s.endTime === slot.endTime
+                );
 
-            // Only push if not already present
-            const alreadyExists = availability.slots.some(
-              (s) =>
-                s.date === slot.date &&
-                s.startTime === slot.startTime &&
-                s.endTime === slot.endTime
-            );
-
-            if (!alreadyExists) {
-              availability.slots.push({
-                date: slot.date,
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-                booked: true,
-              });
-
-              // Check if all hourly slots are now booked
-              const allSlotsBooked = checkAllSlotsBooked(availability);
-              if (allSlotsBooked) {
-                availability.status = "booked";
+                if (!alreadyExists) {
+                  availability.slots.push({
+                    date: slot.date,
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                    booked: true,
+                  });
+                  hasChanges = true;
+                }
               }
 
-              await availability.save();
+              // Only check and update status if we made changes
+              if (hasChanges) {
+                // Check if all slots are now booked
+                const allSlotsBooked = checkAllSlotsBooked(availability);
+                if (allSlotsBooked) {
+                  availability.status = "booked";
+                }
+
+                await availability.save();
+                console.log(
+                  `Availability ${availability._id} updated. Status: ${availability.status}`
+                );
+              }
             }
-          })
+          )
         );
 
         // 4. Optional: populate instructor

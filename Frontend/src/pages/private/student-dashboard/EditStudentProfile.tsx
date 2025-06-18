@@ -40,6 +40,7 @@ import { EditIcon } from "lucide-react";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import { useAuth } from "../../../context/AuthContext";
 import { GET_STUDENT_PROFILE } from "../../../graphql/mutations/studentProfile";
+import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 // Define the interfaces for the data
 interface ProfileData {
   firstName: string;
@@ -408,7 +409,18 @@ export default function EditStudentProfile() {
   ); // Must be at least 23
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f5f7fa" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        bgcolor: "#f5f7fa",
+      }}
+    >
+      <Box>
+        <BackButton variant="outline" label="Back" />
+      </Box>
+
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 3 }}>
         {/* My Profile Card */}

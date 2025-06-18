@@ -6,6 +6,9 @@ const instructorTypeDefs = gql`
     car: String
     type: String
     rate: String
+    discountStartDate: String
+    discountEndDate: String
+    lessonDiscount: String
   }
 
   type Slot {
@@ -85,6 +88,9 @@ const instructorTypeDefs = gql`
     lessonFee: Float!
     bulkPackages: [BulkLessonPackage]
     packageDiscount: Float
+    lessonDiscount: Float
+    PackageDiscountStartDate: String
+    PackageDiscountEndDate: String
     discountStartDate: String
     discountEndDate: String
   }

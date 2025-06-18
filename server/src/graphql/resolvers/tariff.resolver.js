@@ -7,6 +7,9 @@ const DEFAULT_TARIFF = {
   lessonFee: 0,
   bulkPackages: [],
   packageDiscount: 0,
+  lessonDiscount: 0,
+  PackageDiscountStartDate: "",
+  PackageDiscountEndDate: "",
   discountStartDate: "",
   discountEndDate: "",
 };
@@ -52,8 +55,6 @@ const resolvers = {
           updateData.bulkPackages = updateData.bulkPackages.map((pkg) => ({
             lessons: pkg.lessons,
             cost: pkg.cost,
-            startDate: pkg.startDate || null,
-            endDate: pkg.endDate || null,
           }));
         }
 

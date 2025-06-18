@@ -33,6 +33,7 @@ import {
   getSlotDurationInHours,
   getSlotDurations,
 } from "../../../components/StudentComponents/GetSlotDurationInHours";
+import { FaMoneyBillWave } from "react-icons/fa";
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -70,7 +71,13 @@ const BookingDetails: React.FC = () => {
   });
   // Calculate total amount based on number of lessons and lesson fee
   const lessonFee = instructorData?.lessonFee;
+  const lessonDiscount = instructorData?.lessonDiscount;
+  const discountStartDate = instructorData?.discountStartDate;
+  const discountEndDate = instructorData?.discountEndDate;
   const totalAmount = Number(selectedAvailability?.length * lessonFee) || 10;
+  const finalAmount = Number(
+    (totalAmount * (1 - lessonDiscount / 100)).toFixed(2)
+  );
 
   const handleConfirm = () => {
     setError(null);
@@ -82,7 +89,7 @@ const BookingDetails: React.FC = () => {
     setError(null);
   };
   const [confirmLoading, setConfirmLoading] = useState(false);
-  console.log("instructorData", instructorData);
+
   const handleConfirmBooking = async () => {
     try {
       setConfirmLoading(true);
@@ -106,6 +113,7 @@ const BookingDetails: React.FC = () => {
           endTime: slot.endTime,
         })),
         totalAmount: parseFloat(totalAmount.toFixed(2)),
+        finalAmount: parseFloat(finalAmount),
         paymentMethod: {
           type: paymentMethod.type.toLowerCase(),
           cardNumber: paymentMethod.cardNumber || "",
@@ -467,7 +475,48 @@ const BookingDetails: React.FC = () => {
                 {getSlotDurations(selectedAvailability).totalDuration} Hours
               </Typography>
               <Typography variant="body1" gutterBottom>
-                <strong>Amount:</strong> ${totalAmount}
+                <strong>Total Amount:</strong> ${totalAmount}
+              </Typography>
+              <p className="flex items-center gap-2">
+                <Typography variant="body1" gutterBottom>
+                  <strong>After Discount:</strong>
+                </Typography>
+                {totalAmount
+                  ? (() => {
+                      const now = new Date();
+                      const start = discountStartDate
+                        ? new Date(discountStartDate)
+                        : null;
+                      const end = discountEndDate
+                        ? new Date(discountEndDate)
+                        : null;
+                      const isDiscountActive =
+                        start &&
+                        end &&
+                        now >= start &&
+                        now <= end &&
+                        lessonDiscount;
+
+                      return (
+                        <>
+                          <span
+                            className={`${isDiscountActive ? "line-through" : ""} -mt-1.5 text-gray-800`}
+                          >
+                            ${totalAmount} (No Discount)
+                          </span>
+                          {isDiscountActive ? (
+                            <span className="ml-2  text-green-600 font-semibold">
+                              ${finalAmount}
+                            </span>
+                          ) : null}
+                        </>
+                      );
+                    })()
+                  : "N/A"}
+              </p>
+
+              <Typography variant="body1" gutterBottom>
+                <strong>Discount:</strong> {lessonDiscount}%
               </Typography>
               <Typography variant="body1" gutterBottom>
                 <strong>Start:</strong>{" "}

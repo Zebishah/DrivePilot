@@ -25,11 +25,13 @@ import {
 } from "../../graphql/mutations/instructorPublic";
 import { getMapCenterAndMarkers } from "../../utils/mapUtils";
 import FilterPopover from "../FilterPopover";
-import { X } from "lucide-react";
+import { BadgePercent, Disc, Percent, TicketPercent, X } from "lucide-react";
 
 import InstructorsListSkeleton from "../loaders/InstructorsListSkeleton";
 import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
 import axios from "axios";
+import { Discount } from "@mui/icons-material";
+import { isAfter, isBefore, parseISO } from "date-fns";
 
 type FiltersState = {
   coordinates: null | number[];
@@ -261,6 +263,7 @@ const InstructorsInfo: React.FC = () => {
   // };
 
   const instructors = data?.getNearbyInstructors?.instructors || [];
+  console.log("pai", instructors);
   // const hasMore = data?.getNearbyInstructors?.hasMore || false;
 
   const { mapCenter, markers } = getMapCenterAndMarkers(
@@ -348,7 +351,19 @@ const InstructorsInfo: React.FC = () => {
       navigate(`/instructors/${instructorId}`);
     }
   };
+  const now = new Date();
+  const discountStart = instructors.details?.discountStartDate
+    ? parseISO(instructors.details.discountStartDate)
+    : null;
+  const discountEnd = instructors.details?.discountEndDate
+    ? parseISO(instructors.details.discountEndDate)
+    : null;
 
+  const isDiscountActive =
+    discountStart &&
+    discountEnd &&
+    isBefore(discountStart, now) &&
+    isAfter(discountEnd, now);
   return (
     <div className="max-w-screen-xl mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
@@ -500,7 +515,73 @@ const InstructorsInfo: React.FC = () => {
                         <FaCogs /> {instructor.details?.type || "N/A"}
                       </p>
                       <p className="flex items-center gap-2">
-                        <FaMoneyBillWave /> {instructor.details?.rate || "N/A"}
+                        <FaMoneyBillWave />
+                        {instructor.details?.rate
+                          ? (() => {
+                              const now = new Date();
+                              const discountStart = instructor.details
+                                .discountStartDate
+                                ? new Date(instructor.details.discountStartDate)
+                                : null;
+                              const discountEnd = instructor.details
+                                .discountEndDate
+                                ? new Date(instructor.details.discountEndDate)
+                                : null;
+
+                              const isDiscountActive =
+                                discountStart &&
+                                discountEnd &&
+                                now >= discountStart &&
+                                now <= discountEnd;
+
+                              return (
+                                <>
+                                  <span
+                                    className={`${isDiscountActive ? "line-through" : ""} text-gray-800`}
+                                  >
+                                    ${instructor.details.rate}/hr
+                                  </span>
+                                  {isDiscountActive &&
+                                  instructor.details.lessonDiscount ? (
+                                    <span className="ml-2 text-green-600 font-semibold">
+                                      $
+                                      {(
+                                        instructor.details.rate *
+                                        (1 -
+                                          instructor.details.lessonDiscount /
+                                            100)
+                                      ).toFixed(2)}
+                                    </span>
+                                  ) : null}
+                                </>
+                              );
+                            })()
+                          : "N/A"}
+                      </p>
+
+                      <p className="flex items-center gap-2 mt-2">
+                        <BadgePercent size={18} />
+                        {(() => {
+                          const now = new Date();
+                          const discountStart = instructor.details
+                            .discountStartDate
+                            ? new Date(instructor.details.discountStartDate)
+                            : null;
+                          const discountEnd = instructor.details.discountEndDate
+                            ? new Date(instructor.details.discountEndDate)
+                            : null;
+
+                          const isDiscountActive =
+                            discountStart &&
+                            discountEnd &&
+                            now >= discountStart &&
+                            now <= discountEnd;
+
+                          return isDiscountActive &&
+                            instructor.details.lessonDiscount !== undefined
+                            ? `${instructor.details.lessonDiscount}% Discount`
+                            : "N/A";
+                        })()}
                       </p>
                     </div>
                     <Button
@@ -515,7 +596,7 @@ const InstructorsInfo: React.FC = () => {
                       }}
                       onClick={() => handleViewDetails(instructor._id)}
                     >
-                      View Details
+                      Book Now
                     </Button>
                   </div>
                 </div>

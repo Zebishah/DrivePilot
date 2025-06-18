@@ -139,7 +139,13 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
     return null;
   }
 
-  const { lessonFee, packageDiscount, bulkPackages } = tariff;
+  const {
+    lessonFee,
+    packageDiscount,
+    bulkPackages,
+    PackageDiscountStartDate,
+    PackageDiscountEndDate,
+  } = tariff;
 
   // Carousel settings
   const settings = {
@@ -172,10 +178,10 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
         <BulkPackageCard
           lessons={pkg.lessons}
           cost={pkg.cost}
-          startDate={pkg.startDate}
-          endDate={pkg.endDate}
+          startDate={PackageDiscountStartDate}
+          endDate={PackageDiscountEndDate}
           lessonFee={lessonFee}
-          packageDiscount={pkg?.cost}
+          packageDiscount={packageDiscount}
           variant={idx % 2 === 0 ? "highlighted" : "default"}
           onSelect={handlePackageSelect}
           isSelected={

@@ -28,6 +28,9 @@ const studentBookingSchema = z.object({
   totalAmount: z.number().positive({
     message: "Total amount must be greater than 0",
   }),
+  finalAmount: z.number().positive({
+    message: "Total amount must be greater than 0",
+  }),
   paymentMethod: paymentMethodSchema,
   status: z
     .enum(["pending", "confirmed", "cancelled", "completed"])

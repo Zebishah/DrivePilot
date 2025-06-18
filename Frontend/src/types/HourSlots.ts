@@ -41,4 +41,7 @@ export const fallbackTariff = {
   lessonFee: 0,
   bulkPackages: [],
   packageDiscount: 0,
+  PackageDiscountStartDate: "",
+  PackageDiscountEndDate: "",
+  lessonDiscount: 0,
 };

@@ -21,6 +21,7 @@ import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking";
 import { BookingList } from "../../../components/BookingList";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
+import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 
 interface AvailabilitySlot {
   date: string;
@@ -259,10 +260,11 @@ const BookLesson: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+    <Box sx={{ px: 3, py: 1, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+      <BackButton variant="outline" label="Back" />
       {/* Current Booking Details Card - Only show if we have selectedAvailability */}
       {selectedAvailability && selectedAvailability.length > 0 && (
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: 3, mt: 2 }}>
           <Box
             sx={{
               mb: 2,

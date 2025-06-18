@@ -21,6 +21,7 @@ import BulkLessonPackages from "./BulkPackageCard";
 import { useAuth } from "../../context/AuthContext";
 import { Reviews } from "@mui/icons-material";
 import { fallbackInstructor, fallbackTariff } from "../../types/HourSlots";
+import { BackButton } from "./common/BackButton";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -151,13 +152,7 @@ const ProfileSummary: React.FC = () => {
   };
   return (
     <Box sx={{ width: "100%" }}>
-      <button
-        onClick={handleGoBack}
-        className="flex items-center text-white px-4 m-2 bg-[#4AB0C0] hover:bg-[#4099a7] border-none cursor-pointer py-2 ml-2 mt-2 rounded-full"
-      >
-        <ArrowLeft size={24} />
-        <span className="ml-2 font-medium">Back</span>
-      </button>
+      <BackButton variant="outline" label="Back" />
       <Box
         sx={{
           maxWidth: 1600,
@@ -255,7 +250,7 @@ const ProfileSummary: React.FC = () => {
               </Box>
             </Box>
           </Box>
-          <Button
+          {/* <Button
             variant="contained"
             disabled={loading}
             onClick={handleBookNow}
@@ -273,7 +268,7 @@ const ProfileSummary: React.FC = () => {
             }}
           >
             {loading ? "Loading..." : "Book Now"}
-          </Button>
+          </Button> */}
         </Card>
         {tariff?.bulkPackages.length > 0 && (
           <Card sx={{ marginTop: "0.5rem", padding: "0.5rem" }}>

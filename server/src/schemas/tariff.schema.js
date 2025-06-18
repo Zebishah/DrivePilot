@@ -4,14 +4,15 @@ const typeDefs = gql`
   type BulkLessonPackage {
     lessons: Int!
     cost: Float!
-    startDate: String
-    endDate: String
   }
 
   type TeacherTariff {
     lessonFee: Float!
     bulkPackages: [BulkLessonPackage!]
-    packageDiscount: Float!
+    packageDiscount: Float
+    lessonDiscount: Float
+    PackageDiscountStartDate: String
+    PackageDiscountEndDate: String
     discountStartDate: String
     discountEndDate: String
     isDefault: Boolean!
@@ -20,14 +21,15 @@ const typeDefs = gql`
   input BulkLessonPackageInput {
     lessons: Int!
     cost: Float!
-    startDate: String
-    endDate: String
   }
 
   input TeacherTariffInput {
     lessonFee: Float!
     bulkPackages: [BulkLessonPackageInput!]
-    packageDiscount: Float!
+    packageDiscount: Float
+    lessonDiscount: Float
+    PackageDiscountStartDate: String
+    PackageDiscountEndDate: String
     discountStartDate: String
     discountEndDate: String
   }

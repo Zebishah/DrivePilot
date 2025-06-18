@@ -31,12 +31,13 @@ import toast from "react-hot-toast";
 interface BulkLessonPackage {
   lessons: number;
   cost: number | null;
-  startDate: Date | null; // Ensure this is Date type
-  endDate: Date | null; // Ensure this is Date type
 }
 interface TariffData {
   lessonFee: number;
   bulkPackages?: BulkLessonPackage[];
+  lessonDiscount: number;
+  PackageDiscountStartDate: Date | null;
+  PackageDiscountEndDate: Date | null;
   packageDiscount: number;
   discountStartDate: Date | null; // Changed to Date | null
   discountEndDate: Date | null; // Changed to Date | null
@@ -60,6 +61,9 @@ export const TariffTab: React.FC = () => {
   const [tariffData, setTariffData] = useState<TariffData>({
     lessonFee: 0,
     bulkPackages: [], // Start with empty array
+    lessonDiscount: 0,
+    PackageDiscountStartDate: null,
+    PackageDiscountEndDate: null,
     packageDiscount: 0,
     discountStartDate: null, // Changed to null
     discountEndDate: null, // Changed to null
@@ -77,9 +81,14 @@ export const TariffTab: React.FC = () => {
           data.teacherTariff.bulkPackages?.map((pkg) => ({
             lessons: pkg.lessons,
             cost: pkg.cost,
-            startDate: pkg.startDate ? new Date(pkg.startDate) : null,
-            endDate: pkg.endDate ? new Date(pkg.endDate) : null,
           })) || [],
+        lessonDiscount: data.teacherTariff.lessonDiscount || 0,
+        PackageDiscountStartDate: data.teacherTariff.PackageDiscountStartDate
+          ? new Date(data.teacherTariff.PackageDiscountStartDate)
+          : null,
+        PackageDiscountEndDate: data.teacherTariff.PackageDiscountEndDate
+          ? new Date(data.teacherTariff.PackageDiscountEndDate)
+          : null,
         packageDiscount: data.teacherTariff.packageDiscount || 0,
         discountStartDate: data.teacherTariff.discountStartDate
           ? new Date(data.teacherTariff.discountStartDate)
@@ -111,7 +120,20 @@ export const TariffTab: React.FC = () => {
     }
     setTariffData((prev) => ({ ...prev, [field]: value }));
   };
+  interface PackageDiscountDateChangeEvent {
+    field: "PackageDiscountStartDate" | "PackageDiscountEndDate";
+    newValue: Date | null;
+  }
 
+  const handlePackageDiscountDateChange = (
+    field: PackageDiscountDateChangeEvent["field"],
+    newValue: Date | null
+  ) => {
+    setTariffData((prev) => ({
+      ...prev,
+      [field]: newValue,
+    }));
+  };
   // Handle changes to bulk lesson packages
   const handleBulkPackageChange = (
     index: number,
@@ -127,12 +149,6 @@ export const TariffTab: React.FC = () => {
         const updatedPackages = [...(tariffData.bulkPackages || [])];
         updatedPackages[index] = { ...updatedPackages[index], [field]: null };
         setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
-        return;
-      }
-
-      // Reject non-number or out-of-range input and show toast
-      if (isNaN(numValue) || numValue < 0 || numValue > 100) {
-        toast.error("Discount must be between 1% and 100%");
         return;
       }
     }
@@ -151,8 +167,6 @@ export const TariffTab: React.FC = () => {
         {
           lessons: 2,
           cost: null,
-          startDate: null,
-          endDate: null,
         },
       ],
     }));
@@ -171,7 +185,7 @@ export const TariffTab: React.FC = () => {
   // Handle changes to package discount
   const handleDiscountChange = (field: keyof TariffData, value: any) => {
     // Prevent negative values for package discount
-    if (field === "packageDiscount" && typeof value === "number") {
+    if (field === "lessonDiscount" && typeof value === "number") {
       // Ensure discount is between 1-100%
       if (value < MIN_DISCOUNT) value = MIN_DISCOUNT;
       if (value > MAX_DISCOUNT) value = MAX_DISCOUNT;
@@ -203,15 +217,19 @@ export const TariffTab: React.FC = () => {
         // Check each package for required fields
         const invalidPackages = tariffData.bulkPackages.some((pkg) => {
           const hasValidLessons = pkg.lessons && pkg.lessons >= 2;
-          const hasValidCost =
-            typeof pkg.cost === "number" && pkg.cost >= 0 && pkg.cost <= 100;
 
           // Date validation remains the same
           let hasValidDates = true;
-          if (pkg.startDate || pkg.endDate) {
-            if (pkg.startDate && pkg.endDate) {
-              const start = pkg.startDate;
-              const end = pkg.endDate;
+          if (
+            tariffData.PackageDiscountStartDate ||
+            tariffData.PackageDiscountEndDate
+          ) {
+            if (
+              tariffData.PackageDiscountStartDate &&
+              tariffData.PackageDiscountEndDate
+            ) {
+              const start = tariffData.PackageDiscountStartDate;
+              const end = tariffData.PackageDiscountEndDate;
               hasValidDates =
                 !isNaN(start.getTime()) &&
                 !isNaN(end.getTime()) &&
@@ -221,7 +239,7 @@ export const TariffTab: React.FC = () => {
             }
           }
 
-          return !hasValidLessons || !hasValidCost || !hasValidDates;
+          return !hasValidLessons || !hasValidDates;
         });
 
         if (invalidPackages) {
@@ -235,7 +253,7 @@ export const TariffTab: React.FC = () => {
       }
 
       // Validate discount period if discount is set
-      if (tariffData.packageDiscount > 0) {
+      if (tariffData.lessonDiscount > 0) {
         const hasStartDate = !!tariffData.discountStartDate;
         const hasEndDate = !!tariffData.discountEndDate;
 
@@ -268,12 +286,12 @@ export const TariffTab: React.FC = () => {
         bulkPackages: tariffData.bulkPackages?.map((pkg) => ({
           lessons: Number(pkg.lessons),
           cost: Number(pkg.cost),
-          ...(pkg.startDate ? { startDate: pkg.startDate.toISOString() } : {}),
-          ...(pkg.endDate ? { endDate: pkg.endDate.toISOString() } : {}),
+          // ...(pkg.startDate ? { startDate: pkg.startDate.toISOString() } : {}),
+          // ...(pkg.endDate ? { endDate: pkg.endDate.toISOString() } : {}),
         })),
 
+        lessonDiscount: Number(tariffData.lessonDiscount),
         packageDiscount: Number(tariffData.packageDiscount),
-
         // Only include discount dates if they have values
         ...(tariffData.discountStartDate
           ? {
@@ -284,6 +302,19 @@ export const TariffTab: React.FC = () => {
         ...(tariffData.discountEndDate
           ? {
               discountEndDate: tariffData.discountEndDate.toISOString(),
+            }
+          : {}),
+        ...(tariffData.PackageDiscountStartDate
+          ? {
+              PackageDiscountStartDate:
+                tariffData.PackageDiscountStartDate.toISOString(),
+            }
+          : {}),
+
+        ...(tariffData.PackageDiscountEndDate
+          ? {
+              PackageDiscountEndDate:
+                tariffData.PackageDiscountEndDate.toISOString(),
             }
           : {}),
       };
@@ -472,8 +503,8 @@ export const TariffTab: React.FC = () => {
                     <Grid item xs={12}>
                       <LabelWithTooltip
                         htmlFor={`cost-${index}`}
-                        label="Discount percentage (%)"
-                        tooltip="Discount percentage applied to this package"
+                        label="Package Price"
+                        tooltip="Price applied to this package"
                       />
                       <TextField
                         fullWidth
@@ -490,12 +521,6 @@ export const TariffTab: React.FC = () => {
                               : Number(e.target.value)
                           )
                         }
-                        InputProps={{
-                          endAdornment: (
-                            <Typography sx={{ ml: 1 }}>%</Typography>
-                          ),
-                          inputProps: { min: 0, max: 100 },
-                        }}
                         sx={{
                           "& .MuiOutlinedInput-root": {
                             padding: 1.1,
@@ -506,97 +531,6 @@ export const TariffTab: React.FC = () => {
                     </Grid>
 
                     {/* Package availability period */}
-                    <Grid item xs={12} sx={{ mb: 3 }}>
-                      <LabelWithTooltip
-                        htmlFor={`availability-${index}`}
-                        label="Package availability period"
-                        tooltip="Set the duration when this package is available for purchase."
-                      />
-                      <LocalizationProvider dateAdapter={AdapterDateFns}>
-                        <Grid container spacing={3} sx={{ mt: 1 }}>
-                          <Grid item xs={6}>
-                            <DatePicker
-                              label="Start Date"
-                              value={pkg.startDate}
-                              onChange={(newValue) =>
-                                handleBulkPackageChange(
-                                  index,
-                                  "startDate",
-                                  newValue
-                                )
-                              }
-                              sx={{
-                                width: "100%",
-                                "& .MuiInputBase-root": {
-                                  padding: "12px 14px",
-                                  borderRadius: "8px",
-                                },
-                                "& .MuiOutlinedInput-notchedOutline": {
-                                  borderColor: "#e0e0e0",
-                                },
-                                "&:hover .MuiOutlinedInput-notchedOutline": {
-                                  borderColor: "#bdbdbd",
-                                },
-                                padding: "2px",
-                              }}
-                              slotProps={{
-                                textField: {
-                                  fullWidth: true,
-                                  margin: "normal",
-                                  sx: {
-                                    mt: 0,
-                                    "& .MuiInputBase-root": {
-                                      padding: "10px 10px",
-                                    },
-                                  },
-                                },
-                              }}
-                              minDate={today}
-                            />
-                          </Grid>
-                          <Grid item xs={6}>
-                            <DatePicker
-                              label="End Date"
-                              value={pkg.endDate}
-                              onChange={(newValue) =>
-                                handleBulkPackageChange(
-                                  index,
-                                  "endDate",
-                                  newValue
-                                )
-                              }
-                              sx={{
-                                width: "100%",
-                                "& .MuiInputBase-root": {
-                                  padding: "12px 14px",
-                                  borderRadius: "8px",
-                                },
-                                "& .MuiOutlinedInput-notchedOutline": {
-                                  borderColor: "#e0e0e0",
-                                },
-                                "&:hover .MuiOutlinedInput-notchedOutline": {
-                                  borderColor: "#bdbdbd",
-                                },
-                                padding: "2px",
-                              }}
-                              slotProps={{
-                                textField: {
-                                  fullWidth: true,
-                                  margin: "normal",
-                                  sx: {
-                                    mt: 0,
-                                    "& .MuiInputBase-root": {
-                                      padding: "10px 10px",
-                                    },
-                                  },
-                                },
-                              }}
-                              minDate={pkg.startDate}
-                            />
-                          </Grid>
-                        </Grid>
-                      </LocalizationProvider>
-                    </Grid>
                   </Grid>
                 </Grid>
 
@@ -637,19 +571,143 @@ export const TariffTab: React.FC = () => {
       {/* Package Discounts Section */}
       <Box sx={{ mb: 2 }}>
         <SectionHeader
+          title="% discount on Packages price"
+          tooltip="Offer a temporary discount on your regular Packages price."
+        />
+        <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: "16px" }}>
+          Discount For All Packages.
+        </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Slider
+            value={tariffData.packageDiscount}
+            onChange={(_, newValue) =>
+              handleDiscountChange("packageDiscount", Number(newValue))
+            }
+            aria-labelledby="package-discount-slider"
+            valueLabelDisplay="auto"
+            step={1}
+            marks
+            min={MIN_DISCOUNT}
+            max={MAX_DISCOUNT}
+            sx={{
+              color: "#5ec2d2",
+              "& .MuiSlider-thumb": {
+                height: 24,
+                width: 24,
+                backgroundColor: "#fff",
+                border: "2px solid #5ec2d2",
+                "&:focus, &:hover, &.Mui-active": {
+                  boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
+                },
+              },
+              "& .MuiSlider-markLabel": {
+                fontSize: "0.75rem",
+              },
+            }}
+          />
+        </Box>
+        <Grid item xs={12} sx={{ mb: 3 }}>
+          <LabelWithTooltip
+            htmlFor={`availability`}
+            label="Package availability period"
+            tooltip="Set the duration when this package is available for purchase."
+          />
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              <Grid item xs={6}>
+                <DatePicker
+                  label="Package Discount Start Date"
+                  value={tariffData.PackageDiscountStartDate}
+                  onChange={(newValue) =>
+                    handlePackageDiscountDateChange(
+                      "PackageDiscountStartDate",
+                      newValue
+                    )
+                  }
+                  sx={{
+                    width: "100%",
+                    "& .MuiInputBase-root": {
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                    },
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#e0e0e0",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#bdbdbd",
+                    },
+                    padding: "2px",
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      margin: "normal",
+                      sx: {
+                        mt: 0,
+                        "& .MuiInputBase-root": {
+                          padding: "10px 10px",
+                        },
+                      },
+                    },
+                  }}
+                  minDate={today}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <DatePicker
+                  label="End Date"
+                  value={tariffData.PackageDiscountEndDate}
+                  onChange={(newValue) =>
+                    handlePackageDiscountDateChange(
+                      "PackageDiscountEndDate",
+                      newValue
+                    )
+                  }
+                  sx={{
+                    width: "100%",
+                    "& .MuiInputBase-root": {
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                    },
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#e0e0e0",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#bdbdbd",
+                    },
+                    padding: "2px",
+                  }}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      margin: "normal",
+                      sx: {
+                        mt: 0,
+                        "& .MuiInputBase-root": {
+                          padding: "10px 10px",
+                        },
+                      },
+                    },
+                  }}
+                  minDate={tariffData.PackageDiscountStartDate ?? undefined}
+                />
+              </Grid>
+            </Grid>
+          </LocalizationProvider>
+        </Grid>
+        <SectionHeader
           title="% discount on lesson price"
           tooltip="Offer a temporary discount on your regular price."
         />
         <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: "16px" }}>
           Discount can be added for individual lessons.
         </Typography>
-
         {/* Slider for discount */}
         <Box sx={{ mb: 2 }}>
           <Slider
-            value={tariffData.packageDiscount}
+            value={tariffData.lessonDiscount}
             onChange={(_, newValue) =>
-              handleDiscountChange("packageDiscount", Number(newValue))
+              handleDiscountChange("lessonDiscount", Number(newValue))
             }
             aria-labelledby="discount-slider"
             valueLabelDisplay="auto"

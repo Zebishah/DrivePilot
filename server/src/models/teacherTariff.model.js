@@ -13,14 +13,6 @@ const bulkLessonPackageSchema = new mongoose.Schema({
     min: 0,
     max: 100,
   },
-  startDate: {
-    type: String,
-    default: null,
-  },
-  endDate: {
-    type: String,
-    default: null,
-  },
 });
 
 const teacherTariffSchema = new mongoose.Schema(
@@ -36,6 +28,18 @@ const teacherTariffSchema = new mongoose.Schema(
     },
     bulkPackages: [bulkLessonPackageSchema],
     packageDiscount: {
+      type: Number,
+      required: true,
+    },
+    PackageDiscountStartDate: {
+      type: String,
+      default: null,
+    },
+    PackageDiscountEndDate: {
+      type: String,
+      default: null,
+    },
+    lessonDiscount: {
       type: Number,
       required: true,
     },

@@ -12,6 +12,7 @@ export const CREATE_BOOKING = gql`
         booked
       }
       totalAmount
+      finalAmount
       paymentMethod {
         type
         cardNumber

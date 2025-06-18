@@ -7,6 +7,7 @@ export interface Slot {
   date: string;
   startTime: string;
   endTime: string;
+  booked: boolean;
 }
 
 export interface PaymentMethod {

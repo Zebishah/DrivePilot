@@ -242,6 +242,9 @@ const Availability: React.FC<AvailabilityProps> = ({
               email: instructor.email,
               description: instructor.description,
               lessonFee: tariff.lessonFee,
+              lessonDiscount: tariff.lessonDiscount,
+              discountStartDate: tariff.discountStartDate,
+              discountEndDate: tariff.discountEndDate,
             },
           },
         });

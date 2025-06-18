@@ -20,6 +20,9 @@ export const GET_NEARBY_INSTRUCTORS = gql`
           car
           type
           rate
+          lessonDiscount
+          discountStartDate
+          discountEndDate
         }
         availability {
           _id
@@ -60,10 +63,11 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         bulkPackages {
           lessons
           cost
-          startDate
-          endDate
         }
         packageDiscount
+        PackageDiscountStartDate
+        PackageDiscountEndDate
+        lessonDiscount
         discountStartDate
         discountEndDate
       }

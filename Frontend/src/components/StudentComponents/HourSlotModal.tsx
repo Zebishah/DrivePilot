@@ -182,7 +182,6 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
 
         <Grid container spacing={2}>
           {hourSlots.map((slot) => {
-            if (slot.booked) return null;
             return (
               <Grid item xs={12} sm={6} md={4} key={slot.id}>
                 <HourSlotCard

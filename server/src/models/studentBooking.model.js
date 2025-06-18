@@ -36,6 +36,10 @@ const studentBookingSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    finalAmount: {
+      type: Number,
+      required: true,
+    },
     paymentMethod: {
       type: {
         type: String,

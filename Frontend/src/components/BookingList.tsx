@@ -61,7 +61,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   );
 
   return (
-    <Card sx={{ mb: 3 }}>
+    <Card sx={{ mb: 3, mt: 2 }}>
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={tabValue}
