@@ -499,13 +499,16 @@ const BookingDetails: React.FC = () => {
 
                       return (
                         <>
-                          <span
-                            className={`${isDiscountActive ? "line-through" : ""} -mt-1.5 text-gray-800`}
-                          >
-                            ${totalAmount} (No Discount)
-                          </span>
+                          {!isDiscountActive ? (
+                            <span
+                              className={`${isDiscountActive ? "line-through" : ""} -mt-1.5 text-gray-800`}
+                            >
+                              ${totalAmount} (No Discount)
+                            </span>
+                          ) : null}
+
                           {isDiscountActive ? (
-                            <span className="ml-2  text-green-600 font-semibold">
+                            <span className=" -mt-1.5 text-green-600 font-semibold">
                               ${finalAmount}
                             </span>
                           ) : null}
