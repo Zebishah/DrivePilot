@@ -32,6 +32,7 @@ export const GET_ALL_STUDENTS = gql`
       profileImage
       dateOfBirth
       languagePreference
+      lessonHoursLeft
 
       # ✅ New fields
       lessonStats {

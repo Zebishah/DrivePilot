@@ -7,7 +7,7 @@ module.exports = gql`
     instructorId: ID!
     instructorEmail: String!
     feedbackTags: [String!]!
-    title: String!
+    hoursRemaining: String!
     message: String!
     createdAt: String!
   }
@@ -17,13 +17,13 @@ module.exports = gql`
     instructorId: ID!
     instructorEmail: String!
     feedbackTags: [String!]!
-    title: String!
+    hoursRemaining: String!
     message: String!
   }
   input UpdateFeedbackInput {
     feedbackId: ID!
     feedbackTags: [String!]!
-    title: String!
+    hoursRemaining: String!
     message: String!
   }
 

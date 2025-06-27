@@ -2,36 +2,39 @@ const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
   type BulkLessonPackage {
+    title: String!
     lessons: Int!
     cost: Float!
+    packageDiscount: Float!
+    PackageEndDate: String
+    finalPackagePrice: Float!
+    studentSave: Float!
   }
 
   type TeacherTariff {
     lessonFee: Float!
     bulkPackages: [BulkLessonPackage!]
-    packageDiscount: Float
     lessonDiscount: Float
-    PackageDiscountStartDate: String
-    PackageDiscountEndDate: String
-    discountStartDate: String
-    discountEndDate: String
+    FinalPricePerLesson: Float
     isDefault: Boolean!
   }
 
   input BulkLessonPackageInput {
+    title: String!
     lessons: Int!
     cost: Float!
+    packageDiscount: Float!
+    PackageEndDate: String
+    finalPackagePrice: Float!
+    studentSave: Float!
   }
 
   input TeacherTariffInput {
     lessonFee: Float!
     bulkPackages: [BulkLessonPackageInput!]
-    packageDiscount: Float
     lessonDiscount: Float
-    PackageDiscountStartDate: String
-    PackageDiscountEndDate: String
-    discountStartDate: String
-    discountEndDate: String
+    FinalPricePerLesson: Float
+    isDefault: Boolean
   }
 
   extend type Query {

@@ -56,7 +56,7 @@ const getInitialCoordinates = () => {
 const InstructorsInfo: React.FC = () => {
   const [filters, setFilters] = useState<FiltersState>({
     coordinates: getInitialCoordinates(), // Start with null, will be set by useEffect
-    areaRadius: 0,
+    areaRadius: 50, // ✅ set area radius explicitly here
     rating: 0,
     transmission: null,
     gender: null,
@@ -263,7 +263,7 @@ const InstructorsInfo: React.FC = () => {
   // };
 
   const instructors = data?.getNearbyInstructors?.instructors || [];
-  console.log("pai", instructors);
+
   // const hasMore = data?.getNearbyInstructors?.hasMore || false;
 
   const { mapCenter, markers } = getMapCenterAndMarkers(
@@ -351,19 +351,7 @@ const InstructorsInfo: React.FC = () => {
       navigate(`/instructors/${instructorId}`);
     }
   };
-  const now = new Date();
-  const discountStart = instructors.details?.discountStartDate
-    ? parseISO(instructors.details.discountStartDate)
-    : null;
-  const discountEnd = instructors.details?.discountEndDate
-    ? parseISO(instructors.details.discountEndDate)
-    : null;
 
-  const isDiscountActive =
-    discountStart &&
-    discountEnd &&
-    isBefore(discountStart, now) &&
-    isAfter(discountEnd, now);
   return (
     <div className="max-w-screen-xl mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
@@ -518,31 +506,14 @@ const InstructorsInfo: React.FC = () => {
                         <FaMoneyBillWave />
                         {instructor.details?.rate
                           ? (() => {
-                              const now = new Date();
-                              const discountStart = instructor.details
-                                .discountStartDate
-                                ? new Date(instructor.details.discountStartDate)
-                                : null;
-                              const discountEnd = instructor.details
-                                .discountEndDate
-                                ? new Date(instructor.details.discountEndDate)
-                                : null;
-
-                              const isDiscountActive =
-                                discountStart &&
-                                discountEnd &&
-                                now >= discountStart &&
-                                now <= discountEnd;
-
                               return (
                                 <>
                                   <span
-                                    className={`${isDiscountActive ? "line-through" : ""} text-gray-800`}
+                                    className={`line-through text-gray-800`}
                                   >
                                     ${instructor.details.rate}/hr
                                   </span>
-                                  {isDiscountActive &&
-                                  instructor.details.lessonDiscount ? (
+                                  {instructor.details.lessonDiscount ? (
                                     <span className="ml-2 text-green-600 font-semibold">
                                       $
                                       {(
@@ -561,27 +532,7 @@ const InstructorsInfo: React.FC = () => {
 
                       <p className="flex items-center gap-2 mt-2">
                         <BadgePercent size={18} />
-                        {(() => {
-                          const now = new Date();
-                          const discountStart = instructor.details
-                            .discountStartDate
-                            ? new Date(instructor.details.discountStartDate)
-                            : null;
-                          const discountEnd = instructor.details.discountEndDate
-                            ? new Date(instructor.details.discountEndDate)
-                            : null;
-
-                          const isDiscountActive =
-                            discountStart &&
-                            discountEnd &&
-                            now >= discountStart &&
-                            now <= discountEnd;
-
-                          return isDiscountActive &&
-                            instructor.details.lessonDiscount !== undefined
-                            ? `${instructor.details.lessonDiscount}% Discount`
-                            : "N/A";
-                        })()}
+                        {instructor.details?.lessonDiscount || "N/A"}%
                       </p>
                     </div>
                     <Button

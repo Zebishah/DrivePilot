@@ -60,16 +60,17 @@ export const GET_INSTRUCTOR_PROFILE = gql`
       }
       tariff {
         lessonFee
-        bulkPackages {
-          lessons
-          cost
-        }
-        packageDiscount
-        PackageDiscountStartDate
-        PackageDiscountEndDate
         lessonDiscount
-        discountStartDate
-        discountEndDate
+        FinalPricePerLesson
+        bulkPackages {
+          title
+          lessons
+          packageDiscount
+          PackageEndDate
+          cost
+          finalPackagePrice
+          studentSave
+        }
       }
       availability {
         _id

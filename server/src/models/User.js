@@ -110,6 +110,7 @@ const StudentSchema = new mongoose.Schema({
     paymentDate: Date,
   },
   description: { type: String, required: false },
+  lessonHoursLeft: { type: String, required: false },
   experience: { type: String, required: false },
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },

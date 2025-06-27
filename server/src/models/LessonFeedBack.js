@@ -12,6 +12,11 @@ const feedbackSchema = new mongoose.Schema({
     required: [true, "Instructor ID is required"],
     ref: "User",
   },
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: [true, "Student ID is required"],
+    ref: "User",
+  },
   instructorEmail: {
     type: String,
     required: [true, "Instructor email is required"],
@@ -25,11 +30,10 @@ const feedbackSchema = new mongoose.Schema({
       trim: true,
     },
   ],
-  title: {
-    type: String,
-    required: [true, "Title is required"],
-    trim: true,
-    maxlength: [500, "Title cannot exceed 500 characters"],
+  hoursRemaining: {
+    type: Number,
+    required: [true],
+    maxlength: [30],
   },
   message: {
     type: String,
@@ -60,7 +64,7 @@ feedbackSchema.index({ lessonId: 1, instructorId: 1 }, { unique: true });
 
 // Add text index for searching
 feedbackSchema.index({
-  title: "text",
+  hoursRemaining: Number,
   message: "text",
   feedbackTags: "text",
 });

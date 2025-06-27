@@ -14,6 +14,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   totalBookings,
   lessonStats,
 }) => {
+  console.log("student", student);
   const getAvatarSrc = () => {
     if (student.profileImage) {
       return student.profileImage;
@@ -76,14 +77,14 @@ export const StudentCard: React.FC<StudentCardProps> = ({
         <div className="flex justify-between text-sm mb-2">
           <span className="text-gray-600">Remaining Hour:</span>
           <span className="text-gray-900 font-medium">
-            {formatDuration(lessonStats.remainingLessonDurationInMinutes)}
+            {student.lessonHoursLeft}
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-[#5FC2D3] h-2 rounded-full transition-all duration-300"
             style={{
-              width: `${progressPercentage}%`,
+              width: `${student.lessonHoursLeft}%`,
             }}
           />
         </div>

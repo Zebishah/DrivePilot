@@ -13,6 +13,7 @@ import {
   Tooltip,
   Slider,
   CircularProgress,
+  InputAdornment,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -26,21 +27,25 @@ import {
 } from "../../../../graphql/mutations/tariff";
 import { startOfDay } from "date-fns";
 import toast from "react-hot-toast";
+import { DollarSign } from "lucide-react";
 
 // Update your BulkLessonPackage interface
 interface BulkLessonPackage {
+  title: string;
   lessons: number;
-  cost: number | null;
+  packageDiscount: number;
+  PackageEndDate: Date | null;
+  cost: number;
+  finalPackagePrice: number;
+  studentSave: number;
 }
+
 interface TariffData {
   lessonFee: number;
-  bulkPackages?: BulkLessonPackage[];
   lessonDiscount: number;
-  PackageDiscountStartDate: Date | null;
-  PackageDiscountEndDate: Date | null;
-  packageDiscount: number;
-  discountStartDate: Date | null; // Changed to Date | null
-  discountEndDate: Date | null; // Changed to Date | null
+  FinalPricePerLesson: number;
+  bulkPackages: BulkLessonPackage[];
+  isDefault: boolean;
 }
 
 export const TariffTab: React.FC = () => {
@@ -60,44 +65,49 @@ export const TariffTab: React.FC = () => {
   // Initialize with default values
   const [tariffData, setTariffData] = useState<TariffData>({
     lessonFee: 0,
-    bulkPackages: [], // Start with empty array
     lessonDiscount: 0,
-    PackageDiscountStartDate: null,
-    PackageDiscountEndDate: null,
-    packageDiscount: 0,
-    discountStartDate: null, // Changed to null
-    discountEndDate: null, // Changed to null
+    FinalPricePerLesson: 0,
+    isDefault: false,
+    bulkPackages: [],
   });
-
   // Get today's date at the start of the day for minimum date validation
   const today = startOfDay(new Date());
 
   // Update your useEffect for data loading
   useEffect(() => {
     if (data?.teacherTariff) {
-      const formattedData = {
-        lessonFee: data.teacherTariff.lessonFee || 0,
+      const {
+        lessonFee,
+        lessonDiscount,
+        FinalPricePerLesson,
+        bulkPackages,
+        isDefault,
+      } = data.teacherTariff;
+      console.log("data", data.teacherTariff);
+      setTariffData({
+        lessonFee: lessonFee || 0,
+        lessonDiscount: lessonDiscount || 0,
+        FinalPricePerLesson: FinalPricePerLesson || 0,
+        isDefault: isDefault || false,
         bulkPackages:
-          data.teacherTariff.bulkPackages?.map((pkg) => ({
-            lessons: pkg.lessons,
-            cost: pkg.cost,
-          })) || [],
-        lessonDiscount: data.teacherTariff.lessonDiscount || 0,
-        PackageDiscountStartDate: data.teacherTariff.PackageDiscountStartDate
-          ? new Date(data.teacherTariff.PackageDiscountStartDate)
-          : null,
-        PackageDiscountEndDate: data.teacherTariff.PackageDiscountEndDate
-          ? new Date(data.teacherTariff.PackageDiscountEndDate)
-          : null,
-        packageDiscount: data.teacherTariff.packageDiscount || 0,
-        discountStartDate: data.teacherTariff.discountStartDate
-          ? new Date(data.teacherTariff.discountStartDate)
-          : null,
-        discountEndDate: data.teacherTariff.discountEndDate
-          ? new Date(data.teacherTariff.discountEndDate)
-          : null,
-      };
-      setTariffData(formattedData);
+          bulkPackages?.map((pkg: any) => {
+            const finalPrice =
+              pkg.cost - (pkg.cost * pkg.packageDiscount) / 100;
+            const studentSave = pkg.cost - finalPrice;
+            return {
+              title: pkg.title,
+              lessons: pkg.lessons,
+              packageDiscount: pkg.packageDiscount,
+
+              PackageEndDate: pkg.PackageEndDate
+                ? new Date(parseInt(pkg.PackageEndDate)) // ✅ Ensure it's a number first
+                : null,
+              cost: pkg.cost,
+              finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
+              studentSave: parseFloat(studentSave.toFixed(2)),
+            };
+          }) || [],
+      });
     }
   }, [data]);
 
@@ -106,7 +116,6 @@ export const TariffTab: React.FC = () => {
 
   // Handle changes to lesson fee with validation
   const handleLessonFeeChange = (field: keyof TariffData, value: number) => {
-    // Prevent negative values
     if (value < 0) return;
 
     if (field === "lessonFee") {
@@ -118,10 +127,21 @@ export const TariffTab: React.FC = () => {
         setLessonFeeError("");
       }
     }
-    setTariffData((prev) => ({ ...prev, [field]: value }));
+
+    setTariffData((prev) => ({
+      ...prev,
+      [field]: value,
+      FinalPricePerLesson:
+        field === "lessonFee" || field === "lessonDiscount"
+          ? recalculateFinalLessonPrice(
+              field === "lessonFee" ? value : prev.lessonFee,
+              field === "lessonDiscount" ? value : prev.lessonDiscount
+            )
+          : prev.FinalPricePerLesson,
+    }));
   };
   interface PackageDiscountDateChangeEvent {
-    field: "PackageDiscountStartDate" | "PackageDiscountEndDate";
+    field: "PackageEndDate";
     newValue: Date | null;
   }
 
@@ -140,33 +160,64 @@ export const TariffTab: React.FC = () => {
     field: keyof BulkLessonPackage,
     value: any
   ) => {
-    // Only validate discount percentage if the field is 'cost'
-    if (field === "cost") {
-      const numValue = Number(value);
+    const updatedPackages = [...tariffData.bulkPackages];
+    updatedPackages[index] = {
+      ...updatedPackages[index],
+      [field]: value,
+    };
 
-      // Allow empty string to permit clearing the input
-      if (value === "") {
-        const updatedPackages = [...(tariffData.bulkPackages || [])];
-        updatedPackages[index] = { ...updatedPackages[index], [field]: null };
-        setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
-        return;
-      }
+    // Recalculate if lessons, cost, or packageDiscount is updated
+    const affectedFields = ["cost", "packageDiscount", "lessons"];
+    if (affectedFields.includes(field)) {
+      const cost = updatedPackages[index].cost || 0;
+      const discount = updatedPackages[index].packageDiscount || 0;
+      const lessons = updatedPackages[index].lessons || 0;
+
+      const total = cost * lessons;
+      const discountedAmount = (total * discount) / 100;
+      const finalPrice = total - discountedAmount;
+
+      updatedPackages[index].finalPackagePrice = parseFloat(
+        finalPrice.toFixed(2)
+      );
+      updatedPackages[index].studentSave = parseFloat(
+        discountedAmount.toFixed(2)
+      );
     }
 
-    const updatedPackages = [...(tariffData.bulkPackages || [])];
-    updatedPackages[index] = { ...updatedPackages[index], [field]: value };
     setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
   };
+  const recalculateBulkPackage = (
+    pkg: BulkLessonPackage
+  ): BulkLessonPackage => {
+    const cost = parseFloat(String(pkg.cost)) || 0;
+    const discount = parseFloat(String(pkg.packageDiscount)) || 0;
+    const lessons = parseFloat(String(pkg.lessons)) || 0;
 
-  // Add a new bulk lesson package
+    const total = cost * lessons;
+    const discountedAmount = (total * discount) / 100;
+    const finalPrice = total - discountedAmount;
+
+    return {
+      ...pkg,
+      finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
+      studentSave: parseFloat(discountedAmount.toFixed(2)),
+    };
+  };
+
   const addBulkPackage = () => {
     setTariffData((prev) => ({
       ...prev,
       bulkPackages: [
-        ...(prev.bulkPackages || []),
+        ...prev.bulkPackages,
         {
-          lessons: 2,
-          cost: null,
+          title: "",
+          lessons: 0,
+          packageDiscount: 0,
+          PackageEndDate: null,
+          cost: 0,
+          finalPackagePrice: 0,
+          studentSave: 0,
         },
       ],
     }));
@@ -174,12 +225,10 @@ export const TariffTab: React.FC = () => {
 
   // Remove a bulk lesson package, but never remove the last one
   const removeBulkPackage = (index: number) => {
-    if ((tariffData.bulkPackages ?? []).length > 0) {
-      const updatedPackages = (tariffData.bulkPackages ?? []).filter(
-        (_, i) => i !== index
-      );
-      setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
-    }
+    const updatedPackages = tariffData.bulkPackages.filter(
+      (_, i) => i !== index
+    );
+    setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
   };
 
   // Handle changes to package discount
@@ -191,12 +240,19 @@ export const TariffTab: React.FC = () => {
       if (value > MAX_DISCOUNT) value = MAX_DISCOUNT;
     }
 
-    setTariffData((prev) => ({ ...prev, [field]: value }));
+    setTariffData((prev) => ({
+      ...prev,
+      [field]: value,
+      FinalPricePerLesson: recalculateFinalLessonPrice(
+        prev.lessonFee,
+        field === "lessonDiscount" ? value : prev.lessonDiscount
+      ),
+    }));
   };
 
-  // Handle form submission with validation
+  // Helper function to create section headers with tooltips
+
   const handleSaveChanges = async () => {
-    // Validate lesson fee
     setIsLoading(true);
     if (
       tariffData.lessonFee < MIN_LESSON_FEE ||
@@ -210,135 +266,33 @@ export const TariffTab: React.FC = () => {
       );
       return;
     }
-
+    console.log("tarfiff data ", tariffData);
     try {
-      // Validate bulk packages if any exist
-      if (tariffData.bulkPackages && tariffData.bulkPackages.length > 0) {
-        // Check each package for required fields
-        const invalidPackages = tariffData.bulkPackages.some((pkg) => {
-          const hasValidLessons = pkg.lessons && pkg.lessons >= 2;
-
-          // Date validation remains the same
-          let hasValidDates = true;
-          if (
-            tariffData.PackageDiscountStartDate ||
-            tariffData.PackageDiscountEndDate
-          ) {
-            if (
-              tariffData.PackageDiscountStartDate &&
-              tariffData.PackageDiscountEndDate
-            ) {
-              const start = tariffData.PackageDiscountStartDate;
-              const end = tariffData.PackageDiscountEndDate;
-              hasValidDates =
-                !isNaN(start.getTime()) &&
-                !isNaN(end.getTime()) &&
-                end >= start;
-            } else {
-              hasValidDates = false;
-            }
-          }
-
-          return !hasValidLessons || !hasValidDates;
-        });
-
-        if (invalidPackages) {
-          toast.error(
-            "Please fill in all package details correctly. Ensure all packages have valid lesson counts, discount percentages, and date ranges if specified."
-          );
-          throw new Error(
-            "Please fill in all package details correctly. Ensure all packages have valid lesson counts, discount percentages, and date ranges if specified."
-          );
-        }
-      }
-
-      // Validate discount period if discount is set
-      if (tariffData.lessonDiscount > 0) {
-        const hasStartDate = !!tariffData.discountStartDate;
-        const hasEndDate = !!tariffData.discountEndDate;
-
-        // If discount is set and one date is provided, both should be provided
-        if ((hasStartDate && !hasEndDate) || (!hasStartDate && hasEndDate)) {
-          toast.error(
-            "Please provide both start and end dates for the discount period"
-          );
-          throw new Error(
-            "Please provide both start and end dates for the discount period"
-          );
-        }
-
-        // If both dates are provided, end date should be after start date
-        if (hasStartDate && hasEndDate) {
-          const startDate = tariffData.discountStartDate as Date;
-          const endDate = tariffData.discountEndDate as Date;
-          if (endDate < startDate) {
-            toast.error("Discount end date must be after start date");
-            throw new Error("Discount end date must be after start date");
-          }
-        }
-      }
-
-      // Create the data structure to send to the API
       const dataToSend = {
-        lessonFee: Number(tariffData.lessonFee),
-
-        // Map bulk packages with properly formatted data
-        bulkPackages: tariffData.bulkPackages?.map((pkg) => ({
-          lessons: Number(pkg.lessons),
-          cost: Number(pkg.cost),
-          // ...(pkg.startDate ? { startDate: pkg.startDate.toISOString() } : {}),
-          // ...(pkg.endDate ? { endDate: pkg.endDate.toISOString() } : {}),
+        lessonFee: tariffData.lessonFee,
+        lessonDiscount: tariffData.lessonDiscount,
+        FinalPricePerLesson: tariffData.FinalPricePerLesson,
+        bulkPackages: tariffData.bulkPackages.map((pkg) => ({
+          title: pkg.title,
+          lessons: pkg.lessons,
+          packageDiscount: pkg.packageDiscount,
+          PackageEndDate: pkg.PackageEndDate?.toISOString() || null,
+          cost: pkg.cost,
+          finalPackagePrice: pkg.finalPackagePrice,
+          studentSave: pkg.studentSave,
         })),
-
-        lessonDiscount: Number(tariffData.lessonDiscount),
-        packageDiscount: Number(tariffData.packageDiscount),
-        // Only include discount dates if they have values
-        ...(tariffData.discountStartDate
-          ? {
-              discountStartDate: tariffData.discountStartDate.toISOString(),
-            }
-          : {}),
-
-        ...(tariffData.discountEndDate
-          ? {
-              discountEndDate: tariffData.discountEndDate.toISOString(),
-            }
-          : {}),
-        ...(tariffData.PackageDiscountStartDate
-          ? {
-              PackageDiscountStartDate:
-                tariffData.PackageDiscountStartDate.toISOString(),
-            }
-          : {}),
-
-        ...(tariffData.PackageDiscountEndDate
-          ? {
-              PackageDiscountEndDate:
-                tariffData.PackageDiscountEndDate.toISOString(),
-            }
-          : {}),
       };
 
-      // Send the updated data to the server
-      const result = await updateTariff({
-        variables: {
-          input: dataToSend,
-        },
-      });
-
-      // Show success message
-
+      await updateTariff({ variables: { input: dataToSend } });
       toast.success("Tariff settings saved successfully");
     } catch (error) {
       console.error("Error saving tariff:", error);
       toast.error("Failed to save tariff settings");
     } finally {
-      // Reset loading state regardless of success or failure
       setIsLoading(false);
     }
   };
 
-  // Helper function to create section headers with tooltips
   const SectionHeader = ({
     title,
     tooltip,
@@ -370,7 +324,13 @@ export const TariffTab: React.FC = () => {
       </Tooltip>
     </Box>
   );
-
+  const recalculateFinalLessonPrice = (
+    fee: number,
+    discount: number
+  ): number => {
+    const discounted = fee - (fee * discount) / 100;
+    return parseFloat(discounted.toFixed(2));
+  };
   return (
     <Box sx={{ p: 2 }}>
       {/* Lesson Fee Section */}
@@ -410,6 +370,84 @@ export const TariffTab: React.FC = () => {
             inputProps: {
               min: MIN_LESSON_FEE,
               max: MAX_LESSON_FEE,
+            },
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              padding: 1.1,
+              borderRadius: 1.6,
+            },
+          }}
+        />
+        <SectionHeader
+          title="% discount on lesson price"
+          tooltip="Offer a temporary discount on your regular price."
+        />
+        <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: "16px" }}>
+          Discount can be added for individual lessons.
+        </Typography>
+        {/* Slider for discount */}
+        <Box sx={{ mb: 2 }}>
+          <Slider
+            value={tariffData.lessonDiscount}
+            onChange={(_, newValue) =>
+              handleDiscountChange("lessonDiscount", Number(newValue))
+            }
+            aria-labelledby="discount-slider"
+            valueLabelDisplay="auto"
+            step={1}
+            marks
+            min={MIN_DISCOUNT}
+            max={MAX_DISCOUNT}
+            sx={{
+              color: "#5ec2d2",
+              "& .MuiSlider-thumb": {
+                height: 24,
+                width: 24,
+                backgroundColor: "#fff",
+                border: "2px solid #5ec2d2",
+                "&:focus, &:hover, &.Mui-active": {
+                  boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
+                },
+              },
+              "& .MuiSlider-markLabel": {
+                fontSize: "0.75rem",
+              },
+            }}
+          />
+        </Box>
+        <SectionHeader
+          title="Final Price per lesson (CHF)"
+          tooltip="Final price for one driving lesson After Discount."
+        />
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: 0, fontSize: "16px" }}
+        >
+          A flat Final Fee charged at the start of each Lesson
+        </Typography>
+        <TextField
+          fullWidth
+          margin="normal"
+          type="number"
+          id="FinalPricePerLesson"
+          placeholder="0"
+          value={
+            tariffData.FinalPricePerLesson === 0
+              ? ""
+              : tariffData.FinalPricePerLesson
+          } // Show empty string for 0
+          onChange={(e) => {
+            const value = e.target.value;
+            // Convert empty string to 0, otherwise parse the number
+            const numValue = value === "" ? 0 : Number(value);
+            handleLessonFeeChange("FinalPricePerLesson", numValue);
+          }}
+          InputProps={{
+            startAdornment: <Typography sx={{ mr: 1 }}>CHF</Typography>,
+            inputProps: {
+              min: 0,
             },
           }}
           sx={{
@@ -463,6 +501,33 @@ export const TariffTab: React.FC = () => {
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={11}>
                   <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <LabelWithTooltip
+                        htmlFor={`title-${index}`}
+                        label="Package Title"
+                        tooltip="Enter the title of Your Package."
+                      />
+                      <FormControl fullWidth>
+                        <TextField
+                          value={pkg.title}
+                          id={`title-${index}`}
+                          onChange={(e) =>
+                            handleBulkPackageChange(
+                              index,
+                              "title",
+                              String(e.target.value)
+                            )
+                          }
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              padding: 1.1,
+                              borderRadius: 1.6,
+                            },
+                          }}
+                          placeholder="Package Title"
+                        ></TextField>
+                      </FormControl>
+                    </Grid>
                     {/* Number of lessons */}
                     <Grid item xs={12}>
                       <LabelWithTooltip
@@ -471,8 +536,8 @@ export const TariffTab: React.FC = () => {
                         tooltip="Choose how many lessons are included in this package."
                       />
                       <FormControl fullWidth>
-                        <Select
-                          value={pkg.lessons}
+                        <TextField
+                          value={pkg.lessons == 0 ? "" : pkg.lessons}
                           id={`lessons-${index}`}
                           onChange={(e) =>
                             handleBulkPackageChange(
@@ -482,24 +547,15 @@ export const TariffTab: React.FC = () => {
                             )
                           }
                           sx={{
-                            "& .MuiSelect-select": {
-                              padding: "14px 14px",
-                              borderRadius: 8,
+                            "& .MuiOutlinedInput-root": {
+                              padding: 1.1,
+                              borderRadius: 1.6,
                             },
                           }}
-                        >
-                          {Array.from({ length: 39 }, (_, i) => i + 2).map(
-                            (num) => (
-                              <MenuItem key={num} value={num}>
-                                {num}
-                              </MenuItem>
-                            )
-                          )}
-                        </Select>
+                          placeholder="Number of lessons"
+                        ></TextField>
                       </FormControl>
                     </Grid>
-
-                    {/* Discount percentage */}
                     <Grid item xs={12}>
                       <LabelWithTooltip
                         htmlFor={`cost-${index}`}
@@ -509,9 +565,9 @@ export const TariffTab: React.FC = () => {
                       <TextField
                         fullWidth
                         type="number"
-                        placeholder="0"
+                        placeholder="Package Price"
                         id={`cost-${index}`}
-                        value={pkg.cost ?? ""}
+                        value={pkg.cost === 0 ? "" : pkg.cost}
                         onChange={(e) =>
                           handleBulkPackageChange(
                             index,
@@ -527,9 +583,195 @@ export const TariffTab: React.FC = () => {
                             borderRadius: 1.6,
                           },
                         }}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Typography>CHF</Typography>
+                            </InputAdornment>
+                          ),
+                        }}
                       />
                     </Grid>
+                    <Grid item xs={12}>
+                      <LabelWithTooltip
+                        htmlFor={`finalPrice-${index}`}
+                        label="Final Package Price"
+                        tooltip="Final Price of Your Package."
+                      />
+                      <FormControl fullWidth>
+                        <TextField
+                          value={
+                            pkg.finalPackagePrice === 0
+                              ? ""
+                              : pkg.finalPackagePrice
+                          }
+                          id={`title-${index}`}
+                          onChange={(e) =>
+                            handleBulkPackageChange(
+                              index,
+                              "finalPackagePrice",
+                              Number(e.target.value)
+                            )
+                          }
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              padding: 1.1,
+                              borderRadius: 1.6,
+                            },
+                          }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Typography>CHF</Typography>
+                              </InputAdornment>
+                            ),
+                          }}
+                          placeholder="final Package Price"
+                        ></TextField>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <LabelWithTooltip
+                        htmlFor={`studentSave-${index}`}
+                        label="student Save Display"
+                        tooltip="Student Save Display."
+                      />
+                      <FormControl fullWidth>
+                        <TextField
+                          value={pkg.studentSave === 0 ? "" : pkg.studentSave}
+                          id={`title-${index}`}
+                          onChange={(e) =>
+                            handleBulkPackageChange(
+                              index,
+                              "studentSave",
+                              Number(e.target.value)
+                            )
+                          }
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              padding: 1.1,
+                              borderRadius: 1.6,
+                            },
+                          }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Typography>CHF</Typography>
+                              </InputAdornment>
+                            ),
+                          }}
+                          placeholder="student Save Display"
+                        ></TextField>
+                      </FormControl>
+                    </Grid>
 
+                    <Box sx={{ mb: 2, px: 3, py: 3, width: "100%" }}>
+                      <SectionHeader
+                        title="% discount on Packages price"
+                        tooltip="Offer a temporary discount on your regular Packages price."
+                      />
+                      <Typography
+                        color="text.secondary"
+                        sx={{ mb: 1.5, fontSize: "16px" }}
+                      >
+                        Discount For All Packages.
+                      </Typography>
+                      <Box sx={{ mb: 1 }}>
+                        <Slider
+                          value={
+                            tariffData.bulkPackages[0]?.packageDiscount ?? 0
+                          }
+                          onChange={(_, newValue) => {
+                            const discount = Number(newValue);
+
+                            setTariffData((prev) => ({
+                              ...prev,
+                              bulkPackages: prev.bulkPackages.map((pkg) =>
+                                recalculateBulkPackage({
+                                  ...pkg,
+                                  packageDiscount: discount,
+                                })
+                              ),
+                            }));
+                          }}
+                          aria-labelledby="package-discount-slider"
+                          valueLabelDisplay="auto"
+                          step={1}
+                          marks
+                          min={MIN_DISCOUNT}
+                          max={MAX_DISCOUNT}
+                          sx={{
+                            color: "#5ec2d2",
+                            "& .MuiSlider-thumb": {
+                              height: 24,
+                              width: 24,
+                              backgroundColor: "#fff",
+                              border: "2px solid #5ec2d2",
+                              "&:focus, &:hover, &.Mui-active": {
+                                boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
+                              },
+                            },
+                            "& .MuiSlider-markLabel": {
+                              fontSize: "0.75rem",
+                            },
+                          }}
+                        />
+                      </Box>
+                      <Grid item xs={12} sx={{ mb: 1 }}>
+                        <LabelWithTooltip
+                          htmlFor={`availability`}
+                          label="Package availability period"
+                          tooltip="Set the duration when this package is available for purchase."
+                        />
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                          <Grid container spacing={3} sx={{ pt: 0.5 }}>
+                            <Grid item xs={6}>
+                              <DatePicker
+                                label="End Date"
+                                value={
+                                  tariffData.bulkPackages[index]
+                                    ?.PackageEndDate || null
+                                }
+                                onChange={(newValue) =>
+                                  handleBulkPackageChange(
+                                    index,
+                                    "PackageEndDate",
+                                    newValue
+                                  )
+                                }
+                                sx={{
+                                  width: "100%",
+                                  "& .MuiInputBase-root": {
+                                    padding: "12px 14px",
+                                    borderRadius: "8px",
+                                  },
+                                  "& .MuiOutlinedInput-notchedOutline": {
+                                    borderColor: "#e0e0e0",
+                                  },
+                                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                                    borderColor: "#bdbdbd",
+                                  },
+                                  padding: "2px",
+                                }}
+                                slotProps={{
+                                  textField: {
+                                    fullWidth: true,
+                                    margin: "normal",
+                                    sx: {
+                                      mt: 0,
+                                      "& .MuiInputBase-root": {
+                                        padding: "10px 10px",
+                                      },
+                                    },
+                                  },
+                                }}
+                                minDate={new Date()}
+                              />
+                            </Grid>
+                          </Grid>
+                        </LocalizationProvider>
+                      </Grid>
+                    </Box>
                     {/* Package availability period */}
                   </Grid>
                 </Grid>
@@ -569,235 +811,6 @@ export const TariffTab: React.FC = () => {
       </Box>
 
       {/* Package Discounts Section */}
-      <Box sx={{ mb: 2 }}>
-        <SectionHeader
-          title="% discount on Packages price"
-          tooltip="Offer a temporary discount on your regular Packages price."
-        />
-        <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: "16px" }}>
-          Discount For All Packages.
-        </Typography>
-        <Box sx={{ mb: 2 }}>
-          <Slider
-            value={tariffData.packageDiscount}
-            onChange={(_, newValue) =>
-              handleDiscountChange("packageDiscount", Number(newValue))
-            }
-            aria-labelledby="package-discount-slider"
-            valueLabelDisplay="auto"
-            step={1}
-            marks
-            min={MIN_DISCOUNT}
-            max={MAX_DISCOUNT}
-            sx={{
-              color: "#5ec2d2",
-              "& .MuiSlider-thumb": {
-                height: 24,
-                width: 24,
-                backgroundColor: "#fff",
-                border: "2px solid #5ec2d2",
-                "&:focus, &:hover, &.Mui-active": {
-                  boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
-                },
-              },
-              "& .MuiSlider-markLabel": {
-                fontSize: "0.75rem",
-              },
-            }}
-          />
-        </Box>
-        <Grid item xs={12} sx={{ mb: 3 }}>
-          <LabelWithTooltip
-            htmlFor={`availability`}
-            label="Package availability period"
-            tooltip="Set the duration when this package is available for purchase."
-          />
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-              <Grid item xs={6}>
-                <DatePicker
-                  label="Package Discount Start Date"
-                  value={tariffData.PackageDiscountStartDate}
-                  onChange={(newValue) =>
-                    handlePackageDiscountDateChange(
-                      "PackageDiscountStartDate",
-                      newValue
-                    )
-                  }
-                  sx={{
-                    width: "100%",
-                    "& .MuiInputBase-root": {
-                      padding: "12px 14px",
-                      borderRadius: "8px",
-                    },
-                    "& .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#e0e0e0",
-                    },
-                    "&:hover .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#bdbdbd",
-                    },
-                    padding: "2px",
-                  }}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      margin: "normal",
-                      sx: {
-                        mt: 0,
-                        "& .MuiInputBase-root": {
-                          padding: "10px 10px",
-                        },
-                      },
-                    },
-                  }}
-                  minDate={today}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <DatePicker
-                  label="End Date"
-                  value={tariffData.PackageDiscountEndDate}
-                  onChange={(newValue) =>
-                    handlePackageDiscountDateChange(
-                      "PackageDiscountEndDate",
-                      newValue
-                    )
-                  }
-                  sx={{
-                    width: "100%",
-                    "& .MuiInputBase-root": {
-                      padding: "12px 14px",
-                      borderRadius: "8px",
-                    },
-                    "& .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#e0e0e0",
-                    },
-                    "&:hover .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#bdbdbd",
-                    },
-                    padding: "2px",
-                  }}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      margin: "normal",
-                      sx: {
-                        mt: 0,
-                        "& .MuiInputBase-root": {
-                          padding: "10px 10px",
-                        },
-                      },
-                    },
-                  }}
-                  minDate={tariffData.PackageDiscountStartDate ?? undefined}
-                />
-              </Grid>
-            </Grid>
-          </LocalizationProvider>
-        </Grid>
-        <SectionHeader
-          title="% discount on lesson price"
-          tooltip="Offer a temporary discount on your regular price."
-        />
-        <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: "16px" }}>
-          Discount can be added for individual lessons.
-        </Typography>
-        {/* Slider for discount */}
-        <Box sx={{ mb: 2 }}>
-          <Slider
-            value={tariffData.lessonDiscount}
-            onChange={(_, newValue) =>
-              handleDiscountChange("lessonDiscount", Number(newValue))
-            }
-            aria-labelledby="discount-slider"
-            valueLabelDisplay="auto"
-            step={1}
-            marks
-            min={MIN_DISCOUNT}
-            max={MAX_DISCOUNT}
-            sx={{
-              color: "#5ec2d2",
-              "& .MuiSlider-thumb": {
-                height: 24,
-                width: 24,
-                backgroundColor: "#fff",
-                border: "2px solid #5ec2d2",
-                "&:focus, &:hover, &.Mui-active": {
-                  boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
-                },
-              },
-              "& .MuiSlider-markLabel": {
-                fontSize: "0.75rem",
-              },
-            }}
-          />
-        </Box>
-
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <SectionHeader
-            title="Discount validity period"
-            tooltip="Select the time range during which this discount applies."
-          />
-          <Box sx={{ display: "flex", gap: 4 }}>
-            <Grid item xs={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Start Date"
-                  value={tariffData.discountStartDate}
-                  onChange={(newValue) =>
-                    handleDiscountChange("discountStartDate", newValue)
-                  }
-                  minDate={today}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      helperText: "When discount begins",
-                    },
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      padding: 1.1,
-                      borderRadius: 1.6,
-                      fontFamily: '"Poppins", sans-serif',
-                    },
-                    "& .MuiInputLabel-root": {
-                      fontFamily: '"Poppins", sans-serif',
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-            </Grid>
-            <Grid item xs={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="End Date"
-                  value={tariffData.discountEndDate}
-                  onChange={(newValue) =>
-                    handleDiscountChange("discountEndDate", newValue)
-                  }
-                  minDate={tariffData.discountStartDate || today}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      helperText: "When discount ends",
-                    },
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      padding: 1.1,
-                      borderRadius: 1.6,
-                      fontFamily: '"Poppins", sans-serif',
-                    },
-                    "& .MuiInputLabel-root": {
-                      fontFamily: '"Poppins", sans-serif',
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-            </Grid>
-          </Box>
-        </Box>
-      </Box>
 
       {/* Note and Save Button */}
       <Box

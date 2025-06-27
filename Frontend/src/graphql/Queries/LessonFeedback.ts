@@ -8,7 +8,7 @@ export const CREATE_FEEDBACK = gql`
       instructorId
       instructorEmail
       feedbackTags
-      title
+      hoursRemaining
       message
       createdAt
     }
@@ -23,7 +23,7 @@ export const GET_FEEDBACK_BY_LESSON_ID = gql`
       instructorId
       instructorEmail
       feedbackTags
-      title
+      hoursRemaining
       message
       createdAt
     }
@@ -37,7 +37,7 @@ export const UPDATE_FEEDBACK = gql`
       instructorId
       instructorEmail
       feedbackTags
-      title
+      hoursRemaining
       message
       createdAt
     }
@@ -47,5 +47,14 @@ export const UPDATE_FEEDBACK = gql`
 export const DELETE_FEEDBACK = gql`
   mutation DeleteFeedback($feedbackId: ID!) {
     deleteFeedback(feedbackId: $feedbackId)
+  }
+`;
+export const GET_STUDENT_LESSON_HOURS = gql`
+  query GetStudentLessonHours($studentId: ID!) {
+    getStudentLessonHours(studentId: $studentId) {
+      studentId
+      name
+      lessonHoursLeft
+    }
   }
 `;

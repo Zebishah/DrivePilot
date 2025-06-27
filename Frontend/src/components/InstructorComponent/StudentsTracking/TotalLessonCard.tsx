@@ -16,7 +16,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
     <div className="bg-white rounded-lg shadow-sm p-6 ">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Total Lessons</h3>
-        <button className="px-3 py-1 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors">
+        <button className="px-3 py-1 opacity-0 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors">
           Edit Hours
         </button>
       </div>

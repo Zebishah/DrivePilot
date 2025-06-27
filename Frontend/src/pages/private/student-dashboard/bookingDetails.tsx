@@ -72,8 +72,6 @@ const BookingDetails: React.FC = () => {
   // Calculate total amount based on number of lessons and lesson fee
   const lessonFee = instructorData?.lessonFee;
   const lessonDiscount = instructorData?.lessonDiscount;
-  const discountStartDate = instructorData?.discountStartDate;
-  const discountEndDate = instructorData?.discountEndDate;
   const totalAmount = Number(selectedAvailability?.length * lessonFee) || 10;
   const finalAmount = Number(
     (totalAmount * (1 - lessonDiscount / 100)).toFixed(2)
@@ -483,35 +481,17 @@ const BookingDetails: React.FC = () => {
                 </Typography>
                 {totalAmount
                   ? (() => {
-                      const now = new Date();
-                      const start = discountStartDate
-                        ? new Date(discountStartDate)
-                        : null;
-                      const end = discountEndDate
-                        ? new Date(discountEndDate)
-                        : null;
-                      const isDiscountActive =
-                        start &&
-                        end &&
-                        now >= start &&
-                        now <= end &&
-                        lessonDiscount;
-
                       return (
                         <>
-                          {!isDiscountActive ? (
-                            <span
-                              className={`${isDiscountActive ? "line-through" : ""} -mt-1.5 text-gray-800`}
-                            >
-                              ${totalAmount} (No Discount)
-                            </span>
-                          ) : null}
+                          <span
+                            className={`line-through -mt-1.5 text-gray-800`}
+                          >
+                            ${totalAmount}
+                          </span>
 
-                          {isDiscountActive ? (
-                            <span className=" -mt-1.5 text-green-600 font-semibold">
-                              ${finalAmount}
-                            </span>
-                          ) : null}
+                          <span className=" -mt-1.5 text-green-600 font-semibold">
+                            ${finalAmount}
+                          </span>
                         </>
                       );
                     })()

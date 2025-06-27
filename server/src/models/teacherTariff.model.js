@@ -1,6 +1,10 @@
-const mongoose = require("mongoose");
+const { default: mongoose } = require("mongoose");
 
 const bulkLessonPackageSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+  },
   lessons: {
     type: Number,
     required: true,
@@ -12,6 +16,24 @@ const bulkLessonPackageSchema = new mongoose.Schema({
     required: true,
     min: 0,
     max: 100,
+  },
+  packageDiscount: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 100,
+  },
+  PackageEndDate: {
+    type: Date,
+    default: null,
+  },
+  finalPackagePrice: {
+    type: Number,
+    required: true,
+  },
+  studentSave: {
+    type: Number,
+    required: true,
   },
 });
 
@@ -27,32 +49,21 @@ const teacherTariffSchema = new mongoose.Schema(
       required: true,
     },
     bulkPackages: [bulkLessonPackageSchema],
-    packageDiscount: {
-      type: Number,
-      required: true,
-    },
-    PackageDiscountStartDate: {
-      type: String,
-      default: null,
-    },
-    PackageDiscountEndDate: {
-      type: String,
-      default: null,
-    },
+
     lessonDiscount: {
       type: Number,
       required: true,
     },
-    discountStartDate: {
-      type: String,
+    FinalPricePerLesson: {
+      type: Number,
+      required: true,
     },
-    discountEndDate: {
-      type: String,
+    isDefault: {
+      type: Boolean,
+      default: false,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("TeacherTariff", teacherTariffSchema);

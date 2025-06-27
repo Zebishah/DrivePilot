@@ -48,7 +48,7 @@ const menuItems: MenuItem[] = [
     icon: Search,
     path: "/student-dashboard/search",
   },
-  { text: "Book lesson", icon: BookOpen, path: "/student-dashboard/book" },
+  { text: "Booked Lessons", icon: BookOpen, path: "/student-dashboard/book" },
 
   {
     text: "Profile Setting",

@@ -102,6 +102,7 @@ const studentTypeDefs = gql`
     fatherName: String
     profileImage: String
     dateOfBirth: String
+    lessonHoursLeft: String
     languagePreference: [String!]
     lessonStats: LessonStats
   }
@@ -185,9 +186,17 @@ const studentTypeDefs = gql`
     authProvider: String
     location: String
   }
+
+  type StudentHoursInfo {
+    studentId: ID!
+    name: String!
+    lessonHoursLeft: String
+  }
+
   extend type Query {
     me: User
     studentProfile: StudentProfile
+    getStudentLessonHours(studentId: ID!): StudentHoursInfo!
     getAllStudents(filter: StudentFilter): [Student!]!
     getStudentProgress(studentId: ID!): StudentProgress!
     getStudentLessons(studentId: ID!): [StudentLesson]

@@ -53,7 +53,21 @@ const studentResolver = {
         throw new Error("Failed to fetch student profile");
       }
     },
+    getStudentLessonHours: async (_, { studentId }) => {
+      const student = await Student.findById(studentId).select(
+        "firstName lastName lessonHoursLeft"
+      );
 
+      if (!student) {
+        throw new Error("Student not found");
+      }
+
+      return {
+        studentId: student._id.toString(),
+        name: `${student.firstName} ${student.lastName}`,
+        lessonHoursLeft: student.lessonHoursLeft || "",
+      };
+    },
     getStudentLessons: async (_, { studentId }) => {
       try {
         return await studentBookingModel.find({ studentId });

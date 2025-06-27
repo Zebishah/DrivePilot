@@ -71,7 +71,7 @@ const FAQAccordion: React.FC<FAQAccordionProps> = ({
               flex: 1,
             }}
           >
-            Q. {faq.question}
+            {faq.question}
           </Typography>
         </Box>
       </AccordionSummary>

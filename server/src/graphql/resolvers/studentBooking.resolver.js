@@ -352,13 +352,13 @@ const studentBookingResolver = {
 
       const session = await mongoose.startSession();
       session.startTransaction();
+
       try {
-        // 1) Load & auth
+        // 1) Find and validate booking
         const booking =
           await StudentBooking.findById(bookingId).session(session);
-        if (!booking) {
-          throw new UserInputError("Booking not found");
-        }
+        if (!booking) throw new UserInputError("Booking not found");
+
         const uid = user.id.toString();
         if (
           booking.studentId.toString() !== uid &&
@@ -369,27 +369,49 @@ const studentBookingResolver = {
           );
         }
 
-        // 2) Flip booking status
+        // 2) Cancel booking
         booking.status = "cancelled";
         await booking.save({ session });
 
-        // 3) Build bulk‐update conditions for each slot
+        // 3) Build conditions for updateMany
         const bulkConditions = booking.slots.map((slot) => ({
           teacherId: booking.instructorId,
           date: slot.date,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          status: "booked", // only reset those that were booked
+          startTime: { $lte: slot.startTime },
+          endTime: { $gte: slot.endTime },
         }));
 
-        // 4) Mark them available again
+        // 4) Reset status to 'available'
         await teacherAvailabilityModel.updateMany(
           { $or: bulkConditions },
           { $set: { status: "available" } },
           { session }
         );
 
-        // 5) Commit & return
+        // 5) Remove the booked sub-slots from availability.slots
+        for (const slot of booking.slots) {
+          await teacherAvailabilityModel.updateOne(
+            {
+              teacherId: booking.instructorId,
+              date: slot.date,
+              startTime: { $lte: slot.startTime },
+              endTime: { $gte: slot.endTime },
+            },
+            {
+              $pull: {
+                slots: {
+                  date: slot.date,
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  booked: true,
+                },
+              },
+            },
+            { session }
+          );
+        }
+
+        // 6) Commit transaction
         await session.commitTransaction();
         session.endSession();
 

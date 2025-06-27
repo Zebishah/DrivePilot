@@ -31,12 +31,34 @@ const resolvers = {
     addAvailabilitySlot: async (_, { input }, { user }) => {
       if (!user) throw new Error("Not authenticated");
 
+      const newDate = new Date(input.date);
+      const newStart = input.startTime;
+      const newEnd = input.endTime;
+
       try {
+        // Fetch existing slots on the same date for the same teacher
+        const existingSlots = await TeacherAvailability.find({
+          teacherId: user.id,
+          date: newDate,
+        });
+
+        // Check if new slot overlaps with any existing slot
+        const hasOverlap = existingSlots.some((slot) => {
+          const existingStart = slot.startTime;
+          const existingEnd = slot.endTime;
+
+          return newStart < existingEnd && existingStart < newEnd;
+        });
+
+        if (hasOverlap) {
+          throw new Error("Time slot overlaps with an existing availability.");
+        }
+
         const slot = await TeacherAvailability.create({
           teacherId: user.id,
-          date: new Date(input.date),
-          startTime: input.startTime,
-          endTime: input.endTime,
+          date: newDate,
+          startTime: newStart,
+          endTime: newEnd,
           status: "available",
         });
 
@@ -47,7 +69,7 @@ const resolvers = {
           endTime: slot.endTime,
         };
       } catch (error) {
-        throw new Error("Error adding availability slot");
+        throw new Error(error.message || "Error adding availability slot");
       }
     },
 

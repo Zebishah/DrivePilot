@@ -41,20 +41,25 @@ const resolvers = {
   Mutation: {
     updateTeacherTariff: async (_, { input }, { user }) => {
       if (!user) throw new Error("Not authenticated");
-
+      console.log("input", input);
       try {
-        // Ensure bulkPackages is either an array or undefined
         const updateData = {
           ...input,
+
           teacherId: user.id,
-          bulkPackages: input.bulkPackages || [], // Default to empty array if not provided
+          bulkPackages: input.bulkPackages || [],
         };
 
-        // Process each package to ensure proper format
+        // Validate or sanitize each bulk package if needed (optional)
         if (updateData.bulkPackages.length > 0) {
           updateData.bulkPackages = updateData.bulkPackages.map((pkg) => ({
+            title: pkg.title,
             lessons: pkg.lessons,
             cost: pkg.cost,
+            packageDiscount: pkg.packageDiscount,
+            PackageEndDate: pkg.PackageEndDate,
+            finalPackagePrice: pkg.finalPackagePrice,
+            studentSave: pkg.studentSave,
           }));
         }
 
@@ -66,7 +71,7 @@ const resolvers = {
 
         return {
           ...tariff.toObject(),
-          isDefault: false,
+          isDefault: tariff.isDefault ?? false,
         };
       } catch (error) {
         throw new Error(`Error updating teacher tariff: ${error.message}`);

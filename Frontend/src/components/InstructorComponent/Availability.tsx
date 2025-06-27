@@ -90,13 +90,14 @@ const Availability: React.FC<AvailabilityProps> = ({
     errorPolicy: "all",
     fetchPolicy: "cache-and-network", // Ensures fresh data
   });
+
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSlotForModal, setSelectedSlotForModal] = useState<any>(null);
   const [hourSlotLoading, setHourSlotLoading] = useState(false);
   const navigate = useNavigate();
-  console.log("availabilityData22", data);
+
   const instructor =
     data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
@@ -127,12 +128,14 @@ const Availability: React.FC<AvailabilityProps> = ({
         // Filter out past dates
         if (dayjs(slot.date).isBefore(dayjs(), "day")) return false;
 
-        // If package selected, only show slots within package date range
-        if (selectedPackage) {
+        // If package selected, only show slots before or on the end date
+        if (selectedPackage?.endDate) {
           const slotDate = dayjs(slot.date);
-          const packageStart = dayjs(selectedPackage.startDate);
-          const packageEnd = dayjs(selectedPackage.endDate);
-          return slotDate.isBetween(packageStart, packageEnd, "day", "[]");
+          const packageEnd = dayjs(Number(selectedPackage.endDate));
+          return (
+            slotDate.isSame(packageEnd, "day") ||
+            slotDate.isBefore(packageEnd, "day")
+          );
         }
 
         // If date selected, show slots for that date
@@ -201,9 +204,9 @@ const Availability: React.FC<AvailabilityProps> = ({
           mb: 2,
         }}
       >
-        {`Selected package: ${selectedPackage.lessons} lessons between 
-        ${dayjs(selectedPackage.startDate).format("MMM D, YYYY")} and 
-        ${dayjs(selectedPackage.endDate).format("MMM D, YYYY")}`}
+        {`Selected package: ${selectedPackage.lessons} lessons before
+
+        ${dayjs(Number(selectedPackage.endDate)).format("MMM D, YYYY")}`}
       </Typography>
     );
   };

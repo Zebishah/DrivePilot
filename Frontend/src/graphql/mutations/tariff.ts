@@ -1,38 +1,38 @@
 import { gql } from "@apollo/client";
-
 export const GET_TEACHER_TARIFF = gql`
   query GetTeacherTariff {
     teacherTariff {
       lessonFee
-      bulkPackages {
-        lessons
-        cost
-      }
-      PackageDiscountStartDate
-      PackageDiscountEndDate
-      packageDiscount
       lessonDiscount
-      discountStartDate
-      discountEndDate
+      FinalPricePerLesson
+      bulkPackages {
+        title
+        lessons
+        packageDiscount
+        PackageEndDate
+        cost
+        finalPackagePrice
+        studentSave
+      }
       isDefault
     }
   }
 `;
-
 export const UPDATE_TEACHER_TARIFF = gql`
   mutation UpdateTeacherTariff($input: TeacherTariffInput!) {
     updateTeacherTariff(input: $input) {
       lessonFee
-      bulkPackages {
-        lessons
-        cost
-      }
-      packageDiscount
-      PackageDiscountStartDate
-      PackageDiscountEndDate
       lessonDiscount
-      discountStartDate
-      discountEndDate
+      FinalPricePerLesson
+      bulkPackages {
+        title
+        lessons
+        packageDiscount
+        PackageEndDate
+        cost
+        finalPackagePrice
+        studentSave
+      }
       isDefault
     }
   }

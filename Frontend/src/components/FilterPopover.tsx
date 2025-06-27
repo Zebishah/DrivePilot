@@ -152,13 +152,12 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                     </Box> */}
 
           {/* Address */}
-          {user?.role !== "Student" && (
-            <AddressSearch
-              onCoordinatesChange={(coordinates) =>
-                setFilters((prev) => ({ ...prev, coordinates }))
-              }
-            />
-          )}
+
+          <AddressSearch
+            onCoordinatesChange={(coordinates) =>
+              setFilters((prev) => ({ ...prev, coordinates }))
+            }
+          />
 
           {/* Area Radius */}
           <Box>
@@ -255,13 +254,13 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                         ...(isAvailable &&
                           isFutureOrToday &&
                           !isSelected && {
-                          backgroundColor: "#2196F3 !important", // Blue for available dates
-                          color: "white",
-                          borderRadius: "50%",
-                          "&:hover": {
-                            backgroundColor: "#1976D2",
-                          },
-                        }),
+                            backgroundColor: "#2196F3 !important", // Blue for available dates
+                            color: "white",
+                            borderRadius: "50%",
+                            "&:hover": {
+                              backgroundColor: "#1976D2",
+                            },
+                          }),
                         ...(isSelected && {
                           backgroundColor: "#5FC2D3",
                           color: "white",
@@ -354,10 +353,11 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                         onChange={() => handleCheckboxChange(rowIndex)}
                       />
                       <div
-                        className={`border-2 border-[#A19A99] rounded-md h-6 w-6 flex items-center justify-center ${selectedRow === rowIndex
+                        className={`border-2 border-[#A19A99] rounded-md h-6 w-6 flex items-center justify-center ${
+                          selectedRow === rowIndex
                             ? "bg-transparent"
                             : "bg-transparent"
-                          }`}
+                        }`}
                       >
                         {selectedRow === rowIndex && (
                           <MdDone className="text-[#A19A99]" />

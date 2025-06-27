@@ -1,6 +1,6 @@
 // components/ContactForm.tsx
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TextField, Button, Box, Alert, CircularProgress } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
 import { useMutation } from "@apollo/client";
@@ -11,6 +11,7 @@ import {
   SendContactEmailVariables,
 } from "../../../types/AdminContact";
 import { SEND_CONTACT_EMAIL } from "../../../graphql/mutations/AdminContact";
+import { useAuth } from "../../../context/AuthContext";
 
 interface ContactFormProps {
   onSubmit?: (formData: ContactFormData) => void;
@@ -22,12 +23,21 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
     email: "",
     description: "",
   });
-
+  const { user } = useAuth();
   const [errors, setErrors] = useState<Partial<ContactFormData>>({});
   const [alertMessage, setAlertMessage] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: `${user?.firstName} ${user?.lastName}`,
+        email: user?.email || prev.email,
+      }));
+    }
+  }, [user]);
 
   const [sendContactEmail, { loading }] = useMutation<
     SendContactEmailMutation,
@@ -145,7 +155,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
           onChange={handleChange("name")}
           error={!!errors.name}
           helperText={errors.name}
-          disabled={loading}
+          disabled={loading || !!user?.firstName} // ✅ prevent edit if coming from auth
           sx={{
             mb: 3,
             "& .MuiOutlinedInput-root": {
@@ -179,7 +189,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
           onChange={handleChange("email")}
           error={!!errors.email}
           helperText={errors.email}
-          disabled={loading}
+          disabled={loading || !!user?.email} // ✅ disable if user is logged in
           sx={{
             mb: 3,
             "& .MuiOutlinedInput-root": {

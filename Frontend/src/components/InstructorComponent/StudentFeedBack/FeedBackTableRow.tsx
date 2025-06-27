@@ -22,6 +22,7 @@ export const FeedbackTableRow: React.FC<FeedbackTableRowProps> = ({
     <td className="py-4 px-2 text-gray-600">
       Lesson {booking._id.charAt(booking._id.length - 1)}
     </td>
+
     <td className="py-4 px-2 text-gray-600">${booking.totalAmount}</td>
     <td className="py-4 px-2">
       <FeedbackStatus status={booking.feedBackStatus} />
@@ -29,6 +30,7 @@ export const FeedbackTableRow: React.FC<FeedbackTableRowProps> = ({
     <td className="py-4 px-2">
       <FeedbackButton
         bookingId={booking._id}
+        studentId={booking.studentId._id}
         feedbackStatus={booking.feedBackStatus}
       />
     </td>

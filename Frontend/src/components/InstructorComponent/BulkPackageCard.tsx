@@ -23,17 +23,15 @@ const BulkPackageCard = ({
   startDate,
   endDate,
   lessonFee,
+  save,
+  discount,
+  finalPrice,
   packageDiscount,
   variant,
   onSelect,
   isSelected,
 }) => {
-  const calculatedSave = Math.round((1 - cost / (lessonFee * lessons)) * 100);
-  const save = packageDiscount != null ? packageDiscount : calculatedSave;
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const durationDays = Math.floor((end - start) / msPerDay) + 1;
+  const durationDays = new Date(parseInt(endDate));
 
   // Define card styles based on variant
   const cardStyles = {
@@ -75,15 +73,35 @@ const BulkPackageCard = ({
         </Box>
         <Box display="flex" justifyContent="space-between" mb={1}>
           <Typography variant="subtitle1">Price</Typography>
-          <Typography variant="subtitle1">${cost}</Typography>
+          {packageDiscount > 0 ? (
+            <Box display="flex" gap={1}>
+              <Typography
+                variant="subtitle1"
+                sx={{ textDecoration: "line-through", color: "gray" }}
+              >
+                CHF {cost}
+              </Typography>
+              <Typography
+                variant="subtitle1"
+                sx={{ color: "green", fontWeight: 600 }}
+              >
+                CHF {finalPrice}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="subtitle1">CHF{cost}</Typography>
+          )}
         </Box>
+
         <Box display="flex" justifyContent="space-between" mb={1}>
-          <Typography variant="subtitle1">Duration</Typography>
-          <Typography variant="subtitle1">{durationDays} days</Typography>
+          <Typography variant="subtitle1">Expiration Date</Typography>
+          <Typography variant="subtitle1">
+            {durationDays.toLocaleDateString()}
+          </Typography>
         </Box>
         <Box display="flex" justifyContent="space-between" mb={2}>
           <Typography variant="subtitle1">Save</Typography>
-          <Typography variant="subtitle1">{save}%</Typography>
+          <Typography variant="subtitle1">CHF {save}</Typography>
         </Box>
         <Button
           fullWidth
@@ -146,7 +164,7 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
     PackageDiscountStartDate,
     PackageDiscountEndDate,
   } = tariff;
-
+  console.log("bulkPackages", bulkPackages);
   // Carousel settings
   const settings = {
     dots: true,
@@ -173,23 +191,40 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
   };
 
   const renderPackages = () => {
-    return bulkPackages.map((pkg, idx) => (
-      <Grid item key={idx} sx={{ px: 1 }}>
-        <BulkPackageCard
-          lessons={pkg.lessons}
-          cost={pkg.cost}
-          startDate={PackageDiscountStartDate}
-          endDate={PackageDiscountEndDate}
-          lessonFee={lessonFee}
-          packageDiscount={packageDiscount}
-          variant={idx % 2 === 0 ? "highlighted" : "default"}
-          onSelect={handlePackageSelect}
-          isSelected={
-            selectedPackage && selectedPackage.lessons === pkg.lessons
-          }
-        />
-      </Grid>
-    ));
+    const today = new Date();
+
+    return bulkPackages
+      .filter((pkg) => {
+        if (!pkg.PackageEndDate) return true;
+
+        const pkgEndDate =
+          typeof pkg.PackageEndDate === "string" ||
+          typeof pkg.PackageEndDate === "number"
+            ? new Date(Number(pkg.PackageEndDate))
+            : new Date(pkg.PackageEndDate);
+
+        return pkgEndDate >= today;
+      })
+      .map((pkg, idx) => (
+        <Grid item key={idx} sx={{ px: 1 }}>
+          <BulkPackageCard
+            lessons={pkg.lessons}
+            cost={pkg.cost}
+            startDate={PackageDiscountStartDate}
+            endDate={pkg.PackageEndDate}
+            lessonFee={lessonFee}
+            finalPrice={pkg.finalPackagePrice}
+            discount={pkg.packageDiscount}
+            save={pkg.studentSave}
+            packageDiscount={pkg.packageDiscount}
+            variant={idx % 2 === 0 ? "highlighted" : "default"}
+            onSelect={handlePackageSelect}
+            isSelected={
+              selectedPackage && selectedPackage.lessons === pkg.lessons
+            }
+          />
+        </Grid>
+      ));
   };
 
   return (

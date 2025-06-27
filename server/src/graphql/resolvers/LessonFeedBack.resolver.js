@@ -1,7 +1,7 @@
 // feedbackResolvers.js
 const { default: mongoose } = require("mongoose");
 const Feedback = require("../../models/LessonFeedBack"); // Make sure this path is correct
-const { User } = require("../../models/User");
+const { User, Student } = require("../../models/User");
 const StudentBooking = require("../../models/studentBooking.model");
 const feedbackResolvers = {
   Query: {
@@ -51,19 +51,14 @@ const feedbackResolvers = {
   Mutation: {
     createFeedback: async (_, { input }, { user }) => {
       try {
-        // Authentication check
-        if (!user) {
-          throw new Error("Authentication required");
-        }
+        if (!user) throw new Error("Authentication required");
 
-        // Verify the user is authorized to create feedback for this lesson
         if (user.id !== input.instructorId && user._id !== input.instructorId) {
           throw new Error(
             "Unauthorized: You can only create feedback for yourself"
           );
         }
 
-        // Validate required fields
         if (!input.lessonId || !input.instructorId || !input.instructorEmail) {
           throw new Error(
             "Missing required fields: lessonId, instructorId, or instructorEmail"
@@ -74,33 +69,44 @@ const feedbackResolvers = {
           throw new Error("At least one feedback tag is required");
         }
 
-        if (!input.title || !input.message) {
+        if (!input.hoursRemaining || !input.message) {
           throw new Error("Title and message are required");
         }
 
-        // Check if feedback already exists for this lesson and instructor
+        // Get the booking to retrieve studentId
+        const lessonObjectId = new mongoose.Types.ObjectId(input.lessonId);
+        const booking = await StudentBooking.findById(lessonObjectId);
+        if (!booking) throw new Error("Booking not found");
+
+        const studentId = booking.studentId;
+
+        // Update lessonHoursLeft on student
+        if (studentId) {
+          await Student.findByIdAndUpdate(studentId, {
+            $set: { lessonHoursLeft: input.hoursRemaining },
+          });
+        }
+
+        // Check for existing feedback
         const existingFeedback = await Feedback.findOne({
           lessonId: input.lessonId,
           instructorId: input.instructorId,
         });
 
         if (existingFeedback) {
-          // Update existing feedback instead of creating new one
           existingFeedback.feedbackTags = input.feedbackTags;
-          existingFeedback.title = input.title;
+          existingFeedback.hoursRemaining = input.hoursRemaining;
           existingFeedback.message = input.message;
           existingFeedback.updatedAt = new Date();
-
           const updatedFeedback = await existingFeedback.save();
 
-          // Ensure we return the complete object
           return {
             _id: updatedFeedback._id,
             lessonId: updatedFeedback.lessonId,
             instructorId: updatedFeedback.instructorId,
             instructorEmail: updatedFeedback.instructorEmail,
             feedbackTags: updatedFeedback.feedbackTags,
-            title: updatedFeedback.title,
+            hoursRemaining: updatedFeedback.hoursRemaining,
             message: updatedFeedback.message,
             createdAt: updatedFeedback.createdAt.toISOString(),
           };
@@ -112,51 +118,40 @@ const feedbackResolvers = {
           instructorId: input.instructorId,
           instructorEmail: input.instructorEmail,
           feedbackTags: input.feedbackTags,
-          title: input.title,
+          hoursRemaining: input.hoursRemaining,
           message: input.message,
+          studentId: studentId, // Add studentId from booking
         });
 
         const savedFeedback = await feedback.save();
 
-        const lessonObjectId = new mongoose.Types.ObjectId(input.lessonId);
+        await StudentBooking.findByIdAndUpdate(lessonObjectId, {
+          $set: { feedBackStatus: "completed" },
+        });
 
-        const updatedBooking = await StudentBooking.findOneAndUpdate(
-          { _id: lessonObjectId },
-          { $set: { feedBackStatus: "completed" } },
-          { new: true }
-        );
-
-        await updatedBooking.save();
-
-        // Ensure we return the complete object
         return {
           _id: savedFeedback._id,
           lessonId: savedFeedback.lessonId,
           instructorId: savedFeedback.instructorId,
           instructorEmail: savedFeedback.instructorEmail,
           feedbackTags: savedFeedback.feedbackTags,
-          title: savedFeedback.title,
+          hoursRemaining: savedFeedback.hoursRemaining,
           message: savedFeedback.message,
           createdAt: savedFeedback.createdAt.toISOString(),
         };
       } catch (error) {
         console.error("Error creating/updating feedback:", error);
-        // Re-throw the error with more context
         throw new Error(`Failed to create/update feedback: ${error.message}`);
       }
     },
+
     updateFeedback: async (_, { input }, { user }) => {
       try {
-        if (!user) {
-          throw new Error("Authentication required");
-        }
+        if (!user) throw new Error("Authentication required");
 
         const feedback = await Feedback.findById(input.feedbackId);
-        if (!feedback) {
-          throw new Error("Feedback not found");
-        }
+        if (!feedback) throw new Error("Feedback not found");
 
-        // Ensure the user is the original instructor
         if (
           user.id !== feedback.instructorId?.toString() &&
           user._id !== feedback.instructorId?.toString()
@@ -166,10 +161,17 @@ const feedbackResolvers = {
           );
         }
 
-        // Update the feedback
+        // Update student hours left if studentId is in feedback
+        if (feedback.studentId) {
+          await Student.findByIdAndUpdate(feedback.studentId, {
+            $set: { lessonHoursLeft: input.hoursRemaining },
+          });
+        }
+
         feedback.feedbackTags = input.feedbackTags;
         feedback.title = input.title;
         feedback.message = input.message;
+        feedback.hoursRemaining = input.hoursRemaining;
         feedback.updatedAt = new Date();
 
         const updatedFeedback = await feedback.save();
@@ -189,6 +191,7 @@ const feedbackResolvers = {
         throw new Error(`Failed to update feedback: ${error.message}`);
       }
     },
+
     deleteFeedback: async (_, { feedbackId }, { user }) => {
       try {
         if (!user) {

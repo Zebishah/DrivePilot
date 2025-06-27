@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { useAuth } from "../context/AuthContext";
 import { useParams, useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import {
   UPDATE_FEEDBACK,
   DELETE_FEEDBACK,
   GET_FEEDBACK_BY_LESSON_ID,
+  GET_STUDENT_LESSON_HOURS,
 } from "../graphql/Queries/LessonFeedback";
 
 export const useFeedback = () => {
@@ -25,8 +26,26 @@ export const useFeedback = () => {
 
   const { user } = useAuth();
   const { lessonId } = useParams<{ lessonId: string }>();
+  const { studentId } = useParams<{ studentId: string }>();
+  console.log("studentId", studentId);
   const navigate = useNavigate();
-
+  const { data, loading: isStudentLoading } = useQuery(
+    GET_STUDENT_LESSON_HOURS,
+    {
+      variables: { studentId },
+      skip: !studentId,
+      fetchPolicy: "network-only",
+    }
+  );
+  console.log("data", data);
+  useEffect(() => {
+    if (data?.getStudentLessonHours?.lessonHoursLeft) {
+      setFormData((prev) => ({
+        ...prev,
+        hoursRemaining: data.getStudentLessonHours.lessonHoursLeft,
+      }));
+    }
+  }, [data]);
   // Mutations
   const [createFeedback, { loading: createLoading }] =
     useMutation(CREATE_FEEDBACK);
@@ -44,7 +63,7 @@ export const useFeedback = () => {
         const feedback = data.getFeedbackByLessonId;
         const feedbackFormData = {
           skills: feedback.feedbackTags || [],
-          hoursRemaining: feedback.title || "",
+          hoursRemaining: formData.hoursRemaining || "",
           pointsToWorkOn: feedback.message || "",
         };
 
@@ -82,7 +101,7 @@ export const useFeedback = () => {
         instructorId: user.id,
         instructorEmail: user.email,
         feedbackTags: formData.skills,
-        title: formData.hoursRemaining,
+        hoursRemaining: formData.hoursRemaining,
         message: formData.pointsToWorkOn,
       };
 
@@ -109,7 +128,7 @@ export const useFeedback = () => {
       const input = {
         feedbackId,
         feedbackTags: formData.skills,
-        title: formData.hoursRemaining,
+        hoursRemaining: formData.hoursRemaining,
         message: formData.pointsToWorkOn,
       };
 
@@ -164,7 +183,7 @@ export const useFeedback = () => {
     formData,
     feedbackId,
     setFormData,
-
+    isStudentLoading: isStudentLoading,
     // Loading states
     isLoading: feedbackLoading,
     isSubmitting: createLoading || updateLoading,
@@ -177,5 +196,6 @@ export const useFeedback = () => {
     handleEdit,
     handleCancelEdit,
     handleCancel,
+    studentId,
   };
 };

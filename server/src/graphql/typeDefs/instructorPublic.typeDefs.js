@@ -89,17 +89,17 @@ const instructorTypeDefs = gql`
     bulkPackages: [BulkLessonPackage]
     packageDiscount: Float
     lessonDiscount: Float
-    PackageDiscountStartDate: String
-    PackageDiscountEndDate: String
-    discountStartDate: String
-    discountEndDate: String
+    FinalPricePerLesson: Float
   }
 
   type BulkLessonPackage {
+    title: String!
     lessons: Int!
     cost: Float!
-    startDate: String!
-    endDate: String!
+    packageDiscount: Float!
+    PackageEndDate: String
+    finalPackagePrice: Float!
+    studentSave: Float!
   }
 
   type InstructorPublicProfile {

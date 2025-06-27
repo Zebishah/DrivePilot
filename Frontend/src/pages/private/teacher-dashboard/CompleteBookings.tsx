@@ -160,7 +160,7 @@ const StudentFeedback: React.FC = () => {
 
                     <td className="py-4 px-2">
                       <Link
-                        to={`/teacher-dashboard/feedbackForm/${booking._id}`}
+                        to={`/teacher-dashboard/feedbackForm/${booking._id}/${booking.studentId._id}`}
                         className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 transition-colors text-sm font-medium"
                       >
                         {booking.feedBackStatus === "pending"

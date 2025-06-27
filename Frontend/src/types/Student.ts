@@ -25,6 +25,7 @@ export interface Student {
   homeAddress?: string;
   location?: string;
   zipCode?: string;
+  lessonHoursLeft: string;
   documents?: Document[];
   paymentInfo?: PaymentInfo;
   description?: string;
