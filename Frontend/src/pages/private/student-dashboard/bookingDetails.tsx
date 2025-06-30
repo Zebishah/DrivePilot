@@ -208,6 +208,22 @@ const BookingDetails: React.FC = () => {
       setCancelLoading(false);
     }
   };
+
+  // New handler for when user confirms cancellation despite no refund
+  const handleConfirmCancellationNoRefund = async () => {
+    try {
+      setCancelLoading(true);
+      await cancelBooking({ variables: { bookingId: bookingId } });
+      toast.success("Booking cancelled successfully (no refund issued)");
+      navigate(`/student-dashboard/book`);
+      handleCloseCancel();
+    } catch (err) {
+      toast.error(err.message || "Failed to cancel booking");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   console.log("selectedAvailability", selectedAvailability);
   return (
     <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
@@ -473,7 +489,7 @@ const BookingDetails: React.FC = () => {
                 {getSlotDurations(selectedAvailability).totalDuration} Hours
               </Typography>
               <Typography variant="body1" gutterBottom>
-                <strong>Total Amount:</strong> ${totalAmount}
+                <strong>Total Amount:</strong> CHF {totalAmount}
               </Typography>
               <p className="flex items-center gap-2">
                 <Typography variant="body1" gutterBottom>
@@ -484,13 +500,13 @@ const BookingDetails: React.FC = () => {
                       return (
                         <>
                           <span
-                            className={`line-through -mt-1.5 text-gray-800`}
+                            className={`${lessonDiscount > 0 ? "line-through" : ""} -mt-1.5 text-gray-800`}
                           >
-                            ${totalAmount}
+                            CHF {totalAmount}
                           </span>
 
                           <span className=" -mt-1.5 text-green-600 font-semibold">
-                            ${finalAmount}
+                            CHF {finalAmount}
                           </span>
                         </>
                       );
@@ -499,7 +515,11 @@ const BookingDetails: React.FC = () => {
               </p>
 
               <Typography variant="body1" gutterBottom>
-                <strong>Discount:</strong> {lessonDiscount}%
+                {lessonDiscount > 0 && (
+                  <>
+                    <strong>Discount:</strong> {lessonDiscount}%
+                  </>
+                )}
               </Typography>
               <Typography variant="body1" gutterBottom>
                 <strong>Start:</strong>{" "}
@@ -571,10 +591,57 @@ const BookingDetails: React.FC = () => {
             </Alert>
           )}
           {isTooLate ? (
-            <Alert severity="error">
-              You can’t cancel your lesson now because it’s less than 48 hours
-              before start.
-            </Alert>
+            <>
+              <Alert severity="error" sx={{ mb: 3 }}>
+                Cancellations made within 48 hours of a lesson are
+                non-refundable. However, we may consider a full or partial
+                refund for documented, exceptional circumstances (like a medical
+                emergency). If this is your situation, please contact us with
+                the details and any supporting documents for review. If you're
+                unable to attend, we strongly recommend cancelling anyway so
+                that the instructor does not travel unnecessarily.
+              </Alert>
+
+              {/* Two Clear Action Buttons */}
+              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleConfirmCancellationNoRefund}
+                  disabled={cancelLoading}
+                  sx={{
+                    flex: 1,
+                    py: 1.5,
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  {cancelLoading ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    "Confirm Cancellation"
+                  )}
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleCloseCancel}
+                  sx={{
+                    flex: 1,
+                    py: 1.5,
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    bgcolor: "#5ec2d2",
+                    "&:hover": {
+                      bgcolor: "rgba(65, 135, 147)",
+                    },
+                  }}
+                >
+                  Keep My Booking
+                </Button>
+              </Box>
+            </>
           ) : (
             <>
               <Typography align="center" gutterBottom>
@@ -647,20 +714,22 @@ const BookingDetails: React.FC = () => {
 
         <DialogActions sx={{ justifyContent: "center", pb: 3, gap: 5 }}>
           {!isTooLate && (
-            <Button
-              variant="contained"
-              onClick={handleCancelBooking}
-              disabled={cancelLoading}
-              sx={{ width: "200px" }}
-            >
-              {cancelLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                "Confirm Cancel"
-              )}
-            </Button>
+            <>
+              <Button
+                variant="contained"
+                onClick={handleCancelBooking}
+                disabled={cancelLoading}
+                sx={{ width: "200px" }}
+              >
+                {cancelLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  "Confirm Cancel"
+                )}
+              </Button>
+              <Button onClick={handleCloseCancel}>Close</Button>
+            </>
           )}
-          <Button onClick={handleCloseCancel}>Close</Button>
         </DialogActions>
       </Dialog>
 

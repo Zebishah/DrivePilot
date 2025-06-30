@@ -13,10 +13,13 @@ const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingResolver = {
   Query: {
     getStudentBookings: async (_, __, { user }) => {
+      console.log("user", user);
       validateUser(user);
-      return await StudentBooking.find({ studentId: user.id })
+      const bookings = await StudentBooking.find({ studentId: user.id })
         .populate("instructorId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
+      console.log("bookings", bookings);
+      return bookings;
     },
     getCompletedStudentBookings: async (_, __, { user }) => {
       validateUser(user);

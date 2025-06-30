@@ -71,7 +71,7 @@ const Contact: React.FC<Props> = () => {
                     Phone Number
                   </h3>
                   <p className="text-base font-poppins ml-[38px]">
-                    +924565745674567654
+                    +41 123 456 789
                   </p>
                 </div>
               </div>
@@ -89,7 +89,7 @@ const Contact: React.FC<Props> = () => {
                     Location
                   </h3>
                   <p className="text-base font-poppins ml-[38px]">
-                    Lorem Ipsum fdbvxfgb cfgjhngcn
+                    Geneva , Switzerland
                   </p>
                 </div>
               </div>

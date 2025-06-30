@@ -91,9 +91,8 @@ export const TariffTab: React.FC = () => {
         isDefault: isDefault || false,
         bulkPackages:
           bulkPackages?.map((pkg: any) => {
-            const finalPrice =
-              pkg.cost - (pkg.cost * pkg.packageDiscount) / 100;
-            const studentSave = pkg.cost - finalPrice;
+            const finalPrice = pkg.finalPackagePrice;
+            const studentSave = pkg.studentSave;
             return {
               title: pkg.title,
               lessons: pkg.lessons,
@@ -103,8 +102,8 @@ export const TariffTab: React.FC = () => {
                 ? new Date(parseInt(pkg.PackageEndDate)) // ✅ Ensure it's a number first
                 : null,
               cost: pkg.cost,
-              finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
-              studentSave: parseFloat(studentSave.toFixed(2)),
+              finalPackagePrice: parseFloat(finalPrice.toFixed(5)),
+              studentSave: parseFloat(studentSave.toFixed(5)),
             };
           }) || [],
       });
@@ -213,7 +212,7 @@ export const TariffTab: React.FC = () => {
         {
           title: "",
           lessons: 0,
-          packageDiscount: 0,
+          packageDiscount: 0, // explicitly set to 0
           PackageEndDate: null,
           cost: 0,
           finalPackagePrice: 0,
@@ -222,7 +221,6 @@ export const TariffTab: React.FC = () => {
       ],
     }));
   };
-
   // Remove a bulk lesson package, but never remove the last one
   const removeBulkPackage = (index: number) => {
     const updatedPackages = tariffData.bulkPackages.filter(
@@ -678,23 +676,15 @@ export const TariffTab: React.FC = () => {
                       </Typography>
                       <Box sx={{ mb: 1 }}>
                         <Slider
-                          value={
-                            tariffData.bulkPackages[0]?.packageDiscount ?? 0
-                          }
+                          value={pkg.packageDiscount}
                           onChange={(_, newValue) => {
-                            const discount = Number(newValue);
-
-                            setTariffData((prev) => ({
-                              ...prev,
-                              bulkPackages: prev.bulkPackages.map((pkg) =>
-                                recalculateBulkPackage({
-                                  ...pkg,
-                                  packageDiscount: discount,
-                                })
-                              ),
-                            }));
+                            handleBulkPackageChange(
+                              index,
+                              "packageDiscount",
+                              newValue
+                            );
                           }}
-                          aria-labelledby="package-discount-slider"
+                          aria-labelledby={`package-discount-slider-${index}`}
                           valueLabelDisplay="auto"
                           step={1}
                           marks

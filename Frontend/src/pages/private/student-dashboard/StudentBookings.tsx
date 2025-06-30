@@ -55,7 +55,7 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
         <div className="flex bg-gray-50 border-b border-gray-100 font-medium">
           <div className="flex-1 p-4">Lesson Booked</div>
           <div className="flex-1 p-4">Booking Date</div>
-          <div className="flex-1 p-4">Payment</div>
+          <div className="flex-1 p-4">Payment (CHF)</div>
           <div className="flex-1 p-4">Status</div>
           <div className="flex-1 p-4">End date</div>
         </div>
@@ -74,7 +74,7 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
                 {lesson.bookingDate}
               </div>
               <div className="flex-1 p-4 flex items-center">
-                {lesson.payment}
+                {lesson.payment} CHF
               </div>
               <div
                 className={`flex-1 p-4 flex items-center font-medium ${getStatusColor(

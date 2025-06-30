@@ -21,8 +21,6 @@ export const GET_NEARBY_INSTRUCTORS = gql`
           type
           rate
           lessonDiscount
-          discountStartDate
-          discountEndDate
         }
         availability {
           _id

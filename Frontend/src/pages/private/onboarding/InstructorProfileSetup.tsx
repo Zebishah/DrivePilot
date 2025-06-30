@@ -18,6 +18,7 @@ import {
   ListItem,
   FormHelperText,
   IconButton,
+  InputAdornment,
 } from "@mui/material";
 import { DeleteIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,7 +44,7 @@ const schema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email"),
-  phone: z.string().min(1, "Phone number is required"),
+  phone: z.string().regex(/^\d{9}$/, "Phone number must be 9 digits after +41"),
   address: z.string().min(1, "Address is required"),
   location: z.string().min(1, "City is required"),
   zipCode: z.string().min(1, "ZIP code is required"),
@@ -437,9 +438,27 @@ const InstructorProfileSetup: React.FC = () => {
                 {...field}
                 fullWidth
                 id="phone"
-                placeholder="Phone Number"
+                placeholder="79 123 45 67"
                 error={!!errors.phone}
                 helperText={errors.phone?.message}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">+41</InputAdornment>
+                  ),
+                  inputProps: {
+                    maxLength: 9,
+                    inputMode: "numeric",
+                    pattern: "[0-9]*",
+                  },
+                  onChange: (e) => {
+                    // Allow only digits and enforce 9 digit limit
+                    const onlyDigits = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 9);
+                    field.onChange(onlyDigits);
+                  },
+                }}
+                value={field.value}
               />
             )}
           />

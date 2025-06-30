@@ -2,7 +2,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
 
-const position: [number, number] = [51.505, -0.09]; // Default to London
+// Geneva, Switzerland coordinates
+const position: [number, number] = [46.2044, 6.1432];
 
 function SetView({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
@@ -18,7 +19,7 @@ const MapComponent: React.FC = () => {
       <SetView center={position} zoom={13} />
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <Marker position={position}>
-        <Popup>Default Location</Popup>
+        <Popup>Geneva, Switzerland</Popup>
       </Marker>
     </MapContainer>
   );

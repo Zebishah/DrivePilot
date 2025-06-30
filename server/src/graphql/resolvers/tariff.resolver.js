@@ -68,7 +68,7 @@ const resolvers = {
           updateData,
           { new: true, upsert: true }
         );
-
+        console.log("tariff", tariff);
         return {
           ...tariff.toObject(),
           isDefault: tariff.isDefault ?? false,

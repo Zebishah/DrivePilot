@@ -509,11 +509,11 @@ const InstructorsInfo: React.FC = () => {
                               return (
                                 <>
                                   <span
-                                    className={`line-through text-gray-800`}
+                                    className={`${instructor.details.lessonDiscount > 0 ? "line-through" : ""} text-gray-800`}
                                   >
                                     ${instructor.details.rate}/hr
                                   </span>
-                                  {instructor.details.lessonDiscount ? (
+                                  {instructor.details.lessonDiscount > 0 ? (
                                     <span className="ml-2 text-green-600 font-semibold">
                                       $
                                       {(
@@ -529,11 +529,12 @@ const InstructorsInfo: React.FC = () => {
                             })()
                           : "N/A"}
                       </p>
-
-                      <p className="flex items-center gap-2 mt-2">
-                        <BadgePercent size={18} />
-                        {instructor.details?.lessonDiscount || "N/A"}%
-                      </p>
+                      {instructor.details.lessonDiscount > 0 && (
+                        <p className="flex items-center gap-2 mt-2">
+                          <BadgePercent size={18} />
+                          {instructor.details?.lessonDiscount || "N/A"}%
+                        </p>
+                      )}
                     </div>
                     <Button
                       variant="contained"
