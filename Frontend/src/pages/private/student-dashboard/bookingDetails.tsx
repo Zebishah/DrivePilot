@@ -591,7 +591,7 @@ const BookingDetails: React.FC = () => {
           )}
           {isTooLate ? (
             <>
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Alert severity="error">
                 Cancellations made within 48 hours of a lesson are
                 non-refundable. However, we may consider a full or partial
                 refund for documented, exceptional circumstances (like a medical
@@ -602,7 +602,7 @@ const BookingDetails: React.FC = () => {
               </Alert>
 
               {/* Two Clear Action Buttons */}
-              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+              <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
                 <Button
                   variant="contained"
                   color="error"
