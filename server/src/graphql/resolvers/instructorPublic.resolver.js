@@ -43,27 +43,16 @@ const instructorResolver = {
             priceQuery.lessonFee = { $lte: filter.priceMax };
           }
 
-          console.log("Price filter query:", priceQuery);
-
           const tariffs = await teacherTariffModel.find(priceQuery);
           priceFilteredInstructorIds = tariffs.map((t) => t.teacherId); // Keep as ObjectId
-          console.log(
-            `Found ${tariffs.length} tariffs matching price criteria`
-          );
 
           if (priceFilteredInstructorIds.length === 0) {
-            console.log("No instructors found with matching price range");
             return {
               instructors: [],
               totalCount: 0,
               hasMore: false,
             };
           }
-
-          console.log(
-            "Price filtered instructor IDs:",
-            priceFilteredInstructorIds
-          );
         }
 
         // Handle date availability filtering
@@ -136,12 +125,6 @@ const instructorResolver = {
             throw new Error("Invalid coordinates provided");
           }
 
-          console.log("Geographic search params:", {
-            coordinates: [longitude, latitude],
-            radius: filter.areaRadius,
-            radiusInMeters: maxDistanceInMeters,
-          });
-
           // Create the aggregation pipeline
           const pipeline = [
             {
@@ -185,11 +168,6 @@ const instructorResolver = {
           ];
 
           try {
-            console.log(
-              "Executing geographic query with pipeline:",
-              JSON.stringify(pipeline, null, 2)
-            );
-
             const [results, countResult] = await Promise.all([
               User.Instructor.aggregate(pipeline),
               User.Instructor.aggregate(countPipeline),
@@ -197,10 +175,6 @@ const instructorResolver = {
 
             instructors = results;
             totalCount = countResult[0]?.totalCount || 0;
-
-            console.log(
-              `Geographic query returned ${instructors.length} instructors out of ${totalCount} total`
-            );
 
             // Log the distances for debugging
             instructors.forEach((instructor) => {
@@ -370,7 +344,6 @@ const instructorResolver = {
           };
         });
 
-        console.log("formatted ", JSON.stringify(formattedAvailability));
         return {
           instructor: {
             ...instructor,

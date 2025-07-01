@@ -164,7 +164,7 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
     PackageDiscountStartDate,
     PackageDiscountEndDate,
   } = tariff;
-  console.log("bulkPackages", bulkPackages);
+
   // Carousel settings
   const settings = {
     dots: true,

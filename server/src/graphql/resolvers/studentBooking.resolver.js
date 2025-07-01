@@ -13,12 +13,11 @@ const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingResolver = {
   Query: {
     getStudentBookings: async (_, __, { user }) => {
-      console.log("user", user);
       validateUser(user);
       const bookings = await StudentBooking.find({ studentId: user.id })
         .populate("instructorId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
-      console.log("bookings", bookings);
+
       return bookings;
     },
     getCompletedStudentBookings: async (_, __, { user }) => {
@@ -76,7 +75,7 @@ const studentBookingResolver = {
 
         return bEnd - aEnd; // Descending
       });
-      console.log("allBookings", sortedBookings);
+
       // Add bookerProfileImage to each booking object
       const bookingsWithStudentProfile = sortedBookings.map((booking) => {
         const bookingObj = booking.toObject(); // Convert to plain object
@@ -314,9 +313,6 @@ const studentBookingResolver = {
                 }
 
                 await availability.save();
-                console.log(
-                  `Availability ${availability._id} updated. Status: ${availability.status}`
-                );
               }
             }
           )

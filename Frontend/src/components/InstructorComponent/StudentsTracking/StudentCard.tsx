@@ -14,7 +14,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   totalBookings,
   lessonStats,
 }) => {
-  console.log("student", student);
   const getAvatarSrc = () => {
     if (student.profileImage) {
       return student.profileImage;

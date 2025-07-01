@@ -24,7 +24,7 @@ const StudentsProgressDashboard: React.FC = () => {
   const handleFilterChange = (newFilter: StudentFilter) => {
     setFilter(newFilter);
   };
-  console.log("students", students);
+
   const filteredStudents = useMemo(() => {
     return students; // Since filtering is done on the backend
   }, [students]);

@@ -33,7 +33,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
   const hourSlots = useMemo(() => {
     return originalSlot.hourlySlots || [];
   }, [originalSlot]);
-  console.log("originalSlot", originalSlot);
+
   const handleSlotClick = (slotId: string) => {
     setSelectedHourSlots((prev) =>
       prev.includes(slotId)

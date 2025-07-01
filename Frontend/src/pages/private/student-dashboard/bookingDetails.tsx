@@ -224,7 +224,6 @@ const BookingDetails: React.FC = () => {
     }
   };
 
-  console.log("selectedAvailability", selectedAvailability);
   return (
     <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <BackButton variant="outline" showIcon={true} />

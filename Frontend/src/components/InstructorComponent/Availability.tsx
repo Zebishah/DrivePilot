@@ -233,7 +233,7 @@ const Availability: React.FC<AvailabilityProps> = ({
         toast.error("Please select an availability slot before booking.");
         return;
       }
-      console.log("confirm mai", instructor, instructorData);
+
       if (location.pathname.includes("/student-dashboard/search")) {
         navigate("/student-dashboard/book", {
           state: {

@@ -41,7 +41,7 @@ const resolvers = {
   Mutation: {
     updateTeacherTariff: async (_, { input }, { user }) => {
       if (!user) throw new Error("Not authenticated");
-      console.log("input", input);
+
       try {
         const updateData = {
           ...input,
@@ -68,7 +68,7 @@ const resolvers = {
           updateData,
           { new: true, upsert: true }
         );
-        console.log("tariff", tariff);
+
         return {
           ...tariff.toObject(),
           isDefault: tariff.isDefault ?? false,

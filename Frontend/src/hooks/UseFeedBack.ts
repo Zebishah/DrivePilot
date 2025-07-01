@@ -27,7 +27,7 @@ export const useFeedback = () => {
   const { user } = useAuth();
   const { lessonId } = useParams<{ lessonId: string }>();
   const { studentId } = useParams<{ studentId: string }>();
-  console.log("studentId", studentId);
+
   const navigate = useNavigate();
   const { data, loading: isStudentLoading } = useQuery(
     GET_STUDENT_LESSON_HOURS,
@@ -37,7 +37,7 @@ export const useFeedback = () => {
       fetchPolicy: "network-only",
     }
   );
-  console.log("data", data);
+
   useEffect(() => {
     if (data?.getStudentLessonHours?.lessonHoursLeft) {
       setFormData((prev) => ({

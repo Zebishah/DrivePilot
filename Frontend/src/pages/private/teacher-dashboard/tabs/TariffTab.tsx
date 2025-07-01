@@ -83,7 +83,7 @@ export const TariffTab: React.FC = () => {
         bulkPackages,
         isDefault,
       } = data.teacherTariff;
-      console.log("data", data.teacherTariff);
+
       setTariffData({
         lessonFee: lessonFee || 0,
         lessonDiscount: lessonDiscount || 0,
@@ -264,7 +264,7 @@ export const TariffTab: React.FC = () => {
       );
       return;
     }
-    console.log("tarfiff data ", tariffData);
+
     try {
       const dataToSend = {
         lessonFee: tariffData.lessonFee,
