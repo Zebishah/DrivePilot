@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
-import { Button, Box, Typography } from "@mui/material";
+import { Button, Box, Typography, Tooltip } from "@mui/material";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -202,6 +202,7 @@ const InstructorsInfo: React.FC = () => {
           coordinates: filters.coordinates,
           areaRadius: filters.areaRadius,
         }),
+
       ...(filters.availability.length > 0 && {
         availableDates: filters.availability,
       }),
@@ -475,7 +476,17 @@ const InstructorsInfo: React.FC = () => {
                     <h2 className="text-lg font-bold mb-1">
                       {instructor.firstName} {instructor.lastName}
                     </h2>
-                    <p className="text-gray-500 mb-2">{instructor.location}</p>
+                    <Tooltip
+                      title={instructor.address || ""}
+                      arrow
+                      placement="top"
+                    >
+                      <p className="text-gray-500 mb-2 cursor-pointer">
+                        {instructor.address && instructor.address.length > 30
+                          ? instructor.address.slice(0, 30) + "..."
+                          : instructor.address}
+                      </p>
+                    </Tooltip>
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       {[...Array(Math.floor(instructor.rating || 0))].map(
                         (_, i) => (

@@ -9,6 +9,7 @@ export const GET_NEARBY_INSTRUCTORS = gql`
         firstName
         lastName
         location
+        address
         rating
         imageUrl
         description
