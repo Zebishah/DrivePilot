@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Popover,
   Box,
@@ -32,7 +32,8 @@ interface FilterPopoverProps {
   initialFilters: any;
   onApplyFilters: (filters: any) => void;
   resetFilters: () => void;
-  instructors: any;
+  instructors: any; // Filtered instructors
+  allInstructors: any; // All instructors for availability dates
 }
 
 const FilterPopover: React.FC<FilterPopoverProps> = ({
@@ -44,11 +45,13 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
   onApplyFilters,
   resetFilters,
   instructors,
+  allInstructors, // Add this prop
 }) => {
   const [filters, setFilters] = useState(initialFilters);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
   const { user } = useAuth();
+
   // Predefined rows for rating
   const rows = [
     { stars: 5 },
@@ -57,7 +60,40 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
     { stars: 2 },
     { stars: 1 },
   ];
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
+
+  // Calculate available dates from ALL instructors, not just filtered ones
+  const availableDates = useMemo(() => {
+    if (!allInstructors || allInstructors.length === 0) return [];
+
+    const dates: string[] = [];
+    allInstructors.forEach((instructor) => {
+      if (instructor.availability && instructor.availability.length > 0) {
+        instructor.availability.forEach((slot) => {
+          const dateObj = new Date(parseInt(slot.date));
+          const dateStr = dayjs(dateObj).format("YYYY-MM-DD");
+
+          // Avoid duplicates
+          if (!dates.includes(dateStr)) {
+            dates.push(dateStr);
+          }
+        });
+      }
+    });
+
+    return dates;
+  }, [allInstructors]); // Use allInstructors instead of instructors
+
+  console.log("Available Dates:", availableDates);
+  console.log("All Instructors:", allInstructors);
+  console.log("Filtered Instructors:", instructors);
+
+  // Update filters when initialFilters change
+  useEffect(() => {
+    if (open) {
+      setFilters(initialFilters);
+    }
+  }, [open, initialFilters]);
+
   const handleCheckboxChange = (rowIndex: number) => {
     setSelectedRow(selectedRow === rowIndex ? null : rowIndex);
   };
@@ -71,23 +107,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
     resetFilters();
     setSelectedRow(null);
   };
-  // Extract all available dates from instructors
-  useEffect(() => {
-    if (instructors && instructors.length > 0) {
-      const dates: string[] = [];
-      instructors.forEach((instructor) => {
-        if (instructor.availability && instructor.availability.length > 0) {
-          instructor.availability.forEach((slot) => {
-            const dateObj = new Date(parseInt(slot.date));
-            const dateStr = dayjs(dateObj).format("YYYY-MM-DD");
 
-            dates.push(dateStr);
-          });
-        }
-      });
-      setAvailableDates(dates);
-    }
-  }, [instructors]);
   const isDateAvailable = (date: dayjs.Dayjs) => {
     const dateStr = date.format("YYYY-MM-DD");
     return availableDates.includes(dateStr);
@@ -98,6 +118,21 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
     // For timestamps in milliseconds format
     const date = new Date(parseInt(timestamp));
     return dayjs(date).format("YYYY-MM-DD");
+  };
+
+  // Remove a selected availability date
+  const removeAvailabilityDate = (dateToRemove: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      availability: prev.availability.filter((date) => date !== dateToRemove),
+    }));
+  };
+  const handleAddressSelected = (coordinates) => {
+    setFilters((prev) => ({
+      ...prev,
+      coordinates,
+      addressFilterApplied: true, // Set flag when user selects address
+    }));
   };
 
   return (
@@ -115,8 +150,8 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
         horizontal: "left",
       }}
     >
-      <div className="  w-[500px] max-h-[600px]  overflow-y-auto custom-scrollbar">
-        <div className=" mb-4 py-4">
+      <div className="w-[500px] max-h-[600px] overflow-y-auto custom-scrollbar">
+        <div className="mb-4 py-4">
           <Typography
             variant="h6"
             sx={{
@@ -135,29 +170,8 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
         </div>
 
         <div className="space-y-8 px-6 py-2">
-          {/* City Selector */}
-          {/* <Box>
-                        <Typography sx={{ fontFamily: 'Poppins, sans-serif', mb: 1 }}>Select City</Typography>
-                        <TextField
-                            select
-                            fullWidth
-                            value={filters.city}
-                            onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-                            variant="outlined"
-                            className="rounded-lg"
-                        >
-                            <MenuItem value="Bern">Bern</MenuItem>
-                            <MenuItem value="Houston">Houston</MenuItem>
-                        </TextField>
-                    </Box> */}
-
           {/* Address */}
-
-          <AddressSearch
-            onCoordinatesChange={(coordinates) =>
-              setFilters((prev) => ({ ...prev, coordinates }))
-            }
-          />
+          <AddressSearch onCoordinatesChange={handleAddressSelected} />
 
           {/* Area Radius */}
           <Box>
@@ -165,7 +179,6 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               Area Radius (km)
             </Typography>
             <Slider
-              //   key={`areaRadius-${filters.areaRadius}`} // Force re-render when areaRadius changes
               value={filters.areaRadius}
               onChange={(e, newValue) =>
                 setFilters((prev) => ({ ...prev, areaRadius: newValue }))
@@ -174,13 +187,6 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               min={0}
               max={100}
               step={1}
-              //   marks={[
-              //     { value: 5, label: "5 km" },
-              //     { value: 25, label: "25 km" },
-              //     { value: 50, label: "50 km" },
-              //     { value: 75, label: "75 km" },
-              //     { value: 100, label: "100 km" },
-              //   ]}
               sx={{
                 "& .MuiSlider-thumb": {
                   color: "#5FC2D3",
@@ -205,21 +211,22 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               <span>100 km</span>
             </div>
           </Box>
+
+          {/* Available Dates */}
           <Box sx={{ mb: 2 }}>
             <Typography sx={{ fontFamily: "Poppins, sans-serif", mb: 1 }}>
               Available On These Dates
             </Typography>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
+                key={`${JSON.stringify(filters.availability)}-${availableDates.length}`}
                 sx={{
                   width: "100%",
                   borderRadius: "25px !important",
                   "& .MuiOutlinedInput-input": {
-                    // Add your custom styles here
                     padding: "14px 14px !important",
                     fontSize: "16px",
                     fontFamily: "Poppins, sans-serif",
-                    // Add any other styles you need
                   },
                 }}
                 value={null}
@@ -227,7 +234,10 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                   if (newValue) {
                     const dateStr = newValue.format("YYYY-MM-DD");
                     // Only allow selection of available dates
-                    if (!filters.availability.includes(dateStr)) {
+                    if (
+                      isDateAvailable(newValue) &&
+                      !filters.availability.includes(dateStr)
+                    ) {
                       setFilters((prev) => ({
                         ...prev,
                         availability: [...prev.availability, dateStr],
@@ -237,16 +247,18 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                 }}
                 shouldDisableDate={(date) => {
                   const today = dayjs().startOf("day");
-                  return date.isBefore(today, "day");
+                  const isPastDate = date.isBefore(today, "day");
+                  const isNotAvailable = !isDateAvailable(date);
+                  return isPastDate || isNotAvailable;
                 }}
                 slotProps={{
-                  // Apply styling directly to the day components
                   day: ({ day, selected, ...other }) => {
                     const dateStr = dayjs(day).format("YYYY-MM-DD");
                     const isAvailable = isDateAvailable(day);
                     const isSelected = filters.availability.includes(dateStr);
                     const today = dayjs().startOf("day");
                     const isFutureOrToday = !day.isBefore(today, "day");
+
                     return {
                       ...other,
                       selected: isSelected,
@@ -254,7 +266,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                         ...(isAvailable &&
                           isFutureOrToday &&
                           !isSelected && {
-                            backgroundColor: "#2196F3 !important", // Blue for available dates
+                            backgroundColor: "#2196F3 !important",
                             color: "white",
                             borderRadius: "50%",
                             "&:hover": {
@@ -262,16 +274,15 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                             },
                           }),
                         ...(isSelected && {
-                          backgroundColor: "#5FC2D3",
-                          color: "white",
+                          backgroundColor: "#5FC2D3 !important",
+                          color: "white !important",
                           "&:hover": {
-                            backgroundColor: "#4AA8B8",
+                            backgroundColor: "#4AA8B8 !important",
                           },
                         }),
                       },
                     };
                   },
-                  // Style the calendar container
                 }}
                 renderDay={(day, _value, DayComponentProps) => {
                   const dateStr = day.format("YYYY-MM-DD");
@@ -279,12 +290,15 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
 
                   return (
                     <Badge
-                      key={dateStr}
+                      key={`${dateStr}-${isSelected}`}
                       overlap="circular"
                       badgeContent={isSelected ? "✓" : undefined}
                       color="primary"
                       sx={{
-                        backgroundColor: "#000000 !important",
+                        "& .MuiBadge-badge": {
+                          backgroundColor: "#000000 !important",
+                          color: "white !important",
+                        },
                       }}
                     >
                       <PickersDay {...DayComponentProps} />
@@ -333,12 +347,13 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               </Box>
             )}
           </Box>
+
           {/* Rating Selector */}
           <Box>
             <Typography sx={{ fontFamily: "Poppins, sans-serif", mb: 1 }}>
               Rating
             </Typography>
-            <div className="bg-white shadow-md rounded-lg ">
+            <div className="bg-white shadow-md rounded-lg">
               {rows.map((row, rowIndex) => (
                 <div
                   key={rowIndex}
@@ -405,11 +420,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               className="rounded-lg"
               sx={{
                 "& .MuiOutlinedInput-input": {
-                  // Add your custom styles here
                   padding: "14px 14px !important",
                   fontSize: "16px",
                   fontFamily: "Poppins, sans-serif",
-                  // Add any other styles you need
                 },
               }}
             >
@@ -425,7 +438,6 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               Price Per Lesson
             </Typography>
             <Slider
-              //   key={`price-${filters.price[0]}-${filters.price[1]}`} // Force re-render when price changes
               value={filters.price}
               onChange={(e, newValue) =>
                 setFilters((prev) => ({ ...prev, price: newValue }))
@@ -446,13 +458,8 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
             </div>
           </Box>
 
-          {/* Enhanced Date Availability Filter */}
-
           {/* Gender Selection */}
           <Box>
-            {/* <Typography sx={{ fontFamily: "Poppins, sans-serif", mb: 1 }}>
-              Gender
-            </Typography> */}
             <div className="flex items-center">
               <FormControlLabel
                 control={

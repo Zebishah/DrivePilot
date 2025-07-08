@@ -13,20 +13,20 @@ const instructorResolver = {
       { filter = {}, offset = 0, limit = 10 }
     ) => {
       try {
-        // Build the base query (excluding geographic filters)
+        // Build the base query (excluding geographic filters AND availability dates)
         let baseQuery = {
           role: "Instructor",
           isProfileComplete: true,
           coordinates: { $exists: true },
         };
 
-        // Apply non-geographic filters
+        // Apply non-geographic filters (NOT including availability dates)
         if (filter.transmission)
           baseQuery.transmissionType = filter.transmission;
         if (filter.gender?.length) baseQuery.gender = { $in: filter.gender };
         if (filter.minRating) baseQuery.rating = { $gte: filter.minRating };
 
-        // Handle price filtering
+        // Handle price filtering ONLY (not availability dates)
         let priceFilteredInstructorIds = null;
         if (filter.priceMin !== undefined || filter.priceMax !== undefined) {
           let priceQuery = {};
@@ -46,7 +46,7 @@ const instructorResolver = {
           console.log("Price filter query:", priceQuery);
 
           const tariffs = await teacherTariffModel.find(priceQuery);
-          priceFilteredInstructorIds = tariffs.map((t) => t.teacherId); // Keep as ObjectId
+          priceFilteredInstructorIds = tariffs.map((t) => t.teacherId);
           console.log(
             `Found ${tariffs.length} tariffs matching price criteria`
           );
@@ -64,61 +64,15 @@ const instructorResolver = {
             "Price filtered instructor IDs:",
             priceFilteredInstructorIds
           );
-        }
 
-        // Handle date availability filtering
-        let availabilityFilteredInstructorIds = null;
-        if (filter.availableDates?.length) {
-          const dateRanges = filter.availableDates.map((dateStr) => {
-            const date = new Date(dateStr);
-            const start = new Date(date);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(date);
-            end.setHours(23, 59, 59, 999);
-            return { date: { $gte: start, $lte: end } };
-          });
-          const availabilityResults = await teacherAvailabilityModel
-            .find({ $or: dateRanges })
-            .distinct("teacherId");
-
-          availabilityFilteredInstructorIds = availabilityResults; // Keep as ObjectIds
-
-          if (availabilityFilteredInstructorIds.length === 0) {
-            return {
-              instructors: [],
-              totalCount: 0,
-              hasMore: false,
-            };
-          }
-        }
-
-        // Combine price and availability filters
-        let combinedFilteredIds = null;
-        if (priceFilteredInstructorIds && availabilityFilteredInstructorIds) {
-          // Create a set of string IDs for intersection
-          const availabilityIdSet = new Set(
-            availabilityFilteredInstructorIds.map((id) => id.toString())
-          );
-
-          combinedFilteredIds = priceFilteredInstructorIds.filter((id) =>
-            availabilityIdSet.has(id.toString())
-          );
-        } else if (priceFilteredInstructorIds) {
-          combinedFilteredIds = priceFilteredInstructorIds;
-        } else if (availabilityFilteredInstructorIds) {
-          combinedFilteredIds = availabilityFilteredInstructorIds;
-        }
-
-        // Add ID filter to base query if we have filtered IDs
-        if (combinedFilteredIds !== null) {
-          // Remove the ObjectId conversion since we already have ObjectIds
-          baseQuery._id = { $in: combinedFilteredIds };
+          // Add price filter to base query
+          baseQuery._id = { $in: priceFilteredInstructorIds };
         }
 
         let instructors = [];
         let totalCount = 0;
 
-        // FIXED: Geographic query logic
+        // Execute geographic or non-geographic query first
         if (filter.coordinates && filter.areaRadius && filter.areaRadius > 0) {
           // Convert miles to meters
           const maxDistanceInMeters = filter.areaRadius * 1609.34;
@@ -142,7 +96,7 @@ const instructorResolver = {
             radiusInMeters: maxDistanceInMeters,
           });
 
-          // Create the aggregation pipeline
+          // Create the aggregation pipeline (without availability filtering)
           const pipeline = [
             {
               $geoNear: {
@@ -153,36 +107,14 @@ const instructorResolver = {
                 distanceField: "distance",
                 maxDistance: maxDistanceInMeters,
                 spherical: true,
-                query: baseQuery, // Use baseQuery instead of query
-                distanceMultiplier: 0.000621371, // Convert meters to miles for display
+                query: baseQuery,
+                distanceMultiplier: 0.000621371,
               },
-            },
-            {
-              $skip: offset,
-            },
-            {
-              $limit: limit,
             },
           ];
 
           // Count pipeline (without skip/limit)
-          const countPipeline = [
-            {
-              $geoNear: {
-                near: {
-                  type: "Point",
-                  coordinates: [longitude, latitude],
-                },
-                distanceField: "distance",
-                maxDistance: maxDistanceInMeters,
-                spherical: true,
-                query: baseQuery,
-              },
-            },
-            {
-              $count: "totalCount",
-            },
-          ];
+          const countPipeline = [...pipeline, { $count: "totalCount" }];
 
           try {
             console.log(
@@ -201,13 +133,6 @@ const instructorResolver = {
             console.log(
               `Geographic query returned ${instructors.length} instructors out of ${totalCount} total`
             );
-
-            // Log the distances for debugging
-            instructors.forEach((instructor) => {
-              console.log(
-                `Instructor ${instructor.firstName} ${instructor.lastName}: ${instructor.distance?.toFixed(2)} miles away`
-              );
-            });
           } catch (geoError) {
             console.error("Geographic query failed:", geoError);
             throw new Error(`Geographic search failed: ${geoError.message}`);
@@ -217,7 +142,7 @@ const instructorResolver = {
           console.log("Executing non-geographic query with filter:", baseQuery);
 
           const [results, count] = await Promise.all([
-            User.Instructor.find(baseQuery).skip(offset).limit(limit),
+            User.Instructor.find(baseQuery),
             User.Instructor.countDocuments(baseQuery),
           ]);
 
@@ -225,8 +150,47 @@ const instructorResolver = {
           totalCount = count;
         }
 
+        // NOW apply availability date filtering if specified
+        if (filter.availableDates?.length) {
+          console.log("Applying availability date filter...");
+
+          const dateRanges = filter.availableDates.map((dateStr) => {
+            const date = new Date(dateStr);
+            const start = new Date(date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(date);
+            end.setHours(23, 59, 59, 999);
+            return { date: { $gte: start, $lte: end } };
+          });
+
+          const availabilityResults = await teacherAvailabilityModel
+            .find({ $or: dateRanges })
+            .distinct("teacherId");
+
+          // Convert to Set for faster lookup
+          const availableInstructorIds = new Set(
+            availabilityResults.map((id) => id.toString())
+          );
+
+          // Filter instructors based on availability
+          const filteredInstructors = instructors.filter((instructor) =>
+            availableInstructorIds.has(instructor._id.toString())
+          );
+
+          console.log(
+            `Filtered ${instructors.length} instructors down to ${filteredInstructors.length} with availability`
+          );
+
+          // Update counts
+          instructors = filteredInstructors;
+          totalCount = filteredInstructors.length;
+        }
+
+        // Apply pagination AFTER all filtering
+        const paginatedInstructors = instructors.slice(offset, offset + limit);
+
         // Get tariffs and availability for the found instructors
-        const instructorIds = instructors.map((i) => i._id);
+        const instructorIds = paginatedInstructors.map((i) => i._id);
 
         // Build availability query for additional data
         const availabilityQuery = { teacherId: { $in: instructorIds } };
@@ -253,7 +217,7 @@ const instructorResolver = {
         }, new Map());
 
         const result = {
-          instructors: instructors.map((instructor) => {
+          instructors: paginatedInstructors.map((instructor) => {
             const instructorId = instructor._id.toString();
             return {
               _id: instructorId,
@@ -266,11 +230,11 @@ const instructorResolver = {
               experience: instructor.experience,
               phone: instructor.phone,
               rating: instructor.rating,
-              imageUrl: instructor.imageUrl,
+              profileImage: instructor.profileImage || "",
               coordinates: instructor.coordinates,
               gender: instructor.gender,
               transmissionType: instructor.transmissionType,
-              distance: instructor.distance, // Distance in miles (if geographic search)
+              distance: instructor.distance,
               details: {
                 degree: instructor.experience,
                 car: instructor.carName,
@@ -292,7 +256,7 @@ const instructorResolver = {
             };
           }),
           totalCount,
-          hasMore: totalCount > offset + instructors.length,
+          hasMore: totalCount > offset + limit,
         };
 
         return result;

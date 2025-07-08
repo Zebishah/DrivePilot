@@ -18,11 +18,17 @@ const studentTypeDefs = gql`
     createdAt: String!
     updatedAt: String!
   }
+  enum status {
+    available
+    booked
+    cancelled
+  }
   type Slot {
     date: String!
     startTime: String!
     endTime: String!
     booked: Boolean
+    status: status
   }
 
   type PaymentMethod {
@@ -169,6 +175,8 @@ const studentTypeDefs = gql`
     date: String!
     startTime: String!
     endTime: String!
+    booked: Boolean
+    status: status
   }
 
   enum SortOrder {

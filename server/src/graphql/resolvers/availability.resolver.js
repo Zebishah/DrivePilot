@@ -20,6 +20,7 @@ const resolvers = {
           date: slot.date.toISOString(),
           startTime: slot.startTime,
           endTime: slot.endTime,
+          status: slot.status,
         }));
       } catch (error) {
         throw new Error("Error fetching availability slots");
@@ -34,6 +35,7 @@ const resolvers = {
       const newDate = new Date(input.date);
       const newStart = input.startTime;
       const newEnd = input.endTime;
+      const newStatus = input.status || "available";
 
       try {
         // Fetch existing slots on the same date for the same teacher
@@ -67,6 +69,7 @@ const resolvers = {
           date: slot.date.toISOString(),
           startTime: slot.startTime,
           endTime: slot.endTime,
+          status: slot.status,
         };
       } catch (error) {
         throw new Error(error.message || "Error adding availability slot");

@@ -4,18 +4,26 @@ const studentBookingTypeDefs = gql`
   enum BookingStatus {
     pending
     confirmed
+    semi_cancelled
     cancelled
     completed
+  }
+  enum status {
+    available
+    booked
+    cancelled
   }
   enum feedBackStatusEnum {
     pending
     completed
   }
   type Slot {
+    id: ID
     date: String!
     startTime: String!
     endTime: String!
     booked: Boolean
+    status: status
   }
 
   type PaymentMethod {
@@ -51,6 +59,7 @@ const studentBookingTypeDefs = gql`
     date: String!
     startTime: String!
     endTime: String!
+    status: status
   }
 
   input PaymentMethodInput {
@@ -112,6 +121,7 @@ const studentBookingTypeDefs = gql`
     startTime: String!
     endTime: String!
     booked: Boolean
+    status: status
   }
 
   type PaymentInfo {
@@ -129,7 +139,7 @@ const studentBookingTypeDefs = gql`
   type Mutation {
     createBooking(input: StudentBookingInput!): StudentBooking!
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
-    cancelBooking(bookingId: ID!): StudentBooking!
+    cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
   }
 `;
 

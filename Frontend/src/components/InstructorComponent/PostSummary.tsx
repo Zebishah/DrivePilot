@@ -22,6 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Reviews } from "@mui/icons-material";
 import { fallbackInstructor, fallbackTariff } from "../../types/HourSlots";
 import { BackButton } from "./common/BackButton";
+import { IoStarOutline, IoStarSharp } from "react-icons/io5";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -71,7 +72,7 @@ const ProfileSummary: React.FC = () => {
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability =
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
-
+  console.log("Instructor Data:", instructor);
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
       toast.error("Please select an availability slot before booking.");
@@ -157,7 +158,7 @@ const ProfileSummary: React.FC = () => {
         sx={{
           maxWidth: 1600,
           margin: "auto",
-
+          mt: "1rem",
           padding: {
             xs: "0 1rem",
             sm: "0 2rem",
@@ -171,12 +172,15 @@ const ProfileSummary: React.FC = () => {
           sx={{ display: "flex", flexDirection: { xs: "column", md: "row" } }}
         >
           <Avatar
-            src={instructor.imageUrl || "/images/instructorprofile.png"}
+            src={instructor.profileImage || "/images/instructorprofile.png"}
             alt={`${instructor.firstName} ${instructor.lastName}`}
             sx={{
               width: { xs: 200, sm: 250 },
-              height: { xs: 200, sm: 250, md: "100%" },
-              borderRadius: 0,
+              maxWidth: { xs: 200, sm: 250 },
+              height: { xs: 200, sm: 250, md: 190 },
+              borderRadius: 2,
+              ml: 2,
+              mb: 2,
             }}
           />
           <Box
@@ -189,7 +193,11 @@ const ProfileSummary: React.FC = () => {
               justifyContent: "space-between",
             }}
           >
-            <Box sx={{ marginTop: { xs: "1rem", sm: "1.5rem", md: "2rem" } }}>
+            <Box
+              sx={{
+                marginTop: { xs: "1rem", sm: "1.5rem", md: "2rem" },
+              }}
+            >
               <Typography
                 sx={{ fontFamily: "Poppins, sans-serif" }}
                 variant="h5"
@@ -219,10 +227,10 @@ const ProfileSummary: React.FC = () => {
                 }}
               >
                 <Typography variant="body2">
-                  <strong>{instructor.experience || 0}</strong>
+                  <strong>{instructor.experience || 0} years</strong>
                 </Typography>
                 <Typography sx={{ fontFamily: "Poppins, sans-serif" }}>
-                  Trips
+                  of Experience
                 </Typography>
               </Box>
               <Box
@@ -233,16 +241,35 @@ const ProfileSummary: React.FC = () => {
                   marginBottom: { xs: "1rem", md: "0" },
                 }}
               >
-                <Typography variant="body2">
-                  <strong>{instructor.rating?.toFixed(1) || "N/A"}</strong>
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  {instructor.rating ? (
+                    // Show filled stars when rating exists
+                    <>
+                      {[...Array(Math.floor(instructor.rating))].map((_, i) => (
+                        <IoStarSharp
+                          key={i}
+                          style={{ color: "#FFDB20", marginRight: "0.5rem" }}
+                        />
+                      ))}
+                      <p className="mr-0.5">{instructor.rating}</p>
+                    </>
+                  ) : (
+                    // Show empty star with "No reviews yet" when no rating
+                    <>
+                      <IoStarOutline
+                        style={{ color: "#D1D5DB", marginRight: "0.5rem" }}
+                      />
+                      <p className="mr-0.5 text-gray-500">No reviews yet</p>
+                    </>
+                  )}
+                </Box>
                 <Typography sx={{ fontFamily: "Poppins, sans-serif" }}>
                   Ratings
                 </Typography>
               </Box>
               <Box sx={{ paddingLeft: "2rem" }}>
                 <Typography variant="body2">
-                  <strong>${tariff.lessonFee || 0}/lesson</strong>
+                  <strong>CHF {tariff.lessonFee || 0}/lesson</strong>
                 </Typography>
                 <Typography sx={{ fontFamily: "Poppins, sans-serif" }}>
                   Fair

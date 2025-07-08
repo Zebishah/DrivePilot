@@ -6,6 +6,7 @@ export interface HourSlot {
   date: string;
   originalSlotId: string;
   booked: boolean;
+  status: string;
 }
 
 export interface HourSlotModalProps {

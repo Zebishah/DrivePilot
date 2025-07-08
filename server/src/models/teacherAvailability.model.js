@@ -1,14 +1,17 @@
 const mongoose = require("mongoose");
 
-const slotSchema = new mongoose.Schema(
-  {
-    date: { type: String, required: true },
-    startTime: { type: String, required: true },
-    endTime: { type: String, required: true },
-    booked: { type: Boolean, default: false },
+const slotSchema = new mongoose.Schema({
+  id: { type: String },
+  date: { type: String, required: true },
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+  booked: { type: Boolean, default: false },
+  status: {
+    type: String,
+    enum: ["available", "booked", "cancelled"],
+    default: "available",
   },
-  { _id: false }
-);
+});
 
 const availabilitySlotSchema = new mongoose.Schema(
   {

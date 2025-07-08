@@ -85,6 +85,7 @@ export interface Slot {
   booked: boolean;
   startTime: string;
   endTime: string;
+  status: string;
 }
 
 export interface Instructor {

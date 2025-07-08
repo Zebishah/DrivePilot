@@ -46,6 +46,8 @@ interface AvailabilitySlot {
   date: string;
   startTime: string;
   endTime: string;
+  status: string;
+  booked?: boolean; // Optional, depending on your schema
 }
 
 // Custom day component to show slots count
@@ -215,6 +217,7 @@ export const AvailabilityTab: React.FC = () => {
             date: format(selectedDate, "yyyy-MM-dd"),
             startTime: format(startTime, "HH:mm"),
             endTime: format(endTime, "HH:mm"),
+            status: "available",
           },
         },
       });

@@ -8,6 +8,7 @@ const slotSchema = z.object({
   date: z.string(),
   startTime: z.string(),
   endTime: z.string(),
+  status: z.enum(["available", "booked", "cancelled"]).default("available"),
 });
 
 const paymentMethodSchema = z.object({

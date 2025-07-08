@@ -6,10 +6,12 @@ export const CREATE_BOOKING = gql`
       _id
 
       slots {
+        id
         date
         startTime
         endTime
         booked
+        status
       }
       totalAmount
       finalAmount
@@ -40,10 +42,12 @@ export const GET_STUDENT_BOOKINGS = gql`
         description
       }
       slots {
+        id
         date
         startTime
         endTime
         booked
+        status
       }
       paymentMethod {
         type
@@ -75,10 +79,12 @@ export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
         profileImage
       }
       slots {
+        id
         date
         startTime
         endTime
         booked
+        status
       }
       paymentMethod {
         type
@@ -98,10 +104,12 @@ export const GET_INSTRUCTOR_BOOKINGS = gql`
         email
       }
       slots {
+        id
         date
         startTime
         endTime
         booked
+        status
       }
       totalAmount
       paymentMethod {
@@ -125,8 +133,8 @@ export const UPDATE_BOOKING_STATUS = gql`
 `;
 
 export const CANCEL_BOOKING = gql`
-  mutation CancelBooking($bookingId: ID!) {
-    cancelBooking(bookingId: $bookingId) {
+  mutation CancelBooking($bookingId: ID!, $slotId: ID!) {
+    cancelBookingSlot(bookingId: $bookingId, slotId: $slotId) {
       _id
       status
       updatedAt

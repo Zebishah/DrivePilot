@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
       {/* Center Section: Links and Description */}
       <div className="flex flex-col items-center mb-8 md:mb- md:mt-0 text-center md:text-left">
         {/* Links */}
-        <ul className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8a mb-6">
+        <ul className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8 mb-6">
           <li>
             <a href="/" className="hover:text-gray-300">
               Home

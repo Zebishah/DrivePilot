@@ -42,6 +42,7 @@ interface AvailabilitySlot {
   startTime: string;
   endTime: string;
   booked: boolean;
+  status: string;
 }
 
 interface AvailabilityProps {

@@ -27,6 +27,7 @@ const BulkPackageCard = ({
   discount,
   finalPrice,
   packageDiscount,
+  title,
   variant,
   onSelect,
   isSelected,
@@ -68,8 +69,12 @@ const BulkPackageCard = ({
     >
       <CardContent>
         <Box display="flex" justifyContent="space-between" mb={1}>
+          <Typography variant="subtitle1">Title</Typography>
+          <Typography variant="subtitle1">{title}</Typography>
+        </Box>
+        <Box display="flex" justifyContent="space-between" mb={1}>
           <Typography variant="subtitle1">Courses</Typography>
-          <Typography variant="subtitle1">{lessons}</Typography>
+          <Typography variant="subtitle1">{lessons} lessons</Typography>
         </Box>
         <Box display="flex" justifyContent="space-between" mb={1}>
           <Typography variant="subtitle1">Price</Typography>
@@ -83,7 +88,7 @@ const BulkPackageCard = ({
               </Typography>
               <Typography
                 variant="subtitle1"
-                sx={{ color: "green", fontWeight: 600 }}
+                sx={{ color: "#31D62F !important", fontWeight: 600 }}
               >
                 CHF {finalPrice}
               </Typography>
@@ -92,17 +97,23 @@ const BulkPackageCard = ({
             <Typography variant="subtitle1">CHF{cost}</Typography>
           )}
         </Box>
-
+        <Box display="flex" justifyContent="space-between" mb={2}>
+          <Typography variant="subtitle1">You Save</Typography>
+          <Typography variant="subtitle1" sx={{ color: "#31D62F !important" }}>
+            CHF {save}
+          </Typography>
+        </Box>
         <Box display="flex" justifyContent="space-between" mb={1}>
           <Typography variant="subtitle1">Expiration Date</Typography>
           <Typography variant="subtitle1">
-            {durationDays.toLocaleDateString()}
+            {durationDays.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </Typography>
         </Box>
-        <Box display="flex" justifyContent="space-between" mb={2}>
-          <Typography variant="subtitle1">Save</Typography>
-          <Typography variant="subtitle1">CHF {save}</Typography>
-        </Box>
+
         <Button
           fullWidth
           variant="contained"
@@ -217,6 +228,7 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
             discount={pkg.packageDiscount}
             save={pkg.studentSave}
             packageDiscount={pkg.packageDiscount}
+            title={pkg.title}
             variant={idx % 2 === 0 ? "highlighted" : "default"}
             onSelect={handlePackageSelect}
             isSelected={

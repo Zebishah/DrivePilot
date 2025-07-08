@@ -38,7 +38,7 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
         return "text-blue-400";
       case "cancelled":
         return "text-red-500";
-      case "pending":
+      case "semi_cancelled":
         return "text-yellow-500";
       default:
         return "text-gray-500";
