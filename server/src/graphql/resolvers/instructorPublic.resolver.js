@@ -113,7 +113,6 @@ const instructorResolver = {
           }
         } else {
           // Non-geographic query
-          console.log("Executing non-geographic query with filter:", baseQuery);
 
           const [results, count] = await Promise.all([
             User.Instructor.find(baseQuery),
@@ -126,8 +125,6 @@ const instructorResolver = {
 
         // NOW apply availability date filtering if specified
         if (filter.availableDates?.length) {
-          console.log("Applying availability date filter...");
-
           const dateRanges = filter.availableDates.map((dateStr) => {
             const date = new Date(dateStr);
             const start = new Date(date);
@@ -149,10 +146,6 @@ const instructorResolver = {
           // Filter instructors based on availability
           const filteredInstructors = instructors.filter((instructor) =>
             availableInstructorIds.has(instructor._id.toString())
-          );
-
-          console.log(
-            `Filtered ${instructors.length} instructors down to ${filteredInstructors.length} with availability`
           );
 
           // Update counts

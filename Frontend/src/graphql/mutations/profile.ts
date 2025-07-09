@@ -93,6 +93,13 @@ export const GET_STUDENT_LESSON_HISTORY = gql`
       payment
       status
       endDate
+      startTime
+      endTime
+      slotStatus
+      bookingStatus
+      instructorId
+      slotId
+      bookingId
     }
   }
 `;

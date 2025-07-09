@@ -54,6 +54,13 @@ const studentTypeDefs = gql`
     payment: Float!
     status: String!
     endDate: String!
+    startTime: String!
+    endTime: String!
+    slotStatus: String!
+    bookingStatus: String!
+    instructorId: ID!
+    slotId: ID!
+    bookingId: ID!
   }
   type StudentProfile {
     id: ID!

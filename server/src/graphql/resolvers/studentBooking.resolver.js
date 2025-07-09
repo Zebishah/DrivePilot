@@ -283,13 +283,13 @@ const studentBookingResolver = {
 
           slotsByAvailability[availabilityKey].slotsToAdd.push(slot);
         }
-        console.log("slots", enrichedSlots);
+
         // Process each availability block
         await Promise.all(
           Object.values(slotsByAvailability).map(
             async ({ availability, slotsToAdd }) => {
               let hasChanges = false;
-              console.log("slots toAdd", slotsToAdd);
+
               // Add new slots if they don't already exist
               for (const slot of slotsToAdd) {
                 const alreadyExists = availability.slots.some(

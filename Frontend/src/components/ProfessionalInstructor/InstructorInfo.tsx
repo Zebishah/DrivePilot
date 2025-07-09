@@ -267,7 +267,7 @@ const InstructorsInfo: React.FC = () => {
   // };
 
   const instructors = data?.getNearbyInstructors?.instructors || [];
-  console.log("instructors", instructors);
+
   // const hasMore = data?.getNearbyInstructors?.hasMore || false;
 
   const { mapCenter, markers } = getMapCenterAndMarkers(

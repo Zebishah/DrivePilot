@@ -78,36 +78,62 @@ const studentResolver = {
 
     getStudentLessonHistory: async (_, { studentId }) => {
       try {
-        const lessons = await studentBookingModel.find({ studentId });
+        const bookings = await studentBookingModel.find({ studentId });
 
-        return lessons.map((lesson) => {
-          // Format the dates in DD-MM-YYYY format
-          const bookingDate = new Date(lesson.createdAt)
-            .toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .replace(/\//g, "-");
+        const lessons = [];
 
-          // Get the end date from the slot
-          const endDate = lesson.slots[0].date.split("-").reverse().join("-");
+        bookings.forEach((booking) => {
+          booking.slots.forEach((slot, slotIndex) => {
+            // Format the booking date in DD-MM-YYYY format
+            const bookingDate = new Date(booking.createdAt)
+              .toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+              .replace(/\//g, "-");
 
-          // Map status to the format shown in the UI
-          let statusDisplay;
+            // Format the slot date (end date) in DD-MM-YYYY format
+            const endDate = slot.date.split("-").reverse().join("-");
 
-          statusDisplay =
-            lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1);
+            // Calculate payment per slot (total amount divided by number of slots)
+            const paymentPerSlot = booking.totalAmount / booking.slots.length;
 
-          return {
-            lessonBooked: `Lesson ${lesson._id.toString().substr(-1)}`,
-            bookingDate: bookingDate,
-            // Return the payment as a number instead of a string with $ symbol
-            payment: lesson.totalAmount,
-            status: statusDisplay,
-            endDate: endDate,
-          };
+            // Determine status priority: slot status > booking status
+            let status = slot.status;
+            if (slot.status === "available") {
+              status = booking.status;
+            }
+
+            // Capitalize status for display
+            const statusDisplay =
+              status.charAt(0).toUpperCase() + status.slice(1);
+
+            lessons.push({
+              lessonBooked: `Lesson ${booking._id.toString().substr(-4)}-${slotIndex + 1}`,
+              bookingDate: bookingDate,
+              payment: Math.round(paymentPerSlot * 100) / 100, // Round to 2 decimal places
+              status: statusDisplay,
+              endDate: endDate,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              slotStatus: slot.status,
+              bookingStatus: booking.status,
+              instructorId: booking.instructorId,
+              slotId: slot._id,
+              bookingId: booking._id,
+            });
+          });
         });
+
+        // Sort lessons by booking date (newest first)
+        lessons.sort(
+          (a, b) =>
+            new Date(b.bookingDate.split("-").reverse().join("-")) -
+            new Date(a.bookingDate.split("-").reverse().join("-"))
+        );
+
+        return lessons;
       } catch (error) {
         throw new Error(`Error fetching lesson history: ${error.message}`);
       }

@@ -83,10 +83,6 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
     return dates;
   }, [allInstructors]); // Use allInstructors instead of instructors
 
-  console.log("Available Dates:", availableDates);
-  console.log("All Instructors:", allInstructors);
-  console.log("Filtered Instructors:", instructors);
-
   // Update filters when initialFilters change
   useEffect(() => {
     if (open) {

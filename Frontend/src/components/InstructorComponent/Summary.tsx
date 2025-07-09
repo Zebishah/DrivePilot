@@ -19,7 +19,6 @@ const Summary: React.FC<SummaryProps> = ({
   tariffData,
   loading,
 }) => {
-  console.log("Instructor Data:", instructorData);
   return (
     <div>
       <Card

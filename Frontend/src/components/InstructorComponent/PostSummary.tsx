@@ -72,7 +72,7 @@ const ProfileSummary: React.FC = () => {
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability =
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
-  console.log("Instructor Data:", instructor);
+
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
       toast.error("Please select an availability slot before booking.");

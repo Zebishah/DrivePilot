@@ -5,14 +5,22 @@ import { GET_STUDENT_LESSON_HISTORY } from "../../../graphql/mutations/profile";
 interface LessonHistoryItem {
   lessonBooked: string;
   bookingDate: string;
-  payment: string;
+  payment: number;
   status: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
+  slotStatus: string;
+  bookingStatus: string;
+  instructorId: string;
+  slotId: string;
+  bookingId: string;
 }
 
 interface LessonBookingHistoryProps {
   studentId: string;
 }
+
 const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
   studentId,
 }) => {
@@ -32,7 +40,7 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
   // Function to determine the status color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case "active":
+      case "confirmed":
         return "text-green-500";
       case "completed":
         return "text-blue-400";
@@ -40,6 +48,12 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
         return "text-red-500";
       case "semi_cancelled":
         return "text-yellow-500";
+      case "booked":
+        return "text-green-500";
+      case "available":
+        return "text-gray-500";
+      case "pending":
+        return "text-orange-500";
       default:
         return "text-gray-500";
     }
@@ -55,39 +69,49 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
         <div className="flex bg-gray-50 border-b border-gray-100 font-medium">
           <div className="flex-1 p-4">Lesson Booked</div>
           <div className="flex-1 p-4">Booking Date</div>
+          <div className="flex-1 p-4">Time Slot</div>
           <div className="flex-1 p-4">Payment (CHF)</div>
           <div className="flex-1 p-4">Status</div>
-          <div className="flex-1 p-4">End date</div>
+          <div className="flex-1 p-4">End Date</div>
         </div>
 
         {/* Table Body */}
-        {data?.getStudentLessonHistory.map(
-          (lesson: LessonHistoryItem, index: number) => (
-            <div
-              key={index}
-              className="flex border-b border-gray-100 hover:bg-gray-50"
-            >
-              <div className="flex-1 p-4 flex items-center">
-                {lesson.lessonBooked}
-              </div>
-              <div className="flex-1 p-4 flex items-center">
-                {lesson.bookingDate}
-              </div>
-              <div className="flex-1 p-4 flex items-center">
-                {lesson.payment} CHF
-              </div>
+        {data?.getStudentLessonHistory.length > 0 ? (
+          data.getStudentLessonHistory.map(
+            (lesson: LessonHistoryItem, index: number) => (
               <div
-                className={`flex-1 p-4 flex items-center font-medium ${getStatusColor(
-                  lesson.status
-                )}`}
+                key={`${lesson.bookingId}-${lesson.slotId}`}
+                className="flex border-b border-gray-100 hover:bg-gray-50"
               >
-                {lesson.status}
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.lessonBooked}
+                </div>
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.bookingDate}
+                </div>
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.startTime} - {lesson.endTime}
+                </div>
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.payment.toFixed(2)} CHF
+                </div>
+                <div
+                  className={`flex-1 p-4 flex items-center font-medium ${getStatusColor(
+                    lesson.status
+                  )}`}
+                >
+                  {lesson.status}
+                </div>
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.endDate}
+                </div>
               </div>
-              <div className="flex-1 p-4 flex items-center">
-                {lesson.endDate}
-              </div>
-            </div>
+            )
           )
+        ) : (
+          <div className="flex justify-center items-center p-8">
+            <p className="text-gray-500">No lesson history found</p>
+          </div>
         )}
       </div>
     </div>
