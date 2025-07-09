@@ -143,7 +143,7 @@ const StudentFeedback: React.FC = () => {
                       Lesson {booking._id.charAt(booking._id.length - 1)}
                     </td>
                     <td className="py-4 px-2 text-gray-600">
-                      ${booking.totalAmount}
+                      CHF {booking.totalAmount}
                     </td>
                     <td className="py-4 px-2">
                       <span

@@ -28,7 +28,7 @@ const studentBookingResolver = {
       // Populate both instructorId and studentId (booker) with profileImage included
       const allBookings = await StudentBooking.find({
         instructorId: user?.id,
-        status: "confirmed", // Only confirmed bookings
+        status: { $in: ["confirmed", "semi_cancelled"] },
       })
 
         .populate(
@@ -109,7 +109,7 @@ const studentBookingResolver = {
       const allBookings = await StudentBooking.find({
         studentId,
         instructorId: user.id,
-        status: "confirmed",
+        status: { $in: ["confirmed", "semi_cancelled"] },
       })
         .populate("instructorId", "_id firstName lastName email profileImage")
         .populate("studentId", "_id firstName lastName email profileImage") // Add this line
@@ -213,7 +213,14 @@ const studentBookingResolver = {
           studentId: user.id,
         });
 
-        const { slots, instructorId } = validatedInput;
+        const { instructorId } = validatedInput;
+
+        const enrichedSlots = validatedInput.slots.map((slot) => ({
+          ...slot,
+          id: new mongoose.Types.ObjectId().toString(), // ✅ Unique ID for slot
+          booked: true,
+          status: "booked",
+        }));
 
         // 1. Check for overlapping bookings WITH THE SAME INSTRUCTOR
         const existingBookings = await StudentBooking.find({
@@ -222,7 +229,7 @@ const studentBookingResolver = {
           status: { $ne: "cancelled" },
         });
 
-        for (const newSlot of slots) {
+        for (const newSlot of enrichedSlots) {
           const conflictingBooking = existingBookings.find((booking) =>
             booking.slots.some(
               (existingSlot) =>
@@ -244,10 +251,9 @@ const studentBookingResolver = {
           }
         }
 
-        // 2. Create booking
         const booking = new StudentBooking({
           ...validatedInput,
-          slots: slots.map((slot) => ({ ...slot, booked: true })),
+          slots: enrichedSlots,
           status: "confirmed",
         });
 
@@ -257,7 +263,7 @@ const studentBookingResolver = {
         // Group slots by date and availability block
         const slotsByAvailability = {};
 
-        for (const slot of slots) {
+        for (const slot of enrichedSlots) {
           const availability = await teacherAvailabilityModel.findOne({
             teacherId: instructorId,
             date: slot.date,
@@ -277,13 +283,13 @@ const studentBookingResolver = {
 
           slotsByAvailability[availabilityKey].slotsToAdd.push(slot);
         }
-
+        console.log("slots", enrichedSlots);
         // Process each availability block
         await Promise.all(
           Object.values(slotsByAvailability).map(
             async ({ availability, slotsToAdd }) => {
               let hasChanges = false;
-
+              console.log("slots toAdd", slotsToAdd);
               // Add new slots if they don't already exist
               for (const slot of slotsToAdd) {
                 const alreadyExists = availability.slots.some(
@@ -295,10 +301,12 @@ const studentBookingResolver = {
 
                 if (!alreadyExists) {
                   availability.slots.push({
+                    id: slot.id, // ✅ Now consistent with StudentBooking slot
                     date: slot.date,
                     startTime: slot.startTime,
                     endTime: slot.endTime,
                     booked: true,
+                    status: "booked",
                   });
                   hasChanges = true;
                 }
@@ -346,14 +354,14 @@ const studentBookingResolver = {
       await booking.save();
       return booking;
     },
-    cancelBooking: async (_, { bookingId }, { user }) => {
+    cancelBookingSlot: async (_, { bookingId, slotId }, { user }) => {
       validateUser(user);
 
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        // 1) Find and validate booking
+        // 1. Find the booking
         const booking =
           await StudentBooking.findById(bookingId).session(session);
         if (!booking) throw new UserInputError("Booking not found");
@@ -368,53 +376,79 @@ const studentBookingResolver = {
           );
         }
 
-        // 2) Cancel booking
-        booking.status = "cancelled";
+        // 2. Find the specific slot in the booking
+        const slot = booking.slots.id(slotId);
+        if (!slot) throw new UserInputError("Slot not found");
+
+        if (slot.status === "cancelled") {
+          throw new UserInputError("Slot is already cancelled");
+        }
+
+        // 3. Mark the slot as cancelled in the booking
+        slot.status = "cancelled";
+        slot.booked = false;
+
+        // 4. Check if all slots are cancelled to determine booking status
+        const allSlotsCancelled = booking.slots.every(
+          (s) => s.status === "cancelled"
+        );
+
+        // If all slots are cancelled, mark booking as cancelled, otherwise semi-cancelled
+        if (allSlotsCancelled) {
+          booking.status = "cancelled";
+        } else {
+          booking.status = "semi_cancelled";
+        }
+
         await booking.save({ session });
 
-        // 3) Build conditions for updateMany
-        const bulkConditions = booking.slots.map((slot) => ({
-          teacherId: booking.instructorId,
-          date: slot.date,
-          startTime: { $lte: slot.startTime },
-          endTime: { $gte: slot.endTime },
-        }));
-
-        // 4) Reset status to 'available'
-        await teacherAvailabilityModel.updateMany(
-          { $or: bulkConditions },
-          { $set: { status: "available" } },
+        // 5. Remove the slot from teacher availability using the simple 'id' field
+        await teacherAvailabilityModel.updateOne(
+          {
+            teacherId: booking.instructorId,
+            "slots.id": slotId,
+          },
+          {
+            $pull: {
+              slots: {
+                id: slotId,
+              },
+            },
+          },
           { session }
         );
 
-        // 5) Remove the booked sub-slots from availability.slots
-        for (const slot of booking.slots) {
+        // 6. Check if teacher availability document has any remaining slots
+        const teacherAvailability = await teacherAvailabilityModel
+          .findOne({
+            teacherId: booking.instructorId,
+            date: slot.date,
+          })
+          .session(session);
+
+        // If no slots remain for this date, you might want to update the status
+        if (teacherAvailability && teacherAvailability.slots.length === 0) {
           await teacherAvailabilityModel.updateOne(
             {
               teacherId: booking.instructorId,
               date: slot.date,
-              startTime: { $lte: slot.startTime },
-              endTime: { $gte: slot.endTime },
             },
             {
-              $pull: {
-                slots: {
-                  date: slot.date,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
-                  booked: true,
-                },
-              },
+              $set: { status: "available" },
             },
             { session }
           );
         }
 
-        // 6) Commit transaction
         await session.commitTransaction();
         session.endSession();
 
-        return booking;
+        // Populate the booking with related data before returning
+        const populatedBooking = await StudentBooking.findById(bookingId)
+          .populate("studentId")
+          .populate("instructorId");
+
+        return populatedBooking;
       } catch (err) {
         await session.abortTransaction();
         session.endSession();

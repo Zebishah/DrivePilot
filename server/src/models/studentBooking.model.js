@@ -30,6 +30,11 @@ const studentBookingSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        status: {
+          type: String,
+          enum: ["available", "booked", "cancelled"],
+          default: "available",
+        },
       },
     ],
     totalAmount: {
@@ -57,7 +62,13 @@ const studentBookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "cancelled", "completed"],
+      enum: [
+        "pending",
+        "confirmed",
+        "cancelled",
+        "completed",
+        "semi_cancelled",
+      ],
       default: "pending",
     },
     createdAt: {

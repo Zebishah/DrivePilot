@@ -88,11 +88,15 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-
     setInputValue(value);
+
+    // If input is cleared, reset coordinates
+    if (!value.trim() && onCoordinatesChange) {
+      onCoordinatesChange(null);
+    }
+
     debouncedFetchLocations(value);
   };
-
   const handleSelectSuggestion = (address: any) => {
     setInputValue(address.display_name);
     setShowSuggestions(false);

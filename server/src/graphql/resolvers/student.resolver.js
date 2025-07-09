@@ -259,7 +259,7 @@ const studentResolver = {
       try {
         const confirmedBookings = await StudentBooking.find({
           instructorId: user?.id,
-          status: "confirmed",
+          status: { $in: ["confirmed", "semi_cancelled"] },
         }).select("studentId");
 
         const studentIdsWithConfirmedBookings = [
@@ -296,7 +296,7 @@ const studentResolver = {
             const bookings = await StudentBooking.find({
               studentId: student._id,
               instructorId: user?.id,
-              status: "confirmed",
+              status: { $in: ["confirmed", "semi_cancelled"] },
             })
               .populate(
                 "instructorId",

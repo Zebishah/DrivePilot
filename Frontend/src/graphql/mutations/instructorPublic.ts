@@ -11,7 +11,7 @@ export const GET_NEARBY_INSTRUCTORS = gql`
         location
         address
         rating
-        imageUrl
+        profileImage
         description
         coordinates {
           coordinates
@@ -52,10 +52,11 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         description
         experience
         rating
-        imageUrl
+        profileImage
         carName
         transmissionType
         gender
+        languagePreference
       }
       tariff {
         lessonFee

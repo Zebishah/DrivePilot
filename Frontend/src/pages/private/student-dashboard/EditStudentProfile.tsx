@@ -20,6 +20,7 @@ import {
   MenuItem,
   Skeleton,
   FormHelperText,
+  InputAdornment,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
@@ -401,7 +402,16 @@ export default function EditStudentProfile() {
       </Box>
     );
   }
+  const handlePhoneChange = (e) => {
+    let value = e.target.value.replace(/\D/g, ""); // Remove all non-numeric characters
 
+    // Only allow 9 digits max
+    if (value.length > 9) {
+      value = value.slice(0, 9);
+    }
+
+    handleInputChange("phone", value); // Save only 9-digit number (e.g., 791234567)
+  };
   const maxAllowedDOB = new Date(
     today.getFullYear() - 23,
     today.getMonth(),
@@ -770,10 +780,16 @@ export default function EditStudentProfile() {
                 <TextField
                   id="PhoneNumber"
                   value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  onChange={handlePhoneChange}
+                  placeholder="79 123 45 67"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">+41</InputAdornment>
+                    ),
+                  }}
                   sx={{
                     "& .MuiOutlinedInput-root": {
-                      padding: 1.1, // Adjust this value as needed (1 = 8px)
+                      padding: 1.1,
                       borderRadius: 1.6,
                     },
                   }}

@@ -49,7 +49,15 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
           type: "success",
           message: data.sendContactEmail.message,
         });
-        setFormData({ name: "", email: "", description: "" });
+
+        // Only clear the description field, preserve name and email for logged-in users
+        setFormData((prev) => ({
+          ...prev,
+          description: "",
+          // Only clear name and email if user is not logged in
+          ...(user ? {} : { name: "", email: "" }),
+        }));
+
         setErrors({});
 
         // Call onSubmit if provided

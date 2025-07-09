@@ -10,7 +10,7 @@ import "leaflet/dist/leaflet.css";
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
-import { IoStarSharp } from "react-icons/io5";
+import { IoStarOutline, IoStarSharp } from "react-icons/io5";
 import {
   FaBook,
   FaCar,
@@ -43,6 +43,7 @@ type FiltersState = {
   activeFilters: Record<string, any>;
   availability: string[];
   city: string;
+  addressFilterApplied: false; // Add this flag
 };
 // Add this function to fetch coordinates for student's location
 
@@ -64,6 +65,7 @@ const InstructorsInfo: React.FC = () => {
     activeFilters: {},
     availability: [],
     city: "Berlin",
+    addressFilterApplied: false,
   });
 
   // Geocode student location on component mount
@@ -195,14 +197,16 @@ const InstructorsInfo: React.FC = () => {
         priceMin: filters.price[0],
         priceMax: filters.price[1],
       }),
-      // Fix: Ensure areaRadius is always > 0 when coordinates are provided
-      ...(filters.coordinates &&
+      // Only include coordinates if explicitly set through address filter
+      // Check if coordinates were set through the address filter, not just from initial load
+      // In handleApplyFilters
+      ...(filters.addressFilterApplied && // Check this flag first
+        filters.coordinates &&
         filters.coordinates[0] !== 0 &&
         filters.areaRadius > 0 && {
           coordinates: filters.coordinates,
           areaRadius: filters.areaRadius,
         }),
-
       ...(filters.availability.length > 0 && {
         availableDates: filters.availability,
       }),
@@ -218,17 +222,16 @@ const InstructorsInfo: React.FC = () => {
   };
   const handleResetFilters = () => {
     setFilters({
-      coordinates: filters.coordinates,
+      ...filters, // Keep current coordinates
       areaRadius: 50,
       rating: 0,
-      transmission: "Manual",
+      transmission: null,
       gender: null,
       price: [1000, 10000],
       activeFilters: {},
       availability: [],
-      city: "Berlin",
+      addressFilterApplied: false, // Reset the flag
     });
-    setIsOpen(false);
   };
 
   // Load more instructors
@@ -264,7 +267,7 @@ const InstructorsInfo: React.FC = () => {
   // };
 
   const instructors = data?.getNearbyInstructors?.instructors || [];
-
+  console.log("instructors", instructors);
   // const hasMore = data?.getNearbyInstructors?.hasMore || false;
 
   const { mapCenter, markers } = getMapCenterAndMarkers(
@@ -353,6 +356,16 @@ const InstructorsInfo: React.FC = () => {
     }
   };
 
+  const [allInstructorsForDates, setAllInstructorsForDates] = useState([]);
+
+  // In your useEffect or where you first load instructors
+  useEffect(() => {
+    // When you first load instructors (before any filters), store them
+    if (data?.getNearbyInstructors?.instructors && !filtersApplied) {
+      setAllInstructorsForDates(data.getNearbyInstructors.instructors);
+    }
+  }, [data?.getNearbyInstructors?.instructors, filtersApplied]);
+
   return (
     <div className="max-w-screen-xl mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
@@ -416,9 +429,9 @@ const InstructorsInfo: React.FC = () => {
         initialFilters={filters}
         onApplyFilters={handleApplyFilters}
         resetFilters={handleResetFilters}
-        instructors={instructors}
+        instructors={instructors} // Current filtered results
+        allInstructors={allInstructorsForDates} // All instructors for dates
       />
-
       {(isInitialLoad || loading) && (
         <div className="m-12">
           <InstructorsListSkeleton />{" "}
@@ -469,7 +482,10 @@ const InstructorsInfo: React.FC = () => {
                   {/* Instructor card content */}
                   <div className="flex flex-col items-center md:items-start md:w-1/3">
                     <img
-                      src={instructor.imageUrl || "/images/Instructor1.png"}
+                      src={
+                        instructor.profileImage ||
+                        "/images/Portrait_Placeholder.png"
+                      }
                       alt="Instructor"
                       className="w-24 h-24 rounded-full mb-4 object-cover"
                     />
@@ -488,15 +504,31 @@ const InstructorsInfo: React.FC = () => {
                       </p>
                     </Tooltip>
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {[...Array(Math.floor(instructor.rating || 0))].map(
-                        (_, i) => (
-                          <IoStarSharp
-                            key={i}
-                            style={{ color: "#FFDB20", marginRight: "0.5rem" }}
+                      {instructor.rating ? (
+                        // Show filled stars when rating exists
+                        <>
+                          {[...Array(Math.floor(instructor.rating))].map(
+                            (_, i) => (
+                              <IoStarSharp
+                                key={i}
+                                style={{
+                                  color: "#FFDB20",
+                                  marginRight: "0.5rem",
+                                }}
+                              />
+                            )
+                          )}
+                          <p className="mr-0.5">{instructor.rating}</p>
+                        </>
+                      ) : (
+                        // Show empty star with "No reviews yet" when no rating
+                        <>
+                          <IoStarOutline
+                            style={{ color: "grey", marginRight: "0.5rem" }}
                           />
-                        )
+                          <p className="mr-0.5 text-gray-500">No reviews yet</p>
+                        </>
                       )}
-                      <p className="mr-0.5">{instructor.rating || "N/A"}</p>
                     </Box>
                   </div>
 
@@ -522,11 +554,11 @@ const InstructorsInfo: React.FC = () => {
                                   <span
                                     className={`${instructor.details.lessonDiscount > 0 ? "line-through" : ""} text-gray-800`}
                                   >
-                                    ${instructor.details.rate}/hr
+                                    CHF {instructor.details.rate}/hr
                                   </span>
                                   {instructor.details.lessonDiscount > 0 ? (
                                     <span className="ml-2 text-green-600 font-semibold">
-                                      $
+                                      CHF{" "}
                                       {(
                                         instructor.details.rate *
                                         (1 -

@@ -376,7 +376,7 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.phone || "Not Provided"}
+                    +41 {profileData.phone || "Not Provided"}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -408,7 +408,8 @@ export default function ProfileSetting() {
                     color="black"
                     sx={{ fontSize: "18px" }}
                   >
-                    {profileData.experience || "Not Provided"}
+                    {profileData.experience || "Not Provided"} years of
+                    experience
                   </Typography>
                 </Grid>
               </Grid>

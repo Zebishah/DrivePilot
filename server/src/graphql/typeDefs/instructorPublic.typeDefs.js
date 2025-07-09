@@ -10,12 +10,17 @@ const instructorTypeDefs = gql`
     discountEndDate: String
     lessonDiscount: String
   }
-
+  enum status {
+    available
+    booked
+    cancelled
+  }
   type Slot {
     startTime: String!
     endTime: String!
     date: String!
     booked: Boolean
+    status: status
   }
 
   type HourlySlot {
@@ -24,6 +29,7 @@ const instructorTypeDefs = gql`
     endTime: String!
     date: String!
     booked: Boolean
+    status: status
     originalSlotId: ID
   }
 
@@ -55,7 +61,8 @@ const instructorTypeDefs = gql`
     experience: String
     phone: String
     rating: Float
-    imageUrl: String
+    profileImage: String
+    languagePreference: [String!]!
     coordinates: Coordinates
     details: InstructorDetails
     carName: String

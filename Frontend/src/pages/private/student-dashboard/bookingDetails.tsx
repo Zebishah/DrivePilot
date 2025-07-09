@@ -27,13 +27,11 @@ import toast from "react-hot-toast";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import dayjs from "dayjs";
 dayjs.extend(advancedFormat);
-import { set } from "lodash";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 import {
   getSlotDurationInHours,
   getSlotDurations,
 } from "../../../components/StudentComponents/GetSlotDurationInHours";
-import { FaMoneyBillWave } from "react-icons/fa";
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -48,7 +46,10 @@ const BookingDetails: React.FC = () => {
     isCurrentBooking = true,
     status,
     bookingId,
+    booking,
+    slotId,
     instructorId,
+    slot,
   } = location.state || {};
 
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
@@ -109,7 +110,9 @@ const BookingDetails: React.FC = () => {
           date: slot.date,
           startTime: slot.startTime,
           endTime: slot.endTime,
+          status: "booked", // Assuming booked status for all selected slots
         })),
+
         totalAmount: parseFloat(totalAmount.toFixed(2)),
         finalAmount: parseFloat(finalAmount),
         paymentMethod: {
@@ -123,6 +126,7 @@ const BookingDetails: React.FC = () => {
           input: mutationInput,
         },
       });
+      navigate("/student-dashboard/search");
     } catch (error: any) {
       console.error("Error creating booking:", error);
       setError(error.message || "Failed to create booking. Please try again.");
@@ -196,7 +200,9 @@ const BookingDetails: React.FC = () => {
   const handleCancelBooking = async () => {
     try {
       setCancelLoading(true);
-      await cancelBooking({ variables: { bookingId: bookingId } });
+      await cancelBooking({
+        variables: { bookingId: bookingId, slotId: slotId },
+      });
       toast.success("Booking cancelled successfully");
       navigate(`/student-dashboard/book`);
 
@@ -213,7 +219,9 @@ const BookingDetails: React.FC = () => {
   const handleConfirmCancellationNoRefund = async () => {
     try {
       setCancelLoading(true);
-      await cancelBooking({ variables: { bookingId: bookingId } });
+      await cancelBooking({
+        variables: { bookingId: bookingId, slotId: slotId },
+      });
       toast.success("Booking cancelled successfully (no refund issued)");
       navigate(`/student-dashboard/book`);
       handleCloseCancel();
@@ -245,7 +253,7 @@ const BookingDetails: React.FC = () => {
           <Typography variant="h5" sx={{ fontWeight: "bold" }}>
             Booking Details
           </Typography>
-          {!isCurrentBooking && (
+          {/* {!isCurrentBooking && (
             <Typography
               sx={{
                 px: 2,
@@ -268,7 +276,7 @@ const BookingDetails: React.FC = () => {
             >
               {status.toUpperCase()}
             </Typography>
-          )}
+          )} */}
           <Box>
             <Button
               variant="contained"
@@ -329,15 +337,26 @@ const BookingDetails: React.FC = () => {
           </Typography>
           <Typography variant="body1">
             <strong>End Date:</strong>{" "}
-            {selectedAvailability?.[selectedAvailability.length - 1]?.date
-              ? new Date(
-                  selectedAvailability[selectedAvailability.length - 1].date
-                ).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })
-              : "Not selected"}
+            {slot
+              ? selectedAvailability[0]?.date
+                ? new Date(selectedAvailability[0].date).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    }
+                  )
+                : "Not selected"
+              : selectedAvailability?.[selectedAvailability.length - 1]?.date
+                ? new Date(
+                    selectedAvailability[selectedAvailability.length - 1].date
+                  ).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Not selected"}
           </Typography>
 
           <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, mt: 3 }}>
@@ -543,8 +562,7 @@ const BookingDetails: React.FC = () => {
 
               <Typography variant="body2" color="error" sx={{ mt: 2 }}>
                 <strong>Attention:</strong> If you cancel a lesson less than 48
-                hours in advance, the teacher will be informed, but no refund
-                will be issued for the missed session.
+                hours before its start time, no refund will be issued.
               </Typography>
             </Box>
           </DialogContent>
@@ -703,8 +721,7 @@ const BookingDetails: React.FC = () => {
 
                 <Typography variant="body2" color="error" sx={{ mt: 2 }}>
                   <strong>Attention:</strong> If you cancel a lesson less than
-                  48 hours in advance, the teacher will be informed, but no
-                  refund will be issued for the missed session.
+                  48 hours before its start time, no refund will be issued.
                 </Typography>
               </Box>
             </>

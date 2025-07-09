@@ -1,13 +1,18 @@
 export enum BookingStatus {
   PENDING = "pending",
   COMPLETED = "completed",
+  CANCELLED = "cancelled",
+  SEMI_CANCELLED = "semi_cancelled",
+  CONFIRMED = "confirmed",
 }
 
 export interface Slot {
+  _id: string;
   date: string;
   startTime: string;
   endTime: string;
   booked: boolean;
+  status: string;
 }
 
 export interface PaymentMethod {

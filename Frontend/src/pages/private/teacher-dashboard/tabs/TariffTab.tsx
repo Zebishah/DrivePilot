@@ -110,6 +110,29 @@ export const TariffTab: React.FC = () => {
     }
   }, [data]);
 
+  // Recalculate package prices whenever FinalPricePerLesson changes
+  useEffect(() => {
+    if (tariffData.FinalPricePerLesson > 0) {
+      const updatedPackages = tariffData.bulkPackages.map((pkg) => {
+        const totalPrice = tariffData.lessonFee * pkg.lessons;
+        const discountAmount = (totalPrice * pkg.packageDiscount) / 100;
+        const finalPrice = totalPrice - discountAmount;
+
+        return {
+          ...pkg,
+          cost: parseFloat(totalPrice.toFixed(2)),
+          finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
+          studentSave: parseFloat(discountAmount.toFixed(2)),
+        };
+      });
+
+      setTariffData((prev) => ({
+        ...prev,
+        bulkPackages: updatedPackages,
+      }));
+    }
+  }, [tariffData.FinalPricePerLesson]);
+
   if (loading) return <Typography>Loading...</Typography>;
   if (error) return <Typography>Error: {error.message}</Typography>;
 
@@ -139,6 +162,7 @@ export const TariffTab: React.FC = () => {
           : prev.FinalPricePerLesson,
     }));
   };
+
   interface PackageDiscountDateChangeEvent {
     field: "PackageEndDate";
     newValue: Date | null;
@@ -153,7 +177,8 @@ export const TariffTab: React.FC = () => {
       [field]: newValue,
     }));
   };
-  // Handle changes to bulk lesson packages
+
+  // Handle changes to bulk lesson packages - Now completely dynamic
   const handleBulkPackageChange = (
     index: number,
     field: keyof BulkLessonPackage,
@@ -165,42 +190,45 @@ export const TariffTab: React.FC = () => {
       [field]: value,
     };
 
-    // Recalculate if lessons, cost, or packageDiscount is updated
-    const affectedFields = ["cost", "packageDiscount", "lessons"];
-    if (affectedFields.includes(field)) {
-      const cost = updatedPackages[index].cost || 0;
-      const discount = updatedPackages[index].packageDiscount || 0;
-      const lessons = updatedPackages[index].lessons || 0;
+    // Recalculate prices based on lessons and discount changes
+    if (field === "lessons" || field === "packageDiscount") {
+      const lessons =
+        field === "lessons" ? value : updatedPackages[index].lessons;
+      const discount =
+        field === "packageDiscount"
+          ? value
+          : updatedPackages[index].packageDiscount;
 
-      const total = cost * lessons;
-      const discountedAmount = (total * discount) / 100;
-      const finalPrice = total - discountedAmount;
+      const totalPrice = tariffData.lessonFee * lessons;
+      const discountAmount = (totalPrice * discount) / 100;
+      const finalPrice = totalPrice - discountAmount;
 
-      updatedPackages[index].finalPackagePrice = parseFloat(
-        finalPrice.toFixed(2)
-      );
-      updatedPackages[index].studentSave = parseFloat(
-        discountedAmount.toFixed(2)
-      );
+      updatedPackages[index] = {
+        ...updatedPackages[index],
+        cost: parseFloat(totalPrice.toFixed(2)),
+        finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
+        studentSave: parseFloat(discountAmount.toFixed(2)),
+      };
     }
 
     setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
   };
+
   const recalculateBulkPackage = (
     pkg: BulkLessonPackage
   ): BulkLessonPackage => {
-    const cost = parseFloat(String(pkg.cost)) || 0;
-    const discount = parseFloat(String(pkg.packageDiscount)) || 0;
     const lessons = parseFloat(String(pkg.lessons)) || 0;
+    const discount = parseFloat(String(pkg.packageDiscount)) || 0;
 
-    const total = cost * lessons;
-    const discountedAmount = (total * discount) / 100;
-    const finalPrice = total - discountedAmount;
+    const totalPrice = tariffData.FinalPricePerLesson * lessons;
+    const discountAmount = (totalPrice * discount) / 100;
+    const finalPrice = totalPrice - discountAmount;
 
     return {
       ...pkg,
+      cost: parseFloat(totalPrice.toFixed(2)),
       finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
-      studentSave: parseFloat(discountedAmount.toFixed(2)),
+      studentSave: parseFloat(discountAmount.toFixed(2)),
     };
   };
 
@@ -221,6 +249,7 @@ export const TariffTab: React.FC = () => {
       ],
     }));
   };
+
   // Remove a bulk lesson package, but never remove the last one
   const removeBulkPackage = (index: number) => {
     const updatedPackages = tariffData.bulkPackages.filter(
@@ -322,6 +351,7 @@ export const TariffTab: React.FC = () => {
       </Tooltip>
     </Box>
   );
+
   const recalculateFinalLessonPrice = (
     fee: number,
     discount: number
@@ -335,14 +365,14 @@ export const TariffTab: React.FC = () => {
       <Box sx={{ mb: 2 }}>
         <SectionHeader
           title="Price per lesson (CHF)"
-          tooltip="Set your standard price for one driving lesson."
+          tooltip="Base price per individual lesson (e.g., CHF 90)"
         />
         <Typography
           variant="body2"
           color="text.secondary"
           sx={{ mb: 0, fontSize: "16px" }}
         >
-          A flat fee charged at the start of each Lesson
+          Base price per individual lesson (e.g., CHF 90)
         </Typography>
 
         <TextField
@@ -378,11 +408,11 @@ export const TariffTab: React.FC = () => {
           }}
         />
         <SectionHeader
-          title="% discount on lesson price"
-          tooltip="Offer a temporary discount on your regular price."
+          title="Discount (%)"
+          tooltip="Optional discount applied to the base price (e.g., 10%)"
         />
         <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: "16px" }}>
-          Discount can be added for individual lessons.
+          Optional discount applied to the base price (e.g., 10%)
         </Typography>
         {/* Slider for discount */}
         <Box sx={{ mb: 2 }}>
@@ -415,15 +445,16 @@ export const TariffTab: React.FC = () => {
           />
         </Box>
         <SectionHeader
-          title="Final Price per lesson (CHF)"
-          tooltip="Final price for one driving lesson After Discount."
+          title="Final price per lesson (CHF)"
+          tooltip="Automatically calculated: base price - discount (e.g., CHF 90 → CHF 81)."
         />
         <Typography
           variant="body2"
           color="text.secondary"
           sx={{ mb: 0, fontSize: "16px" }}
         >
-          A flat Final Fee charged at the start of each Lesson
+          Automatically calculated: base price - discount (e.g., CHF 90 → CHF
+          81)
         </Typography>
         <TextField
           fullWidth
@@ -431,6 +462,7 @@ export const TariffTab: React.FC = () => {
           type="number"
           id="FinalPricePerLesson"
           placeholder="0"
+          disabled={true} // ✅ DISABLED - Auto-calculated
           value={
             tariffData.FinalPricePerLesson === 0
               ? ""
@@ -452,6 +484,7 @@ export const TariffTab: React.FC = () => {
             "& .MuiOutlinedInput-root": {
               padding: 1.1,
               borderRadius: 1.6,
+              backgroundColor: "#f5f5f5", // Visual indication it's disabled
             },
           }}
         />
@@ -502,8 +535,8 @@ export const TariffTab: React.FC = () => {
                     <Grid item xs={12}>
                       <LabelWithTooltip
                         htmlFor={`title-${index}`}
-                        label="Package Title"
-                        tooltip="Enter the title of Your Package."
+                        label="Package title"
+                        tooltip="TTitle of the package (e.g., “10 Lesson Pack”)"
                       />
                       <FormControl fullWidth>
                         <TextField
@@ -523,25 +556,27 @@ export const TariffTab: React.FC = () => {
                             },
                           }}
                           placeholder="Package Title"
-                        ></TextField>
+                        />
                       </FormControl>
                     </Grid>
+
                     {/* Number of lessons */}
                     <Grid item xs={12}>
                       <LabelWithTooltip
                         htmlFor={`lessons-${index}`}
-                        label="Number of lessons in package"
-                        tooltip="Choose how many lessons are included in this package."
+                        label="Number of lessons"
+                        tooltip="How many lessons the package includes (e.g., 10 lessons)"
                       />
                       <FormControl fullWidth>
                         <TextField
+                          type="number"
                           value={pkg.lessons == 0 ? "" : pkg.lessons}
                           id={`lessons-${index}`}
                           onChange={(e) =>
                             handleBulkPackageChange(
                               index,
                               "lessons",
-                              Number(e.target.value)
+                              Number(e.target.value) || 0
                             )
                           }
                           sx={{
@@ -551,14 +586,16 @@ export const TariffTab: React.FC = () => {
                             },
                           }}
                           placeholder="Number of lessons"
-                        ></TextField>
+                        />
                       </FormControl>
                     </Grid>
+
+                    {/* Total price of package - DISABLED */}
                     <Grid item xs={12}>
                       <LabelWithTooltip
                         htmlFor={`cost-${index}`}
-                        label="Package Price"
-                        tooltip="Price applied to this package"
+                        label="Total price of package"
+                        tooltip="Auto-calculated: price per lesson × number of lessons  (e.g., CHF 750)"
                       />
                       <TextField
                         fullWidth
@@ -566,19 +603,12 @@ export const TariffTab: React.FC = () => {
                         placeholder="Package Price"
                         id={`cost-${index}`}
                         value={pkg.cost === 0 ? "" : pkg.cost}
-                        onChange={(e) =>
-                          handleBulkPackageChange(
-                            index,
-                            "cost",
-                            e.target.value === ""
-                              ? null
-                              : Number(e.target.value)
-                          )
-                        }
+                        disabled={true} // ✅ DISABLED - Auto-calculated
                         sx={{
                           "& .MuiOutlinedInput-root": {
                             padding: 1.1,
                             borderRadius: 1.6,
+                            backgroundColor: "#f5f5f5", // Visual indication it's disabled
                           },
                         }}
                         InputProps={{
@@ -590,89 +620,18 @@ export const TariffTab: React.FC = () => {
                         }}
                       />
                     </Grid>
-                    <Grid item xs={12}>
-                      <LabelWithTooltip
-                        htmlFor={`finalPrice-${index}`}
-                        label="Final Package Price"
-                        tooltip="Final Price of Your Package."
-                      />
-                      <FormControl fullWidth>
-                        <TextField
-                          value={
-                            pkg.finalPackagePrice === 0
-                              ? ""
-                              : pkg.finalPackagePrice
-                          }
-                          id={`title-${index}`}
-                          onChange={(e) =>
-                            handleBulkPackageChange(
-                              index,
-                              "finalPackagePrice",
-                              Number(e.target.value)
-                            )
-                          }
-                          sx={{
-                            "& .MuiOutlinedInput-root": {
-                              padding: 1.1,
-                              borderRadius: 1.6,
-                            },
-                          }}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <Typography>CHF</Typography>
-                              </InputAdornment>
-                            ),
-                          }}
-                          placeholder="final Package Price"
-                        ></TextField>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <LabelWithTooltip
-                        htmlFor={`studentSave-${index}`}
-                        label="student Save Display"
-                        tooltip="Student Save Display."
-                      />
-                      <FormControl fullWidth>
-                        <TextField
-                          value={pkg.studentSave === 0 ? "" : pkg.studentSave}
-                          id={`title-${index}`}
-                          onChange={(e) =>
-                            handleBulkPackageChange(
-                              index,
-                              "studentSave",
-                              Number(e.target.value)
-                            )
-                          }
-                          sx={{
-                            "& .MuiOutlinedInput-root": {
-                              padding: 1.1,
-                              borderRadius: 1.6,
-                            },
-                          }}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <Typography>CHF</Typography>
-                              </InputAdornment>
-                            ),
-                          }}
-                          placeholder="student Save Display"
-                        ></TextField>
-                      </FormControl>
-                    </Grid>
 
-                    <Box sx={{ mb: 2, px: 3, py: 3, width: "100%" }}>
+                    {/* Package Discount Slider */}
+                    <Grid item xs={12} sx={{ mt: 1 }}>
                       <SectionHeader
-                        title="% discount on Packages price"
-                        tooltip="Offer a temporary discount on your regular Packages price."
+                        title="Discount (%)"
+                        tooltip="Discount applied to the package total (e.g., 10%)"
                       />
                       <Typography
                         color="text.secondary"
-                        sx={{ mb: 1.5, fontSize: "16px" }}
+                        sx={{ mb: 1, fontSize: "16px" }}
                       >
-                        Discount For All Packages.
+                        Discount For This Package.
                       </Typography>
                       <Box sx={{ mb: 1 }}>
                         <Slider
@@ -707,11 +666,81 @@ export const TariffTab: React.FC = () => {
                           }}
                         />
                       </Box>
+                    </Grid>
+
+                    {/* Final package price - DISABLED */}
+                    <Grid item xs={12}>
+                      <LabelWithTooltip
+                        htmlFor={`finalPrice-${index}`}
+                        label="Final package price"
+                        tooltip="Auto-calculated total after discount (e.g., CHF 750 - 10% = CHF 675)"
+                      />
+                      <FormControl fullWidth>
+                        <TextField
+                          value={
+                            pkg.finalPackagePrice === 0
+                              ? ""
+                              : pkg.finalPackagePrice
+                          }
+                          id={`finalPrice-${index}`}
+                          disabled={true} // ✅ DISABLED - Auto-calculated
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              padding: 1.1,
+                              borderRadius: 1.6,
+                              backgroundColor: "#f5f5f5", // Visual indication it's disabled
+                            },
+                          }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Typography>CHF</Typography>
+                              </InputAdornment>
+                            ),
+                          }}
+                          placeholder="Final Package Price"
+                        />
+                      </FormControl>
+                    </Grid>
+
+                    {/* Student Save - DISABLED */}
+                    <Grid item xs={12}>
+                      <LabelWithTooltip
+                        htmlFor={`studentSave-${index}`}
+                        label="Student Save Display"
+                        tooltip="Difference between normal price and final package price (shown in green)"
+                      />
+                      <FormControl fullWidth>
+                        <TextField
+                          value={pkg.studentSave === 0 ? "" : pkg.studentSave}
+                          id={`studentSave-${index}`}
+                          disabled={true} // ✅ DISABLED - Auto-calculated
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              padding: 1.1,
+                              borderRadius: 1.6,
+                              backgroundColor: "#f5f5f5", // Visual indication it's disabled
+                            },
+                          }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Typography>CHF</Typography>
+                              </InputAdornment>
+                            ),
+                          }}
+                          placeholder="Student Save Display"
+                        />
+                      </FormControl>
+                    </Grid>
+
+                    {/* Package End Date */}
+                    <Box sx={{ mb: 2, px: 2, py: 3, width: "100%" }}>
                       <Grid item xs={12} sx={{ mb: 1 }}>
                         <LabelWithTooltip
                           htmlFor={`availability`}
-                          label="Package availability period"
-                          tooltip="Set the duration when this package is available for purchase."
+                          label="Expiration date"
+                          tooltip="Date until when the offer is valid"
                         />
                         <LocalizationProvider dateAdapter={AdapterDateFns}>
                           <Grid container spacing={3} sx={{ pt: 0.5 }}>

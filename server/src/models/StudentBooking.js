@@ -15,6 +15,11 @@ const slotSchema = new Schema(
       type: String,
       required: true,
     },
+    status: {
+      type: String,
+      enum: ["available", "booked", "cancelled"],
+      default: "available",
+    },
   },
   { _id: false }
 );

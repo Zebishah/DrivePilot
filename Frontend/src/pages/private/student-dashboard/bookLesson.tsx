@@ -22,11 +22,14 @@ import { GET_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking"
 import { BookingList } from "../../../components/BookingList";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
+import { Slot } from "../../../types/Bookings";
 
 interface AvailabilitySlot {
   date: string;
   startTime: string;
   endTime: string;
+  booked: boolean;
+  status: string; // Assuming status is a string like "available", "booked",
 }
 
 // interface InstructorData {
@@ -97,10 +100,10 @@ const BookLesson: React.FC = () => {
     });
   };
 
-  const handleBookingClick = (booking: Booking) => {
+  const handleBookingClick = (booking: Booking, id: string, slot: Slot) => {
     navigate("/student-dashboard/booking-details", {
       state: {
-        selectedAvailability: booking.slots,
+        selectedAvailability: slot ? [slot] : booking.slots,
         instructorData: {
           id: booking.instructorId,
           name: `${booking.instructorId.firstName} ${booking.instructorId.lastName}`,
@@ -114,7 +117,9 @@ const BookLesson: React.FC = () => {
         },
         isCurrentBooking: false,
         bookingId: booking._id,
+        slotId: id,
         status: booking.status,
+        slot: slot,
       },
     });
   };
@@ -262,6 +267,52 @@ const BookLesson: React.FC = () => {
   return (
     <Box sx={{ px: 3, py: 1, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <BackButton variant="outline" label="Back" />
+      {/* Payment Methods Card - Only show if we have selectedAvailability */}
+      {selectedAvailability && selectedAvailability.length > 0 && (
+        <Card>
+          <Box
+            sx={{
+              mb: 2,
+              pb: 1.6,
+              px: 2,
+              pt: 1.3,
+              width: "100%",
+              borderBottom: 1,
+              borderBottomColor: "gray",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Payment Methods
+            </Typography>
+          </Box>
+          <CardContent>
+            <Card sx={{ display: "flex", alignItems: "center", p: 2, mb: 2 }}>
+              <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
+              <CardContent sx={{ flex: 1 }}>
+                <Typography variant="body1">Debit Card</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  3566 **** **** 0505
+                </Typography>
+              </CardContent>
+            </Card>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button
+                variant="outlined"
+                sx={{
+                  borderRadius: 20,
+                  textTransform: "none",
+                  borderColor: "#1976d2",
+                  color: "#1976d2",
+                }}
+                endIcon={<ChatIcon />}
+                onClick={handleConfirmPay}
+              >
+                Confirm Pay
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
       {/* Current Booking Details Card - Only show if we have selectedAvailability */}
       {selectedAvailability && selectedAvailability.length > 0 && (
         <Card sx={{ mb: 3, mt: 2 }}>
@@ -388,53 +439,6 @@ const BookLesson: React.FC = () => {
         showNewBookingButton={!selectedAvailability}
         onNewBooking={() => navigate("/student-dashboard/search")}
       />
-
-      {/* Payment Methods Card - Only show if we have selectedAvailability */}
-      {selectedAvailability && selectedAvailability.length > 0 && (
-        <Card>
-          <Box
-            sx={{
-              mb: 2,
-              pb: 1.6,
-              px: 2,
-              pt: 1.3,
-              width: "100%",
-              borderBottom: 1,
-              borderBottomColor: "gray",
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              Payment Methods
-            </Typography>
-          </Box>
-          <CardContent>
-            <Card sx={{ display: "flex", alignItems: "center", p: 2, mb: 2 }}>
-              <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
-              <CardContent sx={{ flex: 1 }}>
-                <Typography variant="body1">Debit Card</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  3566 **** **** 0505
-                </Typography>
-              </CardContent>
-            </Card>
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button
-                variant="outlined"
-                sx={{
-                  borderRadius: 20,
-                  textTransform: "none",
-                  borderColor: "#1976d2",
-                  color: "#1976d2",
-                }}
-                endIcon={<ChatIcon />}
-                onClick={handleConfirmPay}
-              >
-                Confirm Pay
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
     </Box>
   );
 };
