@@ -58,6 +58,7 @@ const instructorTypeDefs = gql`
     location: String
     address: String
     description: String
+    totalReviews: String
     experience: String
     phone: String
     rating: Float

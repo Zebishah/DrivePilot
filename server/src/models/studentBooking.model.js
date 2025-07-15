@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { Review } = require("./Reviews");
 
 const studentBookingSchema = new mongoose.Schema(
   {
@@ -27,6 +28,10 @@ const studentBookingSchema = new mongoose.Schema(
           required: true,
         },
         booked: {
+          type: Boolean,
+          default: false,
+        },
+        review: {
           type: Boolean,
           default: false,
         },

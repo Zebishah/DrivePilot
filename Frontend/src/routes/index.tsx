@@ -39,6 +39,12 @@ import StudentFeedback from "../pages/private/teacher-dashboard/CompleteBookings
 import FeedbackForm from "../pages/private/teacher-dashboard/FeedBackForm";
 import StudentsProgressDashboard from "../pages/private/teacher-dashboard/MyStudentsTrack";
 import StudentDashboard from "../pages/private/teacher-dashboard/StudentProgress";
+import Dashboard from "../components/StudentComponents/ReviewTab/Dashboard";
+import ReviewForm from "../components/StudentComponents/ReviewTab/ReviewForm";
+import ReviewDisplay from "../components/StudentComponents/ReviewTab/ReviewDisplay";
+import ReviewFormPage from "../components/StudentComponents/ReviewTab/ReviewForm";
+import ReviewDisplayPage from "../components/StudentComponents/ReviewTab/ReviewDisplay";
+import AllBookingSlotsPage from "../components/StudentComponents/ReviewTab/AllBookingSlotPage";
 
 const router = createBrowserRouter([
   {
@@ -97,6 +103,10 @@ const router = createBrowserRouter([
       { path: "search/instructors/:id", element: <OurInstructor /> },
       { path: "booking-details", element: <BookingDetails /> },
       { path: "help-support", element: <FAQPage /> },
+      { path: "reviews", element: <Dashboard /> },
+      { path: "review-form", element: <ReviewForm /> },
+      { path: "review-display", element: <ReviewDisplay /> },
+      { path: "allBookingSlots", element: <AllBookingSlotsPage /> },
     ],
   },
   {

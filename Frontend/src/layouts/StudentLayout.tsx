@@ -60,6 +60,7 @@ const menuItems: MenuItem[] = [
     icon: HelpCircle,
     path: "/student-dashboard/help-support",
   },
+  { text: "reviews", icon: MessageSquare, path: "/student-dashboard/reviews" },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 

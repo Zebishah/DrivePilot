@@ -24,6 +24,7 @@ const studentBookingTypeDefs = gql`
     endTime: String!
     booked: Boolean
     status: status
+    review: Boolean
   }
 
   type PaymentMethod {
@@ -60,6 +61,7 @@ const studentBookingTypeDefs = gql`
     startTime: String!
     endTime: String!
     status: status
+    review: Boolean
   }
 
   input PaymentMethodInput {
@@ -122,6 +124,7 @@ const studentBookingTypeDefs = gql`
     endTime: String!
     booked: Boolean
     status: status
+    review: Boolean
   }
 
   type PaymentInfo {

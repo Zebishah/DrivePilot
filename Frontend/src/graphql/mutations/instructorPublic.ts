@@ -10,6 +10,7 @@ export const GET_NEARBY_INSTRUCTORS = gql`
         lastName
         location
         address
+        totalReviews
         rating
         profileImage
         description

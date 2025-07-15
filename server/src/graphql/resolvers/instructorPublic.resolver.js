@@ -5,6 +5,7 @@ const User = require("../../models/User");
 
 const { calculateDistance } = require("../../utils/geoUtils");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
+const { Review } = require("../../models/Reviews");
 
 const instructorResolver = {
   Query: {
@@ -182,10 +183,34 @@ const instructorResolver = {
           map.get(slot.teacherId.toString()).push(slot);
           return map;
         }, new Map());
+        const reviewsAggregation = await Review.aggregate([
+          {
+            $group: {
+              _id: "$instructorId",
+              totalReviews: { $sum: 1 },
+              averageRating: { $avg: "$reviewRating" },
+            },
+          },
+        ]);
+
+        const reviewsMap = new Map(
+          reviewsAggregation.map((review) => [
+            review._id.toString(),
+            {
+              totalReviews: review.totalReviews,
+              averageRating: Math.round(review.averageRating * 10) / 10,
+            },
+          ])
+        );
 
         const result = {
           instructors: paginatedInstructors.map((instructor) => {
             const instructorId = instructor._id.toString();
+            const reviewData = reviewsMap.get(instructorId) || {
+              totalReviews: 0,
+              averageRating: 0,
+            };
+
             return {
               _id: instructorId,
               firstName: instructor.firstName,
@@ -202,6 +227,7 @@ const instructorResolver = {
               gender: instructor.gender,
               transmissionType: instructor.transmissionType,
               distance: instructor.distance,
+              totalReviews: reviewData.averageRating,
               details: {
                 degree: instructor.experience,
                 car: instructor.carName,

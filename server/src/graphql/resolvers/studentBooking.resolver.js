@@ -220,6 +220,7 @@ const studentBookingResolver = {
           id: new mongoose.Types.ObjectId().toString(), // ✅ Unique ID for slot
           booked: true,
           status: "booked",
+          review: false,
         }));
 
         // 1. Check for overlapping bookings WITH THE SAME INSTRUCTOR

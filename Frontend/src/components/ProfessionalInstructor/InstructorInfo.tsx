@@ -504,21 +504,19 @@ const InstructorsInfo: React.FC = () => {
                       </p>
                     </Tooltip>
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {instructor.rating ? (
+                      {instructor.totalReviews ? (
                         // Show filled stars when rating exists
                         <>
-                          {[...Array(Math.floor(instructor.rating))].map(
-                            (_, i) => (
-                              <IoStarSharp
-                                key={i}
-                                style={{
-                                  color: "#FFDB20",
-                                  marginRight: "0.5rem",
-                                }}
-                              />
-                            )
-                          )}
-                          <p className="mr-0.5">{instructor.rating}</p>
+                          {[1].map((_, i) => (
+                            <IoStarSharp
+                              key={i}
+                              style={{
+                                color: "#FFDB20",
+                                marginRight: "0.5rem",
+                              }}
+                            />
+                          ))}
+                          <p className="mr-0.5">({instructor.totalReviews})</p>
                         </>
                       ) : (
                         // Show empty star with "No reviews yet" when no rating

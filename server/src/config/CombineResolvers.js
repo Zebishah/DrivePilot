@@ -10,6 +10,8 @@ const studentBookingResolver = require("../graphql/resolvers/studentBooking.reso
 const contactDetailResolvers = require("../graphql/resolvers/ContactDetail.resolver");
 const FaqsResolver = require("../graphql/resolvers/Faqs.resolver");
 const feedbackResolvers = require("../graphql/resolvers/LessonFeedBack.resolver");
+const reviewResolver = require("../graphql/resolvers/Review.resolver");
+const studentDashboardResolver = require("../graphql/resolvers/studentDashboard.resolver");
 const resolvers = mergeResolvers([
   userResolvers,
   SignupLinkResolver,
@@ -21,6 +23,8 @@ const resolvers = mergeResolvers([
   contactDetailResolvers,
   FaqsResolver,
   feedbackResolvers,
+  reviewResolver,
+  studentDashboardResolver,
 ]);
 
 module.exports = resolvers;
