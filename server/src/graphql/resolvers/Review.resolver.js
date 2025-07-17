@@ -285,21 +285,40 @@ const reviewResolver = {
     deleteReview: async (_, { reviewId }, { user }) => {
       validateUser(user);
 
+      // Fetch the review
       const review = await Review.findById(reviewId);
       if (!review) {
         throw new Error("Review not found");
       }
 
-      // Check if the user is the owner of the review
+      // Check if the user owns the review
       if (review.studentId.toString() !== user.id) {
         throw new Error("Unauthorized: You can only delete your own reviews");
       }
 
+      // Step 1: Update the corresponding slot in StudentBooking
+      const { lessonId, slotId } = review;
+
+      const booking = await StudentBooking.findById(lessonId);
+      if (!booking) {
+        throw new Error("Associated booking not found");
+      }
+
+      const slotIndex = booking.slots.findIndex((s) => s.id === slotId);
+      if (slotIndex === -1) {
+        throw new Error("Associated slot not found in booking");
+      }
+
+      // Reset review field on that slot
+      booking.slots[slotIndex].review = false;
+      await booking.save();
+
+      // Step 2: Delete the review
       await Review.findByIdAndDelete(reviewId);
 
       return {
         success: true,
-        message: "Review deleted successfully",
+        message: "Review deleted successfully and slot updated",
       };
     },
   },

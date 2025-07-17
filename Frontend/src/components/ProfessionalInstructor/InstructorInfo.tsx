@@ -504,7 +504,7 @@ const InstructorsInfo: React.FC = () => {
                       </p>
                     </Tooltip>
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {instructor.totalReviews ? (
+                      {instructor.totalReviews > 0 ? (
                         // Show filled stars when rating exists
                         <>
                           {[1].map((_, i) => (

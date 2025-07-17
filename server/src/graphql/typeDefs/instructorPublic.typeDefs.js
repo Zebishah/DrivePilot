@@ -58,6 +58,7 @@ const instructorTypeDefs = gql`
     location: String
     address: String
     description: String
+    averageRating: Float
     totalReviews: String
     experience: String
     phone: String
@@ -112,6 +113,7 @@ const instructorTypeDefs = gql`
 
   type InstructorPublicProfile {
     instructor: Instructor!
+    averageRating: Float
     tariff: InstructorTariff
     availability: [InstructorAvailability!]
   }

@@ -134,8 +134,8 @@ export default function StudentOverview() {
           </>
         ) : (
           <>
-            <div className="bg-red-200 rounded-lg p-6 h-32 flex flex-col justify-center items-center">
-              <div className="flex items-center justify-center w-20 h-20 bg-white rounded-full mb-2 p-1">
+            <div className="bg-red-200 rounded-lg p-6  flex flex-col justify-center items-center">
+              <div className="flex items-center justify-center bg-white rounded-full mb-2 p-4">
                 <BookOpen className="w-6 h-6 text-red-500" />
               </div>
               <h3 className="text-sm font-medium text-gray-700 mb-1">
@@ -146,8 +146,8 @@ export default function StudentOverview() {
               </p>
             </div>
 
-            <div className="bg-purple-200 rounded-lg p-6 h-32 flex flex-col justify-center items-center">
-              <div className="flex items-center justify-center w-20 h-20 bg-white rounded-full mb-2 p-1">
+            <div className="bg-purple-200 rounded-lg px-6   flex flex-col justify-center items-center">
+              <div className="flex items-center justify-center p-4 bg-white rounded-full mb-2">
                 <Calendar className="w-6 h-6 text-purple-500" />
               </div>
               <h3 className="text-sm font-medium text-gray-700 mb-1">
@@ -158,8 +158,8 @@ export default function StudentOverview() {
               </p>
             </div>
 
-            <div className="bg-yellow-200 rounded-lg p-6 h-32 flex flex-col justify-center items-center">
-              <div className="flex items-center justify-center w-20 h-20 bg-white rounded-full mb-2 p-1">
+            <div className="bg-yellow-200 rounded-lg p-6  flex flex-col justify-center items-center">
+              <div className="flex items-center justify-center p-4 bg-white rounded-full mb-2">
                 <User className="w-6 h-6 text-yellow-600" />
               </div>
               <h3 className="text-sm font-medium text-gray-700 mb-1">
@@ -170,7 +170,7 @@ export default function StudentOverview() {
               </p>
             </div>
 
-            <div className="bg-cyan-200 rounded-lg p-6 h-32 flex justify-between items-center">
+            <div className="bg-cyan-200 rounded-lg p-6  flex flex-col justify-between items-center">
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-1">
                   Remaining Hours
@@ -360,7 +360,7 @@ export default function StudentOverview() {
                         <Eye className="w-4 h-4" />
                       </button>
                     </div>
-                    <p className="text-sm text-gray-600 ml-11">
+                    <p className="text-xs text-gray-600 ml-11 -mt-1">
                       {new Date(Number(feedback.createdAt)).toLocaleDateString(
                         "en-US",
                         {

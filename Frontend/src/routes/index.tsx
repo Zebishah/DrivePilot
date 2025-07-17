@@ -45,6 +45,8 @@ import ReviewDisplay from "../components/StudentComponents/ReviewTab/ReviewDispl
 import ReviewFormPage from "../components/StudentComponents/ReviewTab/ReviewForm";
 import ReviewDisplayPage from "../components/StudentComponents/ReviewTab/ReviewDisplay";
 import AllBookingSlotsPage from "../components/StudentComponents/ReviewTab/AllBookingSlotPage";
+import { DocumentDetailsPage } from "../pages/private/admin-dashboard/DocumentsDetailPage";
+import InstructorDocumentsTable from "../components/AdminComponents/InstructorDocumentsTable";
 
 const router = createBrowserRouter([
   {
@@ -134,6 +136,15 @@ const router = createBrowserRouter([
     children: [
       { path: "overview", element: <AdminOverview /> },
       { path: "admin-access", element: <AdminAccess /> },
+      {
+        path: "documentsManagement",
+        element: <InstructorDocumentsTable />,
+      },
+
+      {
+        path: "document-details/:instructorId/:documentType",
+        element: <DocumentDetailsPage />,
+      },
       {
         path: "help-support",
         element: (

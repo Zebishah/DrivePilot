@@ -53,12 +53,14 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         description
         experience
         rating
+
         profileImage
         carName
         transmissionType
         gender
         languagePreference
       }
+      averageRating
       tariff {
         lessonFee
         lessonDiscount

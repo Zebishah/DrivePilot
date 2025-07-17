@@ -42,6 +42,21 @@ const resolvers = {
       }
       return await User.findById(user.id);
     },
+    getInstructorDocuments: async (_, { instructorId }) => {
+      try {
+        const instructor = await Instructor.findById(instructorId);
+        if (!instructor) {
+          throw new UserInputError("Instructor not found");
+        }
+
+        return {
+          _id: instructor._id,
+          documents: instructor.documents || [],
+        };
+      } catch (error) {
+        throw error;
+      }
+    },
     teacherProfile: async (_, __, { user }) => {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
@@ -69,6 +84,49 @@ const resolvers = {
         };
       } catch (error) {
         return null;
+      }
+    },
+    allInstructors: async (_, __, { user }) => {
+      // Optional: Add authentication check if needed
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
+      // Optional: Add role-based authorization (only admins can see all instructors)
+      if (user.role !== "Admin") {
+        throw new AuthenticationError("Not authorized to view all instructors");
+      }
+
+      try {
+        // Fetch all instructors with their documents
+        const instructors = await Instructor.find({})
+          .sort({ createdAt: -1 }) // Sort by newest first
+          .lean(); // Use lean() for better performance if you don't need mongoose document methods
+
+        return instructors.map((instructor) => ({
+          _id: instructor._id,
+          firstName: instructor.firstName,
+          lastName: instructor.lastName,
+          email: instructor.email,
+          phone: instructor.phone,
+          location: instructor.location,
+          address: instructor.address,
+          zipCode: instructor.zipCode,
+          experience: instructor.experience,
+          description: instructor.description,
+          gender: instructor.gender,
+          carName: instructor.carName,
+          transmissionType: instructor.transmissionType,
+          profileImage: instructor.profileImage,
+          documents: instructor.documents || [],
+          createdAt: instructor.createdAt,
+          updatedAt: instructor.updatedAt,
+          dateOfBirth: instructor.dateOfBirth,
+          languagePreference: instructor.languagePreference || [],
+        }));
+      } catch (error) {
+        console.error("Error fetching all instructors:", error);
+        throw new Error("Failed to fetch instructors");
       }
     },
   },
@@ -134,6 +192,233 @@ instead.`);
             errors: error.errors,
           });
         }
+        throw error;
+      }
+    },
+    updateInstructorDocuments: async (_, { input }, { user }) => {
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
+      const { instructorId, documents } = input;
+
+      // Check if user is updating their own documents or is an admin
+      if (user.id !== instructorId && user.role !== "Admin") {
+        throw new ForbiddenError("Not authorized to update these documents");
+      }
+
+      try {
+        const instructor = await Instructor.findById(instructorId);
+        if (!instructor) {
+          throw new UserInputError("Instructor not found");
+        }
+
+        // Validate document types
+        const validDocumentTypes = [
+          "Swiss Driving License (Front)",
+          "Swiss Driving License (Back)",
+          "National ID or Passport",
+          "Federal Driving Instructor Certificate",
+          "Swiss Criminal Record Extract",
+          "Driving Instructor Authorization",
+          "Professional Passenger Transport Authorization",
+          "Refresher Training Certificates",
+          "Other Document (Optional)",
+        ];
+
+        // Check if all document types are valid
+        for (const doc of documents) {
+          if (!validDocumentTypes.includes(doc.documentType)) {
+            throw new UserInputError(
+              `Invalid document type: ${doc.documentType}`
+            );
+          }
+        }
+
+        // Get existing documents
+        const existingDocuments = instructor.documents || [];
+
+        // Document types that allow multiple uploads
+        const multipleUploadAllowed = [
+          "Refresher Training Certificates",
+          "Other Document (Optional)",
+          "Professional Passenger Transport Authorization", // Add this if it allows multiple
+        ];
+
+        // Check if any documents being updated are already accepted
+        for (const newDoc of documents) {
+          const { documentType } = newDoc;
+
+          if (multipleUploadAllowed.includes(documentType)) {
+            // For multiple upload types, check if ALL documents of this type are accepted
+            const documentsOfThisType = existingDocuments.filter(
+              (doc) => doc.documentType === documentType
+            );
+
+            // If there are documents of this type and ALL of them are accepted, don't allow more uploads
+            if (documentsOfThisType.length > 0) {
+              const allAccepted = documentsOfThisType.every(
+                (doc) => doc.status === "accepted"
+              );
+              if (allAccepted) {
+                throw new UserInputError(
+                  `Cannot upload more documents of type ${documentType} as all existing documents are already accepted`
+                );
+              }
+            }
+          } else {
+            // For single upload types, check if there's already an accepted document
+            const acceptedDoc = existingDocuments.find(
+              (doc) =>
+                doc.documentType === documentType && doc.status === "accepted"
+            );
+
+            if (acceptedDoc) {
+              throw new UserInputError(
+                `Cannot update document ${documentType} as it is already accepted`
+              );
+            }
+          }
+        }
+
+        // Special handling for Swiss Driving License
+        // Check if both front and back are accepted
+        const swissLicenseTypes = [
+          "Swiss Driving License (Front)",
+          "Swiss Driving License (Back)",
+        ];
+        for (const newDoc of documents) {
+          if (swissLicenseTypes.includes(newDoc.documentType)) {
+            const acceptedDoc = existingDocuments.find(
+              (doc) =>
+                doc.documentType === newDoc.documentType &&
+                doc.status === "accepted"
+            );
+
+            if (acceptedDoc) {
+              throw new UserInputError(
+                `Cannot update ${newDoc.documentType} as it is already accepted`
+              );
+            }
+          }
+        }
+
+        // Process document updates
+        const updatedDocuments = [...existingDocuments];
+
+        for (const newDoc of documents) {
+          const { documentType, documentUrl } = newDoc;
+
+          if (multipleUploadAllowed.includes(documentType)) {
+            // For multiple upload types, add new documents
+            updatedDocuments.push({
+              documentType,
+              documentUrl,
+              status: "pending",
+            });
+          } else {
+            // For single upload types, replace existing documents
+            // Remove existing documents of the same type
+            const filteredDocuments = updatedDocuments.filter(
+              (doc) => doc.documentType !== documentType
+            );
+
+            // Add the new document
+            filteredDocuments.push({
+              documentType,
+              documentUrl,
+              status: "pending",
+            });
+
+            // Update the documents array
+            updatedDocuments.length = 0;
+            updatedDocuments.push(...filteredDocuments);
+          }
+        }
+
+        // Update the instructor with new documents
+        const updatedInstructor = await Instructor.findByIdAndUpdate(
+          instructorId,
+          {
+            documents: updatedDocuments,
+          },
+          { new: true }
+        );
+
+        return {
+          _id: updatedInstructor._id,
+          documents: updatedInstructor.documents,
+        };
+      } catch (error) {
+        throw error;
+      }
+    },
+    updateDocumentStatus: async (_, { documentId, status }, { user }) => {
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
+      // Only admins can update document status
+      if (user.role !== "Admin") {
+        throw new ForbiddenError("Not authorized to update document status");
+      }
+
+      // Validate status
+      const validStatuses = ["pending", "accepted", "rejected"];
+      if (!validStatuses.includes(status)) {
+        throw new UserInputError(`Invalid status: ${status}`);
+      }
+
+      try {
+        // Find the instructor with the document
+        const instructor = await Instructor.findOne({
+          "documents._id": documentId,
+        });
+
+        if (!instructor) {
+          throw new UserInputError("Document not found");
+        }
+
+        // Find the document and update its status
+        const document = instructor.documents.find(
+          (doc) => doc._id.toString() === documentId
+        );
+
+        if (!document) {
+          throw new UserInputError("Document not found");
+        }
+
+        // Check if this is a Swiss Driving License document
+        const isSwissLicenseFront =
+          document.documentType === "Swiss Driving License (Front)";
+        const isSwissLicenseBack =
+          document.documentType === "Swiss Driving License (Back)";
+
+        if (isSwissLicenseFront || isSwissLicenseBack) {
+          // Update both front and back Swiss Driving License documents
+          instructor.documents.forEach((doc) => {
+            if (
+              doc.documentType === "Swiss Driving License (Front)" ||
+              doc.documentType === "Swiss Driving License (Back)"
+            ) {
+              doc.status = status;
+            }
+          });
+        } else {
+          // Update only the specific document
+          document.status = status;
+        }
+
+        // Save the instructor
+        await instructor.save();
+
+        return {
+          _id: document._id,
+          documentType: document.documentType,
+          documentUrl: document.documentUrl,
+          status: document.status,
+        };
+      } catch (error) {
         throw error;
       }
     },

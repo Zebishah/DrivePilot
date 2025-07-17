@@ -43,7 +43,12 @@ const typeDefs = gql`
     type: String!
     coordinates: [Float!]!
   }
-
+  type Document {
+    _id: ID
+    documentType: String!
+    documentUrl: String!
+    status: String
+  }
   interface User {
     id: ID!
     firstName: String!
@@ -130,10 +135,7 @@ const typeDefs = gql`
     updatedAt: String!
     adminLevel: String! # Either "super" or "regular"
   }
-  type Document {
-    documentType: String!
-    documentUrl: String!
-  }
+
   type InstructorProfile {
     id: ID!
     firstName: String!
@@ -222,6 +224,7 @@ const typeDefs = gql`
   }
 
   input DocumentInput {
+    status: String!
     documentType: String!
     documentUrl: String!
   }
@@ -266,12 +269,38 @@ const typeDefs = gql`
     dateOfBirth: String
     languagePreference: [String] # Changed from String to [String]
   }
+  input UpdateInstructorDocumentsInput {
+    instructorId: ID!
+    documents: [DocumentInput!]!
+  }
 
+  input DocumentInput {
+    documentType: String!
+    documentUrl: String!
+  }
+
+  type InstructorDocumentsResponse {
+    _id: ID!
+    documents: [InstructorDocument!]!
+  }
+
+  type InstructorDocument {
+    _id: ID!
+    documentType: String!
+    documentUrl: String!
+    status: String!
+  }
+
+  type Query {
+    allInstructors: [Instructor!]!
+    getInstructorDocuments(instructorId: ID!): InstructorDocumentsResponse!
+  }
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
     verifyUser(input: userVerifyInput!): verifiedAuthPayload!
     resendOtp(input: resendOtpInput!): resendOtpPayload!
     selectRole(role: UserRole!): AuthPayload!
+
     setupStudentProfile(input: StudentProfileInput!): Student!
     setupInstructorProfile(input: InstructorProfileInput!): Instructor!
     updateTeacherProfile(
@@ -285,7 +314,11 @@ const typeDefs = gql`
       fileName: String!
       fileType: String!
     ): FileUploadResponse!
+    updateInstructorDocuments(
+      input: UpdateInstructorDocumentsInput!
+    ): InstructorDocumentsResponse!
 
+    updateDocumentStatus(documentId: ID!, status: String!): InstructorDocument!
     forgotPassword(email: String!): PasswordResetResponse!
     resetPassword(token: String!, newPassword: String!): PasswordResetResponse!
     changePassword(

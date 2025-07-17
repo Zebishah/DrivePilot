@@ -29,7 +29,7 @@ export default function ProfileSetting() {
   const location = useLocation();
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const { loading, error, data } = useQuery(GET_TEACHER_PROFILE);
+  const { loading, error, data, refetch } = useQuery(GET_TEACHER_PROFILE);
 
   if (loading)
     return (
@@ -56,8 +56,8 @@ export default function ProfileSetting() {
   interface Document {
     documentType: string;
     documentUrl: string;
+    status: "pending" | "accepted" | "rejected";
   }
-
   interface ProfileData {
     fullName: string;
     fatherName: string;
@@ -93,13 +93,25 @@ export default function ProfileSetting() {
     introduction: teacherData.description,
     documents:
       teacherData.documents.map(
-        (doc: { documentType: string; documentUrl: string }) => ({
+        (doc: {
+          documentType: string;
+          documentUrl: string;
+          status: string;
+        }) => ({
           documentType: doc.documentType,
           documentUrl: doc.documentUrl,
+          status: doc.status,
         })
       ) || [], // Ensure documents is an array even if empty
   };
-
+  // Handle documents update callback
+  const handleDocumentsUpdate = async () => {
+    try {
+      await refetch();
+    } catch (error) {
+      console.error("Failed to refetch profile data:", error);
+    }
+  };
   const handleTabChange = (
     _event: React.SyntheticEvent,
     newValue: TabValue
@@ -435,7 +447,11 @@ export default function ProfileSetting() {
 
       {/* Tab Content */}
       {tabValue === "documents" && (
-        <DocumentsTab documents={profileData.documents} />
+        <DocumentsTab
+          documents={profileData.documents}
+          instructorId={teacherData.id}
+          onDocumentsUpdate={handleDocumentsUpdate}
+        />
       )}
       {tabValue === "tariff" && <TariffTab />}
       {tabValue === "availability" && <AvailabilityTab />}

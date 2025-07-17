@@ -326,13 +326,33 @@ const instructorResolver = {
             hourlySlots: resultSlots,
           };
         });
-
+        const reviewStats = await Review.aggregate([
+          {
+            $match: {
+              instructorId: new mongoose.Types.ObjectId(id), // Convert id to ObjectId
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalReviews: { $sum: 1 },
+              averageRating: { $avg: "$reviewRating" },
+            },
+          },
+        ]);
+        console.log("review Stats", reviewStats[0]);
+        const { totalReviews, averageRating } = reviewStats[0] || {
+          totalReviews: 0,
+          averageRating: 0,
+        };
+        console.log("average rating ", Math.round(averageRating * 10) / 10);
         return {
           instructor: {
             ...instructor,
             _id: instructor._id.toString(),
             coordinates: instructor.coordinates || null,
           },
+          averageRating: Math.round(averageRating * 10) / 10,
           tariff,
           availability: formattedAvailability,
         };

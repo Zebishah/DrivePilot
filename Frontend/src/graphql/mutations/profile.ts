@@ -18,6 +18,7 @@ export const GET_TEACHER_PROFILE = gql`
       documents {
         documentType
         documentUrl
+        status
       }
 
       dateOfBirth
@@ -44,6 +45,7 @@ export const UPDATE_TEACHER_PROFILE = gql`
       documents {
         documentType
         documentUrl
+        status
       }
 
       dateOfBirth
@@ -81,6 +83,7 @@ export const UPDATE_TEACHER_DOCUMENTS = gql`
       documents {
         documentType
         documentUrl
+        status
       }
     }
   }

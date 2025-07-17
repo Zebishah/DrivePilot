@@ -213,6 +213,7 @@ const InstructorProfileSetup: React.FC = () => {
             return {
               documentType: file.documentType,
               documentUrl: uploadResult.fileUrl,
+              status: "pending",
             };
           })
         );

@@ -72,7 +72,7 @@ const ProfileSummary: React.FC = () => {
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability =
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
-
+  console.log("instructor", instructor);
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
       toast.error("Please select an availability slot before booking.");
@@ -242,16 +242,18 @@ const ProfileSummary: React.FC = () => {
                 }}
               >
                 <Box sx={{ display: "flex", alignItems: "center" }}>
-                  {instructor.rating ? (
-                    // Show filled stars when rating exists
+                  {data?.getInstructorPublicProfile?.averageRating > 0 ? (
+                    // Show filled stars when averageRating exists
                     <>
-                      {[...Array(Math.floor(instructor.rating))].map((_, i) => (
+                      {[1].map((_, i) => (
                         <IoStarSharp
                           key={i}
                           style={{ color: "#FFDB20", marginRight: "0.5rem" }}
                         />
                       ))}
-                      <p className="mr-0.5">{instructor.rating}</p>
+                      <p className="mr-0.5">
+                        {data?.getInstructorPublicProfile?.averageRating}
+                      </p>
                     </>
                   ) : (
                     // Show empty star with "No reviews yet" when no rating

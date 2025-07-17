@@ -44,6 +44,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: UserRoundCog,
       path: "/admin-dashboard/admin-access",
     },
+    {
+      text: "Documents",
+      icon: LayoutGrid,
+      path: "/admin-dashboard/documentsManagement",
+    },
     ...(user?.adminLevel === "super"
       ? [
           {

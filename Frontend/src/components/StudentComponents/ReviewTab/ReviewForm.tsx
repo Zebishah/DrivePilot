@@ -148,7 +148,7 @@ const ReviewFormPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <BackButton variant="outline" showIcon={true} />
-      <div className=" mx-auto">
+      <div className=" mx-auto mt-3">
         <div className="bg-white rounded-lg shadow-xl">
           {/* Header */}
           <div className="p-6 border-b border-gray-200">

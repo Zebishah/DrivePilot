@@ -110,7 +110,7 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
 
         <button
           onClick={onViewAllBookings}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-[#4DD0E1] bg-blue-50 rounded-md hover:bg-[#81d5ff5e] transition-colors"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
         >
           View All
           <ExternalLink size={16} className="ml-2" />

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Star, Edit, Trash2, ArrowLeft, CheckCircle } from "lucide-react";
+import { Star, Edit, Trash2, ArrowLeft, CheckCircle, X } from "lucide-react";
 import { StudentBookingSlot } from "../../../types/ReviewTypes";
 import {
   useDeleteReview,
@@ -19,6 +19,7 @@ const ReviewDisplayPage: React.FC = () => {
   const [successVisible, setSuccessVisible] = useState(
     showSuccessMessage || false
   );
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const { deleteReview, loading: deleteLoading } = useDeleteReview();
   const {
@@ -51,26 +52,34 @@ const ReviewDisplayPage: React.FC = () => {
     });
   };
 
-  const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this review?")) {
-      try {
-        if (existingReview) {
-          await deleteReview({
-            variables: { reviewId: existingReview._id },
-          });
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
 
-          // Navigate back to dashboard after successful deletion
-          navigate("/student-dashboard/reviews", {
-            state: {
-              message: "Review deleted successfully!",
-            },
-          });
-        }
-      } catch (error) {
-        console.error("Error deleting review:", error);
-        alert("Failed to delete review. Please try again.");
+  const handleDeleteConfirm = async () => {
+    try {
+      if (existingReview) {
+        await deleteReview({
+          variables: { reviewId: existingReview._id },
+        });
+
+        // Navigate back to dashboard after successful deletion
+        navigate("/student-dashboard/reviews", {
+          state: {
+            message: "Review deleted successfully!",
+          },
+        });
       }
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert("Failed to delete review. Please try again.");
+    } finally {
+      setShowDeleteModal(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
   };
 
   const handleBack = () => {
@@ -134,6 +143,7 @@ const ReviewDisplayPage: React.FC = () => {
       </div>
     );
   }
+
   const formatDate = (date: string | number) => {
     const parsedDate = new Date(Number(date));
     return parsedDate.toLocaleDateString("en-US", {
@@ -144,11 +154,13 @@ const ReviewDisplayPage: React.FC = () => {
       minute: "2-digit",
     });
   };
+
   console.log("slot", slot);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <BackButton variant="outline" showIcon={true} />
-      <div className=" mx-auto">
+      <div className=" mx-auto mt-4">
         {/* Success Message */}
         {successVisible && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
@@ -175,7 +187,7 @@ const ReviewDisplayPage: React.FC = () => {
                   <Edit size={20} />
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={handleDeleteClick}
                   disabled={deleteLoading}
                   className="text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
                   title="Delete Review"
@@ -287,7 +299,7 @@ const ReviewDisplayPage: React.FC = () => {
                   Edit Review
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={handleDeleteClick}
                   disabled={deleteLoading}
                   className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
                 >
@@ -298,6 +310,46 @@ const ReviewDisplayPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Delete Review
+              </h3>
+              <button
+                onClick={handleDeleteCancel}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this review? This action cannot be
+              undone.
+            </p>
+
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
+              >
+                {deleteLoading ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
