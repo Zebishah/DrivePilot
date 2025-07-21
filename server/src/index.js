@@ -1,44 +1,38 @@
 require("dotenv").config();
 const express = require("express");
 const { ApolloServer } = require("apollo-server-express");
+const { makeExecutableSchema } = require("@graphql-tools/schema");
 const passport = require("./config/passport");
 const typeDefs = require("./config/CombineTypeDefs");
 const resolvers = require("./config/CombineResolvers");
 const authMiddleware = require("./middleware/auth");
 const connectDB = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
-const app = express();
 const cors = require("cors");
-// Passport middleware
-app.use(passport.initialize());
+const http = require("http");
+const { WebSocketServer } = require("ws");
+const { useServer } = require("graphql-ws/lib/use/ws");
 
+// Connect to MongoDB
 connectDB();
 
-// Apollo Server setup
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  context: async ({ req }) => {
-    const auth = await authMiddleware(req);
-    return {
-      user: auth.user,
-    };
-  },
-});
+const app = express();
+const httpServer = http.createServer(app);
 
+// CORS setup
 const allowedOrigins = [
   "https://dsp-client.onrender.com",
   "https://dsp-server.onrender.com",
   "http://localhost:5173",
+  "https://studio.apollographql.com",
 ];
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (allowedOrigins.includes(origin) || !origin) {
-      // !origin allows requests without an origin header.
-
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log("Blocked by CORS:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -46,19 +40,43 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
+app.use(passport.initialize());
 app.use(authRoutes);
 
-async function startServer() {
+// Schema setup
+const schema = makeExecutableSchema({ typeDefs, resolvers });
+
+// WebSocket Server for GraphQL Subscriptions
+const wsServer = new WebSocketServer({
+  server: httpServer,
+  path: "/graphql",
+});
+
+// Bind graphql-ws to WebSocket server
+useServer({ schema }, wsServer);
+
+// Apollo Server Setup
+async function startApolloServer() {
+  const server = new ApolloServer({
+    schema,
+    context: async ({ req }) => {
+      const auth = await authMiddleware(req);
+      return {
+        user: auth.user,
+      };
+    },
+  });
+
   await server.start();
-  server.applyMiddleware({ app });
+  server.applyMiddleware({ app, path: "/graphql" });
 
   const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(
       `🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`
     );
+    console.log(`📡 Subscriptions ready at ws://localhost:${PORT}/graphql`);
   });
 }
 
-startServer();
+startApolloServer();
