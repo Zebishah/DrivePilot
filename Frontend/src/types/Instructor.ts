@@ -23,6 +23,7 @@ export interface Instructor {
   documents: InstructorDocument[];
   createdAt: string;
   updatedAt: string;
+  isUserVerified: boolean;
 }
 
 export interface FlattenedDocument extends InstructorDocument {
@@ -32,4 +33,13 @@ export interface FlattenedDocument extends InstructorDocument {
   allSameTypeDocs?: InstructorDocument[];
   frontDocument?: InstructorDocument;
   backDocument?: InstructorDocument;
+}
+export interface FilterOptions {
+  gender?: "Male" | "Female" | "Other" | "";
+  isVerified?: boolean | "" | undefined;
+  experience?: string;
+  dateRange?: {
+    startDate: string;
+    endDate: string;
+  };
 }

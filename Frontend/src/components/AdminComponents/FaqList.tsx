@@ -190,15 +190,12 @@ const FaqList: React.FC<FaqListProps> = ({ adminId }) => {
                 },
               }}
             >
-              /* This part of the code in the `FaqList` component is rendering
-              the question of each FAQ item within an `AccordionSummary`
-              component. Let's break it down: */
-              {/* <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 500, mr: 1 }}>
                   Q.
                 </Typography>
                 <Typography variant="body2">{faq.question}</Typography>
-              </Box> */}
+              </Box>
               <Box sx={{ display: "flex", gap: 1 }}>
                 <IconButton
                   size="small"

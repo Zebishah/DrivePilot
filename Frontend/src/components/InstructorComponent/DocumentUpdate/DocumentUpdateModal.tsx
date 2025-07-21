@@ -1025,10 +1025,10 @@ const InstructorDocumentUpdate: React.FC<InstructorDocumentUpdateProps> = ({
               borderRadius: 3,
               textTransform: "none",
               fontWeight: "bold",
-              background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+              background: "#5CC2D2",
               boxShadow: 4,
               "&:hover": {
-                background: "linear-gradient(45deg, #1976D2 30%, #1976D2 90%)",
+                background: "#4BA1B0",
                 boxShadow: 6,
               },
             }}

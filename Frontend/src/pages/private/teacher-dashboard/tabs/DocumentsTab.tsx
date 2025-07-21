@@ -181,10 +181,10 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
               borderRadius: 2,
               textTransform: "none",
               boxShadow: 3,
-              background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+              background: "#5CC2D2",
               "&:hover": {
                 boxShadow: 6,
-                background: "linear-gradient(45deg, #1976D2 30%, #1976D2 90%)",
+                background: "#4BA1B0",
               },
             }}
           >
@@ -214,13 +214,29 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                       ? "#4caf50"
                       : doc.status === "rejected"
                         ? "#f44336"
-                        : "#ff9800"
+                        : "#FFD700"
                   }`,
                 }}
                 onClick={() => handleOpen(doc)}
                 onMouseEnter={() => setHoveredDoc(index)}
                 onMouseLeave={() => setHoveredDoc(null)}
               >
+                {/* Overlay for pending and rejected documents */}
+                {(doc.status === "pending" || doc.status === "rejected") && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: "rgba(0, 0, 0, 0.4)",
+                      zIndex: 1,
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
+
                 {doc.status === "rejected" && (
                   <Box
                     sx={{
@@ -229,14 +245,15 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                       left: "50%",
                       transform: "translate(-50%, -50%)",
                       zIndex: 3,
-                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      backgroundColor: "rgba(255, 255, 255, 0.15)",
+                      backdropFilter: "blur(10px)",
                       borderRadius: 2,
-                      p: 1,
-                      boxShadow: 2,
+                      p: 1.5,
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
                     }}
                   >
                     <Button
-                      variant="contained"
+                      variant="outlined"
                       color="primary"
                       size="small"
                       startIcon={<AddIcon />}
@@ -249,12 +266,19 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                         fontSize: "0.75rem",
                         px: 2,
                         py: 0.5,
+                        backgroundColor: "rgba(255, 255, 255, 0.9)",
+                        borderColor: "rgba(255, 255, 255, 0.3)",
+                        "&:hover": {
+                          backgroundColor: "rgba(255, 255, 255, 1)",
+                          borderColor: "rgba(255, 255, 255, 0.5)",
+                        },
                       }}
                     >
-                      Upload Document
+                      Re-upload
                     </Button>
                   </Box>
                 )}
+
                 {/* Status Badge */}
                 <Box
                   sx={{
@@ -266,12 +290,18 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                 >
                   <Chip
                     label={`${getStatusIcon(doc.status)} ${doc?.status}`}
-                    color={getStatusColor(doc.status)}
+                    color={
+                      doc.status === "pending"
+                        ? undefined
+                        : getStatusColor(doc.status)
+                    }
                     size="small"
                     sx={{
                       fontWeight: "bold",
                       textTransform: "uppercase",
                       fontSize: "0.7rem",
+                      bgcolor: doc.status === "pending" ? "#FFD700" : undefined, // Yellow color
+                      color: doc.status === "pending" ? "#000" : undefined, // Black text for contrast
                     }}
                   />
                 </Box>
@@ -398,9 +428,17 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
               </Typography>
               <Chip
                 label={selectedDoc?.status?.toUpperCase()}
-                color={getStatusColor(selectedDoc?.status || "pending")}
+                color={
+                  selectedDoc?.status === "pending"
+                    ? undefined
+                    : getStatusColor(selectedDoc?.status || "pending")
+                }
                 size="small"
-                sx={{ mt: 1 }}
+                sx={{
+                  bgcolor:
+                    selectedDoc?.status === "pending" ? "#FFD700" : undefined,
+                  color: selectedDoc?.status === "pending" ? "#000" : undefined,
+                }}
               />
             </Box>
             <IconButton

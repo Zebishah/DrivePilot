@@ -12,14 +12,44 @@ const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 
 const studentBookingResolver = {
   Query: {
+    // getStudentBookings: async (_, __, { user }) => {
+    //   validateUser(user);
+    //   const bookings = await StudentBooking.find({ studentId: user.id })
+    //     .populate("instructorId", "_id firstName lastName email description")
+    //     .sort({ createdAt: -1 });
+
+    //   return bookings;
+    // },
+
     getStudentBookings: async (_, __, { user }) => {
       validateUser(user);
-      const bookings = await StudentBooking.find({ studentId: user.id })
+
+      const currentDate = new Date();
+      currentDate.setHours(0, 0, 0, 0); // Set to start of today
+
+      // Get ALL bookings first
+      const allBookings = await StudentBooking.find({ studentId: user.id })
         .populate("instructorId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
 
-      return bookings;
+      // Filter each booking to only show present/future slots
+      const filteredBookings = allBookings
+        .map((booking) => {
+          const futureSlots = booking.slots.filter((slot) => {
+            const slotDate = new Date(slot.date);
+            return slotDate >= currentDate;
+          });
+
+          return {
+            ...booking.toObject(),
+            slots: futureSlots,
+          };
+        })
+        .filter((booking) => booking.slots.length > 0); // Remove bookings with no future slots
+
+      return filteredBookings;
     },
+
     getCompletedStudentBookings: async (_, __, { user }) => {
       validateUser(user);
 

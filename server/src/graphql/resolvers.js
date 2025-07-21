@@ -7,6 +7,7 @@ const {
   instructorProfileSchema,
   resetPasswordSchema,
 } = require("../schemas/validation");
+const TeacherTariff = require("../models/teacherTariff.model");
 const {
   AuthenticationError,
   UserInputError,
@@ -20,6 +21,7 @@ const {
   verifyResetToken,
 } = require("../services/tokenService");
 const { generateOTP, sendOtpEmail } = require("../utils/SendOtpEmail");
+const studentBookingModel = require("../models/studentBooking.model");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -116,6 +118,7 @@ const resolvers = {
           description: instructor.description,
           gender: instructor.gender,
           carName: instructor.carName,
+          isUserVerified: instructor.isUserVerified,
           transmissionType: instructor.transmissionType,
           profileImage: instructor.profileImage,
           documents: instructor.documents || [],
@@ -127,6 +130,69 @@ const resolvers = {
       } catch (error) {
         console.error("Error fetching all instructors:", error);
         throw new Error("Failed to fetch instructors");
+      }
+    },
+    allInstructorsWithDetails: async (_, __, { user }) => {
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
+      if (user.role !== "Admin") {
+        throw new AuthenticationError("Not authorized to view all instructors");
+      }
+
+      try {
+        const instructors = await Instructor.find({})
+          .sort({ createdAt: -1 })
+          .lean();
+
+        const enrichedInstructors = await Promise.all(
+          instructors.map(async (instructor) => {
+            const [tariff, bookings] = await Promise.all([
+              TeacherTariff.findOne({ teacherId: instructor._id }).lean(),
+              studentBookingModel.find({ instructorId: instructor._id }).lean(),
+            ]);
+
+            const studentIds = new Set(
+              bookings.map((b) => b.studentId.toString())
+            );
+
+            return {
+              id: instructor._id.toString(), // Convert _id to id
+              firstName: instructor.firstName,
+              lastName: instructor.lastName,
+              email: instructor.email,
+              phone: instructor.phone,
+              location: instructor.location,
+              address: instructor.address,
+              zipCode: instructor.zipCode,
+              experience: instructor.experience,
+              description: instructor.description,
+              gender: instructor.gender,
+              carName: instructor.carName,
+              isUserVerified: instructor.isUserVerified,
+              transmissionType: instructor.transmissionType,
+              profileImage: instructor.profileImage,
+              documents: (instructor.documents || []).map((doc) => ({
+                id: doc._id.toString(), // Also convert document _id to id
+                documentType: doc.documentType,
+                documentUrl: doc.documentUrl,
+                status: doc.status,
+              })),
+              createdAt: instructor.createdAt,
+              updatedAt: instructor.updatedAt,
+              dateOfBirth: instructor.dateOfBirth,
+              languagePreference: instructor.languagePreference || [],
+              lessonPrice: tariff?.FinalPricePerLesson || null,
+              studentCount: studentIds.size,
+            };
+          })
+        );
+
+        return enrichedInstructors;
+      } catch (error) {
+        console.error("Error fetching enriched instructor data:", error);
+        throw new Error("Failed to fetch instructors with details");
       }
     },
   },

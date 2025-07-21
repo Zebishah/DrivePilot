@@ -120,6 +120,34 @@ const typeDefs = gql`
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
   }
+  type InstructorWithDetails implements User {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    role: UserRole!
+    isProfileComplete: Boolean!
+    authProvider: AuthProvider!
+    adminLevel: String
+    createdAt: String!
+    updatedAt: String!
+    address: String
+    location: String
+    zipCode: String
+    profileImage: String
+    description: String
+    experience: String
+    phone: String
+    documents: [Document!]
+    coordinates: Coordinates
+    carName: String
+    lessonPrice: Float
+    studentCount: Int
+    transmissionType: String
+    gender: String
+    isUserVerified: Boolean
+    isUserAuthenticated: Boolean
+  }
   type Admin implements User {
     id: ID!
     firstName: String!
@@ -293,6 +321,7 @@ const typeDefs = gql`
 
   type Query {
     allInstructors: [Instructor!]!
+    allInstructorsWithDetails: [InstructorWithDetails!]
     getInstructorDocuments(instructorId: ID!): InstructorDocumentsResponse!
   }
   type Mutation {

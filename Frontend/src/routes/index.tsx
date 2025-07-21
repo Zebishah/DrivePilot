@@ -47,6 +47,7 @@ import ReviewDisplayPage from "../components/StudentComponents/ReviewTab/ReviewD
 import AllBookingSlotsPage from "../components/StudentComponents/ReviewTab/AllBookingSlotPage";
 import { DocumentDetailsPage } from "../pages/private/admin-dashboard/DocumentsDetailPage";
 import InstructorDocumentsTable from "../components/AdminComponents/InstructorDocumentsTable";
+import { InstructorManagement } from "../pages/private/admin-dashboard/InstructorManagement";
 
 const router = createBrowserRouter([
   {
@@ -140,7 +141,10 @@ const router = createBrowserRouter([
         path: "documentsManagement",
         element: <InstructorDocumentsTable />,
       },
-
+      {
+        path: "InstructorManagement",
+        element: <InstructorManagement />,
+      },
       {
         path: "document-details/:instructorId/:documentType",
         element: <DocumentDetailsPage />,
