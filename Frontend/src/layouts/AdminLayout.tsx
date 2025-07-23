@@ -54,6 +54,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: LayoutGrid,
       path: "/admin-dashboard/InstructorManagement",
     },
+    {
+      text: "Student Manage",
+      icon: LayoutGrid,
+      path: "/admin-dashboard/StudentManagement",
+    },
     ...(user?.adminLevel === "super"
       ? [
           {

@@ -121,3 +121,40 @@ export type DateFilter =
   | "last-week"
   | "this-month"
   | "last-month";
+export interface StudentDocument {
+  _id: string;
+  name: string;
+  status: "verified" | "pending" | "rejected";
+  url?: string;
+}
+
+export interface StudentDetail {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  location?: string;
+  address?: string;
+  zipCode?: string;
+  profileImage?: string;
+  documents: StudentDocument[];
+  createdAt: string;
+  updatedAt: string;
+  dateOfBirth?: string;
+  languagePreference: string[];
+  isUserVerified: boolean;
+  lessonCount: number;
+  remainingHours: number;
+  lastLesson?: string;
+}
+
+export interface StudentFilterOptions {
+  isVerified?: boolean | "" | undefined;
+  lessonCount?: string;
+  location?: string;
+  dateRange?: {
+    startDate: string;
+    endDate: string;
+  };
+}

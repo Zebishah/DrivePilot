@@ -49,6 +49,10 @@ const typeDefs = gql`
     documentUrl: String!
     status: String
   }
+  type DocumentStudent {
+    documentType: String!
+    documentUrl: String!
+  }
   interface User {
     id: ID!
     firstName: String!
@@ -143,6 +147,7 @@ const typeDefs = gql`
     carName: String
     lessonPrice: Float
     studentCount: Int
+    reviewRating: Float
     transmissionType: String
     gender: String
     isUserVerified: Boolean
@@ -319,10 +324,41 @@ const typeDefs = gql`
     status: String!
   }
 
+  type StudentWithLessonStats {
+    id: ID!
+    firstName: String!
+    lastName: String!
+    email: String!
+    phone: String
+    profileImage: String
+    location: String
+    address: String
+    zipCode: String
+    createdAt: String
+    updatedAt: String
+    dateOfBirth: String
+    isUserVerified: Boolean
+    languagePreference: [String]
+    documents: [DocumentStudent]
+    totalLessons: Int
+    bookedLessons: Int
+    cancelledLessons: Int
+    remainingHours: String
+    lastLesson: String
+  }
+  type DeleteStudentsResponse {
+    success: Boolean!
+    message: String!
+  }
+  type DeleteInstructorsResponse {
+    success: Boolean!
+    message: String!
+  }
   type Query {
     allInstructors: [Instructor!]!
     allInstructorsWithDetails: [InstructorWithDetails!]
     getInstructorDocuments(instructorId: ID!): InstructorDocumentsResponse!
+    allStudentsWithLessonStats: [StudentWithLessonStats!]
   }
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
@@ -335,6 +371,8 @@ const typeDefs = gql`
     updateTeacherProfile(
       input: UpdateInstructorProfileInput!
     ): InstructorProfile!
+    deleteStudents(studentIds: [ID!]!): DeleteStudentsResponse!
+    deleteInstructors(instructorIds: [ID!]!): DeleteInstructorsResponse!
     updateStudentProfile(input: UpdateStudentProfileInput!): StudentProfile!
     signIn(email: String!, password: String!): AuthPayload!
     generateUploadUrl(

@@ -18,6 +18,8 @@ import { useNavigate } from "react-router-dom";
 import ProgressChart from "./ProgressChart";
 import StudentHoursProgressCard from "./StudentHourPercentage";
 import BookingSlotsTable from "./BookingSlotTable";
+import { is } from "date-fns/locale";
+import { NetworkStatus } from "@apollo/client";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -37,10 +39,11 @@ const Dashboard: React.FC = () => {
     reviews,
     loading: reviewsLoading,
     refetch: refetchReviews,
+    networkStatus,
   } = useInstructorReviews(studentId);
 
   const { deleteReview, loading: deleteLoading } = useDeleteReview();
-
+  const isRefetching = networkStatus === NetworkStatus.refetch;
   const handleAddReview = (slot: StudentBookingSlot) => {
     // Navigate to review form page with slot data
     navigate("/student-dashboard/review-form", {
@@ -93,7 +96,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (slotsLoading || progressLoading || reviewsLoading) {
+  if (slotsLoading || progressLoading || reviewsLoading || isRefetching) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -138,6 +141,8 @@ const Dashboard: React.FC = () => {
             onEditReview={handleEditReview}
             onDeleteReview={handleDeleteReview}
             onShowReview={handleShowReview}
+            refetch={refetchReviews}
+            isRefetching={isRefetching}
           />
         </div>
       </div>

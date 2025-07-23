@@ -1,6 +1,13 @@
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@apollo/client";
-import { Plus, Download, Trash2, Filter } from "lucide-react";
+import { useQuery, useMutation, NetworkStatus } from "@apollo/client";
+import {
+  Plus,
+  Download,
+  Trash2,
+  Filter,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 import {
   DELETE_INSTRUCTORS,
   GET_ALL_INSTRUCTORS_DETAILS,
@@ -21,14 +28,17 @@ export const InstructorManagement: React.FC = () => {
     useState<Instructor | null>(null);
   const [filters, setFilters] = useState<FilterOptions>({});
 
-  const { data, loading, error, refetch } = useQuery(
-    GET_ALL_INSTRUCTORS_DETAILS
+  const { data, loading, error, refetch, networkStatus } = useQuery(
+    GET_ALL_INSTRUCTORS_DETAILS,
+    {
+      notifyOnNetworkStatusChange: true,
+    }
   );
   const [deleteInstructors, { loading: deleting }] =
     useMutation(DELETE_INSTRUCTORS);
 
   const instructors: Instructor[] = data?.allInstructorsWithDetails || [];
-  console.log("instructors", instructors);
+  const isRefetching = networkStatus === NetworkStatus.refetch;
   // Apply filters to instructors
   const filteredInstructors = useMemo(() => {
     return instructors.filter((instructor) => {
@@ -162,22 +172,44 @@ export const InstructorManagement: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 border-b border-gray-200 pb-4">
           <h1 className="text-2xl font-bold text-gray-900">
             Instructor Management
           </h1>
 
           <div className="flex items-center space-x-3">
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <Plus className="w-4 h-4 mr-2" />
-              Add
+            <button
+              onClick={() => refetch()}
+              title="Refresh Students"
+              disabled={isRefetching}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRefetching ? (
+                <svg
+                  className="animate-spin w-4 h-4 mr-2 text-gray-500"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l4-4-4-4v4a8 8 0 00-8 8z"
+                  ></path>
+                </svg>
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {isRefetching ? "Refreshing..." : "Refresh"}
             </button>
-
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </button>
-
             <button
               onClick={handleDeleteClick}
               className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
@@ -200,7 +232,7 @@ export const InstructorManagement: React.FC = () => {
                     (value) => value !== "" && value !== undefined
                   )
                     ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    : "border-gray-300 bg-[#5DC3D2] text-gray-700 hover:bg-[#2da4b6]"
                 }`}
               >
                 <Filter className="w-4 h-4 mr-2" />
@@ -216,10 +248,26 @@ export const InstructorManagement: React.FC = () => {
             </div>
           </div>
         </div>
-
+        {/* Delete Mode Alert */}
+        {showDeleteMode && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
+              <div>
+                <h3 className="text-sm font-medium text-red-800">
+                  Delete Mode Active
+                </h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Select multiple instructors to delete them. Click on the cards
+                  to select.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Total Count */}
         <div className="mb-6">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 text-end w-full">
             Total Instructors:{" "}
             <span className="font-semibold">{filteredInstructors.length}</span>
           </p>

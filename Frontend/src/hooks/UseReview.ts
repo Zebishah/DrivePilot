@@ -13,17 +13,22 @@ import useAuth from "./useAuth";
 
 export const useInstructorReviews = (instructorId: string) => {
   const { user } = useAuth();
-  const { data, loading, error, refetch } = useQuery(GET_INSTRUCTOR_REVIEWS, {
-    variables: { instructorId },
-    fetchPolicy: "cache-and-network",
-    errorPolicy: "all",
-  });
+  const { data, loading, error, refetch, networkStatus } = useQuery(
+    GET_INSTRUCTOR_REVIEWS,
+    {
+      variables: { instructorId },
+      notifyOnNetworkStatusChange: true,
+      fetchPolicy: "cache-and-network",
+      errorPolicy: "all",
+    }
+  );
   const studentId = user?._id || "";
   return {
     reviews: (data?.getInstructorReviews as Review[]) || [],
     loading,
     error,
     refetch,
+    networkStatus,
   };
 };
 

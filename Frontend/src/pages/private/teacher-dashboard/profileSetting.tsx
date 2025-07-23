@@ -12,7 +12,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { Star, Edit, EditIcon } from "lucide-react";
-import { useQuery } from "@apollo/client";
+import { NetworkStatus, useQuery } from "@apollo/client";
 import { GET_TEACHER_PROFILE } from "../../../graphql/mutations/profile";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { DocumentsTab } from "./tabs/DocumentsTab";
@@ -29,7 +29,12 @@ export default function ProfileSetting() {
   const location = useLocation();
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const { loading, error, data, refetch } = useQuery(GET_TEACHER_PROFILE);
+  const { loading, error, data, refetch, networkStatus } = useQuery(
+    GET_TEACHER_PROFILE,
+    {
+      notifyOnNetworkStatusChange: true, // ✅ Required for refetch status to trigger
+    }
+  );
 
   if (loading)
     return (
@@ -104,6 +109,7 @@ export default function ProfileSetting() {
         })
       ) || [], // Ensure documents is an array even if empty
   };
+  const isRefetching = networkStatus === NetworkStatus.refetch;
   // Handle documents update callback
   const handleDocumentsUpdate = async () => {
     try {
@@ -451,6 +457,8 @@ export default function ProfileSetting() {
           documents={profileData.documents}
           instructorId={teacherData.id}
           onDocumentsUpdate={handleDocumentsUpdate}
+          refetch={refetch}
+          isRefetching={isRefetching}
         />
       )}
       {tabValue === "tariff" && <TariffTab />}

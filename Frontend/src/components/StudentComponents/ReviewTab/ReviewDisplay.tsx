@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Star, Edit, Trash2, ArrowLeft, CheckCircle, X } from "lucide-react";
 import { StudentBookingSlot } from "../../../types/ReviewTypes";
 import {
@@ -175,66 +175,82 @@ const ReviewDisplayPage: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-xl">
           {/* Header */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Your Review</h2>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={handleEdit}
-                  className="text-blue-600 hover:text-blue-800 transition-colors"
-                  title="Edit Review"
-                >
-                  <Edit size={20} />
-                </button>
-                <button
-                  onClick={handleDeleteClick}
-                  disabled={deleteLoading}
-                  className="text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
-                  title="Delete Review"
-                >
-                  <Trash2 size={20} />
-                </button>
-                <button
-                  onClick={handleBack}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <ArrowLeft size={24} />
-                </button>
+
+          <div className="flex border-b border-gray-200 justify-between">
+            <div className="p-6 ">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Your Review
+                </h2>
               </div>
+            </div>
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <Link
+                to={"/student-dashboard/reviews"}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
+              >
+                Give Review
+                <Edit size={12} className="ml-2" />
+              </Link>
             </div>
           </div>
 
           {/* Instructor Info */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                {existingReview.instructorId.profileImage ? (
-                  <img
-                    src={existingReview.instructorId.profileImage}
-                    alt={existingReview.instructorId.profileImage}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white font-bold text-lg">
-                    {existingReview.instructorName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </span>
-                )}
+          <div className="flex w-full justify-between">
+            <div className="p-6 ">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  {existingReview.instructorId.profileImage ? (
+                    <img
+                      src={existingReview.instructorId.profileImage}
+                      alt={existingReview.instructorId.profileImage}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-lg">
+                      {existingReview.instructorName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {slot.instructorName}
+                  </h3>
+                  <p className="text-gray-600">Instructor</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {slot.instructorName}
-                </h3>
-                <p className="text-gray-600">Instructor</p>
-              </div>
+            </div>
+            <div className="flex items-center space-x-4 pr-6">
+              <button
+                onClick={handleEdit}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+                title="Edit Review"
+              >
+                <Edit size={20} />
+              </button>
+              <button
+                onClick={handleDeleteClick}
+                disabled={deleteLoading}
+                className="text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+                title="Delete Review"
+              >
+                <Trash2 size={20} />
+              </button>
+              <button
+                onClick={handleBack}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <ArrowLeft size={24} />
+              </button>
             </div>
           </div>
 
           {/* Review Content */}
           <div className="p-6">
-            <div className="bg-gray-50 rounded-lg p-6">
+            <div className="border border-gray-200  rounded-lg p-6">
               {/* Star Rating */}
               <div className="mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -269,8 +285,8 @@ const ReviewDisplayPage: React.FC = () => {
               </div>
 
               {/* Date Info */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="mt-4 pt-4 border-gray-200">
+                <div className="mt-4 pt-4  border-gray-200">
                   <div className="flex justify-between text-sm text-gray-500">
                     <span>Posted: {formatDate(existingReview.createdAt)}</span>
                     {existingReview.updatedAt !== existingReview.createdAt && (

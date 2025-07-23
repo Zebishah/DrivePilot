@@ -18,6 +18,7 @@ import {
   Description as DescriptionIcon,
 } from "@mui/icons-material";
 import InstructorDocumentUpdate from "../../../../components/InstructorComponent/DocumentUpdate/DocumentUpdateModal";
+import { RefreshCw } from "lucide-react";
 
 interface Document {
   documentType: string;
@@ -30,6 +31,8 @@ interface DocumentsTabProps {
   instructorId?: string;
   isAdmin?: boolean;
   onDocumentsUpdate?: () => void;
+  refetch?: () => void;
+  isRefetching?: boolean;
 }
 
 export const DocumentsTab: React.FC<DocumentsTabProps> = ({
@@ -37,6 +40,8 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
   instructorId,
   isAdmin = false,
   onDocumentsUpdate,
+  refetch,
+  isRefetching,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
@@ -173,23 +178,63 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
           <Typography variant="h5" fontWeight="bold">
             Documents ({documents.length})
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setUpdateModalOpen(true)}
+          <Box
             sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              boxShadow: 3,
-              background: "#5CC2D2",
-              "&:hover": {
-                boxShadow: 6,
-                background: "#4BA1B0",
-              },
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
             }}
           >
-            Add More Documents
-          </Button>
+            <button
+              onClick={() => refetch()}
+              title="Refresh Students"
+              disabled={isRefetching}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRefetching ? (
+                <svg
+                  className="animate-spin w-4 h-4 mr-2 text-gray-500"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l4-4-4-4v4a8 8 0 00-8 8z"
+                  ></path>
+                </svg>
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              {isRefetching ? "Refreshing..." : "Refresh"}
+            </button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setUpdateModalOpen(true)}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                boxShadow: 3,
+                background: "#5CC2D2",
+                "&:hover": {
+                  boxShadow: 6,
+                  background: "#4BA1B0",
+                },
+              }}
+            >
+              Add More Documents
+            </Button>
+          </Box>
         </Box>
 
         <Grid container spacing={3}>

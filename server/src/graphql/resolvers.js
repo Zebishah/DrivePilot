@@ -22,6 +22,7 @@ const {
 } = require("../services/tokenService");
 const { generateOTP, sendOtpEmail } = require("../utils/SendOtpEmail");
 const studentBookingModel = require("../models/studentBooking.model");
+const { Review } = require("../models/Reviews");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -132,6 +133,7 @@ const resolvers = {
         throw new Error("Failed to fetch instructors");
       }
     },
+
     allInstructorsWithDetails: async (_, __, { user }) => {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
@@ -148,17 +150,31 @@ const resolvers = {
 
         const enrichedInstructors = await Promise.all(
           instructors.map(async (instructor) => {
-            const [tariff, bookings] = await Promise.all([
+            const [tariff, bookings, reviews] = await Promise.all([
               TeacherTariff.findOne({ teacherId: instructor._id }).lean(),
               studentBookingModel.find({ instructorId: instructor._id }).lean(),
+              Review.find({
+                instructorId: instructor._id,
+                reviewStatus: "completed",
+              }).lean(),
             ]);
 
+            // Calculate student count
             const studentIds = new Set(
               bookings.map((b) => b.studentId.toString())
             );
 
+            // Calculate average review rating
+            const totalRatings = reviews.reduce(
+              (sum, r) => sum + (r.reviewRating || 0),
+              0
+            );
+            const reviewRating = reviews.length
+              ? (totalRatings / reviews.length).toFixed(1)
+              : null;
+
             return {
-              id: instructor._id.toString(), // Convert _id to id
+              id: instructor._id.toString(),
               firstName: instructor.firstName,
               lastName: instructor.lastName,
               email: instructor.email,
@@ -174,7 +190,7 @@ const resolvers = {
               transmissionType: instructor.transmissionType,
               profileImage: instructor.profileImage,
               documents: (instructor.documents || []).map((doc) => ({
-                id: doc._id.toString(), // Also convert document _id to id
+                id: doc._id.toString(),
                 documentType: doc.documentType,
                 documentUrl: doc.documentUrl,
                 status: doc.status,
@@ -185,6 +201,8 @@ const resolvers = {
               languagePreference: instructor.languagePreference || [],
               lessonPrice: tariff?.FinalPricePerLesson || null,
               studentCount: studentIds.size,
+              reviewRating, // ⬅️ Average rating here
+              totalReviews: reviews.length,
             };
           })
         );
@@ -193,6 +211,84 @@ const resolvers = {
       } catch (error) {
         console.error("Error fetching enriched instructor data:", error);
         throw new Error("Failed to fetch instructors with details");
+      }
+    },
+    allStudentsWithLessonStats: async (_, __, { user }) => {
+      if (!user) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
+      if (user.role !== "Admin") {
+        throw new AuthenticationError("Not authorized to view all students");
+      }
+
+      try {
+        const students = await Student.find({}).sort({ createdAt: -1 }).lean();
+
+        const enrichedStudents = await Promise.all(
+          students.map(async (student) => {
+            const bookings = await studentBookingModel
+              .find({ studentId: student._id })
+              .sort({ createdAt: -1 }) // So we can get the latest booking for `lastLesson`
+              .lean();
+
+            // Count lessons
+            let totalLessons = 0;
+            let bookedLessons = 0;
+            let cancelledLessons = 0;
+
+            bookings.forEach((booking) => {
+              const slotCount = Array.isArray(booking.slots)
+                ? booking.slots.length
+                : 0;
+              totalLessons += slotCount;
+
+              if (booking.status === "cancelled") {
+                cancelledLessons += slotCount;
+              } else {
+                bookedLessons += slotCount;
+              }
+            });
+
+            const lastLesson = bookings[0]?.createdAt || null;
+
+            return {
+              id: student._id.toString(),
+              firstName: student.firstName,
+              lastName: student.lastName,
+              email: student.email,
+              phone: student.phone,
+              profileImage: student.profileImage || null,
+              location: student.location || null,
+              address: student.homeAddress || null,
+              zipCode: student.zipCode || null,
+              createdAt: student.createdAt,
+              updatedAt: student.updatedAt,
+              dateOfBirth: student.dateOfBirth || null,
+              isUserVerified: student.isUserVerified || false,
+              languagePreference: student.languagePreference || [],
+              remainingHours: student.lessonHoursLeft || "0",
+              lastLesson: lastLesson
+                ? new Date(lastLesson).toISOString()
+                : null,
+
+              totalLessons,
+              bookedLessons,
+              cancelledLessons,
+
+              documents: (student.documents || []).map((doc) => ({
+                _id: doc._id.toString(),
+                documentType: doc.documentType,
+                documentUrl: doc.documentUrl,
+              })),
+            };
+          })
+        );
+
+        return enrichedStudents;
+      } catch (error) {
+        console.error("Error fetching enriched student data:", error);
+        throw new Error("Failed to fetch students with lesson stats");
       }
     },
   },
@@ -811,7 +907,50 @@ instead.`);
 
       return { uploadUrl, fileUrl };
     },
+    deleteStudents: async (_, { studentIds }, { user }) => {
+      try {
+        if (!user || user.role !== "Admin") {
+          throw new Error("Unauthorized access");
+        }
 
+        const { deletedCount } = await Student.deleteMany({
+          _id: { $in: studentIds },
+        });
+
+        return {
+          success: true,
+          message: `${deletedCount} student(s) deleted successfully.`,
+        };
+      } catch (error) {
+        console.error("Error deleting students:", error);
+        return {
+          success: false,
+          message: "Failed to delete students.",
+        };
+      }
+    },
+    deleteInstructors: async (_, { instructorIds }, { user }) => {
+      try {
+        if (!user || user.role !== "Admin") {
+          throw new Error("Unauthorized access");
+        }
+
+        const { deletedCount } = await Instructor.deleteMany({
+          _id: { $in: instructorIds },
+        });
+
+        return {
+          success: true,
+          message: `${deletedCount} instructor(s) deleted successfully.`,
+        };
+      } catch (error) {
+        console.error("Error deleting instructors:", error);
+        return {
+          success: false,
+          message: "Failed to delete instructors.",
+        };
+      }
+    },
     forgotPassword: async (_, { email }) => {
       // Check if user exists
       const user = await User.findOne({ email });

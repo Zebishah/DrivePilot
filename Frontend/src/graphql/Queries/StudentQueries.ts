@@ -193,3 +193,42 @@ export const GET_STUDENT_DASHBOARD = gql`
     }
   }
 `;
+
+export const GET_ALL_STUDENTS_ADMIN = gql`
+  query AllStudentsWithLessonStats {
+    allStudentsWithLessonStats {
+      id
+      firstName
+      lastName
+      email
+      phone
+      location
+      address
+      zipCode
+      profileImage
+      documents {
+        documentType
+        documentUrl
+      }
+      createdAt
+      updatedAt
+      dateOfBirth
+      languagePreference
+      isUserVerified
+      remainingHours
+      lastLesson
+      totalLessons
+      bookedLessons
+      cancelledLessons
+    }
+  }
+`;
+
+export const DELETE_STUDENTS = gql`
+  mutation DeleteStudents($studentIds: [ID!]!) {
+    deleteStudents(studentIds: $studentIds) {
+      success
+      message
+    }
+  }
+`;

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Eye, Plus, Edit, Trash2, ExternalLink } from "lucide-react";
+import { Eye, Plus, Edit, Trash2, ExternalLink, RefreshCw } from "lucide-react";
 import { StudentBookingSlot } from "../../../types/ReviewTypes";
 import { useNavigate } from "react-router-dom";
 
@@ -11,6 +11,8 @@ interface BookingSlotsTableProps {
   onDeleteReview: (slot: StudentBookingSlot) => void;
   onShowReview: (slot: StudentBookingSlot) => void;
   onViewAllBookings?: () => void; // New prop for view all functionality
+  refetch?: () => void;
+  isRefetching?: boolean;
 }
 
 const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
@@ -19,6 +21,8 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
   onEditReview,
   onDeleteReview,
   onShowReview,
+  refetch,
+  isRefetching,
 }) => {
   const navigate = useNavigate();
   const formatDate = (dateString: string) => {
@@ -107,14 +111,47 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-800">Booking Slots</h3>
-
-        <button
-          onClick={onViewAllBookings}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
-        >
-          View All
-          <ExternalLink size={16} className="ml-2" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refetch()}
+            title="Refresh Students"
+            disabled={isRefetching}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRefetching ? (
+              <svg
+                className="animate-spin w-4 h-4 mr-2 text-gray-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4l4-4-4-4v4a8 8 0 00-8 8z"
+                ></path>
+              </svg>
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </button>
+          <button
+            onClick={onViewAllBookings}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
+          >
+            View All
+            <ExternalLink size={16} className="ml-2" />
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">

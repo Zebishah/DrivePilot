@@ -1,19 +1,24 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@apollo/client";
-import { Search, Filter, Eye, User, FileText } from "lucide-react";
+import { NetworkStatus, useQuery } from "@apollo/client";
+import { Search, Filter, Eye, User, FileText, RefreshCw } from "lucide-react";
 import { StatusDropdown } from "./StatusDropdown";
 
 import { useNavigate } from "react-router-dom";
 import { GET_ALL_INSTRUCTORS } from "../../graphql/Queries/InstructorProfiles";
-import { FlattenedDocument } from "../../types/Instructor";
+import { FlattenedDocument, Instructor } from "../../types/Instructor";
 
 export const InstructorDocumentsTable: React.FC = () => {
   const navigate = useNavigate();
-  const { data, loading, error } = useQuery(GET_ALL_INSTRUCTORS);
+  const { data, loading, error, refetch, networkStatus } = useQuery(
+    GET_ALL_INSTRUCTORS,
+    {
+      notifyOnNetworkStatusChange: true, // ✅ Required for refetch status to trigger
+    }
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [instructorFilter, setInstructorFilter] = useState<string>("all");
-
+  const isRefetching = networkStatus === NetworkStatus.refetch;
   // Flatten documents for table display
   const flattenedDocuments = useMemo(() => {
     if (!data?.allInstructors) return [];
@@ -112,14 +117,10 @@ export const InstructorDocumentsTable: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="text-gray-600">Loading instructors...</span>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -205,11 +206,43 @@ export const InstructorDocumentsTable: React.FC = () => {
         </div>
 
         {/* Results Count */}
-        <div className="mb-4">
+        <div className="mb-4 flex justify-between w-full">
           <span className="text-sm text-gray-600">
             Showing {filteredDocuments.length} of {flattenedDocuments.length}{" "}
             documents
           </span>
+          <button
+            onClick={() => refetch()}
+            title="Refresh Students"
+            disabled={isRefetching}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRefetching ? (
+              <svg
+                className="animate-spin w-4 h-4 mr-2 text-gray-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4l4-4-4-4v4a8 8 0 00-8 8z"
+                ></path>
+              </svg>
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
 
         {/* Table */}
@@ -333,7 +366,7 @@ export const InstructorDocumentsTable: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => handleViewDetails(document)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DC3D2] text-white rounded-lg hover:bg-[#5DC3D2] transition-colors"
                       >
                         <Eye size={16} />
                         View Details

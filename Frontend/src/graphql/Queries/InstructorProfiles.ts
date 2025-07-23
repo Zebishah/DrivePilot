@@ -47,6 +47,7 @@ export const GET_ALL_INSTRUCTORS_DETAILS = gql`
       lessonPrice
       studentCount
       transmissionType
+      reviewRating
       isUserVerified
       profileImage
       createdAt

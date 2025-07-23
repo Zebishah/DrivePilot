@@ -182,7 +182,7 @@ export const FilterPopover: React.FC<FilterPopoverProps> = ({
           </button>
           <button
             onClick={handleApply}
-            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 transition-colors"
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-[#5DC3D2] border border-transparent rounded-md hover:bg-[#3b95a3] transition-colors"
           >
             Apply Filters
           </button>
