@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 
+// ✅ Get all students (optional filter)
 export const GET_ALL_STUDENTS = gql`
   query GetAllStudents($filter: StudentFilter) {
     getAllStudents(filter: $filter) {
@@ -33,8 +34,6 @@ export const GET_ALL_STUDENTS = gql`
       dateOfBirth
       languagePreference
       lessonHoursLeft
-
-      # ✅ New fields
       lessonStats {
         totalLessons
         totalLessonDurationInMinutes
@@ -43,65 +42,8 @@ export const GET_ALL_STUDENTS = gql`
     }
   }
 `;
-// export const GET_STUDENT_DASHBOARD = gql`
-//   query GetStudentDashboardDetails($studentId: ID!) {
-//     getStudentDashboardDetails(studentId: $studentId) {
-//       studentInfo {
-//         _id
-//         firstName
-//         lastName
-//         email
-//         phone
-//         profileImage
-//         dateOfBirth
-//         fatherName
-//         description
-//         homeAddress
-//         location
-//         zipCode
-//         languagePreference
-//       }
-//       lessonStats {
-//         totalLessons
-//         totalLessonDurationInMinutes
-//       }
-//       graphStats {
-//         date
-//         lessonsBooked
-//       }
-//       completedBookings {
-//         _id
-//         slots {
-//           date
-//           startTime
-//           endTime
-//         }
-//         totalAmount
-//         createdAt
-//         instructorId {
-//           firstName
-//           lastName
-//           profileImage
-//         }
-//       }
-//       uncompletedBookings {
-//         _id
-//         slots {
-//           date
-//           startTime
-//           endTime
-//         }
-//         totalAmount
-//         createdAt
-//         instructorId {
-//           firstName
-//           lastName
-//           profileImage
-//         }
-//       }
-//     }
-//   }
-// `;
+
+// ✅ Get dashboard details of a student
 export const GET_STUDENT_DASHBOARD = gql`
   query GetStudentDashboardDetails($studentId: ID!) {
     getStudentDashboardDetails(studentId: $studentId) {
@@ -190,6 +132,61 @@ export const GET_STUDENT_DASHBOARD = gql`
         feedBackStatus
         profileImage
       }
+    }
+  }
+`;
+
+// ✅ Get all bookings made by the student
+export const GET_STUDENT_BOOKINGS = gql`
+  query GetStudentBookings {
+    getStudentBookings {
+      _id
+      instructorId {
+        _id
+        firstName
+        lastName
+        profileImage
+      }
+    }
+  }
+`;
+
+// ✅ Get only completed bookings by student
+export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
+  query GetCompletedStudentBookings {
+    getCompletedStudentBookings {
+      _id
+      totalAmount
+      status
+      createdAt
+      updatedAt
+      instructorId {
+        _id
+        firstName
+        lastName
+        email
+        description
+        profileImage
+      }
+      studentId {
+        _id
+        firstName
+        lastName
+        profileImage
+      }
+      slots {
+        id
+        date
+        startTime
+        endTime
+        booked
+        status
+      }
+      paymentMethod {
+        type
+        cardNumber
+      }
+      feedBackStatus
     }
   }
 `;

@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     setLoading(false); // Mark auth check as complete
-  }, []);
+  }, [logout]);
 
   if (loading) {
     return (

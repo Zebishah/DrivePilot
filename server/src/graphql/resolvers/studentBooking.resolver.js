@@ -67,10 +67,14 @@ const studentBookingResolver = {
         };
 
         const aEnd = new Date(
-          `${getLastEndTime(a.slots).date}T${getLastEndTime(a.slots).endTime}:00`
+          `${getLastEndTime(a.slots).date}T${
+            getLastEndTime(a.slots).endTime
+          }:00`
         );
         const bEnd = new Date(
-          `${getLastEndTime(b.slots).date}T${getLastEndTime(b.slots).endTime}:00`
+          `${getLastEndTime(b.slots).date}T${
+            getLastEndTime(b.slots).endTime
+          }:00`
         );
 
         return bEnd - aEnd; // Descending
@@ -328,10 +332,12 @@ const studentBookingResolver = {
         );
 
         // 4. Optional: populate instructor
-        await booking.populate(
-          "instructorId",
-          "_id firstName lastName email description"
-        );
+        await booking
+          .populate(
+            "instructorId",
+            "_id firstName lastName email description profileImage"
+          )
+          .populate("studentId", "_id firstName lastName email profileImage");
 
         return booking;
       } catch (error) {
@@ -363,8 +369,9 @@ const studentBookingResolver = {
 
       try {
         // 1. Find the booking
-        const booking =
-          await StudentBooking.findById(bookingId).session(session);
+        const booking = await StudentBooking.findById(bookingId).session(
+          session
+        );
         if (!booking) throw new UserInputError("Booking not found");
 
         const uid = user.id.toString();

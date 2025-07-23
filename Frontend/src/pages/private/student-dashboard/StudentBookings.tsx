@@ -17,15 +17,9 @@ interface LessonHistoryItem {
   bookingId: string;
 }
 
-interface LessonBookingHistoryProps {
-  studentId: string;
-}
-
-const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
-  studentId,
-}) => {
+const LessonBookingHistory: React.FC = () => {
   const { loading, error, data } = useQuery(GET_STUDENT_LESSON_HISTORY, {
-    variables: { studentId },
+    fetchPolicy: "network-only",
   });
 
   if (loading)
@@ -37,7 +31,6 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
       </p>
     );
 
-  // Function to determine the status color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "confirmed":
@@ -65,7 +58,6 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
         Lesson booking history
       </h2>
       <div className="w-full">
-        {/* Table Header */}
         <div className="flex bg-gray-50 border-b border-gray-100 font-medium">
           <div className="flex-1 p-4">Lesson Booked</div>
           <div className="flex-1 p-4">Booking Date</div>
@@ -75,8 +67,7 @@ const LessonBookingHistory: React.FC<LessonBookingHistoryProps> = ({
           <div className="flex-1 p-4">End Date</div>
         </div>
 
-        {/* Table Body */}
-        {data?.getStudentLessonHistory.length > 0 ? (
+        {data?.getStudentLessonHistory?.length > 0 ? (
           data.getStudentLessonHistory.map(
             (lesson: LessonHistoryItem, index: number) => (
               <div

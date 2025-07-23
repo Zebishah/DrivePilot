@@ -65,6 +65,12 @@ const menuItems: MenuItem[] = [
     icon: MessageSquare,
     path: "/student-dashboard/reviews",
   },
+  {
+    text: "Messages",
+    icon: MessageSquare,
+    path: "/student-dashboard/chat",
+  },
+  ,
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 

@@ -1,33 +1,45 @@
-import { ApolloClient, createHttpLink, InMemoryCache } from "@apollo/client";
+import {
+  ApolloClient,
+  createHttpLink,
+  InMemoryCache,
+  split,
+} from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
+import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
+import { getMainDefinition } from "@apollo/client/utilities";
+import { createClient } from "graphql-ws";
 import CryptoJS from "crypto-js";
-import { useCookies } from "react-cookie"; // No need for useCookies in Apollo setup
 
-const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
-const ENCRYPTION_KEY =
-  import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secret";
+//  ENV CONFIG
+const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL; // e.g., http://localhost:4000/graphql
+const WS_URL = import.meta.env.VITE_APP_BACKEND_WS_URL; // e.g., ws://localhost:4000/graphql
+const ENCRYPTION_KEY = import.meta.env.VITE_APP_ENCRYPTION_KEY || "default-key";
 
-// Utility function to decrypt the token
+//  Decryption Utility
 const decrypt = (encryptedData: string) => {
-  const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
-  return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error("Token decryption failed:", error);
+    return null;
+  }
 };
 
-// List of public operations (no auth required)
+//  Public Operations
 const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword"];
 
-// Create the HTTP link
+//  HTTP Link
 const httpLink = createHttpLink({ uri: BACKEND_URL });
 
-// Middleware to attach token
+//  Auth Middleware
 const authLink = setContext((operation, { headers }) => {
-  const cookies = useCookies(); // Get cookies
-  const encryptedToken = cookies;
+  const encryptedToken = localStorage.getItem("token");
+  const token = encryptedToken ? decrypt(encryptedToken) : null;
 
-  const token = decrypt(encryptedToken); // Decrypt token
-
-  // Skip auth for public operations
+  // Allow public operations without token
   if (PUBLIC_OPERATIONS.includes(operation.operationName || "")) {
     return { headers };
   }
@@ -40,7 +52,7 @@ const authLink = setContext((operation, { headers }) => {
   };
 });
 
-// Handle errors (e.g., invalid token)
+//  Error Handling
 const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message }) => {
@@ -52,12 +64,41 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   }
 });
 
-// Create Apollo Client
+//  WebSocket Link for Subscriptions
+const wsLink = new GraphQLWsLink(
+  createClient({
+    url: WS_URL,
+    connectionParams: () => {
+      const encryptedToken = localStorage.getItem("token");
+      const token = encryptedToken ? decrypt(encryptedToken) : null;
+
+      return {
+        authorization: token ? `Bearer ${token}` : "",
+      };
+    },
+    retryAttempts: 5,
+  })
+);
+
+// Split Link: Use WS for Subscriptions, HTTP
+const splitLink = split(
+  ({ query }) => {
+    const def = getMainDefinition(query);
+    return (
+      def.kind === "OperationDefinition" && def.operation === "subscription"
+    );
+  },
+  wsLink,
+  errorLink.concat(authLink.concat(httpLink))
+);
+
+// Apollo Client
 export const apolloClient = new ApolloClient({
-  link: errorLink.concat(authLink.concat(httpLink)),
+  link: splitLink,
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: { fetchPolicy: "network-only", errorPolicy: "all" },
     query: { fetchPolicy: "network-only", errorPolicy: "all" },
+    mutate: { errorPolicy: "all" },
   },
 });

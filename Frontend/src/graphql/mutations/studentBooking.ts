@@ -56,6 +56,7 @@ export const GET_STUDENT_BOOKINGS = gql`
     }
   }
 `;
+
 export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
   query GetCompletedStudentBookings {
     getCompletedStudentBookings {

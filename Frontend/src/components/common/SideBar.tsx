@@ -22,11 +22,12 @@ import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import type { IconType } from "react-icons/lib";
 
-interface MenuItem {
+export interface MenuItem {
   text: string;
   icon: LucideIcon | IconType;
   path: string;
 }
+
 interface SidebarProps {
   drawerWidth: number;
   mobileOpen: boolean;
@@ -49,6 +50,7 @@ export default function Sidebar({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const router = useLocation();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const listItemVariants = {
     hidden: { opacity: 0, x: -20 },
@@ -61,7 +63,7 @@ export default function Sidebar({
       },
     }),
   };
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
   const handleLogoutClick = (e: React.MouseEvent) => {
     e.preventDefault();
     setLogoutDialogOpen(true);
@@ -105,9 +107,10 @@ export default function Sidebar({
 
       <List>
         {menuItems.map((item, index) => {
-          const isActive = router.pathname.startsWith(item.path); // Updated to handle nested routes
           const isLogout = item.text.toLowerCase() === "logout";
-          const icon = item.icon;
+          const isActive = router.pathname.startsWith(item.path);
+          const Icon = item.icon;
+
           return (
             <MotionListItem
               key={item.text}
@@ -137,7 +140,7 @@ export default function Sidebar({
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
-                    <item.icon
+                    <Icon
                       size={20}
                       color={isActive ? theme.palette.primary.main : undefined}
                     />
@@ -177,7 +180,7 @@ export default function Sidebar({
                     }}
                   >
                     <ListItemIcon sx={{ minWidth: 40 }}>
-                      <item.icon
+                      <Icon
                         size={20}
                         color={
                           isActive ? theme.palette.primary.main : undefined
