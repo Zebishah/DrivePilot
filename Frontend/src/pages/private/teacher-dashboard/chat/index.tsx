@@ -25,7 +25,7 @@ const InstructorChatPage = () => {
       const students = data.getAllStudents
         .filter((student: any) => student.lessonStats?.totalLessons > 0)
         .map((student: any) => ({
-          _id: student._id,
+          _id: student._id, // Used as conversationId
           name: `${student.firstName} ${student.lastName}`,
           email: student.email,
           avatar:
@@ -47,13 +47,7 @@ const InstructorChatPage = () => {
         />
       </div>
       <div className="w-2/3 h-full">
-        {selectedConversation ? (
-          <ChatWindow conversation={selectedConversation} />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            Select a conversation to start chatting
-          </div>
-        )}
+        <ChatWindow conversation={selectedConversation} />
       </div>
     </div>
   );

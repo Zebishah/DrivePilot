@@ -1,11 +1,10 @@
-const { PubSub } = require("graphql-subscriptions");
+const { PubSub, withFilter } = require("graphql-subscriptions");
 const pubsub = new PubSub();
 
 const MESSAGE_SENT = "MESSAGE_SENT";
 
 const Conversation = require("../../models/Conversation");
 const Message = require("../../models/Message");
-const User = require("../../models/User");
 
 const chatResolvers = {
   Query: {
@@ -14,8 +13,9 @@ const chatResolvers = {
         "participants"
       );
     },
+
     getMessages: async (_, { conversationId }) => {
-      return await Message.find({ conversationId }).populate("sender");
+      return await Message.find({ conversationId }).sort({ createdAt: 1 });
     },
   },
 
@@ -34,18 +34,26 @@ const chatResolvers = {
         sender: senderId,
         content,
       });
+
       await message.save();
       const populatedMessage = await message.populate("sender");
+
       pubsub.publish(MESSAGE_SENT, {
         messageSent: populatedMessage,
       });
+
       return populatedMessage;
     },
   },
 
   Subscription: {
     messageSent: {
-      subscribe: (_, { conversationId }) => pubsub.asyncIterator(MESSAGE_SENT),
+      subscribe: withFilter(
+        () => pubsub.asyncIterator(MESSAGE_SENT),
+        (payload, variables) =>
+          payload.messageSent.conversationId.toString() ===
+          variables.conversationId
+      ),
     },
   },
 };

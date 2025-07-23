@@ -18,11 +18,6 @@ export const GET_MESSAGES = gql`
     getMessages(conversationId: $conversationId) {
       _id
       content
-      sender {
-        _id
-        name
-        email
-      }
       createdAt
     }
   }

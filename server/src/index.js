@@ -53,7 +53,30 @@ const wsServer = new WebSocketServer({
 });
 
 // Bind graphql-ws to WebSocket server
-useServer({ schema }, wsServer);
+useServer(
+  {
+    schema,
+
+    // Fires when a client connects
+    onConnect: (ctx) => {
+      console.log("✅ WebSocket connected");
+    },
+
+    // Fires when a client disconnects
+    onDisconnect: (ctx, code, reason) => {
+      console.log("❌ WebSocket disconnected", {
+        code,
+        reason: reason.toString(),
+      });
+    },
+
+    // Fires when there's an error
+    onError: (ctx, message, errors) => {
+      console.error("🚨 WebSocket error:", message, errors);
+    },
+  },
+  wsServer
+);
 
 // Apollo Server Setup
 async function startApolloServer() {

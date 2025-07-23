@@ -2,15 +2,13 @@ const { gql } = require("apollo-server-express");
 
 const chatTypeDefs = gql`
   type Conversation {
-    id: ID!
+    _id: ID!
     participants: [User!]!
     createdAt: String!
   }
 
   type Message {
-    id: ID!
-    conversationId: ID!
-    sender: User!
+    _id: ID!
     content: String!
     createdAt: String!
   }
