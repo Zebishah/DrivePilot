@@ -3,17 +3,17 @@ import { gql } from "@apollo/client";
 export const SEND_MESSAGE = gql`
   mutation SendMessage(
     $conversationId: ID!
-    $senderId: ID!
+    $instructorId: ID!
     $content: String!
   ) {
     sendMessage(
       conversationId: $conversationId
-      senderId: $senderId
+      instructorId: $instructorId
       content: $content
     ) {
       _id
       content
-      sender {
+      instructor {
         _id
         name
         email

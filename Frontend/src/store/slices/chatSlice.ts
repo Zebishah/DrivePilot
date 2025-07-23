@@ -1,15 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-export interface Message {
-  _id: string;
-  sender: {
-    _id: string;
-    name: string;
-    role: string;
-  };
-  content: string;
-  createdAt: string;
-}
+import { MessageType } from "../../types/chatTypes"; // adjust path as needed
 
 export interface Conversation {
   _id: string;
@@ -21,7 +11,7 @@ export interface Conversation {
 interface ChatState {
   conversations: Conversation[];
   selectedConversation: Conversation | null;
-  messages: Message[];
+  messages: MessageType[];
 }
 
 const initialState: ChatState = {
@@ -41,10 +31,10 @@ const chatSlice = createSlice({
       state.selectedConversation = action.payload;
       state.messages = []; // Clear messages when switching
     },
-    setMessages: (state, action: PayloadAction<Message[]>) => {
+    setMessages: (state, action: PayloadAction<MessageType[]>) => {
       state.messages = action.payload;
     },
-    addMessage: (state, action: PayloadAction<Message>) => {
+    addMessage: (state, action: PayloadAction<MessageType>) => {
       state.messages.push(action.payload);
     },
   },

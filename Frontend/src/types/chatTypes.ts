@@ -1,13 +1,8 @@
 export interface UserType {
   _id: string;
   name: string;
-  role: 'student' | 'instructor';
+  role: "student" | "instructor"; // strictly typed
   email?: string;
-}
-
-export interface ConversationType {
-  _id: string;
-  participants: UserType[];
 }
 
 export interface MessageType {

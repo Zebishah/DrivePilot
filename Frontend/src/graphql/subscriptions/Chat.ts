@@ -6,7 +6,7 @@ export const NEW_MESSAGE_SUBSCRIPTION = gql`
     messageSent(conversationId: $conversationId) {
       _id
       content
-      sender {
+      instructor {
         _id
         name
         email
@@ -22,7 +22,7 @@ export const MESSAGE_RECEIVED_SUBSCRIPTION = gql`
       _id
       content
       createdAt
-      sender {
+      instructor {
         _id
         name
         role

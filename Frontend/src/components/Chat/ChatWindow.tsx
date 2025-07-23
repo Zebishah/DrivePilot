@@ -1,15 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useSubscription } from "@apollo/client";
 import { useDispatch, useSelector } from "react-redux";
-import { GET_MESSAGES } from "../../graphql/Queries/Chat";
-import { SEND_MESSAGE } from "../../graphql/mutations/Chat";
-import { NEW_MESSAGE_SUBSCRIPTION } from "../../graphql/subscriptions/Chat";
+import { GET_MESSAGES, NEW_MESSAGE_SUBSCRIPTION, SEND_MESSAGE } from "../../graphql/Queries/Chat";
 import { BsEmojiSmile } from "react-icons/bs";
 import { CiLocationOn } from "react-icons/ci";
 import { IoSend } from "react-icons/io5";
 import MessageItem from "./MessageItem";
 import { addMessage, setMessages } from "../../store/slices/chatSlice";
 import { RootState } from "../../store";
+import { MessageType, UserType } from "../../types";
 
 interface ChatUser {
   _id: string;
@@ -21,7 +20,7 @@ interface ChatWindowProps {
   conversation: ChatUser | null;
 }
 
-const getUserFromStorage = () => {
+const getUserFromStorage = (): UserType | null => {
   try {
     const u = sessionStorage.getItem("user");
     return u ? JSON.parse(u) : null;
@@ -40,11 +39,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const user = getUserFromStorage();
 
   const { loading } = useQuery(GET_MESSAGES, {
-    variables: { conversationId: conversation?._id },
+    variables: {
+      conversationId: conversation?._id || "",
+    },
     skip: !conversation?._id,
     fetchPolicy: "network-only",
     onCompleted: (data) => {
-      dispatch(setMessages(data?.getMessages || []));
+      dispatch(setMessages(data.getMessages || []));
       scrollToBottom();
     },
     onError: (error) => {
@@ -54,7 +55,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
   const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE, {
     onCompleted: (res) => {
-      const msg = res?.data?.sendMessage;
+      const msg: MessageType = res?.sendMessage;
       if (msg) {
         dispatch(addMessage(msg));
         scrollToBottom();
@@ -66,10 +67,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   });
 
   useSubscription(NEW_MESSAGE_SUBSCRIPTION, {
-    variables: { conversationId: conversation?._id },
+    variables: { conversationId: conversation?._id || "" },
     skip: !conversation?._id,
     onData: ({ data }) => {
-      const newMsg = data?.data?.messageSent;
+      const newMsg: MessageType = data?.data?.messageSent;
       if (!newMsg || newMsg.sender._id === user?._id) return;
       dispatch(addMessage(newMsg));
       simulateTyping();
@@ -79,28 +80,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
   const handleSendMessage = async () => {
     const trimmed = newMessage.trim();
-
-    console.log("✉️ handleSendMessage triggered");
-    console.log("🧍 User:", user);
-    console.log("💬 Message:", trimmed);
-    console.log("🗨️ Conversation ID:", conversation?._id);
-
-    if (!trimmed || !conversation?._id || !user?._id) {
-      console.warn("⚠️ Missing data. Cannot send message.");
-      return;
-    }
+    if (!trimmed || !conversation?._id || !user?._id) return;
 
     try {
-      const res = await sendMessage({
+      await sendMessage({
         variables: {
-          conversationId: conversation._id,
-          senderId: user._id,
-          content: trimmed,
+          input: {
+            conversationId: conversation._id,
+            senderId: user._id,
+            content: trimmed,
+          },
         },
       });
-
-      console.log("✅ Message sent response:", res?.data?.sendMessage);
-
       setNewMessage("");
     } catch (err) {
       console.error("❌ Send error:", err);
@@ -169,11 +160,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             <MessageItem
               key={msg._id}
               text={msg.content}
-              time={new Date(msg.createdAt).toLocaleTimeString([], {
+              time={new Date(msg.createdAt || "").toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-              sentByMe={msg.sender._id === user._id}
+              sentByMe={msg.sender._id === user?._id}
             />
           ))
         )}
