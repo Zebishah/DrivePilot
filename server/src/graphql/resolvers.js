@@ -64,11 +64,27 @@ const resolvers = {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
       }
+
       try {
         const instructor = await Instructor.findById(user.id);
         if (!instructor) {
           return null;
         }
+
+        // Fetch completed reviews for this instructor
+        const reviews = await Review.find({
+          instructorId: user.id,
+          reviewStatus: "completed",
+        });
+
+        // Calculate average rating
+        const totalRating = reviews.reduce(
+          (sum, review) => sum + (review.reviewRating || 0),
+          0
+        );
+        const averageRating =
+          reviews.length > 0 ? totalRating / reviews.length : null;
+
         return {
           id: instructor.id,
           firstName: instructor.firstName,
@@ -84,11 +100,14 @@ const resolvers = {
           documents: instructor.documents,
           dateOfBirth: instructor.dateOfBirth,
           languagePreference: instructor.languagePreference,
+          reviewRating: averageRating, // 🔥 Include average review rating
         };
       } catch (error) {
+        console.error("Error in teacherProfile:", error);
         return null;
       }
     },
+
     allInstructors: async (_, __, { user }) => {
       // Optional: Add authentication check if needed
       if (!user) {

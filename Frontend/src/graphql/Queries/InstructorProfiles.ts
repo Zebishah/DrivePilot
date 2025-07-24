@@ -91,6 +91,7 @@ export const GET_TEACHER_PROFILE = gql`
       }
       dateOfBirth
       languagePreference
+      reviewRating
     }
   }
 `;

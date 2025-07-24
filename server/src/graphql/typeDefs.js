@@ -184,6 +184,7 @@ const typeDefs = gql`
     documents: [Document!]
     dateOfBirth: String
     languagePreference: [String] # Changed from String to [String]
+    reviewRating: Float
   }
   type UserBase implements User {
     id: ID!

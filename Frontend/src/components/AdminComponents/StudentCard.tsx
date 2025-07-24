@@ -45,7 +45,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-gray-300 ${
-        isSelected ? "ring-2 ring-[#5DC3D2] border-[#5DC3D2]" : ""
+        isSelected ? "ring-2 ring-[#ffffff] border-[#ffffff] bg-[#5DC3D2] " : ""
       }`}
       onClick={handleCardClick}
     >

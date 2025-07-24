@@ -96,7 +96,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (slotsLoading || progressLoading || reviewsLoading || isRefetching) {
+  if (slotsLoading || progressLoading || reviewsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

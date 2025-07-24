@@ -20,7 +20,7 @@ export const GET_TEACHER_PROFILE = gql`
         documentUrl
         status
       }
-
+      reviewRating
       dateOfBirth
       languagePreference
     }

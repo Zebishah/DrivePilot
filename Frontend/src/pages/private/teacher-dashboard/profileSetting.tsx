@@ -76,6 +76,7 @@ export default function ProfileSetting() {
     rating: number;
     introduction: string;
     documents: Document[];
+    reviewRating: number;
   }
 
   const profileData: ProfileData = {
@@ -108,6 +109,7 @@ export default function ProfileSetting() {
           status: doc.status,
         })
       ) || [], // Ensure documents is an array even if empty
+    reviewRating: teacherData.reviewRating,
   };
   const isRefetching = networkStatus === NetworkStatus.refetch;
   // Handle documents update callback
@@ -250,7 +252,7 @@ export default function ProfileSetting() {
                   >
                     <LuMapPin color="gray" />{" "}
                     <Typography variant="body2" color="text.secondary">
-                      {profileData.location}
+                      {profileData.location} {profileData.reviewRating}
                     </Typography>
                   </Box>
 
@@ -259,10 +261,17 @@ export default function ProfileSetting() {
                       <Star
                         key={index}
                         size={20}
-                        fill={index < profileData.rating ? "#FFD700" : "none"}
-                        stroke={index < profileData.rating ? "#FFD700" : "#ccc"}
+                        fill={
+                          index < profileData.reviewRating ? "#FFD700" : "none"
+                        }
+                        stroke={
+                          index < profileData.reviewRating ? "#FFD700" : "#ccc"
+                        }
                       />
                     ))}
+                    {"("}
+                    {profileData.reviewRating}
+                    {")"}
                   </Box>
                 </Box>
               </Box>

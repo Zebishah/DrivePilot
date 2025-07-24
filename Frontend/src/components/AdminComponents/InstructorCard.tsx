@@ -42,7 +42,7 @@ export const InstructorCard: React.FC<InstructorCardProps> = ({
     <div
       className={`bg-white rounded-lg shadow-sm border p-4 transition-shadow duration-200 cursor-pointer relative hover:shadow-md hover:border-gray-300 ${
         isSelected
-          ? "ring-2 ring-[#5DC3D2] border-[#5DC3D2]"
+          ? "ring-2 ring-[#ffffff] border-[#ffffff] bg-[#5DC3D2] "
           : "border-gray-200"
       }`}
       onClick={handleCardClick}
