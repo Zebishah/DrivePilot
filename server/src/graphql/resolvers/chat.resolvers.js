@@ -9,29 +9,19 @@ const StudentBooking = require("../../models/StudentBooking");
 const chatResolvers = {
   Query: {
     getConversationsForUser: async (_, { userId }) => {
-      const conversations = await Conversation.find({
-        participants: userId,
-      }).populate({
+      return await Conversation.find({ participants: userId }).populate({
         path: "participants",
         model: "UserBase",
         select: "_id firstName lastName email role profileImage",
         options: { discriminatorKey: true },
       });
-
-      return conversations;
     },
 
     getMessages: async (_, { conversationId }) => {
-      const messages = await Message.find({ conversationId })
+      return await Message.find({ conversationId })
         .sort({ createdAt: 1 })
-        .populate({
-          path: "sender",
-          model: "UserBase",
-          select: "_id firstName lastName email role profileImage",
-          options: { discriminatorKey: true },
-        });
-
-      return messages;
+        .populate("sender")
+        .populate("receiver");
     },
   },
 
@@ -39,7 +29,6 @@ const chatResolvers = {
     createConversation: async (_, { participantIds }) => {
       const [user1, user2] = participantIds;
 
-      // Check if booking exists between these two users
       const bookingExists = await StudentBooking.findOne({
         $or: [
           { studentId: user1, instructorId: user2 },
@@ -48,9 +37,7 @@ const chatResolvers = {
       });
 
       if (!bookingExists) {
-        throw new Error(
-          "Conversation not allowed — no booking found between users."
-        );
+        throw new Error("Conversation not allowed — no booking found.");
       }
 
       let conversation = await Conversation.findOne({
@@ -70,30 +57,20 @@ const chatResolvers = {
       });
     },
 
-    sendMessage: async (_, { conversationId, senderId, content }) => {
-      const conversation = await Conversation.findOne({
-        _id: conversationId,
-        participants: senderId,
-      });
-
-      if (!conversation) {
-        throw new Error("Sender is not a participant in this conversation.");
-      }
-
-      const message = new Message({
+    sendMessage: async (
+      _,
+      { conversationId, senderId, receiverId, content }
+    ) => {
+      const message = await Message.create({
         conversationId,
         sender: senderId,
+        receiver: receiverId,
         content,
       });
 
-      await message.save();
-
-      const populatedMessage = await message.populate({
-        path: "sender",
-        model: "UserBase",
-        select: "_id firstName lastName email role profileImage",
-        options: { discriminatorKey: true },
-      });
+      const populatedMessage = await Message.findById(message._id)
+        .populate("sender")
+        .populate("receiver");
 
       pubsub.publish(MESSAGE_SENT, {
         messageSent: populatedMessage,
@@ -107,28 +84,14 @@ const chatResolvers = {
     messageSent: {
       subscribe: withFilter(
         () => pubsub.asyncIterator(MESSAGE_SENT),
-        (payload, variables) =>
-          payload.messageSent.conversationId.toString() ===
-          variables.conversationId
+        (payload, variables) => {
+          return (
+            payload.messageSent.conversationId.toString() ===
+              variables.conversationId &&
+            payload.messageSent.receiver._id.toString() === variables.receiverId
+          );
+        }
       ),
-    },
-  },
-
-  // User interface resolution using discriminator role
-  User: {
-    __resolveType(user) {
-      if (!user || !user.role) return null;
-
-      switch (user.role) {
-        case "Student":
-          return "Student";
-        case "Instructor":
-          return "Instructor";
-        case "Admin":
-          return "Admin";
-        default:
-          return null;
-      }
     },
   },
 };

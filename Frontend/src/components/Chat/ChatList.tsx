@@ -1,57 +1,29 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Avatar, Input, Spin } from "antd";
+// components/Chat/ChatList.tsx
+
+import React, { useState, useMemo } from "react";
+import { Avatar, Input } from "antd";
 import { UserOutlined, SearchOutlined } from "@ant-design/icons";
-import type { Conversation } from "../../store/slices/chatSlice";
-import { useAuth } from "../../context/AuthContext";
+import { ConversationType } from "../../types/chatTypes";
 
 interface ChatListProps {
-  conversations: Conversation[];
-  onSelect: (user: Conversation) => void;
+  conversations: ConversationType[];
+  currentUserId: string;
   selectedUserId?: string;
+  onSelect: (conversation: ConversationType) => void;
 }
 
 const ChatList: React.FC<ChatListProps> = ({
-  conversations = [],
-  onSelect,
+  conversations,
   selectedUserId,
+  onSelect,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { user: currentUser } = useAuth();
 
   const filteredConversations = useMemo(() => {
-    if (!currentUser) return [];
-
-    const others = conversations.filter((conv) => conv._id !== currentUser._id);
-
-    const uniqueMap = new Map();
-    others.forEach((conv) => {
-      if (!uniqueMap.has(conv._id)) {
-        uniqueMap.set(conv._id, conv);
-      }
-    });
-
-    return Array.from(uniqueMap.values()).filter((conv) =>
-      conv.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return conversations.filter((conv) =>
+      conv.user?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [conversations, currentUser, searchTerm]);
-
-  useEffect(() => {
-    const seen = new Set();
-    conversations.forEach((conv) => {
-      if (seen.has(conv._id)) {
-        console.warn("Duplicate _id found in conversations:", conv._id);
-      }
-      seen.add(conv._id);
-    });
-  }, [conversations]);
-
-  if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Spin tip="Loading user..." size="large" />
-      </div>
-    );
-  }
+  }, [conversations, searchTerm]);
 
   return (
     <div className="w-full h-full bg-white overflow-y-auto">
@@ -73,6 +45,8 @@ const ChatList: React.FC<ChatListProps> = ({
       ) : (
         filteredConversations.map((conv) => {
           const isSelected = selectedUserId === conv._id;
+          const { name, email, profileImage } = conv.user;
+
           return (
             <div
               key={conv._id}
@@ -81,19 +55,19 @@ const ChatList: React.FC<ChatListProps> = ({
                 ${isSelected ? "bg-blue-100" : "hover:bg-gray-100"}`}
             >
               <Avatar
-                src={conv.avatar || ""}
+                src={profileImage || ""}
                 size={52}
-                icon={!conv.avatar && <UserOutlined />}
+                icon={!profileImage && <UserOutlined />}
               >
-                {!conv.avatar && conv.name?.charAt(0)}
+                {!profileImage && name?.charAt(0)}
               </Avatar>
               <div className="flex flex-col max-w-[200px]">
                 <span className="font-semibold text-gray-800 text-base">
-                  {conv.name}
+                  {name}
                 </span>
-                {conv.lastMessage && (
-                  <span className="text-sm text-gray-500 truncate max-w-full">
-                    {conv.lastMessage}
+                {email && (
+                  <span className="text-gray-500 text-xs truncate">
+                    {email}
                   </span>
                 )}
               </div>

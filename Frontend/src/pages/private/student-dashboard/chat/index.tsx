@@ -11,6 +11,7 @@ import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../../graphql/Queries/StudentQueries";
 import { StudentBooking } from "../../../../types/Bookings";
 import { useAuth } from "../../../../context/AuthContext";
+import { ConversationType } from "../../../../types/chatTypes";
 
 const StudentChatPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -27,18 +28,49 @@ const StudentChatPage: React.FC = () => {
   useEffect(() => {
     if (!user?.id || !data?.getStudentBookings) return;
 
-    const formattedConversations = data.getStudentBookings
-      .filter((booking: StudentBooking) => booking.instructorId)
-      .map((booking: StudentBooking) => ({
-        _id: booking.instructorId._id, // Used as conversationId
-        name: `${booking.instructorId.firstName} ${booking.instructorId.lastName}`,
-        email: booking.instructorId.email,
-        avatar:
-          booking.instructorId.profileImage ||
-          `https://ui-avatars.com/api/?name=${booking.instructorId.firstName}+${booking.instructorId.lastName}`,
-      }));
+    // Create a Map to keep only one conversation per instructor
+    const uniqueInstructorMap = new Map<string, ConversationType>();
 
-    dispatch(setConversations(formattedConversations));
+    data.getStudentBookings.forEach((booking: StudentBooking) => {
+      const instructor = booking.instructorId;
+      if (!instructor || uniqueInstructorMap.has(instructor._id)) return;
+
+      const conversation: ConversationType = {
+        _id: instructor._id, // use instructor ID as unique chat ID
+        participants: [
+          {
+            _id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            profileImage: user.profileImage,
+            role: user.role, // optionally add role
+          },
+          {
+            _id: instructor._id,
+            name: `${instructor.firstName} ${instructor.lastName}`,
+            email: instructor.email,
+            profileImage:
+              instructor.profileImage ||
+              `https://ui-avatars.com/api/?name=${instructor.firstName}+${instructor.lastName}`,
+            role: instructor.role, // optionally add role
+          },
+        ],
+        user: {
+          _id: instructor._id,
+          name: `${instructor.firstName} ${instructor.lastName}`,
+          email: instructor.email,
+          profileImage:
+            instructor.profileImage ||
+            `https://ui-avatars.com/api/?name=${instructor.firstName}+${instructor.lastName}`,
+          role: instructor.role,
+        },
+      };
+
+      uniqueInstructorMap.set(instructor._id, conversation);
+    });
+
+    const uniqueConversations = Array.from(uniqueInstructorMap.values());
+    dispatch(setConversations(uniqueConversations));
   }, [data, dispatch, user?.id]);
 
   if (!user)

@@ -1,25 +1,44 @@
-interface MessageItemProps {
-  text: string;
-  time: string;
-  sentByMe: boolean;
+import React from "react";
+import { MessageType } from "../../types/chatTypes";
+import { Avatar } from "antd";
+
+interface Props {
+  message: MessageType;
+  isOwnMessage: boolean;
 }
 
-const MessageItem = ({ text, time, sentByMe }: MessageItemProps) => {
+const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
+  const { content, sender } = message;
+
   return (
-    <div className={`flex ${sentByMe ? "justify-end" : "justify-start"} px-4`}>
+    <div
+      className={`flex items-end space-x-2 mb-2 ${
+        isOwnMessage ? "justify-end" : "justify-start"
+      }`}
+    >
+      {!isOwnMessage && (
+        <Avatar size="small" src={sender.profileImage}>
+          {sender.name?.[0]}
+        </Avatar>
+      )}
+
       <div
-        className={`relative max-w-[70%] px-4 py-2 rounded-xl shadow-sm text-sm break-words
-          ${sentByMe ? "bg-[#1A1A40] text-white" : "bg-[#CFF2F9] text-gray-900"}
-        `}
+        className={`relative p-3 rounded-lg max-w-sm shadow-md ${
+          isOwnMessage
+            ? "bg-blue-500 text-white rounded-br-none"
+            : "bg-gray-200 text-gray-900 rounded-bl-none"
+        }`}
       >
-        <p className="whitespace-pre-wrap">{text}</p>
-        <span
-          className={`absolute text-[10px] text-gray-400 mt-1 ${
-            sentByMe ? "right-2" : "left-2"
-          } bottom-[-18px]`}
-        >
-          {time}
-        </span>
+        <p className="text-sm">{content}</p>
+
+        {/* Optional: Tail style */}
+        <div
+          className={`absolute bottom-0 w-2 h-2 ${
+            isOwnMessage
+              ? "right-0 bg-blue-500 clip-triangle-right"
+              : "left-0 bg-gray-200 clip-triangle-left"
+          }`}
+        />
       </div>
     </div>
   );

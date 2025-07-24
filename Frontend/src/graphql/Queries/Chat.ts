@@ -1,14 +1,49 @@
 import { gql } from "@apollo/client";
 
-export const CREATE_CONVERSATION = gql`
-  mutation CreateConversation($participantIds: [ID!]!) {
-    createConversation(participantIds: $participantIds) {
+export const GET_MESSAGES = gql`
+  query GetMessages($conversationId: ID!, $senderId: ID!) {
+    getMessages(conversationId: $conversationId, senderId: $senderId) {
       _id
-      participants {
-        _id
-        firstName
-        lastName
-        email
+      content
+      conversationId
+      createdAt
+      sender {
+        __typename
+        ... on Student {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+        ... on Instructor {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+      }
+      receiver {
+        __typename
+        ... on Student {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+        ... on Instructor {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
       }
     }
   }
@@ -18,80 +53,106 @@ export const SEND_MESSAGE = gql`
   mutation SendMessage(
     $conversationId: ID!
     $senderId: ID!
+    $receiverId: ID!
     $content: String!
   ) {
     sendMessage(
       conversationId: $conversationId
       senderId: $senderId
+      receiverId: $receiverId
       content: $content
     ) {
       _id
       content
-      sender {
-        _id
-        firstName
-        lastName
-      }
+      conversationId
       createdAt
-    }
-  }
-`;
-
-export const GET_MESSAGES = gql`
-  query GetMessages($conversationId: ID!) {
-    getMessages(conversationId: $conversationId) {
-      _id
-      content
       sender {
-        _id
-        firstName
-        lastName
+        __typename
+        ... on Student {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+        ... on Instructor {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
       }
-      createdAt
-    }
-  }
-`;
-
-export const GET_CONVERSATIONS_FOR_USER = gql`
-  query GetConversationsForUser($userId: ID!) {
-    getConversationsForUser(userId: $userId) {
-      _id
-      participants {
-        _id
-        firstName
-        lastName
-        email
+      receiver {
+        __typename
+        ... on Student {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+        ... on Instructor {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
       }
-    }
-  }
-`;
-
-export const MESSAGE_SENT_SUBSCRIPTION = gql`
-  subscription MessageSent($conversationId: ID!) {
-    messageSent(conversationId: $conversationId) {
-      _id
-      content
-      sender {
-        _id
-        firstName
-        lastName
-      }
-      createdAt
     }
   }
 `;
 
 export const NEW_MESSAGE_SUBSCRIPTION = gql`
-  subscription NewMessage($conversationId: ID!) {
-    messageSent(conversationId: $conversationId) {
+  subscription OnMessageSent($conversationId: ID!, $senderId: ID!) {
+    messageSent(conversationId: $conversationId, senderId: $senderId) {
       _id
       content
-      sender {
-        _id
-        firstName
-        lastName
-      }
+      conversationId
       createdAt
+      sender {
+        __typename
+        ... on Student {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+        ... on Instructor {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+      }
+      receiver {
+        __typename
+        ... on Student {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+        ... on Instructor {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
+          role
+        }
+      }
     }
   }
 `;

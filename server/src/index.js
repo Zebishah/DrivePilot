@@ -19,7 +19,7 @@ connectDB();
 const app = express();
 const httpServer = http.createServer(app);
 
-// CORS setup
+// CORS
 const allowedOrigins = [
   "https://dsp-client.onrender.com",
   "https://dsp-server.onrender.com",
@@ -27,58 +27,52 @@ const allowedOrigins = [
   "https://studio.apollographql.com",
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log("Blocked by CORS:", origin);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-};
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
-app.use(cors(corsOptions));
 app.use(passport.initialize());
 app.use(authRoutes);
 
-// Schema setup
+// GraphQL schema
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-// WebSocket Server for GraphQL Subscriptions
+// GraphQL WebSocket server
 const wsServer = new WebSocketServer({
   server: httpServer,
   path: "/graphql",
 });
 
-// Bind graphql-ws to WebSocket server
 useServer(
   {
     schema,
-
-    // Fires when a client connects
-    onConnect: (ctx) => {
+    onConnect: async (ctx) => {
       console.log("✅ WebSocket connected");
     },
-
-    // Fires when a client disconnects
-    onDisconnect: (ctx, code, reason) => {
+    onDisconnect(ctx, code, reason) {
       console.log("❌ WebSocket disconnected", {
         code,
         reason: reason.toString(),
       });
     },
-
-    // Fires when there's an error
-    onError: (ctx, message, errors) => {
-      console.error("🚨 WebSocket error:", message, errors);
+    onError: (ctx, msg, err) => {
+      console.error("🚨 WS error:", msg, err);
     },
   },
   wsServer
 );
 
-// Apollo Server Setup
+// Apollo Server (HTTP only)
 async function startApolloServer() {
   const server = new ApolloServer({
     schema,
@@ -95,10 +89,8 @@ async function startApolloServer() {
 
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
-    console.log(
-      `🚀 Server ready at http://localhost:${PORT}${server.graphqlPath}`
-    );
-    console.log(`📡 Subscriptions ready at ws://localhost:${PORT}/graphql`);
+    console.log(`🚀 HTTP: http://localhost:${PORT}${server.graphqlPath}`);
+    console.log(`📡 WS: ws://localhost:${PORT}${server.graphqlPath}`);
   });
 }
 

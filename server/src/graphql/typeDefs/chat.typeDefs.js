@@ -2,11 +2,11 @@ const { gql } = require("apollo-server-express");
 
 const chatTypeDefs = gql`
   interface User {
-    _id: ID!
     firstName: String!
     lastName: String!
     email: String!
-    role: String!
+    role: UserRole
+    profileImage: String
   }
 
   type Student implements User {
@@ -14,7 +14,7 @@ const chatTypeDefs = gql`
     firstName: String!
     lastName: String!
     email: String!
-    role: String!
+    role: UserRole
     profileImage: String
     location: String
     experience: String
@@ -26,7 +26,7 @@ const chatTypeDefs = gql`
     firstName: String!
     lastName: String!
     email: String!
-    role: String!
+    role: UserRole
     profileImage: String
     location: String
     experience: String
@@ -39,7 +39,8 @@ const chatTypeDefs = gql`
     firstName: String!
     lastName: String!
     email: String!
-    role: String!
+    role: UserRole
+    profileImage: String
     adminLevel: String
   }
 
@@ -53,6 +54,7 @@ const chatTypeDefs = gql`
     _id: ID!
     content: String!
     sender: User!
+    receiver: User!
     conversationId: ID!
     createdAt: String!
   }
@@ -64,11 +66,16 @@ const chatTypeDefs = gql`
 
   type Mutation {
     createConversation(participantIds: [ID!]!): Conversation!
-    sendMessage(conversationId: ID!, senderId: ID!, content: String!): Message!
+    sendMessage(
+      conversationId: ID!
+      senderId: ID!
+      receiverId: ID!
+      content: String!
+    ): Message!
   }
 
   type Subscription {
-    messageSent(conversationId: ID!): Message!
+    messageSent(conversationId: ID!, receiverId: ID!): Message!
   }
 `;
 

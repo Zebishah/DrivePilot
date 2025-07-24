@@ -1,9 +1,22 @@
-export interface UserType {
+export type UserRole = "student" | "instructor";
+
+export interface BaseUserType {
   _id: string;
   name: string;
-  role: "student" | "instructor"; // strictly typed
   email?: string;
+  role: UserRole;
+  profileImage?: string;
 }
+
+export interface StudentUserType extends BaseUserType {
+  role: "student";
+}
+
+export interface InstructorUserType extends BaseUserType {
+  role: "instructor";
+}
+
+export type UserType = StudentUserType | InstructorUserType;
 
 export interface MessageType {
   _id: string;
@@ -11,4 +24,10 @@ export interface MessageType {
   sender: UserType;
   conversationId: string;
   createdAt?: string;
+}
+
+// This is what ChatList expects
+export interface Conversation {
+  _id: string;
+  user: UserType;
 }
