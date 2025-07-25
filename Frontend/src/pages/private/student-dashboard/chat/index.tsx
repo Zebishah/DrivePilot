@@ -1,4 +1,3 @@
-// StudentChatPage.tsx
 import React, { useEffect } from "react";
 import ChatList from "../../../../components/Chat/ChatList";
 import ChatWindow from "../../../../components/Chat/ChatWindow";
@@ -7,7 +6,7 @@ import { RootState } from "../../../../store";
 import {
   setConversations,
   selectConversation,
-  clearMessages, // Add this action to clear messages when switching conversations
+  clearMessages,
 } from "../../../../store/slices/chatSlice";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../../graphql/Queries/StudentQueries";
@@ -30,15 +29,24 @@ const StudentChatPage: React.FC = () => {
   useEffect(() => {
     if (!user?.id || !data?.getStudentBookings) return;
 
-    // Create a Map to keep only one conversation per instructor
     const uniqueInstructorMap = new Map<string, ConversationType>();
 
     data.getStudentBookings.forEach((booking: StudentBooking) => {
+      console.log("isntrucor1", booking);
       const instructor = booking.instructorId;
+
       if (!instructor || uniqueInstructorMap.has(instructor._id)) return;
 
+      const instructorName = `${instructor.firstName} ${instructor.lastName}`;
+      console.log("isntrucor", instructor);
+      const profileImage = instructor.profileImage?.trim()
+        ? instructor.profileImage
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            instructorName
+          )}`;
+
       const conversation: ConversationType = {
-        _id: instructor._id, // use instructor ID as unique chat ID
+        _id: instructor._id,
         participants: [
           {
             _id: user.id,
@@ -49,23 +57,21 @@ const StudentChatPage: React.FC = () => {
           },
           {
             _id: instructor._id,
-            name: `${instructor.firstName} ${instructor.lastName}`,
+            name: instructorName,
             email: instructor.email,
-            profileImage:
-              instructor.profileImage ||
-              `https://ui-avatars.com/api/?name=${instructor.firstName}+${instructor.lastName}`,
+            profileImage,
             role: instructor.role,
           },
         ],
         user: {
           _id: instructor._id,
-          name: `${instructor.firstName} ${instructor.lastName}`,
+          name: instructorName,
           email: instructor.email,
-          profileImage:
-            instructor.profileImage ||
-            `https://ui-avatars.com/api/?name=${instructor.firstName}+${instructor.lastName}`,
+          profileImage,
           role: instructor.role,
         },
+        createdAt: booking.createdAt || new Date().toISOString(),
+        updatedAt: booking.updatedAt || new Date().toISOString(),
       };
 
       uniqueInstructorMap.set(instructor._id, conversation);
@@ -75,7 +81,6 @@ const StudentChatPage: React.FC = () => {
     dispatch(setConversations(uniqueConversations));
   }, [data, dispatch, user?.id]);
 
-  // Clear messages when component unmounts
   useEffect(() => {
     return () => {
       dispatch(clearMessages());
@@ -93,20 +98,28 @@ const StudentChatPage: React.FC = () => {
     );
 
   return (
-    <div className="flex h-[calc(100vh-80px)]">
-      <div className="w-1/3 border-r h-full overflow-y-auto">
-        <ChatList
-          conversations={conversations}
-          currentUserId={user.id}
-          onSelect={(conv) => {
-            dispatch(clearMessages()); // Clear previous messages
-            dispatch(selectConversation(conv));
-          }}
-          selectedUserId={selectedConversation?._id}
-        />
-      </div>
-      <div className="w-2/3 h-full">
-        <ChatWindow conversation={selectedConversation} />
+    <div className="h-[calc(100vh-80px)] p-4 bg-gray-50">
+      <div className="flex h-full rounded-xl shadow-md overflow-hidden bg-white">
+        <div className="w-[520px] h-full rounded-xl shadow-md bg-white overflow-y-auto">
+          <ChatList
+            conversations={conversations}
+            currentUserId={user.id}
+            onSelect={(conv) => {
+              dispatch(clearMessages());
+              dispatch(selectConversation(conv));
+            }}
+            selectedUserId={selectedConversation?._id}
+          />
+        </div>
+        <div className="flex-1 max-w-[calc(100%-340px)] h-full rounded-xl shadow-md bg-white overflow-hidden">
+          {selectedConversation ? (
+            <ChatWindow conversation={selectedConversation} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              Select a conversation to start chatting
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

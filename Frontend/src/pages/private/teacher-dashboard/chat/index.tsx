@@ -1,4 +1,3 @@
-// InstructorChatPage.tsx
 import React, { useEffect, useMemo } from "react";
 import ChatList from "../../../../components/Chat/ChatList";
 import ChatWindow from "../../../../components/Chat/ChatWindow";
@@ -51,7 +50,6 @@ const InstructorChatPage = () => {
     }
   }, [data, dispatch]);
 
-  // Clear messages when component unmounts
   useEffect(() => {
     return () => {
       dispatch(clearMessages());
@@ -70,8 +68,6 @@ const InstructorChatPage = () => {
       }
     : null;
 
-  // Fix the selected conversation logic to make sure student is the other participant
-  // Fix conversation structure
   const selectedAsConversation = useMemo(() => {
     if (selectedConversation && currentUser) {
       return {
@@ -83,29 +79,33 @@ const InstructorChatPage = () => {
   }, [selectedConversation, currentUser]);
 
   return (
-    <div className="flex h-[calc(100vh-80px)]">
-      <div className="w-1/3 border-r h-full overflow-y-auto">
-        <ChatList
-          conversations={conversations}
-          currentUserId={currentUser?._id || ""}
-          selectedUserId={selectedConversation?._id}
-          onSelect={(conversation) => {
-            dispatch(clearMessages()); // Clear previous messages
-            dispatch(selectConversation(conversation));
-          }}
-        />
-      </div>
-      <div className="w-2/3 h-full">
-        {selectedAsConversation ? (
-          <ChatWindow
-            key={selectedAsConversation._id}
-            conversation={selectedAsConversation}
+    <div className="h-[calc(100vh-80px)] p-4 bg-gray-50">
+      <div className="flex h-full rounded-xl shadow-md overflow-hidden bg-white">
+        <div className="w-[520px] h-full flex-shrink-0 flex flex-col overflow-hidden bg-white border-r">
+          <ChatList
+            conversations={conversations}
+            currentUserId={currentUser?._id || ""}
+            selectedUserId={selectedConversation?._id}
+            onSelect={(conversation) => {
+              dispatch(clearMessages());
+              dispatch(selectConversation(conversation));
+            }}
           />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            Select a conversation to start chatting
-          </div>
-        )}
+        </div>
+
+        <div className="flex-1 max-w-[calc(100%-340px)] h-full rounded-xl shadow-md bg-white overflow-hidden">
+          {" "}
+          {selectedAsConversation ? (
+            <ChatWindow
+              key={selectedAsConversation._id}
+              conversation={selectedAsConversation}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Select a conversation to start chatting
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

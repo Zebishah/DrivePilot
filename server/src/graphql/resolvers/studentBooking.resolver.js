@@ -15,7 +15,10 @@ const studentBookingResolver = {
     getStudentBookings: async (_, __, { user }) => {
       validateUser(user);
       const bookings = await StudentBooking.find({ studentId: user.id })
-        .populate("instructorId", "_id firstName lastName email description")
+        .populate(
+          "instructorId",
+          "_id firstName lastName email description profileImage"
+        )
         .sort({ createdAt: -1 });
 
       return bookings;
@@ -83,7 +86,7 @@ const studentBookingResolver = {
       // Add bookerProfileImage to each booking object
       const bookingsWithStudentProfile = sortedBookings.map((booking) => {
         const bookingObj = booking.toObject(); // Convert to plain object
-
+        console.log("booking", booking);
         return {
           ...bookingObj,
           // Add the student's (booker's) profile image

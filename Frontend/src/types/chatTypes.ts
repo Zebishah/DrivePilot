@@ -31,3 +31,14 @@ export interface Conversation {
   _id: string;
   user: UserType;
 }
+
+export interface ConversationType {
+  _id: string;
+  user: {
+    name: string;
+    email?: string;
+    profileImage?: string;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}

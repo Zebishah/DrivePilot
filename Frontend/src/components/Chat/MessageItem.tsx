@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { MessageType } from "../../types/chatTypes";
 import { Avatar } from "antd";
+import dayjs from "dayjs";
 
 interface Props {
   message: MessageType;
@@ -8,37 +9,40 @@ interface Props {
 }
 
 const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
-  const { content, sender } = message;
+  const [showFullTimestamp, setShowFullTimestamp] = useState(false);
+  const { content, sender, createdAt } = message;
 
   return (
     <div
-      className={`flex items-end space-x-2 mb-2 ${
+      className={`flex mb-4 px-4 ${
         isOwnMessage ? "justify-end" : "justify-start"
       }`}
     >
       {!isOwnMessage && (
-        <Avatar size="small" src={sender.profileImage}>
-          {sender.name?.[0]}
-        </Avatar>
+        <Avatar size={32} src={sender.profileImage} className="mr-2" />
       )}
 
       <div
-        className={`relative p-3 rounded-lg max-w-sm shadow-md ${
-          isOwnMessage
-            ? "bg-blue-500 text-white rounded-br-none"
-            : "bg-gray-200 text-gray-900 rounded-bl-none"
+        className={`flex flex-col max-w-[75%] ${
+          isOwnMessage ? "items-end" : "items-start"
         }`}
       >
-        <p className="text-sm">{content}</p>
-
-        {/* Optional: Tail style */}
         <div
-          className={`absolute bottom-0 w-2 h-2 ${
+          onClick={() => setShowFullTimestamp((prev) => !prev)}
+          className={`p-3 rounded-xl text-sm shadow-md whitespace-pre-line break-words cursor-pointer transition duration-200 ${
             isOwnMessage
-              ? "right-0 bg-blue-500 clip-triangle-right"
-              : "left-0 bg-gray-200 clip-triangle-left"
+              ? "bg-[#13173F] text-white rounded-br-none"
+              : "bg-[#D9F6F1] text-gray-800 rounded-bl-none"
           }`}
-        />
+        >
+          {content}
+        </div>
+
+        <span className="text-xs text-gray-400 mt-1">
+          {showFullTimestamp
+            ? dayjs(createdAt).format("MMM D, YYYY · h:mm A")
+            : dayjs(createdAt).format("h:mm A")}
+        </span>
       </div>
     </div>
   );

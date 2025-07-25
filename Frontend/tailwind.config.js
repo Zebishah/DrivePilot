@@ -9,6 +9,7 @@ export default {
       },
 
       colors: {
+        defaultColor: "#5FC2D3",
         primary: {
           DEFAULT: "#5EC2D2",
           //// Example for Adding Shades For Colors  also for hovers and disable etc ////
