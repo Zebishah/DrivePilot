@@ -1,7 +1,7 @@
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../store/slices/authSlice";
-import type { RootState } from "../store";
+import type { RootState } from "../store/index";
 
 export const useAuth = () => {
   const dispatch = useDispatch();

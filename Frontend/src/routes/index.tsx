@@ -49,6 +49,8 @@ import { DocumentDetailsPage } from "../pages/private/admin-dashboard/DocumentsD
 import InstructorDocumentsTable from "../components/AdminComponents/InstructorDocumentsTable";
 import { InstructorManagement } from "../pages/private/admin-dashboard/InstructorManagement";
 import { StudentManagement } from "../pages/private/admin-dashboard/StudentManagement";
+import InstructorChatPage from "../pages/private/teacher-dashboard/chat";
+import StudentChatPage from "../pages/private/student-dashboard/chat";
 
 const router = createBrowserRouter([
   {
@@ -111,6 +113,7 @@ const router = createBrowserRouter([
       { path: "review-form", element: <ReviewForm /> },
       { path: "review-display", element: <ReviewDisplay /> },
       { path: "allBookingSlots", element: <AllBookingSlotsPage /> },
+      { path: "chat", element: <StudentChatPage /> },
     ],
   },
   {
@@ -130,6 +133,7 @@ const router = createBrowserRouter([
       { path: "feedbackForm/:lessonId/:studentId", element: <FeedbackForm /> },
       { path: "studentProgress/:studentId", element: <StudentDashboard /> },
       { path: "my-students", element: <StudentsProgressDashboard /> },
+      { path: "chat", element: <InstructorChatPage /> },
     ],
   },
   {

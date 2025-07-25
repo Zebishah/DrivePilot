@@ -1,8 +1,8 @@
 // Auth Types
 export interface User {
-  id: string;
+  _id: string;
   email: string;
-  role: 'student' | 'instructor' | 'admin';
+  role: "student" | "instructor" | "admin";
   name: string;
 }
 
@@ -21,9 +21,10 @@ export interface ApiResponse<T> {
 }
 
 // Common Component Props
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline";
+  size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
 

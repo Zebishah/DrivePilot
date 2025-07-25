@@ -60,6 +60,11 @@ const menuItems: MenuItem[] = [
     icon: FaUserGraduate,
     path: "/teacher-dashboard/my-students",
   },
+  {
+    text: "Messages",
+    icon: MessageSquare,
+    path: "/teacher-dashboard/chat",
+  },
   { text: "Logout", icon: LogOut, path: "/logout" },
 ];
 const DRAWER_WIDTH = 280;

@@ -12,6 +12,8 @@ const faqTypeDefs = require("../graphql/typeDefs/Faq'sTypes");
 const LessonFeedbackTypeDefs = require("../graphql/typeDefs/LessonFeedbackTypes");
 const reviewTypeDefs = require("../graphql/typeDefs/ReviewTypes");
 const studentDashboardTypeDefs = require("../graphql/typeDefs/studentDashboard");
+const chatTypeDefs = require("../graphql/typeDefs/chat.typeDefs");
+
 const typeDefs = mergeTypeDefs([
   userTypeDefs,
   SignupLinkTypedef,
@@ -25,6 +27,7 @@ const typeDefs = mergeTypeDefs([
   LessonFeedbackTypeDefs,
   reviewTypeDefs,
   studentDashboardTypeDefs,
+  chatTypeDefs,
 ]);
 
 module.exports = typeDefs;
