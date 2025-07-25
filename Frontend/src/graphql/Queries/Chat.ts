@@ -1,11 +1,11 @@
 import { gql } from "@apollo/client";
 
 export const GET_MESSAGES = gql`
-  query GetMessages($conversationId: ID!, $senderId: ID!) {
-    getMessages(conversationId: $conversationId, senderId: $senderId) {
+  query GetMessages($user1Id: ID!, $user2Id: ID!) {
+    getMessages(user1Id: $user1Id, user2Id: $user2Id) {
       _id
       content
-      conversationId
+      chatId
       createdAt
       sender {
         __typename
@@ -50,21 +50,15 @@ export const GET_MESSAGES = gql`
 `;
 
 export const SEND_MESSAGE = gql`
-  mutation SendMessage(
-    $conversationId: ID!
-    $senderId: ID!
-    $receiverId: ID!
-    $content: String!
-  ) {
+  mutation SendMessage($senderId: ID!, $receiverId: ID!, $content: String!) {
     sendMessage(
-      conversationId: $conversationId
       senderId: $senderId
       receiverId: $receiverId
       content: $content
     ) {
       _id
       content
-      conversationId
+      chatId
       createdAt
       sender {
         __typename
@@ -109,11 +103,11 @@ export const SEND_MESSAGE = gql`
 `;
 
 export const NEW_MESSAGE_SUBSCRIPTION = gql`
-  subscription OnMessageSent($conversationId: ID!, $senderId: ID!) {
-    messageSent(conversationId: $conversationId, senderId: $senderId) {
+  subscription messageSent($user1Id: ID!, $user2Id: ID!) {
+    messageSent(user1Id: $user1Id, user2Id: $user2Id) {
       _id
       content
-      conversationId
+      chatId
       createdAt
       sender {
         __typename

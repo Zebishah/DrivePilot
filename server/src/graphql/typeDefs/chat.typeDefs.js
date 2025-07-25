@@ -55,27 +55,20 @@ const chatTypeDefs = gql`
     content: String!
     sender: User!
     receiver: User!
-    conversationId: ID!
+    chatId: String!
     createdAt: String!
   }
 
   type Query {
-    getConversationsForUser(userId: ID!): [Conversation!]!
-    getMessages(conversationId: ID!): [Message!]!
+    getMessages(user1Id: ID!, user2Id: ID!): [Message!]!
   }
 
   type Mutation {
-    createConversation(participantIds: [ID!]!): Conversation!
-    sendMessage(
-      conversationId: ID!
-      senderId: ID!
-      receiverId: ID!
-      content: String!
-    ): Message!
+    sendMessage(senderId: ID!, receiverId: ID!, content: String!): Message!
   }
 
   type Subscription {
-    messageSent(conversationId: ID!, receiverId: ID!): Message!
+    messageSent(user1Id: ID!, user2Id: ID!): Message
   }
 `;
 

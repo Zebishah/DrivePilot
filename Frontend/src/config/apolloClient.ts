@@ -1,44 +1,47 @@
-import { ApolloClient, InMemoryCache, split, HttpLink } from "@apollo/client";
+import { ApolloClient, InMemoryCache, HttpLink, split } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
+import { getMainDefinition } from "@apollo/client/utilities";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
 import { createClient } from "graphql-ws";
-import { getMainDefinition } from "@apollo/client/utilities";
+import Cookies from "js-cookie";
+import CryptoJS from "crypto-js";
 
-// Environment vars
-const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL; // http://localhost:4000/graphql
-const WS_URL = import.meta.env.VITE_APP_BACKEND_WS_URL; // ws://localhost:4000/graphql
+// 📍 ENV
+const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL; // http://localhost:3000/graphql
+const WS_URL = import.meta.env.VITE_APP_BACKEND_WS_URL; // ws://localhost:3000/graphql
+const ENCRYPTION_KEY =
+  import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secret";
 
-function getToken(): string | null {
-  return sessionStorage.getItem("token");
-}
+// 🔓 Decrypt token utility
+const decrypt = (encryptedData: string) => {
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
+    return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  } catch (error) {
+    console.error("❌ Failed to decrypt token:", error);
+    return null;
+  }
+};
 
-const PUBLIC_OPS = ["loginUser", "signupUser", "forgotPassword"];
+// 🔑 Get token from cookies
+const getToken = (): string | null => {
+  const encryptedToken = Cookies.get("token_dsp");
+  console.log("🔑 Token:", encryptedToken);
+  if (!encryptedToken) return null;
+  return decrypt(encryptedToken);
+};
 
-// HTTP link for queries/mutations
-const httpLink = new HttpLink({
-  uri: BACKEND_URL,
-});
+// 🛡 Public ops that don't need auth
+const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword"];
 
-// WebSocket link for subscriptions
-const wsLink = new GraphQLWsLink(
-  createClient({
-    url: WS_URL,
-    lazy: true,
-    retryAttempts: 5,
-    connectionParams: () => {
-      const token = getToken();
-      return {
-        authorization: token ? `Bearer ${token}` : "",
-      };
-    },
-  })
-);
+// 🌐 HTTP Link for Queries/Mutations
+const httpLink = new HttpLink({ uri: BACKEND_URL });
 
-// Auth link
+// 🔐 Auth Middleware
 const authLink = setContext((operation, { headers }) => {
   const token = getToken();
-  const isPublic = PUBLIC_OPS.includes(operation.operationName || "");
+  const isPublic = PUBLIC_OPERATIONS.includes(operation.operationName || "");
   return {
     headers: {
       ...headers,
@@ -47,31 +50,60 @@ const authLink = setContext((operation, { headers }) => {
   };
 });
 
-// Error handler
+// 🚨 Error Link
 const errorLink = onError(({ graphQLErrors, networkError }) => {
-  if (graphQLErrors) {
-    for (let err of graphQLErrors) {
-      console.error("[GraphQL error]", err.message);
-    }
-  }
-  if (networkError) {
-    console.error("[Network error]", networkError);
-  }
+  if (graphQLErrors)
+    graphQLErrors.forEach(({ message }) =>
+      console.error("[GraphQL error]:", message)
+    );
+  if (networkError) console.error("[Network error]:", networkError);
 });
 
-// Split link to route between http/ws
+// 🔌 WebSocket Link for Subscriptions
+const wsLink = new GraphQLWsLink(
+  createClient({
+    url: WS_URL,
+    lazy: true,
+    retryAttempts: 5,
+    connectionParams: () => {
+      const token = getToken();
+      console.log("🔗 WS connectionParams:", { token });
+      return {
+        authorization: token ? `Bearer ${token}` : "",
+      };
+    },
+    on: {
+      connected: () => console.log("✅ WS Connected"),
+      connecting: () => console.log("🔄 WS Connecting..."),
+      closed: (event) =>
+        console.log("❌ WS Closed", {
+          code: event.code,
+          reason: event.reason,
+        }),
+      error: (err) => console.error("🚨 WS Error", err),
+    },
+  })
+);
+
+// 🔀 Split HTTP & WS based on operation type
 const splitLink = split(
   ({ query }) => {
     const def = getMainDefinition(query);
+    console.log("🔍 Operation Type:", def.kind, def.operation); // 👈 Add this
     return (
       def.kind === "OperationDefinition" && def.operation === "subscription"
     );
   },
-  wsLink, // for subscriptions
-  errorLink.concat(authLink.concat(httpLink)) // for query/mutation
+  wsLink,
+  errorLink.concat(authLink.concat(httpLink))
 );
 
+// 🚀 Apollo Client Instance
 export const apolloClient = new ApolloClient({
   link: splitLink,
   cache: new InMemoryCache(),
+  defaultOptions: {
+    watchQuery: { fetchPolicy: "network-only", errorPolicy: "all" },
+    query: { fetchPolicy: "network-only", errorPolicy: "all" },
+  },
 });

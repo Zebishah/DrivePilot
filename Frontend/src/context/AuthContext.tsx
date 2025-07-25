@@ -1,5 +1,11 @@
 import type React from "react";
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import Cookies from "js-cookie";
 import { ApolloClient, createHttpLink, InMemoryCache } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
@@ -18,7 +24,7 @@ const ENCRYPTION_KEY =
 interface AuthContextType {
   isAuthenticated: boolean;
   isTempAuthenticated: boolean;
-  isVerified: boolean; // Added isVerified property
+  isVerified: boolean;
   user: AuthPayload["user"] | null;
   tempUserData: TempAuthPayload["tempUserData"] | null;
   login: (authPayload: AuthPayload) => void;
@@ -41,7 +47,7 @@ const decrypt = (encryptedData: string): any => {
     const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
 
-    if (!decryptedText) return null; // Avoid parsing empty string
+    if (!decryptedText) return null;
 
     return JSON.parse(decryptedText);
   } catch (error) {
@@ -49,6 +55,7 @@ const decrypt = (encryptedData: string): any => {
     return null;
   }
 };
+
 // Create Apollo Client
 const createApolloClient = () => {
   const httpLink = createHttpLink({
@@ -95,8 +102,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [client] = useState(() => createApolloClient());
   const [isTempAuthenticated, setIsTempAuthenticated] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const login = (authPayload: AuthPayload) => {
+  // Use useCallback to memoize the logout function and prevent infinite re-renders
+  const logout = useCallback(() => {
+    Cookies.remove(COOKIE_TOKEN_KEY);
+    Cookies.remove(COOKIE_USER_KEY);
+
+    setIsAuthenticated(false);
+    setUser(null);
+    setIsTempAuthenticated(false);
+    setIsVerified(false);
+    setTempUserData(null);
+
+    // Clear Apollo cache
+    client.resetStore();
+  }, [client]);
+
+  const login = useCallback((authPayload: AuthPayload) => {
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
@@ -105,25 +128,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setIsAuthenticated(true);
     setUser(authPayload.user);
-  };
+    setIsVerified(authPayload.user.isUserVerified);
+  }, []);
 
-  const tempUser = (authPayload: AuthPayload) => {
+  const tempUser = useCallback((authPayload: AuthPayload) => {
     const encryptedToken = encrypt(authPayload.token);
     const encryptedUser = encrypt(authPayload.user);
 
     Cookies.set(COOKIE_TOKEN_KEY, encryptedToken, { expires: COOKIE_EXPIRES });
-
     Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
+
     setIsTempAuthenticated(true);
     setIsVerified(authPayload.user.isUserVerified);
     setUser(authPayload.user);
-  };
-  const verifyUser = (authPayload: TempAuthPayload) => {
+  }, []);
+
+  const verifyUser = useCallback((authPayload: TempAuthPayload) => {
     const encryptedUser = encrypt(authPayload.tempUserData);
     localStorage.setItem(COOKIE_USER_KEY, encryptedUser);
     setTempUserData(authPayload.tempUserData);
-  };
-  const markUserProfileComplete = () => {
+  }, []);
+
+  const markUserProfileComplete = useCallback(() => {
     if (user) {
       const updatedUser = { ...user, isProfileComplete: true };
       const encryptedUser = encrypt(updatedUser);
@@ -131,49 +157,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
       setUser(updatedUser);
     }
-  };
+  }, [user]);
 
-  const logout = () => {
-    Cookies.remove(COOKIE_TOKEN_KEY);
-    Cookies.remove(COOKIE_USER_KEY);
-
-    setIsAuthenticated(false);
-    setUser(null);
-
-    // Clear Apollo cache
-    client.resetStore();
-  };
-
-  // Check authentication status on mount
-  const [loading, setLoading] = useState(true); // Added loading state
-
+  // Check authentication status on mount - REMOVED logout from dependencies
   useEffect(() => {
-    const encryptedToken = Cookies.get(COOKIE_TOKEN_KEY);
-    const encryptedUser = Cookies.get(COOKIE_USER_KEY);
-
-    if (encryptedToken && encryptedUser) {
+    const checkAuthStatus = async () => {
       try {
-        const decryptedUser = decrypt(encryptedUser);
+        const encryptedToken = Cookies.get(COOKIE_TOKEN_KEY);
+        const encryptedUser = Cookies.get(COOKIE_USER_KEY);
 
-        setIsAuthenticated(decryptedUser.isUserVerified);
-        setUser(decryptedUser);
-        setIsTempAuthenticated(decryptedUser.isUserVerified);
+        if (encryptedToken && encryptedUser) {
+          const decryptedUser = decrypt(encryptedUser);
+
+          if (decryptedUser) {
+            setUser(decryptedUser);
+            setIsAuthenticated(decryptedUser.isUserVerified || false);
+            setIsTempAuthenticated(!decryptedUser.isUserVerified);
+            setIsVerified(decryptedUser.isUserVerified || false);
+          } else {
+            // If decryption fails, clear cookies
+            Cookies.remove(COOKIE_TOKEN_KEY);
+            Cookies.remove(COOKIE_USER_KEY);
+          }
+        }
       } catch (error) {
         console.error("Error decrypting auth data:", error);
-        logout();
+        // Clear cookies on error
+        Cookies.remove(COOKIE_TOKEN_KEY);
+        Cookies.remove(COOKIE_USER_KEY);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    setLoading(false); // Mark auth check as complete
-  }, [logout]);
+    checkAuthStatus();
+  }, []); // Empty dependency array - this should only run once on mount
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen loading-spinner">
-        {/* Spinner */}
         <div className="w-16 h-16 border-4 rounded-full border-t-transparent border-blue-600 animate-spin"></div>
       </div>
-    ); // Replace with a spinner or skeleton UI
+    );
   }
 
   return (

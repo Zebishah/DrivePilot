@@ -32,7 +32,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const dispatch = useDispatch();
   const messages = useSelector((state: RootState) => state.chat.messages);
   const { user } = useAuth();
-  const userId = user?._id || user?.id;
+  const userId = user?.id;
 
   const otherParticipant = useMemo(() => {
     return conversation?.participants.find((p) => p._id !== userId) || null;
@@ -54,14 +54,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     fetchPolicy: "network-only",
     onCompleted: (data) => {
       dispatch(setMessages(data.getMessages || []));
-      scrollToBottom();
+      setTimeout(scrollToBottom, 100); // Small delay to ensure DOM is updated
     },
     onError: (error) => {
       console.error("Error loading messages:", error.message);
     },
   });
 
+  // Load messages when conversation changes
   useEffect(() => {
+    lastConversationId.current = null; // Reset to force reload
     if (
       conversation?._id &&
       otherParticipant?._id &&
@@ -69,20 +71,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     ) {
       loadMessages({
         variables: {
-          conversationId: conversation._id,
-          senderId: userId,
+          user1Id: userId,
+          user2Id: otherParticipant._id,
         },
       });
       lastConversationId.current = conversation._id;
     }
   }, [conversation?._id, otherParticipant?._id, loadMessages, userId]);
-
   const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE, {
     onCompleted: (res) => {
       const msg: MessageType = res?.sendMessage;
       if (msg) {
-        dispatch(addMessage(msg));
-        scrollToBottom();
+        // Only add message if it's from current user (to avoid duplication from subscription)
+        if (msg.sender._id === userId) {
+          dispatch(addMessage(msg));
+          setTimeout(scrollToBottom, 50);
+        }
       }
     },
     onError: (error) => {
@@ -90,23 +94,50 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     },
   });
 
-  useSubscription(NEW_MESSAGE_SUBSCRIPTION, {
-    variables: {
-      conversationId: conversation?._id,
-      receiverId: userId,
-    },
-    skip: !conversation || !userId || !otherParticipant,
-    onData: ({ data }) => {
-      const newMsg: MessageType = data?.data?.messageSent;
-      if (!newMsg) return;
-
-      if (newMsg.sender._id !== userId) {
-        dispatch(addMessage(newMsg));
-        simulateTyping();
-        scrollToBottom();
-      }
-    },
+  // Subscription setup
+  const shouldSubscribe =
+    !!conversation?._id && !!userId && !!otherParticipant?._id;
+  console.log("Should subscribe:", shouldSubscribe, {
+    conversationId: conversation?._id,
+    userId,
+    otherParticipantId: otherParticipant?._id,
   });
+
+  // Remove unused variables
+  const { data: subscriptionData, error: subError } = useSubscription(
+    NEW_MESSAGE_SUBSCRIPTION,
+    {
+      variables: {
+        user1Id: userId,
+        user2Id: otherParticipant?._id,
+      },
+      skip: !userId || !otherParticipant?._id,
+      onSubscriptionData: ({ subscriptionData }) => {
+        console.log("✅ New subscription data:", subscriptionData);
+        const newMsg = subscriptionData.data?.messageSent;
+        if (newMsg) {
+          console.log("Adding message:", newMsg);
+          dispatch(addMessage(newMsg));
+          scrollToBottom();
+          if (newMsg.sender._id !== userId) {
+            simulateTyping();
+          }
+        }
+      },
+      onError: (error) => {
+        console.error("❗ Subscription error:", error.message);
+      },
+    }
+  );
+
+  useEffect(() => {
+    console.log("Subscription status:", {
+      shouldSubscribe: !!userId && !!otherParticipant?._id,
+      userId,
+      otherParticipantId: otherParticipant?._id,
+      conversationId: conversation?._id,
+    });
+  }, [userId, otherParticipant, conversation]);
 
   const handleSendMessage = async () => {
     const trimmed = newMessage.trim();
@@ -116,22 +147,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     try {
       await sendMessage({
         variables: {
-          conversationId: conversation._id,
           senderId: userId,
           receiverId: otherParticipant._id,
           content: trimmed,
+          // Add conversation ID
+          conversationId: conversation._id,
         },
       });
-
       setNewMessage("");
     } catch (error) {
-      console.error("GraphQL sendMessage mutation failed:", error);
+      console.error("Send failed:", error);
     }
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
-    simulateTyping();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

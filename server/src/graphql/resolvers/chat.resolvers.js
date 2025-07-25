@@ -8,17 +8,9 @@ const StudentBooking = require("../../models/StudentBooking");
 
 const chatResolvers = {
   Query: {
-    getConversationsForUser: async (_, { userId }) => {
-      return await Conversation.find({ participants: userId }).populate({
-        path: "participants",
-        model: "UserBase",
-        select: "_id firstName lastName email role profileImage",
-        options: { discriminatorKey: true },
-      });
-    },
-
-    getMessages: async (_, { conversationId }) => {
-      return await Message.find({ conversationId })
+    getMessages: async (_, { user1Id, user2Id }) => {
+      const chatId = [user1Id, user2Id].sort().join("_");
+      return await Message.find({ chatId })
         .sort({ createdAt: 1 })
         .populate("sender")
         .populate("receiver");
@@ -26,43 +18,12 @@ const chatResolvers = {
   },
 
   Mutation: {
-    createConversation: async (_, { participantIds }) => {
-      const [user1, user2] = participantIds;
+    sendMessage: async (_, { senderId, receiverId, content }) => {
+      const participants = [senderId, receiverId].sort();
+      const chatId = participants.join("_");
 
-      const bookingExists = await StudentBooking.findOne({
-        $or: [
-          { studentId: user1, instructorId: user2 },
-          { studentId: user2, instructorId: user1 },
-        ],
-      });
-
-      if (!bookingExists) {
-        throw new Error("Conversation not allowed — no booking found.");
-      }
-
-      let conversation = await Conversation.findOne({
-        participants: { $all: participantIds, $size: 2 },
-      });
-
-      if (!conversation) {
-        conversation = new Conversation({ participants: participantIds });
-        await conversation.save();
-      }
-
-      return await conversation.populate({
-        path: "participants",
-        model: "UserBase",
-        select: "_id firstName lastName email role profileImage",
-        options: { discriminatorKey: true },
-      });
-    },
-
-    sendMessage: async (
-      _,
-      { conversationId, senderId, receiverId, content }
-    ) => {
       const message = await Message.create({
-        conversationId,
+        chatId,
         sender: senderId,
         receiver: receiverId,
         content,
@@ -72,6 +33,16 @@ const chatResolvers = {
         .populate("sender")
         .populate("receiver");
 
+      console.log("📤 Message sent:", {
+        chatId,
+        senderId,
+        receiverId,
+        content,
+      });
+
+      console.log("Publishing to MESSAGE_SENT:", {
+        messageSent: populatedMessage,
+      });
       pubsub.publish(MESSAGE_SENT, {
         messageSent: populatedMessage,
       });
@@ -83,15 +54,42 @@ const chatResolvers = {
   Subscription: {
     messageSent: {
       subscribe: withFilter(
-        () => pubsub.asyncIterator(MESSAGE_SENT),
+        () => {
+          console.log("📡 Subscribed to MESSAGE_SENT");
+          return pubsub.asyncIterator(MESSAGE_SENT);
+        },
         (payload, variables) => {
-          return (
-            payload.messageSent.conversationId.toString() ===
-              variables.conversationId &&
-            payload.messageSent.receiver._id.toString() === variables.receiverId
-          );
+          console.log("📦 Payload received in filter:", payload);
+          console.log("🔍 Filter vars:", variables);
+
+          const { messageSent } = payload;
+          if (!messageSent) return false;
+
+          const participants = [variables.user1Id, variables.user2Id].sort();
+          const subscriptionChatId = participants.join("_");
+          const payloadChatId = messageSent.chatId;
+
+          const messageMatches = payloadChatId === subscriptionChatId;
+          const userInvolved =
+            [
+              String(messageSent.sender._id),
+              String(messageSent.receiver._id),
+            ].includes(variables.user1Id) &&
+            [
+              String(messageSent.sender._id),
+              String(messageSent.receiver._id),
+            ].includes(variables.user2Id);
+
+          console.log("✅ messageMatches:", messageMatches);
+          console.log("✅ userInvolved:", userInvolved);
+
+          return messageMatches && userInvolved;
         }
       ),
+      // ✅ Wrap message back into expected format
+      resolve: (payload) => ({
+        messageSent: payload.messageSent,
+      }),
     },
   },
 };

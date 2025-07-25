@@ -13,13 +13,14 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 const { useServer } = require("graphql-ws/lib/use/ws");
 
-// Connect to MongoDB
+// ✅ Connect to MongoDB
 connectDB();
 
+// ✅ Initialize Express app and HTTP server
 const app = express();
 const httpServer = http.createServer(app);
 
-// CORS
+// ✅ CORS configuration
 const allowedOrigins = [
   "https://dsp-client.onrender.com",
   "https://dsp-server.onrender.com",
@@ -33,7 +34,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log("Blocked by CORS:", origin);
+        console.log("❌ Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -41,13 +42,14 @@ app.use(
   })
 );
 
+// ✅ Init middleware and routes
 app.use(passport.initialize());
 app.use(authRoutes);
 
-// GraphQL schema
+// ✅ Create GraphQL schema
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-// GraphQL WebSocket server
+// ✅ Setup WebSocket Server (GraphQL Subscriptions)
 const wsServer = new WebSocketServer({
   server: httpServer,
   path: "/graphql",
@@ -56,32 +58,44 @@ const wsServer = new WebSocketServer({
 useServer(
   {
     schema,
-    onConnect: async (ctx) => {
-      console.log("✅ WebSocket connected");
-    },
-    onDisconnect(ctx, code, reason) {
-      console.log("❌ WebSocket disconnected", {
-        code,
-        reason: reason.toString(),
-      });
-    },
-    onError: (ctx, msg, err) => {
-      console.error("🚨 WS error:", msg, err);
+    on: {
+      connect: async (ctx) => {
+        console.log("✅ WebSocket connected", ctx.connectionParams);
+      },
+      disconnect: (ctx, code, reason) => {
+        console.log("❌ WebSocket disconnected", {
+          code,
+          reason: reason.toString(),
+        });
+      },
+      error: (ctx, msg, err) => {
+        console.error("🚨 WebSocket error:", { message: msg, error: err });
+      },
     },
   },
   wsServer
 );
-
-// Apollo Server (HTTP only)
+// ✅ Setup Apollo Server (HTTP)
 async function startApolloServer() {
   const server = new ApolloServer({
     schema,
     context: async ({ req }) => {
+      // For HTTP requests only — WS doesn't use this
       const auth = await authMiddleware(req);
-      return {
-        user: auth.user,
-      };
+      return { user: auth.user };
     },
+    plugins: [
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              console.log("🧼 Draining HTTP + WS...");
+              await wsServer.close();
+            },
+          };
+        },
+      },
+    ],
   });
 
   await server.start();

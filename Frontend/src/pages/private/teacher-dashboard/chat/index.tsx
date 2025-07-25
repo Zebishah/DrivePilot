@@ -1,3 +1,4 @@
+// InstructorChatPage.tsx
 import React, { useEffect, useMemo } from "react";
 import ChatList from "../../../../components/Chat/ChatList";
 import ChatWindow from "../../../../components/Chat/ChatWindow";
@@ -6,6 +7,7 @@ import { RootState } from "../../../../store";
 import {
   setConversations,
   selectConversation,
+  clearMessages,
   Conversation as ReduxConversation,
 } from "../../../../store/slices/chatSlice";
 import { useQuery } from "@apollo/client";
@@ -49,6 +51,13 @@ const InstructorChatPage = () => {
     }
   }, [data, dispatch]);
 
+  // Clear messages when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearMessages());
+    };
+  }, [dispatch]);
+
   const currentUser: UserType | null = user
     ? {
         _id: user._id || user.id,
@@ -62,11 +71,12 @@ const InstructorChatPage = () => {
     : null;
 
   // Fix the selected conversation logic to make sure student is the other participant
+  // Fix conversation structure
   const selectedAsConversation = useMemo(() => {
     if (selectedConversation && currentUser) {
       return {
         _id: selectedConversation._id,
-        participants: [selectedConversation.user, currentUser], // student first
+        participants: [currentUser, selectedConversation.user],
       };
     }
     return null;
@@ -79,9 +89,10 @@ const InstructorChatPage = () => {
           conversations={conversations}
           currentUserId={currentUser?._id || ""}
           selectedUserId={selectedConversation?._id}
-          onSelect={(conversation) =>
-            dispatch(selectConversation(conversation))
-          }
+          onSelect={(conversation) => {
+            dispatch(clearMessages()); // Clear previous messages
+            dispatch(selectConversation(conversation));
+          }}
         />
       </div>
       <div className="w-2/3 h-full">

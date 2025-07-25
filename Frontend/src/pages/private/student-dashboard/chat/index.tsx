@@ -1,3 +1,4 @@
+// StudentChatPage.tsx
 import React, { useEffect } from "react";
 import ChatList from "../../../../components/Chat/ChatList";
 import ChatWindow from "../../../../components/Chat/ChatWindow";
@@ -6,6 +7,7 @@ import { RootState } from "../../../../store";
 import {
   setConversations,
   selectConversation,
+  clearMessages, // Add this action to clear messages when switching conversations
 } from "../../../../store/slices/chatSlice";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../../graphql/Queries/StudentQueries";
@@ -43,7 +45,7 @@ const StudentChatPage: React.FC = () => {
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             profileImage: user.profileImage,
-            role: user.role, // optionally add role
+            role: user.role,
           },
           {
             _id: instructor._id,
@@ -52,7 +54,7 @@ const StudentChatPage: React.FC = () => {
             profileImage:
               instructor.profileImage ||
               `https://ui-avatars.com/api/?name=${instructor.firstName}+${instructor.lastName}`,
-            role: instructor.role, // optionally add role
+            role: instructor.role,
           },
         ],
         user: {
@@ -73,6 +75,13 @@ const StudentChatPage: React.FC = () => {
     dispatch(setConversations(uniqueConversations));
   }, [data, dispatch, user?.id]);
 
+  // Clear messages when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(clearMessages());
+    };
+  }, [dispatch]);
+
   if (!user)
     return <div className="p-4 text-center">Please login to view chat.</div>;
   if (loading) return <div className="p-4 text-center">Loading chat...</div>;
@@ -89,7 +98,10 @@ const StudentChatPage: React.FC = () => {
         <ChatList
           conversations={conversations}
           currentUserId={user.id}
-          onSelect={(conv) => dispatch(selectConversation(conv))}
+          onSelect={(conv) => {
+            dispatch(clearMessages()); // Clear previous messages
+            dispatch(selectConversation(conv));
+          }}
           selectedUserId={selectedConversation?._id}
         />
       </div>
