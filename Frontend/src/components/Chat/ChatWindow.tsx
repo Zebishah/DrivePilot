@@ -62,22 +62,44 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   });
 
   // Load messages when conversation changes
+  // useEffect(() => {
+  //   lastConversationId.current = null; // Reset to force reload
+  //   if (
+  //     conversation?._id &&
+  //     otherParticipant?._id &&
+  //     conversation._id !== lastConversationId.current
+  //   ) {
+  //     loadMessages({
+  //       variables: {
+  //         user1Id: userId,
+  //         user2Id: otherParticipant._id,
+  //       },
+  //     });
+  //     lastConversationId.current = conversation._id;
+  //   }
+  // }, [conversation?._id, otherParticipant?._id, loadMessages, userId]);
+
   useEffect(() => {
-    lastConversationId.current = null; // Reset to force reload
-    if (
-      conversation?._id &&
-      otherParticipant?._id &&
-      conversation._id !== lastConversationId.current
-    ) {
+    if (!conversation?._id || !otherParticipant?._id || !userId) return;
+
+    const loadAndScroll = () => {
       loadMessages({
         variables: {
           user1Id: userId,
           user2Id: otherParticipant._id,
         },
       });
-      lastConversationId.current = conversation._id;
-    }
-  }, [conversation?._id, otherParticipant?._id, loadMessages, userId]);
+    };
+
+    loadAndScroll(); // initial load
+
+    const interval = setInterval(() => {
+      loadAndScroll();
+    }, 3000); // every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [conversation?._id, otherParticipant?._id, userId, loadMessages]);
+
   const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE, {
     onCompleted: (res) => {
       const msg: MessageType = res?.sendMessage;
@@ -113,7 +135,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       },
       skip: !userId || !otherParticipant?._id,
       onSubscriptionData: ({ subscriptionData }) => {
-        console.log("✅ New subscription data:", subscriptionData);
+        // console.log("✅ New subscription data:", subscriptionData);
         const newMsg = subscriptionData.data?.messageSent;
         if (newMsg) {
           console.log("Adding message:", newMsg);

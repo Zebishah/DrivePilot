@@ -44,7 +44,7 @@ const chatResolvers = {
         messageSent: populatedMessage,
       });
       pubsub.publish(MESSAGE_SENT, {
-        messageSent: populatedMessage,
+        MessageSent: populatedMessage,
       });
 
       return populatedMessage;
