@@ -96,11 +96,22 @@ export const InstructorManagement: React.FC = () => {
   }, [instructors, filters]);
 
   const handleSelectInstructor = (instructorId: string) => {
-    setSelectedInstructors((prev) =>
-      prev.includes(instructorId)
-        ? prev.filter((id) => id !== instructorId)
-        : [...prev, instructorId]
-    );
+    setSelectedInstructors((prev) => {
+      // Ensure both the instructorId parameter and stored IDs are strings
+      const idStr = String(instructorId);
+
+      // Debug log
+      console.log("Toggling selection for instructor:", idStr);
+      console.log("Current selected instructors:", prev);
+
+      const newSelection = prev.includes(idStr)
+        ? prev.filter((id) => id !== idStr)
+        : [...prev, idStr];
+
+      console.log("New selected instructors:", newSelection);
+
+      return newSelection;
+    });
   };
 
   const handleDeleteClick = () => {

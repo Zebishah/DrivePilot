@@ -58,8 +58,7 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
           <div className="flex items-start space-x-6 mb-6">
             <img
               src={
-                instructor.profileImage ||
-                "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+                instructor.profileImage || "/images/Portrait_Placeholder.png"
               }
               alt={fullName}
               className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"

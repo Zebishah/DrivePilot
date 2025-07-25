@@ -110,17 +110,28 @@ export const StudentManagement: React.FC = () => {
   }, [students, filters]);
 
   const handleSelectStudent = (studentId: string) => {
-    setSelectedStudents((prev) =>
-      prev.includes(studentId)
-        ? prev.filter((id) => id !== studentId)
-        : [...prev, studentId]
-    );
+    setSelectedStudents((prev) => {
+      // Ensure both the studentId parameter and stored IDs are strings
+      const idStr = String(studentId);
+
+      // Debug log
+      console.log("Toggling selection for student:", idStr);
+      console.log("Current selected students:", prev);
+
+      const newSelection = prev.includes(idStr)
+        ? prev.filter((id) => id !== idStr)
+        : [...prev, idStr];
+
+      console.log("New selected students:", newSelection);
+
+      return newSelection;
+    });
   };
 
   const handleDeleteClick = () => {
     if (selectedStudents.length === 0) {
-      setShowDeleteMode(!showDeleteMode);
-      setSelectedStudents([]);
+      setShowDeleteMode((prev) => !prev);
+      // ⛔️ Don't reset selection if you're just toggling delete mode on
     } else {
       setShowDeleteModal(true);
     }
@@ -289,17 +300,21 @@ export const StudentManagement: React.FC = () => {
 
         {/* Student Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStudents.map((student) => (
-            <StudentCard
-              key={student.id}
-              student={student}
-              isSelected={selectedStudents.includes(student.id)}
-              showCheckbox={showDeleteMode}
-              onSelect={handleSelectStudent}
-              onViewDetails={handleViewDetails}
-              onClick={handleCardClick}
-            />
-          ))}
+          {filteredStudents.map((student) => {
+            const isSelected = selectedStudents.includes(String(student.id));
+
+            return (
+              <StudentCard
+                key={student.id}
+                student={student}
+                isSelected={isSelected}
+                showCheckbox={showDeleteMode}
+                onSelect={handleSelectStudent}
+                onViewDetails={handleViewDetails}
+                onClick={handleCardClick}
+              />
+            );
+          })}
         </div>
 
         {/* Empty State */}

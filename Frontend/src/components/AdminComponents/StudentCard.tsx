@@ -26,7 +26,8 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   const handleCardClick = (e: React.MouseEvent) => {
     if (showCheckbox) {
       e.preventDefault();
-      onSelect(student.id);
+      e.stopPropagation();
+      onSelect(String(student.id)); // Ensure string conversion
     } else {
       onClick(student);
     }
@@ -37,32 +38,42 @@ export const StudentCard: React.FC<StudentCardProps> = ({
     onViewDetails(student);
   };
 
-  const handleCheckboxClick = (e: React.MouseEvent) => {
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    onSelect(student.id);
+    onSelect(String(student.id)); // Ensure string conversion
   };
+
+  // Debug log
+  console.log(
+    `Student ${student.id} - isSelected: ${isSelected}, showCheckbox: ${showCheckbox}`
+  );
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-gray-300 ${
-        isSelected ? "ring-2 ring-[#ffffff] border-[#ffffff] bg-[#5DC3D2] " : ""
+      className={`relative rounded-lg shadow-sm border p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
+        isSelected
+          ? "ring-2 ring-[#5FC2D3] border-[#5FC2D3] bg-[#5FC2D3]"
+          : "bg-white border-gray-200 hover:border-gray-300"
       }`}
       onClick={handleCardClick}
     >
-      {/* Checkbox */}
+      {/* Checkbox - Fixed positioning */}
       {showCheckbox && (
         <div className="absolute top-3 left-3 z-10">
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={handleCheckboxClick}
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-[#5DC3D2] focus:ring-2"
+            onChange={handleCheckboxChange}
+            onClick={(e) => e.stopPropagation()} // Prevent event bubbling
+            className="w-4 h-4 text-[#5FC2D3] bg-gray-100 border-gray-300 rounded focus:ring-[#5FC2D3] focus:ring-2"
           />
         </div>
       )}
 
-      {/* Header with Profile */}
-      <div className="flex items-start justify-between mb-4">
+      {/* Header with Profile - Add left margin when checkbox is shown */}
+      <div
+        className={`flex items-start justify-between mb-4 ${showCheckbox ? "ml-6" : ""}`}
+      >
         <div className="flex items-center space-x-3">
           <img
             src={student.profileImage || "/images/Portrait_Placeholder.png"}
@@ -70,8 +81,14 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
           />
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">{fullName}</h3>
-            <p className="text-xs text-gray-500">
+            <h3
+              className={`text-sm font-semibold ${isSelected ? "text-white" : "text-gray-900"}`}
+            >
+              {fullName}
+            </h3>
+            <p
+              className={`text-xs ${isSelected ? "text-gray-100" : "text-gray-500"}`}
+            >
               {(student?.location ?? "") ||
               (student?.address ?? "")?.length > 25
                 ? (((student?.location ?? "") || student?.address) ?? "").slice(
@@ -86,11 +103,21 @@ export const StudentCard: React.FC<StudentCardProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={handleViewDetailsClick}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className={`p-1.5 rounded-full transition-colors ${
+              isSelected
+                ? "text-white hover:text-gray-200 hover:bg-[#4BB3C4]"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            }`}
           >
             <Eye className="w-4 h-4" />
           </button>
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+          <button
+            className={`p-1.5 rounded-full transition-colors ${
+              isSelected
+                ? "text-white hover:text-gray-200 hover:bg-[#4BB3C4]"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            }`}
+          >
             <MoreVertical className="w-4 h-4" />
           </button>
         </div>
@@ -99,8 +126,12 @@ export const StudentCard: React.FC<StudentCardProps> = ({
       {/* Lesson Information */}
       <div className="space-y-3">
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-600">Last Lesson:</span>
-          <span className="font-medium text-gray-900">
+          <span className={isSelected ? "text-white" : "text-gray-600"}>
+            Last Lesson:
+          </span>
+          <span
+            className={`font-medium ${isSelected ? "text-gray-100" : "text-gray-900"}`}
+          >
             {student.lastLesson
               ? new Date(student.lastLesson).toLocaleDateString()
               : "No lessons yet"}
@@ -111,22 +142,42 @@ export const StudentCard: React.FC<StudentCardProps> = ({
         <div className="w-full flex flex-col justify-between h-[10vh]">
           <div>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-gray-500">Remaining Hour</span>
-              <span className="text-xs text-gray-500">
+              <span
+                className={`text-xs ${isSelected ? "text-gray-100" : "text-gray-500"}`}
+              >
+                Remaining Hour
+              </span>
+              <span
+                className={`text-xs ${isSelected ? "text-gray-100" : "text-gray-500"}`}
+              >
                 {Math.round(progressPercentage)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className={`w-full rounded-full h-2 ${isSelected ? "bg-[#4BB3C4]" : "bg-gray-200"}`}
+            >
               <div
-                className="bg-[#5DC3D2] h-2 rounded-full transition-all duration-300"
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  isSelected ? "bg-white" : "bg-[#5DC3D2]"
+                }`}
                 style={{ width: `${Math.min(progressPercentage, 100)}%` }}
               />
             </div>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-600">Total Lessons:</span>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-[#31bdd3]">
+            <span
+              className={`text-xs ${isSelected ? "text-white" : "text-gray-600"}`}
+            >
+              Total Lessons:
+            </span>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                isSelected
+                  ? "bg-white text-[#5FC2D3]"
+                  : "bg-blue-100 text-[#31bdd3]"
+              }`}
+            >
               {student.totalLessons} lessons
             </span>
           </div>
