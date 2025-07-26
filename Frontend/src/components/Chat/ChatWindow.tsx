@@ -260,12 +260,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       <div className="flex items-center gap-3 px-4 py-4 border-t bg-white relative">
         <div className="relative flex-1">
           {/* Mic icon inside input - left side */}
-          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-defaultColor">
+          {/* <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-defaultColor">
             <BsMic className="text-xl cursor-pointer" />
-          </div>
+          </div> */}
 
           <input
-            className="w-full bg-gray-100 border border-gray-300 text-sm px-10 py-2 rounded-full pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-gray-100 border border-gray-300 text-sm px-5 py-2 rounded-full pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="Type a message..."
             value={newMessage}
             onChange={handleTyping}
@@ -286,7 +286,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 <EmojiPicker onEmojiClick={onEmojiClick} />
               </div>
             )}
-            <CiLocationOn className="text-xl cursor-pointer" />
+            {/* <CiLocationOn className="text-xl cursor-pointer" /> */}
           </div>
         </div>
 
@@ -294,7 +294,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         <button
           onClick={handleSendMessage}
           disabled={!newMessage.trim() || sending}
-          className="text-defaultColor p-3 rounded-full text-white hover:bg-blue-600 transition disabled:opacity-50"
+          className="bg-defaultColor p-3 rounded-full text-white hover:bg-blue-600 transition disabled:opacity-50"
         >
           <IoSend className="text-lg" />
         </button>

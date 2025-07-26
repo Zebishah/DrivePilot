@@ -96,7 +96,7 @@ const ChatList: React.FC<ChatListProps> = ({
               <MessageOutlined style={{ fontSize: 25 }} />
               Chats
             </button>
-            <button
+            {/* <button
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-sm font-medium transition-all
         ${
           activeTab === "community"
@@ -119,7 +119,7 @@ const ChatList: React.FC<ChatListProps> = ({
             >
               <PhoneOutlined style={{ fontSize: 25 }} />
               Calls
-            </button>
+            </button> */}
           </div>
         </div>
       )}
