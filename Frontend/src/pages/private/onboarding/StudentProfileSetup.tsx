@@ -111,6 +111,7 @@ const StudentProfileSetup = () => {
         }
 
         const documents = filesToUpload.map((doc, index) => ({
+          status: "pending",
           documentType: doc.documentType,
           documentUrl: uploadResults[index].fileUrl,
         }));

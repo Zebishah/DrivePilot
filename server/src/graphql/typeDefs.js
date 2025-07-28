@@ -52,6 +52,7 @@ const typeDefs = gql`
   type DocumentStudent {
     documentType: String!
     documentUrl: String!
+    status: String!
   }
   interface User {
     id: ID!
@@ -309,6 +310,7 @@ const typeDefs = gql`
   }
 
   input DocumentInput {
+    status: String!
     documentType: String!
     documentUrl: String!
   }
