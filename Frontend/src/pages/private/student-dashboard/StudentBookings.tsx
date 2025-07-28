@@ -1,6 +1,7 @@
 import { useQuery } from "@apollo/client";
 import React from "react";
 import { GET_STUDENT_LESSON_HISTORY } from "../../../graphql/mutations/profile";
+import { useAuth } from "../../../context/AuthContext";
 
 interface LessonHistoryItem {
   lessonBooked: string;
@@ -18,7 +19,9 @@ interface LessonHistoryItem {
 }
 
 const LessonBookingHistory: React.FC = () => {
+  const { user } = useAuth();
   const { loading, error, data } = useQuery(GET_STUDENT_LESSON_HISTORY, {
+    variables: { studentId: user?.id }, // ✅ This must be provided
     fetchPolicy: "network-only",
   });
 

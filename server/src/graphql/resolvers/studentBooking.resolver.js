@@ -362,14 +362,14 @@ const studentBookingResolver = {
         );
 
         // 4. Optional: populate instructor
-        await booking
+        const savedBooking = await StudentBooking.findById(booking._id)
           .populate(
             "instructorId",
             "_id firstName lastName email description profileImage"
           )
           .populate("studentId", "_id firstName lastName email profileImage");
 
-        return booking;
+        return savedBooking;
       } catch (error) {
         console.error("Booking creation error:", error);
         if (error.errors) {
@@ -399,9 +399,8 @@ const studentBookingResolver = {
 
       try {
         // 1. Find the booking
-        const booking = await StudentBooking.findById(bookingId).session(
-          session
-        );
+        const booking =
+          await StudentBooking.findById(bookingId).session(session);
         if (!booking) throw new UserInputError("Booking not found");
 
         const uid = user.id.toString();
