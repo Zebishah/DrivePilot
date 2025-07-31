@@ -5,7 +5,7 @@ export const GET_MESSAGES = gql`
     getMessages(user1Id: $user1Id, user2Id: $user2Id) {
       _id
       content
-      chatId
+      conversationId
       createdAt
       sender {
         __typename
@@ -50,15 +50,23 @@ export const GET_MESSAGES = gql`
 `;
 
 export const SEND_MESSAGE = gql`
-  mutation SendMessage($senderId: ID!, $receiverId: ID!, $content: String!) {
+  mutation SendMessage(
+    $senderId: ID!
+    $receiverId: ID!
+    $content: String!
+    $senderModel: String!
+    $receiverModel: String!
+  ) {
     sendMessage(
       senderId: $senderId
       receiverId: $receiverId
       content: $content
+      senderModel: $senderModel
+      receiverModel: $receiverModel
     ) {
       _id
       content
-      chatId
+      conversationId
       createdAt
       sender {
         __typename
@@ -107,7 +115,7 @@ export const NEW_MESSAGE_SUBSCRIPTION = gql`
     messageSent(user1Id: $user1Id, user2Id: $user2Id) {
       _id
       content
-      chatId
+      conversationId
       createdAt
       sender {
         __typename

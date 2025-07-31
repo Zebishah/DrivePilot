@@ -1,7 +1,14 @@
 const { gql } = require("apollo-server-express");
 
 const chatTypeDefs = gql`
+  enum UserRole {
+    STUDENT
+    INSTRUCTOR
+    ADMIN
+  }
+
   interface User {
+    id: ID!
     firstName: String!
     lastName: String!
     email: String!
@@ -55,7 +62,7 @@ const chatTypeDefs = gql`
     content: String!
     sender: User!
     receiver: User!
-    chatId: String!
+    conversationId: String!
     createdAt: String!
   }
 
@@ -64,7 +71,13 @@ const chatTypeDefs = gql`
   }
 
   type Mutation {
-    sendMessage(senderId: ID!, receiverId: ID!, content: String!): Message!
+    sendMessage(
+      senderId: ID!
+      receiverId: ID!
+      content: String!
+      senderModel: String!
+      receiverModel: String!
+    ): Message
   }
 
   type Subscription {

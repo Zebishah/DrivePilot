@@ -1,29 +1,46 @@
-import React, { useRef, useState, useMemo, useEffect } from "react";
-import { useMutation, useSubscription, useLazyQuery } from "@apollo/client";
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+} from "react";
+import { useMutation, useLazyQuery, useSubscription } from "@apollo/client";
 import {
   GET_MESSAGES,
-  NEW_MESSAGE_SUBSCRIPTION,
   SEND_MESSAGE,
+  NEW_MESSAGE_SUBSCRIPTION,
 } from "../../graphql/Queries/Chat";
 import { BsEmojiSmile } from "react-icons/bs";
-import { CiLocationOn } from "react-icons/ci";
 import { IoSend } from "react-icons/io5";
-import { BsMic } from "react-icons/bs";
 import MessageItem from "./MessageItem";
 import { useDispatch, useSelector } from "react-redux";
 import { addMessage, setMessages } from "../../store/slices/chatSlice";
 import { RootState } from "../../store";
 import { MessageType, UserType } from "../../types/chatTypes";
 import { useAuth } from "../../context/AuthContext";
-import { Spin } from "antd";
+import { Spin, Avatar } from "antd";
+import { UserOutlined } from "@ant-design/icons"; // Added for fallback icon
 import EmojiPicker from "emoji-picker-react";
+import { getSocket } from "../../utils/socket";
+import { debounce } from "lodash";
+import { createSelector } from "reselect";
+import { shallowEqual } from "react-redux";
 
 interface ChatWindowProps {
-  conversation: {
-    _id: string;
-    participants: UserType[];
-  } | null;
+  conversation: { _id: string; participants: UserType[] } | null;
 }
+
+// Memoized selector
+const selectMessages = createSelector(
+  [
+    (state: RootState, conversationId: string | undefined) =>
+      conversationId
+        ? state.chat.messagesByConversation[conversationId] || []
+        : [],
+  ],
+  (messages) => messages
+);
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [newMessage, setNewMessage] = useState("");
@@ -32,152 +49,307 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const messageEndRef = useRef<HTMLDivElement>(null);
-  const messageContainerRef = useRef<HTMLDivElement>(null);
-  const hasAutoScrolledRef = useRef(false);
-
-  const dispatch = useDispatch();
-  const messages = useSelector((state: RootState) => state.chat.messages);
-  const { user } = useAuth();
-  const userId = user?.id;
   const emojiPickerWrapperRef = useRef<HTMLDivElement>(null);
 
-  const otherParticipant = useMemo(() => {
-    return conversation?.participants.find((p) => p._id !== userId) || null;
+  const dispatch = useDispatch();
+  const { user } = useAuth();
+  const userId = String(user?._id || user?.id);
+
+  // Memoized selector with shallowEqual
+  const messages = useSelector(
+    (state: RootState) => selectMessages(state, conversation?._id),
+    shallowEqual
+  );
+
+  // Define hooks unconditionally
+  const otherParticipant: UserType | null = useMemo(() => {
+    return (
+      conversation?.participants?.find(
+        (p) => String(p._id) !== String(userId)
+      ) || null
+    );
   }, [conversation, userId]);
 
-  const scrollToBottom = () => {
-    if (!messageContainerRef.current) return;
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+  }, []);
 
-    const container = messageContainerRef.current;
-    const shouldAutoScroll =
-      container.scrollTop + container.clientHeight >=
-      container.scrollHeight - 200;
+  // Emit typing event to conversation room
+  const emitTyping = useCallback(
+    debounce((conversationId: string | undefined) => {
+      if (conversationId) {
+        const socket = getSocket();
+        console.log(
+          "Emitting typing event to room:",
+          conversationId,
+          "from:",
+          userId
+        );
+        socket?.emit("typing", { conversationId, from: userId });
+      }
+    }, 200),
+    [userId]
+  );
 
-    if (!hasAutoScrolledRef.current || shouldAutoScroll) {
-      requestAnimationFrame(() => {
-        messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        hasAutoScrolledRef.current = true;
-      });
-    }
-  };
-
-  const simulateTyping = () => {
-    setIsOtherTyping(true);
-    setTimeout(() => setIsOtherTyping(false), 1000);
-  };
-
+  // Load initial messages
   const [loadMessages] = useLazyQuery(GET_MESSAGES, {
     fetchPolicy: "network-only",
     onCompleted: (data) => {
-      dispatch(setMessages(data.getMessages || []));
+      console.log(
+        "Messages loaded for conversation:",
+        conversation?._id,
+        data.getMessages
+      );
+      if (conversation?._id) {
+        dispatch(
+          setMessages({
+            conversationId: conversation._id,
+            messages:
+              data.getMessages?.map((msg: any) => ({
+                ...msg,
+                conversationId: msg.conversationId || conversation._id,
+              })) || [],
+          })
+        );
+      }
       setMessagesLoading(false);
-      setTimeout(() => {
-        scrollToBottom();
-      }, 300);
+      scrollToBottom();
     },
     onError: (error) => {
-      setMessagesLoading(false);
       console.error("Error loading messages:", error.message);
+      setMessagesLoading(false);
     },
   });
 
-  useEffect(() => {
-    hasAutoScrolledRef.current = false;
-    if (!conversation?._id || !otherParticipant?._id || !userId) return;
+  // Send message mutation
+  const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE, {
+    onError: (err) => console.error("Send error:", err.message),
+    onCompleted: (data) => {
+      console.log("Message sent:", data.sendMessage);
+      const msg: MessageType = {
+        ...data.sendMessage,
+        conversationId: data.sendMessage.conversationId || conversation?._id,
+      };
+      if (conversation?._id) {
+        dispatch(
+          addMessage({
+            conversationId: conversation._id,
+            message: msg,
+          })
+        );
+      }
+      getSocket()?.emit("send_message", msg);
+      scrollToBottom();
+    },
+  });
 
+  // Subscribe to new messages
+  useSubscription(NEW_MESSAGE_SUBSCRIPTION, {
+    variables: {
+      user1Id: userId,
+      user2Id: otherParticipant?._id ? String(otherParticipant._id) : "",
+    },
+    skip: !conversation?._id || !otherParticipant?._id,
+    onSubscriptionData: ({ subscriptionData }) => {
+      if (subscriptionData?.data?.messageSent) {
+        const msg: MessageType = {
+          ...subscriptionData.data.messageSent,
+          conversationId:
+            subscriptionData.data.messageSent.conversationId ||
+            conversation?._id,
+        };
+        console.log("Received message via subscription:", msg);
+        if (conversation?._id) {
+          dispatch(
+            addMessage({
+              conversationId: conversation._id,
+              message: msg,
+            })
+          );
+          scrollToBottom();
+        }
+      }
+    },
+    onError: (error) => {
+      console.error("Subscription error:", error.message);
+    },
+  });
+
+  // Socket setup for typing events
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !conversation?._id || !otherParticipant?._id) {
+      console.log("Socket or conversation not ready:", {
+        socket: !!socket,
+        conversationId: conversation?._id,
+        otherParticipantId: otherParticipant?._id,
+      });
+      return;
+    }
+
+    const handleTyping = ({
+      from,
+      conversationId,
+    }: {
+      from: string;
+      conversationId: string;
+    }) => {
+      console.log(
+        "Received typing event from:",
+        from,
+        "in room:",
+        conversationId,
+        "expected:",
+        otherParticipant._id
+      );
+      if (
+        String(from) === String(otherParticipant._id) &&
+        String(conversationId) === String(conversation._id)
+      ) {
+        setIsOtherTyping(true);
+        console.log(
+          "Typing indicator set to true for:",
+          from,
+          "in:",
+          conversationId
+        );
+        setTimeout(() => {
+          setIsOtherTyping(false);
+          console.log("Typing indicator reset for:", from);
+        }, 2000);
+      }
+    };
+
+    const joinRoom = () => {
+      console.log("Joining conversation room:", conversation._id);
+      socket.emit(
+        "joinConversation",
+        conversation._id,
+        (ack: { success: boolean; room: string }) => {
+          if (ack.success) {
+            console.log(`Joined room: ${ack.room}`);
+          } else {
+            console.error("Failed to join room:", conversation._id);
+          }
+        }
+      );
+    };
+
+    joinRoom();
+    socket.on("typing", handleTyping);
+
+    return () => {
+      console.log("Leaving conversation:", conversation._id);
+      socket.emit("leaveConversation", conversation._id);
+      socket.off("typing", handleTyping);
+    };
+  }, [conversation?._id, otherParticipant?._id]);
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    if (!conversation?._id || !otherParticipant?._id) return;
+    console.log("Loading messages for conversation:", conversation._id);
     setMessagesLoading(true);
     loadMessages({
-      variables: {
-        user1Id: userId,
-        user2Id: otherParticipant._id,
-      },
+      variables: { user1Id: userId, user2Id: String(otherParticipant._id) },
     });
+  }, [conversation?._id, userId, otherParticipant?._id, loadMessages]);
 
-    // Optional polling
-    const interval = setInterval(() => {
-      loadMessages({
-        variables: {
-          user1Id: userId,
-          user2Id: otherParticipant._id,
-        },
-      });
-    }, 300);
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
-    return () => clearInterval(interval);
-  }, [conversation?._id, otherParticipant?._id, userId, loadMessages]);
-
+  // Handle emoji picker click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         emojiPickerWrapperRef.current &&
         !emojiPickerWrapperRef.current.contains(e.target as Node)
       ) {
-        setTimeout(() => {
-          setShowEmojiPicker(false);
-        }, 0);
+        setShowEmojiPicker(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE, {
-    onCompleted: (res) => {
-      const msg: MessageType = res?.sendMessage;
-      if (msg && msg.sender._id === userId) {
-        dispatch(addMessage(msg));
-        scrollToBottom();
-      }
-    },
-    onError: (error) => {
-      console.error("Send message error:", error.message);
-    },
-  });
+  // Early return after all hooks
+  if (!conversation || !conversation._id || !userId) {
+    console.log("No conversation or userId:", { conversation, userId });
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400 ml-4">
+        Select someone to start chatting
+      </div>
+    );
+  }
 
-  useSubscription(NEW_MESSAGE_SUBSCRIPTION, {
-    variables: {
-      user1Id: userId,
-      user2Id: otherParticipant?._id,
-    },
-    skip: !userId || !otherParticipant?._id,
-    onSubscriptionData: ({ subscriptionData }) => {
-      const newMsg = subscriptionData.data?.messageSent;
-      if (newMsg) {
-        dispatch(addMessage(newMsg));
-        if (newMsg.sender._id !== userId) simulateTyping();
-        scrollToBottom();
-      }
-    },
-    onError: (error) => {
-      console.error("❗ Subscription error:", error.message);
-    },
-  });
+  if (!otherParticipant) {
+    console.log("No other participant found");
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400 ml-4">
+        No valid participant found
+      </div>
+    );
+  }
+
+  const getRoleModel = (role: string | undefined | null) => {
+    const roleMap: Record<string, string> = {
+      student: "Student",
+      instructor: "Instructor",
+      admin: "Admin",
+    };
+    return role ? roleMap[role.toLowerCase()] ?? null : null;
+  };
+
+  const getModelByOpposite = (role: string | undefined | null) => {
+    if (!role) return null;
+    const lower = role.toLowerCase();
+    return lower === "student"
+      ? "Instructor"
+      : lower === "instructor"
+      ? "Student"
+      : null;
+  };
 
   const handleSendMessage = async () => {
     const trimmed = newMessage.trim();
-    if (!trimmed || !conversation?._id || !userId || !otherParticipant?._id)
+    if (!trimmed || !otherParticipant._id) {
+      console.log("Invalid message data:", {
+        trimmed,
+        conversationId: conversation._id,
+        userId,
+        otherParticipantId: otherParticipant._id,
+      });
       return;
+    }
 
+    const senderModel = getRoleModel(user?.role);
+    const receiverModel = getModelByOpposite(user?.role);
+    if (!senderModel || !receiverModel) {
+      console.log("Invalid sender/receiver model:", {
+        senderModel,
+        receiverModel,
+      });
+      return;
+    }
+
+    setNewMessage("");
     try {
       await sendMessage({
         variables: {
           senderId: userId,
-          receiverId: otherParticipant._id,
+          receiverId: String(otherParticipant._id),
           content: trimmed,
-          conversationId: conversation._id,
+          senderModel,
+          receiverModel,
         },
       });
-      setNewMessage("");
-    } catch (error) {
-      console.error("Send failed:", error);
+    } catch (e) {
+      console.error("Error sending message:", e);
     }
-  };
-
-  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -187,24 +359,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     }
   };
 
-  const getParticipantName = (p: UserType) =>
-    p.name || `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+  // Updated to use name directly to match ChatList
+  const getParticipantName = (p: UserType) => p.name || "Unknown";
 
-  if (!conversation || !userId) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400 ml-4">
-        Select someone to start chatting
-      </div>
-    );
-  }
-
-  if (!otherParticipant) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400 ml-4">
-        No valid participant found
-      </div>
-    );
-  }
+  const getParticipantAvatar = (p: UserType) => {
+    if (p.profileImage?.trim()) {
+      return p.profileImage;
+    }
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      p.name || "User"
+    )}`;
+  };
 
   const onEmojiClick = (emojiData: any) => {
     setNewMessage((prev) => prev + emojiData.emoji);
@@ -212,16 +377,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
   return (
     <div className="flex flex-col h-full bg-white shadow-md rounded-2xl overflow-hidden ml-4 mt-3">
-      {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b bg-[#f9fafb]">
-        <img
-          src={
-            otherParticipant.profileImage?.trim()
-              ? otherParticipant.profileImage
-              : "/default-avatar.png"
-          }
-          alt={getParticipantName(otherParticipant)}
-          className="w-12 h-12 rounded-full object-cover border"
+        <Avatar
+          src={getParticipantAvatar(otherParticipant)}
+          size={48} // Match ChatList's size (52px adjusted for consistency)
+          icon={!otherParticipant.profileImage?.trim() && <UserOutlined />}
+          className="border"
         />
         <div>
           <h4 className="text-[17px] font-semibold text-gray-800">
@@ -232,12 +393,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           )}
         </div>
       </div>
-
-      {/* Messages */}
-      <div
-        ref={messageContainerRef}
-        className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#f1f5f9]"
-      >
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#f1f5f9]">
         {messagesLoading ? (
           <div className="flex justify-center py-10">
             <Spin size="large" />
@@ -249,30 +405,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             <MessageItem
               key={msg._id}
               message={msg}
-              isOwnMessage={msg.sender._id === userId}
+              isOwnMessage={String(msg.sender._id) === String(userId)}
             />
           ))
         )}
         <div ref={messageEndRef} />
       </div>
-
-      {/* Input */}
       <div className="flex items-center gap-3 px-4 py-4 border-t bg-white relative">
         <div className="relative flex-1">
-          {/* Mic icon inside input - left side */}
-          {/* <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-defaultColor">
-            <BsMic className="text-xl cursor-pointer" />
-          </div> */}
-
           <input
             className="w-full bg-gray-100 border border-gray-300 text-sm px-5 py-2 rounded-full pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="Type a message..."
             value={newMessage}
-            onChange={handleTyping}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              emitTyping(conversation._id);
+            }}
             onKeyDown={handleKeyDown}
           />
-
-          {/* Emoji and Location - right side inside input */}
           <div
             ref={emojiPickerWrapperRef}
             className="absolute right-4 top-1/2 transform -translate-y-1/2 flex gap-2 text-defaultColor"
@@ -286,11 +436,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
                 <EmojiPicker onEmojiClick={onEmojiClick} />
               </div>
             )}
-            {/* <CiLocationOn className="text-xl cursor-pointer" /> */}
           </div>
         </div>
-
-        {/* Send Button */}
         <button
           onClick={handleSendMessage}
           disabled={!newMessage.trim() || sending}

@@ -1,5 +1,6 @@
 const { PubSub, withFilter } = require("graphql-subscriptions");
 const pubsub = new PubSub();
+
 const MESSAGE_SENT = "MESSAGE_SENT";
 
 const Conversation = require("../../models/Conversation");
@@ -9,45 +10,62 @@ const StudentBooking = require("../../models/StudentBooking");
 const chatResolvers = {
   Query: {
     getMessages: async (_, { user1Id, user2Id }) => {
-      const chatId = [user1Id, user2Id].sort().join("_");
-      return await Message.find({ chatId })
-        .sort({ createdAt: 1 })
-        .populate("sender")
-        .populate("receiver");
+      try {
+        const conversationId = [user1Id, user2Id].sort().join("_");
+
+        const messages = await Message.find({ conversationId })
+          .sort({ createdAt: 1 })
+          .populate("sender")
+          .populate("receiver");
+
+        return messages;
+      } catch (error) {
+        console.error("❌ Error in getMessages:", error.message);
+        throw new Error("Failed to fetch messages.");
+      }
     },
   },
 
   Mutation: {
-    sendMessage: async (_, { senderId, receiverId, content }) => {
-      const participants = [senderId, receiverId].sort();
-      const chatId = participants.join("_");
+    sendMessage: async (
+      _,
+      { senderId, receiverId, content, senderModel, receiverModel }
+    ) => {
+      try {
+        const participants = [senderId, receiverId].sort();
+        const conversationId = participants.join("_");
 
-      const message = await Message.create({
-        chatId,
-        sender: senderId,
-        receiver: receiverId,
-        content,
-      });
+        const message = await Message.create({
+          conversationId,
+          sender: senderId,
+          receiver: receiverId,
+          senderModel, // ✅ ADD THIS
+          receiverModel, // ✅ AND THIS
+          content,
+        });
 
-      const populatedMessage = await Message.findById(message._id)
-        .populate("sender")
-        .populate("receiver");
+        const populatedMessage = await Message.findById(message._id)
+          .populate({ path: "sender", model: senderModel })
+          .populate({ path: "receiver", model: receiverModel });
 
-      console.log("📤 Message sent:", {
-        chatId,
-        senderId,
-        receiverId,
-        content,
-      });
+        console.log("📤 Message sent:", {
+          conversationId,
+          senderId,
+          receiverId,
+          senderModel,
+          receiverModel,
+          content,
+        });
 
-      console.log("Publishing to MESSAGE_SENT:", {
-        messageSent: populatedMessage,
-      });
-      pubsub.publish(MESSAGE_SENT, {
-        MessageSent: populatedMessage,
-      });
+        pubsub.publish(MESSAGE_SENT, {
+          messageSent: populatedMessage,
+        });
 
-      return populatedMessage;
+        return populatedMessage;
+      } catch (error) {
+        console.error("❌ Error in sendMessage:", error.message);
+        throw new Error("Failed to send message.");
+      }
     },
   },
 
@@ -59,34 +77,28 @@ const chatResolvers = {
           return pubsub.asyncIterator(MESSAGE_SENT);
         },
         (payload, variables) => {
-          console.log("📦 Payload received in filter:", payload);
-          console.log("🔍 Filter vars:", variables);
-
           const { messageSent } = payload;
           if (!messageSent) return false;
 
           const participants = [variables.user1Id, variables.user2Id].sort();
-          const subscriptionChatId = participants.join("_");
-          const payloadChatId = messageSent.chatId;
+          const subscriptionconversationId = participants.join("_");
+          const payloadconversationId = messageSent.conversationId;
 
-          const messageMatches = payloadChatId === subscriptionChatId;
+          const messageMatches =
+            payloadconversationId === subscriptionconversationId;
           const userInvolved =
             [
-              String(messageSent.sender._id),
-              String(messageSent.receiver._id),
+              messageSent.sender._id.toString(),
+              messageSent.receiver._id.toString(),
             ].includes(variables.user1Id) &&
             [
-              String(messageSent.sender._id),
-              String(messageSent.receiver._id),
+              messageSent.sender._id.toString(),
+              messageSent.receiver._id.toString(),
             ].includes(variables.user2Id);
-
-          console.log("✅ messageMatches:", messageMatches);
-          console.log("✅ userInvolved:", userInvolved);
 
           return messageMatches && userInvolved;
         }
       ),
-      // ✅ Wrap message back into expected format
       resolve: (payload) => ({
         messageSent: payload.messageSent,
       }),

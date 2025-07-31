@@ -27,6 +27,7 @@ interface AuthContextType {
   isVerified: boolean;
   user: AuthPayload["user"] | null;
   tempUserData: TempAuthPayload["tempUserData"] | null;
+  token: string | null; // ✅ Added token to the context
   login: (authPayload: AuthPayload) => void;
   tempUser: (authPayload: AuthPayload) => void;
   verifyUser: (authPayload: TempAuthPayload) => void;
@@ -43,12 +44,9 @@ const encrypt = (data: any): string => {
 const decrypt = (encryptedData: string): any => {
   try {
     if (!encryptedData || typeof encryptedData !== "string") return null;
-
     const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-
     if (!decryptedText) return null;
-
     return JSON.parse(decryptedText);
   } catch (error) {
     console.error("Decryption error:", error);
@@ -56,16 +54,12 @@ const decrypt = (encryptedData: string): any => {
   }
 };
 
-// Create Apollo Client
 const createApolloClient = () => {
-  const httpLink = createHttpLink({
-    uri: BACKEND_URL,
-  });
+  const httpLink = createHttpLink({ uri: BACKEND_URL });
 
   const authLink = setContext((operation, { headers }) => {
     const encryptedToken = Cookies.get(COOKIE_TOKEN_KEY);
 
-    // Skip auth for public operations
     if (PUBLIC_OPERATIONS.includes(operation.operationName || "")) {
       return { headers };
     }
@@ -96,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthPayload["user"] | null>(null);
+  const [token, setToken] = useState<string | null>(null); // ✅ state to hold token
   const [tempUserData, setTempUserData] = useState<
     TempAuthPayload["tempUserData"] | null
   >(null);
@@ -104,18 +99,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Use useCallback to memoize the logout function and prevent infinite re-renders
   const logout = useCallback(() => {
     Cookies.remove(COOKIE_TOKEN_KEY);
     Cookies.remove(COOKIE_USER_KEY);
 
     setIsAuthenticated(false);
     setUser(null);
+    setToken(null); // ✅ clear token on logout
     setIsTempAuthenticated(false);
     setIsVerified(false);
     setTempUserData(null);
 
-    // Clear Apollo cache
     client.resetStore();
   }, [client]);
 
@@ -126,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     Cookies.set(COOKIE_TOKEN_KEY, encryptedToken, { expires: COOKIE_EXPIRES });
     Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
 
+    setToken(authPayload.token); // ✅ set token
     setIsAuthenticated(true);
     setUser(authPayload.user);
     setIsVerified(authPayload.user.isUserVerified);
@@ -138,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     Cookies.set(COOKIE_TOKEN_KEY, encryptedToken, { expires: COOKIE_EXPIRES });
     Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
 
+    setToken(authPayload.token); // ✅ set token for temp
     setIsTempAuthenticated(true);
     setIsVerified(authPayload.user.isUserVerified);
     setUser(authPayload.user);
@@ -153,13 +149,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (user) {
       const updatedUser = { ...user, isProfileComplete: true };
       const encryptedUser = encrypt(updatedUser);
-
       Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
       setUser(updatedUser);
     }
   }, [user]);
 
-  // Check authentication status on mount - REMOVED logout from dependencies
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
@@ -168,21 +162,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (encryptedToken && encryptedUser) {
           const decryptedUser = decrypt(encryptedUser);
+          const decryptedToken = decrypt(encryptedToken);
 
-          if (decryptedUser) {
+          if (decryptedUser && decryptedToken) {
             setUser(decryptedUser);
-            setIsAuthenticated(decryptedUser.isUserVerified || false);
-            setIsTempAuthenticated(!decryptedUser.isUserVerified);
-            setIsVerified(decryptedUser.isUserVerified || false);
+            setToken(decryptedToken); // ✅ set token after decryption
+            const verified = decryptedUser.isUserVerified;
+            setIsAuthenticated(verified || false);
+            setIsTempAuthenticated(!verified);
+            setIsVerified(verified || false);
           } else {
-            // If decryption fails, clear cookies
             Cookies.remove(COOKIE_TOKEN_KEY);
             Cookies.remove(COOKIE_USER_KEY);
           }
         }
       } catch (error) {
         console.error("Error decrypting auth data:", error);
-        // Clear cookies on error
         Cookies.remove(COOKIE_TOKEN_KEY);
         Cookies.remove(COOKIE_USER_KEY);
       } finally {
@@ -191,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     checkAuthStatus();
-  }, []); // Empty dependency array - this should only run once on mount
+  }, []);
 
   if (loading) {
     return (
@@ -205,15 +200,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        isTempAuthenticated,
+        isVerified,
         user,
+        token, // ✅ exposed token here
+        tempUserData,
         login,
         logout,
         client,
         tempUser,
         verifyUser,
-        isVerified,
-        tempUserData,
-        isTempAuthenticated,
         markUserProfileComplete,
       }}
     >

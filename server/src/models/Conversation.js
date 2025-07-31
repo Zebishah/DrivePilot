@@ -5,7 +5,15 @@ const conversationSchema = new mongoose.Schema(
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        refPath: "participantModel", // dynamic model based on role (Student, Instructor, Admin)
+        required: true,
+      },
+    ],
+    participantModel: [
+      {
+        type: String,
+        required: true,
+        enum: ["Student", "Instructor", "Admin"], // Match your GraphQL schema
       },
     ],
   },

@@ -7,12 +7,14 @@ import {
   setConversations,
   selectConversation,
   clearMessages,
+  addMessage,
 } from "../../../../store/slices/chatSlice";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../../graphql/Queries/StudentQueries";
 import { StudentBooking } from "../../../../types/Bookings";
 import { useAuth } from "../../../../context/AuthContext";
 import { ConversationType } from "../../../../types/chatTypes";
+import { getSocket } from "../../../../utils/socket";
 
 const StudentChatPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -32,13 +34,10 @@ const StudentChatPage: React.FC = () => {
     const uniqueInstructorMap = new Map<string, ConversationType>();
 
     data.getStudentBookings.forEach((booking: StudentBooking) => {
-      console.log("isntrucor1", booking);
       const instructor = booking.instructorId;
-
       if (!instructor || uniqueInstructorMap.has(instructor._id)) return;
 
       const instructorName = `${instructor.firstName} ${instructor.lastName}`;
-      console.log("isntrucor", instructor);
       const profileImage = instructor.profileImage?.trim()
         ? instructor.profileImage
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -46,7 +45,8 @@ const StudentChatPage: React.FC = () => {
           )}`;
 
       const conversation: ConversationType = {
-        _id: instructor._id,
+        _id:
+          booking.conversationId || [user.id, instructor._id].sort().join("_"),
         participants: [
           {
             _id: user.id,
@@ -77,15 +77,68 @@ const StudentChatPage: React.FC = () => {
       uniqueInstructorMap.set(instructor._id, conversation);
     });
 
-    const uniqueConversations = Array.from(uniqueInstructorMap.values());
-    dispatch(setConversations(uniqueConversations));
-  }, [data, dispatch, user?.id]);
+    dispatch(setConversations(Array.from(uniqueInstructorMap.values())));
+  }, [data, dispatch, user?.id, user?.email, user?.firstName, user?.lastName]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !conversations.length) return;
+
+    conversations.forEach((conv) => {
+      socket.emit(
+        "joinConversation",
+        conv._id,
+        (ack: { success: boolean; room: string }) => {
+          if (ack.success) {
+            console.log(`StudentChatPage joined room: ${ack.room}`);
+          } else {
+            console.error(`Failed to join room: ${conv._id}`);
+          }
+        }
+      );
+    });
+
+    const handleReceiveMessage = (msg: any) => {
+      console.log("StudentChatPage received message:", msg);
+      const message: MessageType = {
+        ...msg,
+        conversationId: msg.conversationId,
+      };
+      if (
+        String(message.conversationId) === String(selectedConversation?._id)
+      ) {
+        dispatch(
+          addMessage({
+            conversationId: String(message.conversationId),
+            message,
+          })
+        );
+      } else {
+        console.log(
+          "Message ignored, wrong conversation:",
+          message.conversationId,
+          selectedConversation?._id
+        );
+      }
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
+
+    return () => {
+      conversations.forEach((conv) => {
+        socket.emit("leaveConversation", conv._id);
+      });
+      socket.off("receive_message", handleReceiveMessage);
+    };
+  }, [conversations, dispatch, selectedConversation?._id]);
 
   useEffect(() => {
     return () => {
-      dispatch(clearMessages());
+      if (selectedConversation?._id) {
+        dispatch(clearMessages(selectedConversation._id));
+      }
     };
-  }, [dispatch]);
+  }, [dispatch, selectedConversation]);
 
   if (!user)
     return <div className="p-4 text-center">Please login to view chat.</div>;
@@ -102,18 +155,29 @@ const StudentChatPage: React.FC = () => {
       <div className="flex h-full rounded-xl shadow-md overflow-hidden bg-white">
         <div className="w-[520px] h-full rounded-xl shadow-md bg-white overflow-y-auto">
           <ChatList
-            conversations={conversations}
+            conversations={conversations
+              .filter((conv) => typeof conv.createdAt === "string")
+              .map((conv) => ({
+                ...conv,
+                createdAt: conv.createdAt ?? new Date().toISOString(),
+                updatedAt: conv.updatedAt ?? new Date().toISOString(),
+              }))}
             currentUserId={user.id}
+            selectedUserId={selectedConversation?._id}
             onSelect={(conv) => {
-              dispatch(clearMessages());
+              if (selectedConversation?._id) {
+                dispatch(clearMessages(selectedConversation._id));
+              }
               dispatch(selectConversation(conv));
             }}
-            selectedUserId={selectedConversation?._id}
           />
         </div>
         <div className="flex-1 max-w-[calc(100%-340px)] h-full rounded-xl shadow-md bg-white overflow-hidden">
           {selectedConversation ? (
-            <ChatWindow conversation={selectedConversation} />
+            <ChatWindow
+              key={selectedConversation._id}
+              conversation={selectedConversation}
+            />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
               Select a conversation to start chatting

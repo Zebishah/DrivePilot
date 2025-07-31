@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import { MessageType } from "../../types/chatTypes";
 import { Avatar } from "antd";
 import dayjs from "dayjs";
@@ -19,9 +19,12 @@ const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
       }`}
     >
       {!isOwnMessage && (
-        <Avatar size={32} src={sender.profileImage} className="mr-2" />
+        <Avatar
+          size={32}
+          src={sender.profileImage || "/default-avatar.png"}
+          className="mr-2"
+        />
       )}
-
       <div
         className={`flex flex-col max-w-[75%] ${
           isOwnMessage ? "items-end" : "items-start"
@@ -37,7 +40,6 @@ const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
         >
           {content}
         </div>
-
         <span className="text-xs text-gray-400 mt-1">
           {showFullTimestamp
             ? dayjs(createdAt).format("MMM D, YYYY · h:mm A")
@@ -48,4 +50,4 @@ const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
   );
 };
 
-export default MessageItem;
+export default memo(MessageItem);
