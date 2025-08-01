@@ -152,7 +152,7 @@ const StudentChatPage: React.FC = () => {
 
   return (
     <div className="h-[calc(100vh-80px)] p-4 bg-gray-50">
-      <div className="flex h-full rounded-xl shadow-md overflow-hidden bg-white">
+      <div className="flex h-full gap-5">
         <div className="w-[520px] h-full rounded-xl shadow-md bg-white overflow-y-auto">
           <ChatList
             conversations={conversations
