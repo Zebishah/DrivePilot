@@ -2,10 +2,15 @@ const mongoose = require("mongoose");
 
 const conversationSchema = new mongoose.Schema(
   {
+    conversationId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: "participantModel", // dynamic model based on role (Student, Instructor, Admin)
+        refPath: "participantModel",
         required: true,
       },
     ],
@@ -13,9 +18,13 @@ const conversationSchema = new mongoose.Schema(
       {
         type: String,
         required: true,
-        enum: ["Student", "Instructor", "Admin"], // Match your GraphQL schema
+        enum: ["Student", "Instructor", "Admin"],
       },
     ],
+    lastMessage: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
   },
   { timestamps: true }
 );

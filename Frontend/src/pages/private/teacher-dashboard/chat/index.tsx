@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import ChatList from "../../../../components/Chat/ChatList";
 import ChatWindow from "../../../../components/Chat/ChatWindow";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,7 +12,7 @@ import {
 import { useQuery } from "@apollo/client";
 import { GET_ALL_STUDENTS } from "../../../../graphql/Queries/StudentQueries";
 import { useAuth } from "../../../../context/AuthContext";
-import { UserType } from "../../../../types/chatTypes";
+import { ConversationType, UserType } from "../../../../types/chatTypes";
 import { getSocket } from "../../../../utils/socket";
 
 const InstructorChatPage = () => {
@@ -27,32 +27,63 @@ const InstructorChatPage = () => {
   });
 
   useEffect(() => {
-    if (data?.getAllStudents) {
-      const students = data.getAllStudents
-        .filter(
-          (student: any) =>
-            student.lessonStats?.totalLessons &&
-            student.lessonStats.totalLessons > 0
-        )
-        .map((student: any) => ({
+    if (!user?.id || !data?.getAllStudents) return;
+
+    const students = data.getAllStudents
+      .filter(
+        (student: any) =>
+          student.lessonStats?.totalLessons &&
+          student.lessonStats.totalLessons > 0
+      )
+      .map((student: any) => {
+        const studentName = `${student.firstName} ${student.lastName}`;
+        return {
           _id:
             student.conversationId || [user.id, student._id].sort().join("_"),
+          participants: [
+            {
+              _id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              name: `${user.firstName} ${user.lastName}`,
+              email: user.email,
+              profileImage: user.profileImage,
+              role: "instructor",
+            },
+            {
+              _id: student._id,
+              firstName: student.firstName,
+              lastName: student.lastName,
+              name: studentName,
+              email: student.email,
+              profileImage:
+                student.profileImage ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  studentName
+                )}`,
+              role: "student",
+            },
+          ],
           user: {
             _id: student._id,
-            name: `${student.firstName} ${student.lastName}`,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            name: studentName,
             email: student.email,
             profileImage:
               student.profileImage ||
-              `https://ui-avatars.com/api/?name=${student.firstName}+${student.lastName}`,
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                studentName
+              )}`,
             role: "student",
           },
           createdAt: student.createdAt || new Date().toISOString(),
           updatedAt: student.updatedAt || new Date().toISOString(),
-        }));
+        };
+      });
 
-      dispatch(setConversations(students));
-    }
-  }, [data, dispatch, user?.id]);
+    dispatch(setConversations(students));
+  }, [data, dispatch, user]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -78,22 +109,19 @@ const InstructorChatPage = () => {
         ...msg,
         conversationId: msg.conversationId,
       };
-      if (
-        String(message.conversationId) === String(selectedConversation?._id)
-      ) {
-        dispatch(
-          addMessage({
-            conversationId: String(message.conversationId),
-            message,
-          })
-        );
-      } else {
-        console.log(
-          "Message ignored, wrong conversation:",
-          message.conversationId,
-          selectedConversation?._id
-        );
-      }
+      dispatch(
+        addMessage({
+          conversationId: String(message.conversationId),
+          message,
+        })
+      );
+      // Update conversation updatedAt
+      const updatedConversations = conversations.map((conv) =>
+        conv._id === message.conversationId
+          ? { ...conv, updatedAt: new Date().toISOString() }
+          : conv
+      );
+      dispatch(setConversations(updatedConversations));
     };
 
     socket.on("receive_message", handleReceiveMessage);
@@ -104,7 +132,7 @@ const InstructorChatPage = () => {
       });
       socket.off("receive_message", handleReceiveMessage);
     };
-  }, [conversations, dispatch, selectedConversation?._id]);
+  }, [conversations, dispatch]);
 
   useEffect(() => {
     return () => {
@@ -118,37 +146,20 @@ const InstructorChatPage = () => {
     if (!user) return null;
     return {
       _id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-      profileImage:
-        user.profileImage ||
-        `https://ui-avatars.com/api/?name=${user.firstName}+${user.lastName}`,
+      profileImage: user.profileImage,
       role: "instructor",
     };
   }, [user]);
 
   const selectedAsConversation = useMemo(() => {
     if (selectedConversation && currentUser) {
-      const participant1: UserType = {
-        _id: currentUser._id,
-        name: currentUser.name,
-        email: currentUser.email,
-        profileImage: currentUser.profileImage,
-        role: "instructor",
-      };
-      const participant2: UserType = {
-        _id: selectedConversation.user._id,
-        name: selectedConversation.user.name,
-        email: selectedConversation.user.email,
-        profileImage: selectedConversation.user.profileImage,
-        role:
-          selectedConversation.user.role === "instructor"
-            ? "instructor"
-            : "student",
-      };
       return {
         _id: selectedConversation._id,
-        participants: [participant1, participant2],
+        participants: [currentUser, selectedConversation.user],
       };
     }
     return null;
@@ -159,35 +170,14 @@ const InstructorChatPage = () => {
       <div className="flex h-full gap-5">
         <div className="w-[520px] h-full flex-shrink-0 flex flex-col overflow-hidden shadow-md bg-white border-r">
           <ChatList
-            conversations={conversations.map((conv) => ({
-              _id: conv._id,
-              user: {
-                _id: conv.user._id,
-                name: conv.user.name,
-                email: conv.user.email,
-                profileImage: conv.user.profileImage,
-                role: conv.user.role || "student",
-              },
-              createdAt: conv.createdAt,
-              updatedAt: conv.updatedAt,
-            }))}
+            conversations={conversations}
             currentUserId={currentUser?._id || ""}
             selectedUserId={selectedConversation?._id}
             onSelect={(conversation) => {
               if (selectedConversation?._id) {
                 dispatch(clearMessages(selectedConversation._id));
               }
-              const formattedConversation = {
-                _id: conversation._id,
-                user: {
-                  _id: conversation.user._id || "",
-                  name: conversation.user.name,
-                  email: conversation.user.email || "",
-                  profileImage: conversation.user.profileImage || "",
-                  role: conversation.user.role || "student",
-                },
-              };
-              dispatch(selectConversation(formattedConversation));
+              dispatch(selectConversation(conversation));
             }}
           />
         </div>

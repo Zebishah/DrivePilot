@@ -1,20 +1,31 @@
-export type UserRole = "student" | "instructor" | "admin";
-
-export interface BaseUserType {
+export interface UserType {
   _id: string;
+  name?: string;
   firstName?: string;
   lastName?: string;
-  name?: string;
   email?: string;
-  role: UserRole;
   profileImage?: string;
+  role?: string;
 }
 
 export interface MessageType {
   _id: string;
   content: string;
-  sender: BaseUserType;
-  receiver: BaseUserType;
   conversationId: string;
   createdAt: string;
+  sender: UserType;
+  receiver: UserType;
+}
+
+export interface ConversationType {
+  _id: string;
+  participants?: UserType[];
+  user: UserType;
+  createdAt?: string;
+  updatedAt?: string;
+  lastMessage?: {
+    content: string;
+    createdAt: string;
+    sender: UserType;
+  };
 }

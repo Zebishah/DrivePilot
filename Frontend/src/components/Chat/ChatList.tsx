@@ -1,12 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Avatar, Input } from "antd";
-import {
-  UserOutlined,
-  SearchOutlined,
-  MessageOutlined,
-  TeamOutlined,
-  PhoneOutlined,
-} from "@ant-design/icons";
+import { SearchOutlined, MessageOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
@@ -25,50 +19,59 @@ interface ChatListProps {
 
 const ChatList: React.FC<ChatListProps> = ({
   conversations,
-  currentUserId,
   selectedUserId,
   onSelect,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"chats" | "community" | "calls">(
-    "chats"
-  );
+  const [activeTab, setActiveTab] = useState<"chats" | "community" | "calls">("chats");
   const { user } = useAuth();
 
   const isInstructor = user?.role?.toLowerCase() === "instructor";
 
   const filteredConversations = useMemo(() => {
-    return conversations
-      .filter((conv) =>
-        conv.user?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt || b.createdAt).getTime() -
-          new Date(a.updatedAt || a.createdAt).getTime()
-      );
+    try {
+      return conversations
+        .filter((conv) => conv.user?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()))
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
+            new Date(a.updatedAt || a.createdAt || new Date()).getTime()
+        );
+    } catch (error) {
+      console.error("Error filtering conversations:", error);
+      return [];
+    }
   }, [conversations, searchTerm]);
 
   const groupedConversations = useMemo(() => {
-    const groups: { [key: string]: ConversationType[] } = {};
+    try {
+      const groups: { [key: string]: ConversationType[] } = {};
+      filteredConversations.forEach((conv) => {
+        const date = dayjs(conv.updatedAt || conv.createdAt || new Date());
+        let group = date.format("DD MMM YYYY");
+        if (date.isToday()) group = "Today";
+        else if (date.isYesterday()) group = "Yesterday";
 
-    filteredConversations.forEach((conv) => {
-      const date = dayjs(conv.updatedAt || conv.createdAt || new Date());
-
-      let group = date.format("DD MMM YYYY");
-      if (date.isToday()) group = "Today";
-      else if (date.isYesterday()) group = "Yesterday";
-
-      if (!groups[group]) groups[group] = [];
-      groups[group].push(conv);
-    });
-
-    return groups;
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(conv);
+      });
+      return groups;
+    } catch (error) {
+      console.error("Error grouping conversations:", error);
+      return {};
+    }
   }, [filteredConversations]);
-  console.log("groupedConversations", filteredConversations);
+
+  if (!user) {
+    return (
+      <div className="p-4 text-center text-gray-500">
+        Please login to view chats.
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full bg-white flex flex-col overflow-hidden">
-      {/* Search Input */}
       <div className="p-4">
         <Input
           placeholder="Search contact..."
@@ -80,51 +83,25 @@ const ChatList: React.FC<ChatListProps> = ({
         />
       </div>
 
-      {/* Tabs for  */}
       {isInstructor && (
         <div className="px-4 pb-3">
           <div className="flex gap-2">
             <button
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-sm font-medium transition-all
-        ${
-          activeTab === "chats"
-            ? "bg-gray-100 text-blue-600 rounded-full"
-            : "text-gray-600 hover:bg-gray-100 rounded-lg"
-        }`}
+                ${
+                  activeTab === "chats"
+                    ? "bg-gray-100 text-blue-600 rounded-full"
+                    : "text-gray-600 hover:bg-gray-100 rounded-lg"
+                }`}
               onClick={() => setActiveTab("chats")}
             >
               <MessageOutlined style={{ fontSize: 25 }} />
               Chats
             </button>
-            {/* <button
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-sm font-medium transition-all
-        ${
-          activeTab === "community"
-            ? "bg-gray-100 text-blue-600 rounded-full"
-            : "text-gray-600 hover:bg-gray-100 rounded-lg"
-        }`}
-              onClick={() => setActiveTab("community")}
-            >
-              <TeamOutlined style={{ fontSize: 25 }} />
-              Community
-            </button>
-            <button
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2 text-sm font-medium transition-all
-        ${
-          activeTab === "calls"
-            ? "bg-gray-100 text-blue-600 rounded-full"
-            : "text-gray-600 hover:bg-gray-100 rounded-lg"
-        }`}
-              onClick={() => setActiveTab("calls")}
-            >
-              <PhoneOutlined style={{ fontSize: 25 }} />
-              Calls
-            </button> */}
           </div>
         </div>
       )}
 
-      {/* Scrollable list */}
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {activeTab === "chats" ? (
           filteredConversations.length === 0 ? (
@@ -139,7 +116,15 @@ const ChatList: React.FC<ChatListProps> = ({
                 </div>
                 {convs.map((conv) => {
                   const isSelected = selectedUserId === conv._id;
-                  const { name, email, profileImage } = conv.user;
+                  const { name, email, profileImage } = conv.user || {};
+                  const lastMessageContent = conv.lastMessage?.content
+                    ? conv.lastMessage.content.length > 30
+                      ? conv.lastMessage.content.slice(0, 27) + "..."
+                      : conv.lastMessage.content
+                    : "No messages yet";
+                  const lastMessageTime = conv.lastMessage?.createdAt
+                    ? dayjs(conv.lastMessage.createdAt).format("h:mm A")
+                    : "";
 
                   return (
                     <div
@@ -152,21 +137,23 @@ const ChatList: React.FC<ChatListProps> = ({
                         src={
                           profileImage?.trim()
                             ? profileImage
-                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                name ?? "User"
-                              )}`
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(name ?? "User")}`
                         }
                         size={52}
-                        icon={!profileImage?.trim() && <UserOutlined />}
+                        icon={!profileImage?.trim() && <SearchOutlined />}
                       />
-
-                      <div className="flex flex-col max-w-[200px]">
-                        <span className="font-semibold text-gray-800 text-base">
-                          {name}
-                        </span>
+                      <div className="flex flex-col flex-1 max-w-[200px]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-800 text-base">
+                            {name || "Unknown"}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {lastMessageTime}
+                          </span>
+                        </div>
                         {email && (
                           <span className="text-gray-500 text-xs truncate">
-                            {email}
+                            {lastMessageContent}
                           </span>
                         )}
                       </div>

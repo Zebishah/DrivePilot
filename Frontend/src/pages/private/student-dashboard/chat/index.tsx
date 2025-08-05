@@ -50,6 +50,8 @@ const StudentChatPage: React.FC = () => {
         participants: [
           {
             _id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             profileImage: user.profileImage,
@@ -57,6 +59,8 @@ const StudentChatPage: React.FC = () => {
           },
           {
             _id: instructor._id,
+            firstName: instructor.firstName,
+            lastName: instructor.lastName,
             name: instructorName,
             email: instructor.email,
             profileImage,
@@ -65,6 +69,8 @@ const StudentChatPage: React.FC = () => {
         ],
         user: {
           _id: instructor._id,
+          firstName: instructor.firstName,
+          lastName: instructor.lastName,
           name: instructorName,
           email: instructor.email,
           profileImage,
@@ -78,7 +84,7 @@ const StudentChatPage: React.FC = () => {
     });
 
     dispatch(setConversations(Array.from(uniqueInstructorMap.values())));
-  }, [data, dispatch, user?.id, user?.email, user?.firstName, user?.lastName]);
+  }, [data, dispatch, user]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -104,22 +110,19 @@ const StudentChatPage: React.FC = () => {
         ...msg,
         conversationId: msg.conversationId,
       };
-      if (
-        String(message.conversationId) === String(selectedConversation?._id)
-      ) {
-        dispatch(
-          addMessage({
-            conversationId: String(message.conversationId),
-            message,
-          })
-        );
-      } else {
-        console.log(
-          "Message ignored, wrong conversation:",
-          message.conversationId,
-          selectedConversation?._id
-        );
-      }
+      dispatch(
+        addMessage({
+          conversationId: String(message.conversationId),
+          message,
+        })
+      );
+      // Update conversation updatedAt
+      const updatedConversations = conversations.map((conv) =>
+        conv._id === message.conversationId
+          ? { ...conv, updatedAt: new Date().toISOString() }
+          : conv
+      );
+      dispatch(setConversations(updatedConversations));
     };
 
     socket.on("receive_message", handleReceiveMessage);
@@ -130,7 +133,7 @@ const StudentChatPage: React.FC = () => {
       });
       socket.off("receive_message", handleReceiveMessage);
     };
-  }, [conversations, dispatch, selectedConversation?._id]);
+  }, [conversations, dispatch]);
 
   useEffect(() => {
     return () => {
@@ -155,13 +158,11 @@ const StudentChatPage: React.FC = () => {
       <div className="flex h-full gap-5">
         <div className="w-[520px] h-full rounded-xl shadow-md bg-white overflow-y-auto">
           <ChatList
-            conversations={conversations
-              .filter((conv) => typeof conv.createdAt === "string")
-              .map((conv) => ({
-                ...conv,
-                createdAt: conv.createdAt ?? new Date().toISOString(),
-                updatedAt: conv.updatedAt ?? new Date().toISOString(),
-              }))}
+            conversations={conversations.map((conv) => ({
+              ...conv,
+              createdAt: conv.createdAt ?? new Date().toISOString(),
+              updatedAt: conv.updatedAt ?? new Date().toISOString(),
+            }))}
             currentUserId={user.id}
             selectedUserId={selectedConversation?._id}
             onSelect={(conv) => {

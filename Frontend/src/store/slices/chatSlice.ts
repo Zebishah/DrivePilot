@@ -12,6 +12,19 @@ export interface Conversation {
   };
   createdAt?: string;
   updatedAt?: string;
+  lastMessage?: {
+    content: string;
+    createdAt: string;
+    sender: {
+      _id: string;
+      firstName?: string;
+      lastName?: string;
+      name?: string;
+      email?: string;
+      profileImage?: string;
+      role?: string;
+    };
+  };
 }
 
 interface ChatState {
@@ -31,7 +44,11 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     setConversations: (state, action: PayloadAction<Conversation[]>) => {
-      state.conversations = action.payload;
+      state.conversations = action.payload.sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
+          new Date(a.updatedAt || a.createdAt || new Date()).getTime()
+      );
     },
     addConversation: (state, action: PayloadAction<Conversation>) => {
       const exists = state.conversations.some(
@@ -39,6 +56,11 @@ const chatSlice = createSlice({
       );
       if (!exists) {
         state.conversations.push(action.payload);
+        state.conversations.sort(
+          (a, b) =>
+            new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
+            new Date(a.updatedAt || a.createdAt || new Date()).getTime()
+        );
       }
     },
     selectConversation: (state, action: PayloadAction<Conversation>) => {
@@ -49,7 +71,11 @@ const chatSlice = createSlice({
       action: PayloadAction<{ conversationId: string; messages: MessageType[] }>
     ) => {
       const { conversationId, messages } = action.payload;
-      console.log("Setting messages for conversation:", conversationId, messages);
+      console.log(
+        "Setting messages for conversation:",
+        conversationId,
+        messages
+      );
       state.messagesByConversation = {
         ...state.messagesByConversation,
         [conversationId]: [...messages].sort(
@@ -74,6 +100,25 @@ const chatSlice = createSlice({
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           ),
         };
+        state.conversations = state.conversations
+          .map((conv) =>
+            conv._id === conversationId
+              ? {
+                  ...conv,
+                  updatedAt: message.createdAt,
+                  lastMessage: {
+                    content: message.content,
+                    createdAt: message.createdAt,
+                    sender: message.sender,
+                  },
+                }
+              : conv
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
+              new Date(a.updatedAt || a.createdAt || new Date()).getTime()
+          );
       } else {
         console.log("Message already exists in Redux:", message._id);
       }

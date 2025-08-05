@@ -4,12 +4,11 @@ const messageSchema = new mongoose.Schema(
   {
     conversationId: {
       type: String,
-      ref: "Conversation", // use ObjectId instead of plain string
       required: true,
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      refPath: "senderModel", // dynamic referencing
+      refPath: "senderModel",
       required: true,
     },
     senderModel: {

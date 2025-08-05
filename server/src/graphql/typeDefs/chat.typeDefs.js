@@ -53,8 +53,11 @@ const chatTypeDefs = gql`
 
   type Conversation {
     _id: ID!
+    conversationId: String!
     participants: [User!]!
     createdAt: String!
+    updatedAt: String!
+    lastMessage: Message
   }
 
   type Message {
@@ -68,6 +71,7 @@ const chatTypeDefs = gql`
 
   type Query {
     getMessages(user1Id: ID!, user2Id: ID!): [Message!]!
+    getConversations: [Conversation!]!
   }
 
   type Mutation {
@@ -78,6 +82,12 @@ const chatTypeDefs = gql`
       senderModel: String!
       receiverModel: String!
     ): Message
+    createConversation(
+      participant1Id: ID!
+      participant2Id: ID!
+      participant1Model: String!
+      participant2Model: String!
+    ): Conversation
   }
 
   type Subscription {
