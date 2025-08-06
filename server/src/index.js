@@ -10,8 +10,7 @@ const connectDB = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const cors = require("cors");
 const http = require("http");
-const { WebSocketServer } = require("ws");
-const { useServer } = require("graphql-ws/lib/use/ws");
+const { initSocket } = require("./socket");
 
 // ✅ Connect to MongoDB
 connectDB();
@@ -49,53 +48,17 @@ app.use(authRoutes);
 // ✅ Create GraphQL schema
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-// ✅ Setup WebSocket Server (GraphQL Subscriptions)
-const wsServer = new WebSocketServer({
-  server: httpServer,
-  path: "/graphql",
-});
+// ✅ Initialize Socket.IO server (real-time chat)
+initSocket(httpServer, allowedOrigins);
 
-useServer(
-  {
-    schema,
-    on: {
-      connect: async (ctx) => {
-        console.log("✅ WebSocket connected", ctx.connectionParams);
-      },
-      disconnect: (ctx, code, reason) => {
-        console.log("❌ WebSocket disconnected", {
-          code,
-          reason: reason.toString(),
-        });
-      },
-      error: (ctx, msg, err) => {
-        console.error("🚨 WebSocket error:", { message: msg, error: err });
-      },
-    },
-  },
-  wsServer
-);
-// ✅ Setup Apollo Server (HTTP)
+// ✅ Setup Apollo Server (GraphQL API)
 async function startApolloServer() {
   const server = new ApolloServer({
     schema,
     context: async ({ req }) => {
-      // For HTTP requests only — WS doesn't use this
       const auth = await authMiddleware(req);
       return { user: auth.user };
     },
-    plugins: [
-      {
-        async serverWillStart() {
-          return {
-            async drainServer() {
-              console.log("🧼 Draining HTTP + WS...");
-              await wsServer.close();
-            },
-          };
-        },
-      },
-    ],
   });
 
   await server.start();
@@ -104,7 +67,7 @@ async function startApolloServer() {
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
     console.log(`🚀 HTTP: http://localhost:${PORT}${server.graphqlPath}`);
-    console.log(`📡 WS: ws://localhost:${PORT}${server.graphqlPath}`);
+    console.log(`📡 Socket.IO active on same server`);
   });
 }
 

@@ -1,44 +1,31 @@
-export type UserRole = "student" | "instructor";
-
-export interface BaseUserType {
+export interface UserType {
   _id: string;
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  role: UserRole;
   profileImage?: string;
+  role?: string;
 }
-
-export interface StudentUserType extends BaseUserType {
-  role: "student";
-}
-
-export interface InstructorUserType extends BaseUserType {
-  role: "instructor";
-}
-
-export type UserType = StudentUserType | InstructorUserType;
 
 export interface MessageType {
   _id: string;
   content: string;
-  sender: UserType;
   conversationId: string;
-  createdAt?: string;
-}
-
-// This is what ChatList expects
-export interface Conversation {
-  _id: string;
-  user: UserType;
+  createdAt: string;
+  sender: UserType;
+  receiver: UserType;
 }
 
 export interface ConversationType {
   _id: string;
-  user: {
-    name: string;
-    email?: string;
-    profileImage?: string;
-  };
-  createdAt: string;
+  participants?: UserType[];
+  user: UserType;
+  createdAt?: string;
   updatedAt?: string;
+  lastMessage?: {
+    content: string;
+    createdAt: string;
+    sender: UserType;
+  };
 }

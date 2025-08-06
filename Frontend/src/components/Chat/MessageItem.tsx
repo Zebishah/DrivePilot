@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import { MessageType } from "../../types/chatTypes";
 import { Avatar } from "antd";
 import dayjs from "dayjs";
@@ -10,7 +10,31 @@ interface Props {
 
 const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
   const [showFullTimestamp, setShowFullTimestamp] = useState(false);
-  const { content, sender, createdAt } = message;
+
+  const senderName =
+    message.sender?.name ||
+    (message.sender?.firstName && message.sender?.lastName
+      ? `${message.sender.firstName} ${message.sender.lastName}`
+      : "Unknown");
+
+  const displayName = isOwnMessage ? "You" : senderName;
+
+  const formattedTime = message.createdAt
+    ? dayjs(message.createdAt).format(
+        showFullTimestamp ? "MMM D, YYYY · h:mm A" : "h:mm A"
+      )
+    : "Unknown";
+
+  const getInitials = (name: string): string => {
+    if (!name) return "U";
+    const names = name.trim().split(" ");
+    const firstInitial = names[0]?.[0]?.toUpperCase() || "U";
+    const secondInitial = names[1]?.[0]?.toUpperCase() || "";
+    return firstInitial + secondInitial;
+  };
+
+  const profileImage = message.sender?.profileImage?.trim();
+  const avatarFallback = getInitials(senderName);
 
   return (
     <div
@@ -19,7 +43,19 @@ const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
       }`}
     >
       {!isOwnMessage && (
-        <Avatar size={32} src={sender.profileImage} className="mr-2" />
+        <Avatar
+          size={32}
+          src={
+            profileImage
+              ? profileImage
+              : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  senderName
+                )}`
+          }
+          className="mr-2 mt-2"
+        >
+          {!profileImage && avatarFallback}
+        </Avatar>
       )}
 
       <div
@@ -35,17 +71,14 @@ const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
               : "bg-[#D9F6F1] text-gray-800 rounded-bl-none"
           }`}
         >
-          {content}
+          {message.content || "No content"}
         </div>
-
-        <span className="text-xs text-gray-400 mt-1">
-          {showFullTimestamp
-            ? dayjs(createdAt).format("MMM D, YYYY · h:mm A")
-            : dayjs(createdAt).format("h:mm A")}
-        </span>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs text-gray-400">{formattedTime}</span>
+        </div>
       </div>
     </div>
   );
 };
 
-export default MessageItem;
+export default memo(MessageItem);

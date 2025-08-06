@@ -1,21 +1,35 @@
-// models/Message.js
-
 const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
-    chatId: { type: String, required: true }, // unique chat identifier
+    conversationId: {
+      type: String,
+      required: true,
+    },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      refPath: "senderModel",
       required: true,
+    },
+    senderModel: {
+      type: String,
+      required: true,
+      enum: ["Student", "Instructor", "Admin"],
     },
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      refPath: "receiverModel",
       required: true,
     },
-    content: { type: String, required: true },
+    receiverModel: {
+      type: String,
+      required: true,
+      enum: ["Student", "Instructor", "Admin"],
+    },
+    content: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );
