@@ -81,12 +81,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     debounce((conversationId: string | undefined) => {
       if (conversationId) {
         const socket = getSocket();
-        console.log(
-          "Emitting typing event to room:",
-          conversationId,
-          "from:",
-          userId
-        );
         socket?.emit("typing", { conversationId, from: userId });
       }
     }, 200),
@@ -97,11 +91,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [loadMessages] = useLazyQuery(GET_MESSAGES, {
     fetchPolicy: "network-only",
     onCompleted: (data) => {
-      console.log(
-        "Messages loaded for conversation:",
-        conversation?._id,
-        data.getMessages
-      );
       if (conversation?._id) {
         dispatch(
           setMessages({
@@ -127,7 +116,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const [sendMessage, { loading: sending }] = useMutation(SEND_MESSAGE, {
     onError: (err) => console.error("Send error:", err.message),
     onCompleted: (data) => {
-      console.log("Message sent:", data.sendMessage);
       const msg: MessageType = {
         ...data.sendMessage,
         conversationId: data.sendMessage.conversationId || conversation?._id,
@@ -160,7 +148,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             subscriptionData.data.messageSent.conversationId ||
             conversation?._id,
         };
-        console.log("Received message via subscription:", msg);
         if (conversation?._id) {
           dispatch(
             addMessage({
@@ -196,41 +183,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       from: string;
       conversationId: string;
     }) => {
-      console.log(
-        "Received typing event from:",
-        from,
-        "in room:",
-        conversationId,
-        "expected:",
-        otherParticipant._id
-      );
       if (
         String(from) === String(otherParticipant._id) &&
         String(conversationId) === String(conversation._id)
       ) {
         setIsOtherTyping(true);
-        console.log(
-          "Typing indicator set to true for:",
-          from,
-          "in:",
-          conversationId
-        );
+
         setTimeout(() => {
           setIsOtherTyping(false);
-          console.log("Typing indicator reset for:", from);
         }, 2000);
       }
     };
 
     const joinRoom = () => {
-      console.log("Joining conversation room:", conversation._id);
       socket.emit(
         "joinConversation",
         conversation._id,
         (ack: { success: boolean; room: string }) => {
           if (ack.success) {
-            console.log(`Joined room: ${ack.room}`);
-          } else {
             console.error("Failed to join room:", conversation._id);
           }
         }
@@ -241,7 +211,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     socket.on("typing", handleTyping);
 
     return () => {
-      console.log("Leaving conversation:", conversation._id);
       socket.emit("leaveConversation", conversation._id);
       socket.off("typing", handleTyping);
     };
@@ -250,7 +219,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   // Load messages when conversation changes
   useEffect(() => {
     if (!conversation?._id || !otherParticipant?._id) return;
-    console.log("Loading messages for conversation:", conversation._id);
     setMessagesLoading(true);
     loadMessages({
       variables: { user1Id: userId, user2Id: String(otherParticipant._id) },
@@ -278,7 +246,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
   // Early return after all hooks
   if (!conversation || !conversation._id || !userId) {
-    console.log("No conversation or userId:", { conversation, userId });
     return (
       <div className="flex items-center justify-center h-full text-gray-400 ml-4">
         Select someone to start chatting
@@ -287,7 +254,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   }
 
   if (!otherParticipant) {
-    console.log("No other participant found");
     return (
       <div className="flex items-center justify-center h-full text-gray-400 ml-4">
         No valid participant found
@@ -317,22 +283,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   const handleSendMessage = async () => {
     const trimmed = newMessage.trim();
     if (!trimmed || !otherParticipant._id) {
-      console.log("Invalid message data:", {
-        trimmed,
-        conversationId: conversation._id,
-        userId,
-        otherParticipantId: otherParticipant._id,
-      });
       return;
     }
 
     const senderModel = getRoleModel(user?.role);
     const receiverModel = getModelByOpposite(user?.role);
     if (!senderModel || !receiverModel) {
-      console.log("Invalid sender/receiver model:", {
-        senderModel,
-        receiverModel,
-      });
       return;
     }
 

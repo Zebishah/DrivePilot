@@ -11,19 +11,61 @@ interface Props {
 const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
   const [showFullTimestamp, setShowFullTimestamp] = useState(false);
 
+  // Handle message.createdAt
+  const rawCreatedAt = message.createdAt;
+  let createdAt: dayjs.Dayjs;
+
+  // Try parsing as ISO string or Unix timestamp
+  if (typeof rawCreatedAt === "string" && rawCreatedAt) {
+    createdAt = dayjs(rawCreatedAt);
+    if (!createdAt.isValid()) {
+      // Try parsing as Unix timestamp (milliseconds)
+      const numericCreatedAt = parseInt(rawCreatedAt, 10);
+      if (!isNaN(numericCreatedAt)) {
+        createdAt = dayjs(numericCreatedAt);
+      }
+    }
+  } else if (typeof rawCreatedAt === "number") {
+    createdAt = dayjs(rawCreatedAt);
+  }
+
+  // Fallback to Date.now() for invalid or missing timestamps
+  if (!createdAt || !createdAt.isValid()) {
+    console.warn(
+      `Invalid or missing createdAt for message: ${message._id || "unknown"}`,
+      rawCreatedAt
+    );
+    createdAt = dayjs(Date.now());
+  }
+
+  // Reject suspiciously old dates (before 2020, adjust as needed)
+  if (createdAt.isValid() && createdAt.isBefore("2020-01-01")) {
+    console.warn(
+      `Suspiciously old createdAt for message: ${message._id || "unknown"}`,
+      rawCreatedAt,
+      `Parsed as: ${createdAt.toISOString()}`
+    );
+    createdAt = dayjs(Date.now());
+  }
+
+  const now = dayjs();
+  const isToday = now.isSame(createdAt, "day");
+  const isYesterday = now.subtract(1, "day").isSame(createdAt, "day");
+
+  const formattedTime = showFullTimestamp
+    ? createdAt.format("MMM D, YYYY · h:mm A")
+    : isToday
+    ? createdAt.format("h:mm A")
+    : isYesterday
+    ? "Yesterday"
+    : createdAt.format("MMM D, YYYY");
+
+  // Sender Info
   const senderName =
     message.sender?.name ||
     (message.sender?.firstName && message.sender?.lastName
       ? `${message.sender.firstName} ${message.sender.lastName}`
       : "Unknown");
-
-  const displayName = isOwnMessage ? "You" : senderName;
-
-  const formattedTime = message.createdAt
-    ? dayjs(message.createdAt).format(
-        showFullTimestamp ? "MMM D, YYYY · h:mm A" : "h:mm A"
-      )
-    : "Unknown";
 
   const getInitials = (name: string): string => {
     if (!name) return "U";

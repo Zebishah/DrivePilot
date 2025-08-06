@@ -23,7 +23,9 @@ const ChatList: React.FC<ChatListProps> = ({
   onSelect,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"chats" | "community" | "calls">("chats");
+  const [activeTab, setActiveTab] = useState<"chats" | "community" | "calls">(
+    "chats"
+  );
   const { user } = useAuth();
 
   const isInstructor = user?.role?.toLowerCase() === "instructor";
@@ -31,7 +33,9 @@ const ChatList: React.FC<ChatListProps> = ({
   const filteredConversations = useMemo(() => {
     try {
       return conversations
-        .filter((conv) => conv.user?.name?.toLowerCase()?.includes(searchTerm.toLowerCase()))
+        .filter((conv) =>
+          conv.user?.name?.toLowerCase()?.includes(searchTerm.toLowerCase())
+        )
         .sort(
           (a, b) =>
             new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
@@ -47,10 +51,28 @@ const ChatList: React.FC<ChatListProps> = ({
     try {
       const groups: { [key: string]: ConversationType[] } = {};
       filteredConversations.forEach((conv) => {
-        const date = dayjs(conv.updatedAt || conv.createdAt || new Date());
-        let group = date.format("DD MMM YYYY");
-        if (date.isToday()) group = "Today";
-        else if (date.isYesterday()) group = "Yesterday";
+        // Validate updatedAt or createdAt
+        const rawDate = conv.updatedAt || conv.createdAt;
+        let dateObj = dayjs(rawDate);
+        if (!rawDate || !dateObj.isValid()) {
+          console.warn(
+            `Invalid date for conversation ${conv._id}: updatedAt=${conv.updatedAt}, createdAt=${conv.createdAt}`
+          );
+          dateObj = dayjs(); // Fallback to current time
+        }
+        // Reject dates before 2020
+        if (dateObj.isBefore("2020-01-01")) {
+          console.warn(
+            `Suspiciously old date for conversation ${
+              conv._id
+            }: ${dateObj.toISOString()}`
+          );
+          dateObj = dayjs();
+        }
+
+        let group = dateObj.format("DD MMM YYYY");
+        if (dateObj.isToday()) group = "Today";
+        else if (dateObj.isYesterday()) group = "Yesterday";
 
         if (!groups[group]) groups[group] = [];
         groups[group].push(conv);
@@ -122,9 +144,27 @@ const ChatList: React.FC<ChatListProps> = ({
                       ? conv.lastMessage.content.slice(0, 27) + "..."
                       : conv.lastMessage.content
                     : "No messages yet";
-                  const lastMessageTime = conv.lastMessage?.createdAt
-                    ? dayjs(conv.lastMessage.createdAt).format("h:mm A")
-                    : "";
+
+                  const lastMessageCreatedAt = conv.lastMessage?.createdAt;
+                  let messageDate = lastMessageCreatedAt
+                    ? dayjs(lastMessageCreatedAt)
+                    : dayjs();
+                  if (lastMessageCreatedAt && !messageDate.isValid()) {
+                    console.warn(
+                      `Invalid lastMessage.createdAt for conversation ${conv._id}: ${lastMessageCreatedAt}`
+                    );
+                    messageDate = dayjs();
+                  }
+                  if (messageDate.isBefore("2020-01-01")) {
+                    console.warn(
+                      `Suspiciously old lastMessage.createdAt for conversation ${
+                        conv._id
+                      }: ${messageDate.toISOString()}`
+                    );
+                    messageDate = dayjs();
+                  }
+
+                  const lastMessageTime = messageDate.format("h:mm A");
 
                   return (
                     <div
@@ -137,7 +177,9 @@ const ChatList: React.FC<ChatListProps> = ({
                         src={
                           profileImage?.trim()
                             ? profileImage
-                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(name ?? "User")}`
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                name ?? "User"
+                              )}`
                         }
                         size={52}
                         icon={!profileImage?.trim() && <SearchOutlined />}

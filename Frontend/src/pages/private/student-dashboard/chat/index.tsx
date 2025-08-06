@@ -13,7 +13,11 @@ import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../../../../graphql/Queries/StudentQueries";
 import { StudentBooking } from "../../../../types/Bookings";
 import { useAuth } from "../../../../context/AuthContext";
-import { ConversationType } from "../../../../types/chatTypes";
+import {
+  ConversationType,
+  MessageType,
+  UserType,
+} from "../../../../types/chatTypes";
 import { getSocket } from "../../../../utils/socket";
 
 const StudentChatPage: React.FC = () => {
@@ -96,8 +100,6 @@ const StudentChatPage: React.FC = () => {
         conv._id,
         (ack: { success: boolean; room: string }) => {
           if (ack.success) {
-            console.log(`StudentChatPage joined room: ${ack.room}`);
-          } else {
             console.error(`Failed to join room: ${conv._id}`);
           }
         }
@@ -105,10 +107,25 @@ const StudentChatPage: React.FC = () => {
     });
 
     const handleReceiveMessage = (msg: any) => {
-      console.log("StudentChatPage received message:", msg);
+      if (!msg?.conversationId || !msg?.sender || !msg?.receiver) {
+        console.error("Invalid message received:", msg);
+        return;
+      }
       const message: MessageType = {
         ...msg,
         conversationId: msg.conversationId,
+        sender: {
+          ...msg.sender,
+          name:
+            msg.sender.name || `${msg.sender.firstName} ${msg.sender.lastName}`,
+        },
+        receiver: {
+          ...msg.receiver,
+          name:
+            msg.receiver.name ||
+            `${msg.receiver.firstName} ${msg.receiver.lastName}`,
+        },
+        createdAt: msg.createdAt || new Date().toISOString(),
       };
       dispatch(
         addMessage({
@@ -116,12 +133,26 @@ const StudentChatPage: React.FC = () => {
           message,
         })
       );
-      // Update conversation updatedAt
-      const updatedConversations = conversations.map((conv) =>
-        conv._id === message.conversationId
-          ? { ...conv, updatedAt: new Date().toISOString() }
-          : conv
-      );
+      // Update conversation updatedAt and lastMessage
+      const updatedConversations = conversations
+        .map((conv) =>
+          conv._id === message.conversationId
+            ? {
+                ...conv,
+                updatedAt: message.createdAt,
+                lastMessage: {
+                  content: message.content,
+                  createdAt: message.createdAt,
+                  sender: message.sender,
+                },
+              }
+            : conv
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
+            new Date(a.updatedAt || a.createdAt || new Date()).getTime()
+        );
       dispatch(setConversations(updatedConversations));
     };
 
@@ -158,11 +189,7 @@ const StudentChatPage: React.FC = () => {
       <div className="flex h-full gap-5">
         <div className="w-[520px] h-full rounded-xl shadow-md bg-white overflow-y-auto">
           <ChatList
-            conversations={conversations.map((conv) => ({
-              ...conv,
-              createdAt: conv.createdAt ?? new Date().toISOString(),
-              updatedAt: conv.updatedAt ?? new Date().toISOString(),
-            }))}
+            conversations={conversations}
             currentUserId={user.id}
             selectedUserId={selectedConversation?._id}
             onSelect={(conv) => {
