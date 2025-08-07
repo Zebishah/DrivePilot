@@ -1,5 +1,5 @@
-import { useQuery } from "@apollo/client";
 import React from "react";
+import { useQuery } from "@apollo/client";
 import { GET_STUDENT_LESSON_HISTORY } from "../../../graphql/mutations/profile";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -20,19 +20,48 @@ interface LessonHistoryItem {
 
 const LessonBookingHistory: React.FC = () => {
   const { user } = useAuth();
+  const studentId = user?.id || "";
+
   const { loading, error, data } = useQuery(GET_STUDENT_LESSON_HISTORY, {
-    variables: { studentId: user?.id }, // ✅ This must be provided
+    variables: { studentId },
+    skip: !studentId, // Skip query if studentId is missing
     fetchPolicy: "network-only",
+    onCompleted: (data) => {
+      console.log(
+        "📥 GET_STUDENT_LESSON_HISTORY response:",
+        data?.getStudentLessonHistory
+      );
+    },
+    onError: (err) => {
+      console.error("❌ GET_STUDENT_LESSON_HISTORY error:", {
+        message: err.message,
+        studentId,
+        user,
+      });
+    },
   });
 
-  if (loading)
+  if (!studentId) {
+    console.error("❌ No studentId provided. User:", user);
+    return (
+      <div className="p-4 text-center text-red-500">
+        Please login to view lesson history.
+      </div>
+    );
+  }
+
+  if (loading) {
     return <p className="text-center py-4">Loading lesson history...</p>;
-  if (error)
+  }
+
+  if (error) {
+    console.error("❌ Error loading lesson history:", error.message);
     return (
       <p className="text-center py-4 text-red-500">
         Error loading lesson history: {error.message}
       </p>
     );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {

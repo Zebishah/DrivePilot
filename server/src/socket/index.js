@@ -51,7 +51,10 @@ function initSocket(server) {
         ...data,
         conversationId: data.conversationId || data.chatId,
       };
-      console.log(`📨 Emitting message to room: ${message.conversationId}`, message);
+      console.log(
+        `📨 Emitting message to room: ${message.conversationId}`,
+        message
+      );
       socket.to(message.conversationId).emit("receive_message", message);
       socket.emit("receive_message", message); // Echo to sender
     });

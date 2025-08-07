@@ -12,7 +12,7 @@ export interface MessageType {
   _id: string;
   content: string;
   conversationId: string;
-  createdAt: string;
+  createdAt: string | undefined;
   sender: UserType;
   receiver: UserType;
 }
