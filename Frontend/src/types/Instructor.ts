@@ -3,6 +3,8 @@ export interface InstructorDocument {
   documentType: string;
   documentUrl: string;
   status: "pending" | "accepted" | "rejected";
+  createdAt: string;
+  reSubmitted: string;
 }
 
 export interface Instructor {
@@ -19,6 +21,7 @@ export interface Instructor {
   gender: string;
   carName: string;
   transmissionType: string;
+  verificationStatus: "pending" | "verified" | "rejected";
   profileImage?: string;
   documents: InstructorDocument[];
   createdAt: string;

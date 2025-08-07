@@ -25,6 +25,8 @@ export const GET_ALL_INSTRUCTORS = gql`
         documentType
         documentUrl
         status
+        createdAt
+        reSubmitted
       }
     }
   }
@@ -51,12 +53,15 @@ export const GET_ALL_INSTRUCTORS_DETAILS = gql`
       isUserVerified
       profileImage
       createdAt
+      verificationStatus
       updatedAt
       documents {
         _id
         documentType
         documentUrl
         status
+        createdAt
+        reSubmitted
       }
     }
   }

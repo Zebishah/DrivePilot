@@ -49,6 +49,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(
     LANGUAGES[0]
   );
+
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -82,13 +83,14 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
   const isLoading =
     (isStudent && studentLoading) || (isInstructor && teacherLoading);
 
-  const currentMenuItem = menuItems?.find((item) =>
-    location.pathname.startsWith(item.path)
-  );
-  const pageTitle = currentMenuItem ? currentMenuItem.text : "Dashboard";
+  const currentMenuItem = (menuItems || [])
+    .filter((item): item is MenuItemProps => !!item?.path)
+    .find((item) => location?.pathname.startsWith(item.path));
+
+  const pageTitle = currentMenuItem ? currentMenuItem?.text : "Dashboard";
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+    setAnchorEl(event?.currentTarget);
   };
 
   const handleClose = () => {

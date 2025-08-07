@@ -48,11 +48,14 @@ const typeDefs = gql`
     documentType: String!
     documentUrl: String!
     status: String
+    createdAt: String
+    reSubmitted: String
   }
   type DocumentStudent {
     documentType: String!
     documentUrl: String!
     status: String!
+    createdAt: String
   }
   interface User {
     id: ID!
@@ -116,6 +119,7 @@ const typeDefs = gql`
     profileImage: String
     description: String
     experience: String
+    verificationStatus: String
     phone: String
     documents: [Document!]
     coordinates: Coordinates
@@ -146,6 +150,7 @@ const typeDefs = gql`
     documents: [Document!]
     coordinates: Coordinates
     carName: String
+    verificationStatus: String
     lessonPrice: Float
     studentCount: Int
     reviewRating: Float
@@ -262,6 +267,8 @@ const typeDefs = gql`
     status: String!
     documentType: String!
     documentUrl: String!
+    createdAt: String
+    reSubmitted: String
   }
   type Query {
     me: User
@@ -313,6 +320,8 @@ const typeDefs = gql`
     status: String!
     documentType: String!
     documentUrl: String!
+    createdAt: String
+    reSubmitted: String
   }
 
   type InstructorDocumentsResponse {
@@ -325,6 +334,8 @@ const typeDefs = gql`
     documentType: String!
     documentUrl: String!
     status: String!
+    createdAt: String
+    reSubmitted: String
   }
 
   type StudentWithLessonStats {
@@ -365,6 +376,8 @@ const typeDefs = gql`
   }
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
+    updateInstructorVerificationStatus(id: ID!, status: String!): Instructor!
+
     verifyUser(input: userVerifyInput!): verifiedAuthPayload!
     resendOtp(input: resendOtpInput!): resendOtpPayload!
     selectRole(role: UserRole!): AuthPayload!

@@ -48,15 +48,6 @@ const chatResolvers = {
           .populate({ path: "sender", model: senderModel })
           .populate({ path: "receiver", model: receiverModel });
 
-        console.log("📤 Message sent:", {
-          conversationId,
-          senderId,
-          receiverId,
-          senderModel,
-          receiverModel,
-          content,
-        });
-
         pubsub.publish(MESSAGE_SENT, {
           messageSent: populatedMessage,
         });
@@ -73,7 +64,6 @@ const chatResolvers = {
     messageSent: {
       subscribe: withFilter(
         () => {
-          console.log("📡 Subscribed to MESSAGE_SENT");
           return pubsub.asyncIterator(MESSAGE_SENT);
         },
         (payload, variables) => {

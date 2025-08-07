@@ -340,12 +340,12 @@ const instructorResolver = {
             },
           },
         ]);
-        console.log("review Stats", reviewStats[0]);
+
         const { totalReviews, averageRating } = reviewStats[0] || {
           totalReviews: 0,
           averageRating: 0,
         };
-        console.log("average rating ", Math.round(averageRating * 10) / 10);
+
         return {
           instructor: {
             ...instructor,

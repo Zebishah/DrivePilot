@@ -78,8 +78,6 @@ const reviewResolver = {
     },
     getStudentHoursProgress: async (_, { studentId }) => {
       try {
-        console.log("Fetching student information...", studentId);
-
         const student = await Student.findById(studentId);
         if (!student) throw new Error("Student not found");
 

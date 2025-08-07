@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import {
@@ -55,6 +55,9 @@ export const DocumentDetailsPage: React.FC = () => {
       documentsOfType: documents,
     };
   }, [data, instructorId, documentType]);
+  const [selectedDoc, setSelectedDoc] = useState<InstructorDocument | null>(
+    documentsOfType[0] || null
+  );
 
   if (loading) {
     return (
@@ -87,7 +90,7 @@ export const DocumentDetailsPage: React.FC = () => {
       </div>
     );
   }
-
+  console.log("documentsOfType", documentsOfType);
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -208,6 +211,39 @@ export const DocumentDetailsPage: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-900">
                       Document Status
                     </h2>
+                    {selectedDoc && (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                        {/* Submitted on */}
+                        <p className="text-sm text-gray-700">
+                          <strong>Submitted on:</strong>{" "}
+                          {selectedDoc.createdAt
+                            ? (() => {
+                                const date = new Date(
+                                  Number(selectedDoc.createdAt)
+                                );
+                                const options = {
+                                  month: "long",
+                                  day: "numeric",
+                                };
+                                const formattedDate = date.toLocaleDateString(
+                                  "en-US",
+                                  options
+                                );
+                                const hours = date
+                                  .getHours()
+                                  .toString()
+                                  .padStart(2, "0");
+                                const minutes = date
+                                  .getMinutes()
+                                  .toString()
+                                  .padStart(2, "0");
+                                return `${formattedDate} at ${hours}h${minutes}`;
+                              })()
+                            : "N/A"}
+                        </p>
+                      </div>
+                    )}
+
                     {decodeURIComponent(documentType || "") ===
                     "Swiss Driving License" ? (
                       <StatusDropdown
@@ -236,7 +272,12 @@ export const DocumentDetailsPage: React.FC = () => {
               )}
 
               {/* Document Slider */}
-              <DocumentSlider documents={documentsOfType} />
+              <DocumentSlider
+                documents={documentsOfType}
+                onDocumentSelect={(doc: InstructorDocument) =>
+                  setSelectedDoc(doc)
+                }
+              />
 
               {/* Document List */}
               {documentsOfType.length > 0 && (

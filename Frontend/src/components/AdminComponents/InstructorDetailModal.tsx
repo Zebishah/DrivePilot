@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   Star,
@@ -10,27 +10,250 @@ import {
   Car,
   Settings,
   FileText,
+  Check,
+  Clock,
+  ChevronDown,
 } from "lucide-react";
+import { useMutation, gql } from "@apollo/client";
+import toast from "react-hot-toast";
 
-import { format } from "date-fns";
-import { Instructor } from "../../types/Instructor";
+// Simple date formatter
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+interface Instructor {
+  _id: string;
+  id?: string; // Add optional id field for compatibility
+  firstName: string;
+  lastName: string;
+  profileImage?: string;
+  isUserVerified: boolean;
+  verificationStatus: "pending" | "verified" | "rejected";
+  email: string;
+  phone?: string;
+  location?: string;
+  address?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  experience?: number;
+  carName?: string;
+  transmissionType?: string;
+  languagePreference?: string[];
+  documents: Array<{
+    _id: string;
+    documentType: string;
+    status: "accepted" | "pending" | "rejected";
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+const StatusToggle = ({ currentStatus, onStatusChange, isLoading = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const statusOptions = [
+    {
+      value: "pending",
+      label: "Pending",
+      icon: Clock,
+      color: "bg-amber-100 text-amber-800 border-amber-200",
+      hoverColor: "hover:bg-amber-50",
+      iconColor: "text-amber-600",
+    },
+    {
+      value: "verified",
+      label: "Verified",
+      icon: Check,
+      color: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      hoverColor: "hover:bg-emerald-50",
+      iconColor: "text-emerald-600",
+    },
+    {
+      value: "rejected",
+      label: "Rejected",
+      icon: X,
+      color: "bg-red-100 text-red-800 border-red-200",
+      hoverColor: "hover:bg-red-50",
+      iconColor: "text-red-600",
+    },
+  ];
+
+  const currentOption = statusOptions.find(
+    (option) => option.value === currentStatus
+  );
+
+  const handleSelect = (status) => {
+    onStatusChange(status);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={isLoading}
+          className={`
+            relative min-w-[120px] px-3 py-2 text-left rounded-lg border-2 transition-all duration-200
+            ${currentOption?.color}
+            ${currentOption?.hoverColor}
+            ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+            shadow-sm hover:shadow-md
+          `}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {currentOption && (
+                <currentOption.icon
+                  className={`w-3 h-3 ${currentOption.iconColor}`}
+                />
+              )}
+              <span className="font-medium text-xs">
+                {currentOption?.label}
+              </span>
+            </div>
+            <ChevronDown
+              className={`w-3 h-3 transition-transform duration-200 ${
+                isOpen ? "rotate-180" : ""
+              } ${currentOption?.iconColor}`}
+            />
+          </div>
+
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-lg">
+              <div className="w-3 h-3 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+            </div>
+          )}
+        </button>
+
+        {isOpen && !isLoading && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+            {statusOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => handleSelect(option.value)}
+                className={`
+                  w-full px-3 py-2 text-left flex items-center space-x-2 transition-colors duration-150
+                  ${
+                    option.value === currentStatus
+                      ? `${option.color} ${option.hoverColor}`
+                      : "text-gray-700 hover:bg-gray-50"
+                  }
+                  focus:outline-none focus:bg-gray-50
+                `}
+              >
+                <option.icon
+                  className={`w-3 h-3 ${
+                    option.value === currentStatus
+                      ? option.iconColor
+                      : "text-gray-400"
+                  }`}
+                />
+                <span className="font-medium text-xs">{option.label}</span>
+                {option.value === currentStatus && (
+                  <div className="ml-auto">
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${option.iconColor.replace("text-", "bg-")}`}
+                    ></div>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const UPDATE_INSTRUCTOR_VERIFICATION_STATUS = gql`
+  mutation UpdateInstructorVerificationStatus($id: ID!, $status: String!) {
+    updateInstructorVerificationStatus(id: $id, status: $status) {
+      _id
+      verificationStatus
+      isUserVerified
+      updatedAt
+    }
+  }
+`;
 
 interface InstructorDetailModalProps {
   instructor: Instructor | null;
   isOpen: boolean;
   onClose: () => void;
+  onInstructorUpdate?: (updatedInstructor: Instructor) => void;
+  refetchQueries?: string[];
+  refetchInstructors?: () => void;
 }
 
 export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
   instructor,
   isOpen,
   onClose,
+  refetchInstructors,
 }) => {
+  const [updateStatus, { loading: updating }] = useMutation(
+    UPDATE_INSTRUCTOR_VERIFICATION_STATUS,
+    {
+      onError: (error) => {
+        console.error("Failed to update verification status:", error.message);
+        // Show user-friendly error message
+        toast.error("Failed to update verification status. Please try again.");
+      },
+      onCompleted: (data) => {
+        console.log("Status update completed:", data);
+
+        if (data?.updateInstructorVerificationStatus) {
+          // Refetch all instructors to get updated data immediately
+          if (refetchInstructors) {
+            refetchInstructors();
+          }
+          onClose(); // Close the modal after successful update
+          // Show success message
+          toast.success("Verification status updated successfully");
+        }
+      },
+    }
+  );
+
   if (!isOpen || !instructor) return null;
 
   const fullName = `${instructor.firstName} ${instructor.lastName}`;
-  const rating = instructor.isUserVerified ? 100 : 60;
-  console.log("instructor", instructor);
+  const rating = instructor.reviewRating;
+
+  const handleToggleVerification = async (
+    newStatus: "verified" | "rejected" | "pending"
+  ) => {
+    if (!instructor) return;
+
+    try {
+      console.log(
+        `Updating instructor ${instructor._id} to status: ${newStatus}`
+      );
+
+      await updateStatus({
+        variables: {
+          id: instructor.id, // Use _id instead of id
+          status: newStatus,
+        },
+      });
+
+      console.log("Mutation completed successfully");
+    } catch (error) {
+      console.error("Failed to update verification status", error);
+      // Error is already handled in onError callback
+    }
+  };
+  console.log("Instructor Data:", instructor);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
@@ -75,26 +298,25 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
                     <Star
                       key={i}
                       className={`w-4 h-4 ${
-                        i < Math.floor(rating / 20)
+                        i < Math.floor(rating)
                           ? "text-yellow-400 fill-current"
                           : "text-gray-300"
                       }`}
                     />
                   ))}
                   <span className="text-sm text-gray-600 ml-2">{rating}%</span>
-                  {instructor.isUserVerified && (
-                    <span className="ml-3 inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                      Verified
-                    </span>
-                  )}
                 </div>
               </div>
-
-              {instructor.description && (
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  {instructor.description}
-                </p>
-              )}
+              <div className="ml-3 flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Status:
+                </label>
+                <StatusToggle
+                  currentStatus={instructor.verificationStatus}
+                  onStatusChange={handleToggleVerification}
+                  isLoading={updating}
+                />
+              </div>
             </div>
           </div>
 
@@ -147,7 +369,7 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
               {instructor.dateOfBirth && (
                 <div className="flex items-center text-gray-600">
                   <Calendar className="w-5 h-5 mr-3 text-gray-400" />
-                  <span>{format(new Date(instructor.dateOfBirth), "PP")}</span>
+                  <span>{formatDate(instructor.dateOfBirth)}</span>
                 </div>
               )}
 
@@ -244,18 +466,14 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
           {/* Registration Date */}
           <div className="text-sm text-gray-500 pt-4 border-t border-gray-200">
             {instructor?.createdAt && !isNaN(Number(instructor.createdAt)) && (
-              <p>
-                Registered on{" "}
-                {format(new Date(Number(instructor.createdAt)), "PPP")}
-              </p>
+              <p>Registered on {formatDate(Number(instructor.createdAt))}</p>
             )}
 
             {instructor?.updatedAt &&
               instructor?.updatedAt !== instructor?.createdAt &&
               !isNaN(Number(instructor.updatedAt)) && (
                 <p>
-                  Last updated on{" "}
-                  {format(new Date(Number(instructor.updatedAt)), "PPP")}
+                  Last updated on {formatDate(Number(instructor.updatedAt))}
                 </p>
               )}
           </div>

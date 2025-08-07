@@ -55,79 +55,40 @@ const studentBookingResolver = {
 
       const now = new Date();
 
-      // Populate both instructorId and studentId (booker) with profileImage included
       const allBookings = await StudentBooking.find({
         instructorId: user?.id,
         status: { $in: ["confirmed", "semi_cancelled"] },
       })
-
-        .populate(
-          "instructorId",
-          "_id firstName lastName email description profileImage"
-        )
+        .populate("instructorId", "_id firstName lastName email profileImage")
         .populate("studentId", "_id firstName lastName email profileImage");
 
-      const completedBookings = allBookings.filter((booking) => {
-        if (!booking.slots || booking.slots.length === 0) return false;
+      const completedLessons = [];
 
-        // Get the latest slot by end time
-        const lastSlot = booking.slots.reduce((latest, current) => {
-          const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
-          const currentEnd = new Date(`${current.date}T${current.endTime}:00`);
-          return currentEnd > latestEnd ? current : latest;
-        });
+      for (const booking of allBookings) {
+        if (!booking.slots || booking.slots.length === 0) continue;
 
-        const lastEndDateTime = new Date(
-          `${lastSlot.date}T${lastSlot.endTime}:00`
-        );
+        for (const slot of booking.slots) {
+          const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
 
-        return lastEndDateTime <= now;
+          if (slotEndDateTime <= now) {
+            completedLessons.push({
+              ...booking.toObject(), // ensure it's plain JS object
+              slots: [slot], // only include this slot
+            });
+          }
+        }
+      }
+
+      // Sort by latest slot time (descending)
+      completedLessons.sort((a, b) => {
+        const aEnd = new Date(`${a.slots[0].date}T${a.slots[0].endTime}:00`);
+        const bEnd = new Date(`${b.slots[0].date}T${b.slots[0].endTime}:00`);
+        return bEnd - aEnd;
       });
 
-      // Sort by latest completed first
-      const sortedBookings = completedBookings.sort((a, b) => {
-        const getLastEndTime = (slots) => {
-          return slots.reduce((latest, current) => {
-            const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
-            const currentEnd = new Date(
-              `${current.date}T${current.endTime}:00`
-            );
-            return currentEnd > latestEnd ? current : latest;
-          });
-        };
-
-        const aEnd = new Date(
-          `${getLastEndTime(a.slots).date}T${
-            getLastEndTime(a.slots).endTime
-          }:00`
-        );
-        const bEnd = new Date(
-          `${getLastEndTime(b.slots).date}T${
-            getLastEndTime(b.slots).endTime
-          }:00`
-        );
-
-        return bEnd - aEnd; // Descending
-      });
-
-      // Add bookerProfileImage to each booking object
-      const bookingsWithStudentProfile = sortedBookings.map((booking) => {
-        const bookingObj = booking.toObject(); // Convert to plain object
-        console.log("booking", booking);
-        return {
-          ...bookingObj,
-          // Add the student's (booker's) profile image
-          bookerProfileImage: booking.studentId?.profileImage || "",
-          // Also fix the instructor's profile image in the response
-          instructorId: {
-            ...bookingObj.instructorId,
-            profileImage: booking.instructorId?.profileImage || "",
-          },
-        };
-      });
-
-      return bookingsWithStudentProfile;
+      return completedLessons;
     },
+
     getInstructorBookings: async (_, __, { user }) => {
       validateUser(user);
       return await StudentBooking.find({ instructorId: user.id })

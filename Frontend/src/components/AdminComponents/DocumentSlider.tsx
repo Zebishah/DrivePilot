@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,21 +10,22 @@ import { InstructorDocument } from "../../types/Instructor";
 interface DocumentSliderProps {
   documents: InstructorDocument[];
   initialIndex?: number;
+  onDocumentSelect?: (doc: InstructorDocument) => void;
 }
 
 export const DocumentSlider: React.FC<DocumentSliderProps> = ({
   documents,
   initialIndex = 0,
+  onDocumentSelect,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : documents.length - 1));
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev < documents.length - 1 ? prev + 1 : 0));
-  };
+  // ✅ Call onDocumentSelect whenever currentIndex changes
+  useEffect(() => {
+    if (documents.length > 0) {
+      onDocumentSelect?.(documents[currentIndex]);
+    }
+  }, [currentIndex, documents, onDocumentSelect]);
 
   if (documents.length === 0) {
     return (
@@ -33,6 +34,14 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
       </div>
     );
   }
+
+  const goToPrevious = () => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : documents.length - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev < documents.length - 1 ? prev + 1 : 0));
+  };
 
   const currentDocument = documents[currentIndex];
 

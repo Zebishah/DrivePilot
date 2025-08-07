@@ -38,6 +38,7 @@ export const InstructorManagement: React.FC = () => {
     useMutation(DELETE_INSTRUCTORS);
 
   const instructors: Instructor[] = data?.allInstructorsWithDetails || [];
+  console.log("Instructors Data:", instructors);
   const isRefetching = networkStatus === NetworkStatus.refetch;
   // Apply filters to instructors
   const filteredInstructors = useMemo(() => {
@@ -336,6 +337,7 @@ export const InstructorManagement: React.FC = () => {
         instructor={selectedInstructor}
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
+        refetchInstructors={refetch} // Add this line to pass the refetch function
       />
 
       <DeleteConfirmationModal

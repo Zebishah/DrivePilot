@@ -67,6 +67,7 @@ const DocumentSchema = new mongoose.Schema({
     enum: ["pending", "accepted", "rejected"],
     default: "pending",
   },
+  createdAt: { type: Date, default: Date.now },
 });
 const validDocumentTypes = [
   // Required
@@ -101,6 +102,8 @@ const InstructorDocumentSchema = new mongoose.Schema({
     enum: ["pending", "accepted", "rejected"],
     default: "pending",
   },
+  createdAt: { type: Date, default: Date.now },
+  reSubmitted: { type: Date, default: null }, // Track re-submission date
 });
 
 const StudentSchema = new mongoose.Schema({
@@ -140,6 +143,11 @@ const InstructorSchema = new mongoose.Schema({
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },
   profileImage: { type: String, required: false },
+  verificationStatus: {
+    type: String,
+    enum: ["pending", "verified", "rejected"],
+    default: "pending",
+  },
   dateOfBirth: { type: String, required: false },
   languagePreference: { type: [String], required: false },
   coordinates: {

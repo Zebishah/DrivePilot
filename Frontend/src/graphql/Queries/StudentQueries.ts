@@ -196,6 +196,7 @@ export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
     getCompletedStudentBookings {
       _id
       totalAmount
+      finalAmount
       status
       createdAt
       updatedAt

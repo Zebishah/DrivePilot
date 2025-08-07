@@ -217,6 +217,7 @@ const resolvers = {
               createdAt: instructor.createdAt,
               updatedAt: instructor.updatedAt,
               dateOfBirth: instructor.dateOfBirth,
+              verificationStatus: instructor.verificationStatus,
               languagePreference: instructor.languagePreference || [],
               lessonPrice: tariff?.FinalPricePerLesson || null,
               studentCount: studentIds.size,
@@ -376,6 +377,23 @@ instead.`);
         throw error;
       }
     },
+    updateInstructorVerificationStatus: async (_, { id, status }) => {
+      if (!["pending", "verified", "rejected"].includes(status)) {
+        throw new Error("Invalid verification status");
+      }
+      console.log("Updating instructor verification status:", id, status);
+      const updatedInstructor = await Instructor.findByIdAndUpdate(
+        id,
+        { verificationStatus: status },
+        { new: true }
+      );
+
+      if (!updatedInstructor) {
+        throw new Error("Instructor not found");
+      }
+
+      return updatedInstructor;
+    },
     updateInstructorDocuments: async (_, { input }, { user }) => {
       if (!user) {
         throw new AuthenticationError("Not authenticated");
@@ -496,6 +514,8 @@ instead.`);
               documentType,
               documentUrl,
               status: "pending",
+              createdAt: new Date(), // First-time submission timestamp
+              reSubmitted: null,
             });
           } else {
             // For single upload types, replace existing documents
@@ -503,12 +523,16 @@ instead.`);
             const filteredDocuments = updatedDocuments.filter(
               (doc) => doc.documentType !== documentType
             );
-
+            const previousDoc = updatedDocuments.find(
+              (doc) => doc.documentType === documentType
+            );
             // Add the new document
             filteredDocuments.push({
               documentType,
               documentUrl,
               status: "pending",
+              createdAt: new Date(),
+              reSubmitted: previousDoc ? new Date() : null,
             });
 
             // Update the documents array

@@ -35,6 +35,7 @@ export interface StudentBooking {
   instructorId: UserBooking;
   slots: Slot[];
   totalAmount: number;
+  finalAmount: number;
   paymentMethod: PaymentMethod;
   status: BookingStatus;
   feedBackStatus: BookingStatus;

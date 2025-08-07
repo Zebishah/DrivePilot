@@ -125,43 +125,43 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
     }
   };
 
-  if (!documents || documents.length === 0) {
-    return (
-      <Box sx={{ p: 3, textAlign: "center" }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-            py: 4,
-          }}
-        >
-          <DescriptionIcon sx={{ fontSize: 60, color: "text.secondary" }} />
-          <Typography variant="h6" color="text.secondary">
-            No documents uploaded yet
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Upload your documents to get started
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setUpdateModalOpen(true)}
-            sx={{
-              mt: 2,
-              borderRadius: 2,
-              textTransform: "none",
-              boxShadow: 3,
-              "&:hover": { boxShadow: 6 },
-            }}
-          >
-            Add Documents
-          </Button>
-        </Box>
-      </Box>
-    );
-  }
+  // if (!documents || documents.length === 0) {
+  //   return (
+  //     <Box sx={{ p: 3, textAlign: "center" }}>
+  //       <Box
+  //         sx={{
+  //           display: "flex",
+  //           flexDirection: "column",
+  //           alignItems: "center",
+  //           gap: 2,
+  //           py: 4,
+  //         }}
+  //       >
+  //         <DescriptionIcon sx={{ fontSize: 60, color: "text.secondary" }} />
+  //         <Typography variant="h6" color="text.secondary">
+  //           No documents uploaded yet
+  //         </Typography>
+  //         <Typography variant="body2" color="text.secondary">
+  //           Upload your documents to get started
+  //         </Typography>
+  //         <Button
+  //           variant="contained"
+  //           startIcon={<AddIcon />}
+  //           onClick={() => setUpdateModalOpen(true)}
+  //           sx={{
+  //             mt: 2,
+  //             borderRadius: 2,
+  //             textTransform: "none",
+  //             boxShadow: 3,
+  //             "&:hover": { boxShadow: 6 },
+  //           }}
+  //         >
+  //           Add Documents
+  //         </Button>
+  //       </Box>
+  //     </Box>
+  //   );
+  // }
 
   return (
     <>
