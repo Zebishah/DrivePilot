@@ -20,7 +20,7 @@ import { RootState } from "../../store";
 import { MessageType, UserType } from "../../types/chatTypes";
 import { useAuth } from "../../context/AuthContext";
 import { Spin, Avatar } from "antd";
-import { UserOutlined } from "@ant-design/icons"; // Added for fallback icon
+import { UserOutlined } from "@ant-design/icons";
 import EmojiPicker from "emoji-picker-react";
 import { getSocket } from "../../utils/socket";
 import { debounce } from "lodash";
@@ -188,7 +188,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         String(conversationId) === String(conversation._id)
       ) {
         setIsOtherTyping(true);
-
         setTimeout(() => {
           setIsOtherTyping(false);
         }, 2000);
@@ -200,7 +199,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         "joinConversation",
         conversation._id,
         (ack: { success: boolean; room: string }) => {
-          if (ack.success) {
+          if (!ack.success) {
             console.error("Failed to join room:", conversation._id);
           }
         }
@@ -265,7 +264,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     const roleMap: Record<string, string> = {
       student: "Student",
       instructor: "Instructor",
-      admin: "Admin",
     };
     return role ? roleMap[role.toLowerCase()] ?? null : null;
   };
@@ -289,6 +287,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     const senderModel = getRoleModel(user?.role);
     const receiverModel = getModelByOpposite(user?.role);
     if (!senderModel || !receiverModel) {
+      console.error("Invalid sender or receiver model:", {
+        senderModel,
+        receiverModel,
+      });
       return;
     }
 
@@ -315,15 +317,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     }
   };
 
-  // Updated to use name directly to match ChatList
-  const getParticipantName = (p: UserType) => p.name || "Unknown";
+  const getParticipantName = (p: UserType) => {
+    return `${p.firstName || "Unknown"} ${p.lastName || ""}`.trim();
+  };
 
   const getParticipantAvatar = (p: UserType) => {
     if (p.profileImage?.trim()) {
       return p.profileImage;
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      p.name || "User"
+      `${p.firstName || "User"} ${p.lastName || ""}`
     )}`;
   };
 
@@ -336,7 +339,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       <div className="flex items-center gap-3 px-5 py-4 border-b bg-[#f9fafb]">
         <Avatar
           src={getParticipantAvatar(otherParticipant)}
-          size={48} // Match ChatList's size (52px adjusted for consistency)
+          size={48}
           icon={!otherParticipant.profileImage?.trim() && <UserOutlined />}
           className="border"
         />

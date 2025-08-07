@@ -19,6 +19,7 @@ import {
 } from "../../../../types/chatTypes";
 import { getSocket } from "../../../../utils/socket";
 import { Student } from "../../../../types/Student";
+import dayjs from "dayjs";
 
 const InstructorChatPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -27,7 +28,6 @@ const InstructorChatPage: React.FC = () => {
     (state: RootState) => state.chat
   );
 
-  // Fetch students with bookings
   const { data, loading, error } = useQuery(GET_ALL_STUDENTS, {
     variables: {
       filter: {
@@ -36,11 +36,35 @@ const InstructorChatPage: React.FC = () => {
     },
     skip: !user?.id,
     fetchPolicy: "network-only",
+    onCompleted: (data) => {
+      console.log(
+        "📥 GET_ALL_STUDENTS response:",
+        data?.getAllStudents?.map((s: Student) => ({
+          id: s._id,
+          name: `${s.firstName} ${s.lastName}`,
+          updatedAt: s.updatedAt,
+          createdAt: s.createdAt,
+        }))
+      );
+    },
+    onError: (err) => {
+      console.error("❌ GET_ALL_STUDENTS error:", {
+        message: err.message,
+        userId: user?.id,
+        user,
+      });
+    },
   });
 
-  // Process students into conversations
   useEffect(() => {
-    if (!user?.id || !data?.getAllStudents) return;
+    console.log("🔄 useEffect for conversation setup triggered");
+    if (!user?.id || !data?.getAllStudents) {
+      console.log("⏳ Skipping conversation setup: user or students missing", {
+        userId: user?.id,
+        students: data?.getAllStudents,
+      });
+      return;
+    }
 
     const conversationsData = data.getAllStudents
       .filter((student: Student) => student.lessonStats?.totalLessons > 0)
@@ -52,8 +76,13 @@ const InstructorChatPage: React.FC = () => {
               studentName
             )}`;
 
+        const conversationId = [user.id, student._id].sort().join("_");
+        const existingConversation = conversations.find(
+          (conv) => conv._id === conversationId
+        );
+
         return {
-          _id: [user.id, student._id].sort().join("_"),
+          _id: conversationId,
           participants: [
             {
               _id: user.id,
@@ -88,31 +117,75 @@ const InstructorChatPage: React.FC = () => {
             role: student.role || "student",
           },
           createdAt: student.createdAt || new Date().toISOString(),
-          updatedAt: student.updatedAt || new Date().toISOString(),
-          lastMessage: undefined,
+          updatedAt:
+            existingConversation?.lastMessage?.createdAt &&
+            dayjs(existingConversation.lastMessage.createdAt).isValid()
+              ? existingConversation.lastMessage.createdAt
+              : existingConversation?.updatedAt &&
+                dayjs(existingConversation.updatedAt).isValid()
+              ? existingConversation.updatedAt
+              : student.updatedAt && dayjs(student.updatedAt).isValid()
+              ? student.updatedAt
+              : new Date().toISOString(),
+          lastMessage: existingConversation?.lastMessage || undefined,
         } as ConversationType;
       });
 
-    // Sort conversations by updatedAt (descending)
-    const sortedConversations = conversationsData.sort(
-      (a: ConversationType, b: ConversationType) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
-    dispatch(setConversations(sortedConversations));
+    if (JSON.stringify(conversationsData) !== JSON.stringify(conversations)) {
+      dispatch(setConversations(conversationsData));
+      console.log(
+        `✅ Set ${conversationsData.length} conversations`,
+        conversationsData.map((c) => ({
+          _id: c._id,
+          student: c.user.name,
+          lastMessageCreatedAt: c.lastMessage?.createdAt,
+          updatedAt: c.updatedAt,
+          createdAt: c.createdAt,
+        }))
+      );
+    } else {
+      console.log("ℹ️ No changes in conversations, skipping dispatch");
+    }
   }, [data, dispatch, user]);
 
-  // Handle socket for real-time updates
+  useEffect(() => {
+    if (
+      conversations.length > 0 &&
+      !selectedConversation &&
+      !loading &&
+      !error
+    ) {
+      const mostRecentConversation = conversations[0];
+      console.log(
+        `✅ Auto-selecting most recent conversation: ${mostRecentConversation._id}`,
+        {
+          lastMessageCreatedAt: mostRecentConversation.lastMessage?.createdAt,
+          updatedAt: mostRecentConversation.updatedAt,
+        }
+      );
+      dispatch(selectConversation(mostRecentConversation));
+    }
+  }, [conversations, selectedConversation, loading, error, dispatch]);
+
   useEffect(() => {
     const socket = getSocket();
-    if (!socket || !conversations.length) return;
+    if (!socket || !conversations.length) {
+      console.log("⏳ Skipping socket setup: socket or conversations missing", {
+        socket: !!socket,
+        conversations: conversations.length,
+      });
+      return;
+    }
 
     conversations.forEach((conv) => {
       socket.emit(
         "joinConversation",
         conv._id,
         (ack: { success: boolean; room: string }) => {
-          if (ack.success) {
-            console.error(`Failed to join room: ${conv._id}`);
+          if (!ack.success) {
+            console.error(`❌ Failed to join room: ${conv._id}`);
+          } else {
+            console.log(`✅ Joined room: ${conv._id}`);
           }
         }
       );
@@ -120,7 +193,7 @@ const InstructorChatPage: React.FC = () => {
 
     const handleReceiveMessage = (msg: any) => {
       if (!msg?.conversationId || !msg?.sender || !msg?.receiver) {
-        console.error("Invalid message received:", msg);
+        console.error("❌ Invalid message received:", msg);
         return;
       }
 
@@ -130,42 +203,38 @@ const InstructorChatPage: React.FC = () => {
         sender: {
           ...msg.sender,
           name:
-            msg.sender.name || `${msg.sender.firstName} ${msg.sender.lastName}`,
+            msg.sender.name ||
+            `${msg.sender.firstName || "Unknown"} ${
+              msg.sender.lastName || ""
+            }`.trim(),
         },
         receiver: {
           ...msg.receiver,
           name:
             msg.receiver.name ||
-            `${msg.receiver.firstName} ${msg.receiver.lastName}`,
+            `${msg.receiver.firstName || "Unknown"} ${
+              msg.receiver.lastName || ""
+            }`.trim(),
         },
-        createdAt: msg.createdAt || new Date().toISOString(),
+        createdAt:
+          msg.createdAt && dayjs(msg.createdAt).isValid()
+            ? msg.createdAt
+            : new Date().toISOString(),
       };
+
       dispatch(
         addMessage({
           conversationId: String(message.conversationId),
           message,
         })
       );
-      // Update conversation updatedAt and lastMessage
-      const updatedConversations = conversations
-        .map((conv) =>
-          conv._id === message.conversationId
-            ? {
-                ...conv,
-                updatedAt: message.createdAt,
-                lastMessage: {
-                  content: message.content,
-                  createdAt: message.createdAt,
-                  sender: message.sender,
-                },
-              }
-            : conv
-        )
-        .sort(
-          (a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
-      dispatch(setConversations(updatedConversations));
+      console.log(
+        `📩 Message added to conversation ${message.conversationId}`,
+        {
+          createdAt: message.createdAt,
+          content: message.content,
+        }
+      );
     };
 
     socket.on("receive_message", handleReceiveMessage);
@@ -173,21 +242,23 @@ const InstructorChatPage: React.FC = () => {
     return () => {
       conversations.forEach((conv) => {
         socket.emit("leaveConversation", conv._id);
+        console.log(`🚪 Left room: ${conv._id}`);
       });
       socket.off("receive_message", handleReceiveMessage);
     };
   }, [conversations, dispatch]);
 
-  // Cleanup messages on unmount
   useEffect(() => {
     return () => {
       if (selectedConversation?._id) {
         dispatch(clearMessages(selectedConversation._id));
+        console.log(
+          `🧹 Cleared messages for conversation: ${selectedConversation._id}`
+        );
       }
     };
   }, [dispatch, selectedConversation]);
 
-  // Current user memo
   const currentUser: UserType | null = useMemo(() => {
     if (!user) return null;
     return {
@@ -205,7 +276,6 @@ const InstructorChatPage: React.FC = () => {
     };
   }, [user]);
 
-  // Selected conversation memo
   const selectedAsConversation = useMemo(() => {
     if (selectedConversation && currentUser) {
       return {
@@ -217,31 +287,56 @@ const InstructorChatPage: React.FC = () => {
     return null;
   }, [selectedConversation, currentUser]);
 
-  if (!user)
+  if (!user) {
+    console.error("❌ No user authenticated");
     return <div className="p-4 text-center">Please login to view chat.</div>;
-  if (loading) return <div className="p-4 text-center">Loading chat...</div>;
-  if (error)
+  }
+
+  if (loading) {
+    console.log("⏳ Loading students for instructorId:", user.id);
+    return <div className="p-4 text-center">Loading chat...</div>;
+  }
+
+  if (error) {
+    console.error("❌ Error loading students:", error.message);
     return (
       <div className="p-4 text-center text-red-500">
         Error loading chat: {error.message}
       </div>
     );
+  }
 
   return (
     <div className="h-[calc(100vh-80px)] p-4 bg-gray-50">
       <div className="flex h-full gap-5">
         <div className="w-[520px] h-full flex-shrink-0 flex flex-col overflow-hidden shadow-md bg-white border-r">
-          <ChatList
-            conversations={conversations}
-            currentUserId={currentUser?._id || ""}
-            selectedUserId={selectedConversation?._id}
-            onSelect={(conversation) => {
-              if (selectedConversation?._id) {
-                dispatch(clearMessages(selectedConversation._id));
-              }
-              dispatch(selectConversation(conversation));
-            }}
-          />
+          {conversations.length > 0 ? (
+            <ChatList
+              conversations={conversations}
+              currentUserId={currentUser?._id || ""}
+              selectedUserId={selectedConversation?._id}
+              onSelect={(conversation) => {
+                if (selectedConversation?._id === conversation._id) {
+                  console.log(
+                    `ℹ️ Conversation ${conversation._id} already selected, skipping`
+                  );
+                  return;
+                }
+                if (selectedConversation?._id) {
+                  dispatch(clearMessages(selectedConversation._id));
+                  console.log(
+                    `🧹 Cleared messages for previous conversation: ${selectedConversation._id}`
+                  );
+                }
+                dispatch(selectConversation(conversation));
+                console.log(`✅ Selected conversation: ${conversation._id}`);
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              No students found. Students with bookings will appear here.
+            </div>
+          )}
         </div>
         <div className="flex-1 max-w-[calc(100%-340px)] h-full rounded-xl shadow-md bg-white overflow-hidden">
           {selectedAsConversation ? (

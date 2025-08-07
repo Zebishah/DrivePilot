@@ -45,10 +45,34 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     setConversations: (state, action: PayloadAction<Conversation[]>) => {
-      state.conversations = action.payload.sort(
-        (a, b) =>
-          new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
-          new Date(a.updatedAt || a.createdAt || new Date()).getTime()
+      state.conversations = action.payload.sort((a, b) => {
+        const aDate =
+          a.lastMessage?.createdAt && dayjs(a.lastMessage.createdAt).isValid()
+            ? a.lastMessage.createdAt
+            : a.updatedAt && dayjs(a.updatedAt).isValid()
+            ? a.updatedAt
+            : a.createdAt && dayjs(a.createdAt).isValid()
+            ? a.createdAt
+            : new Date().toISOString();
+        const bDate =
+          b.lastMessage?.createdAt && dayjs(b.lastMessage.createdAt).isValid()
+            ? b.lastMessage.createdAt
+            : b.updatedAt && dayjs(b.updatedAt).isValid()
+            ? b.updatedAt
+            : b.createdAt && dayjs(b.createdAt).isValid()
+            ? b.createdAt
+            : new Date().toISOString();
+        return new Date(bDate).getTime() - new Date(aDate).getTime();
+      });
+      console.log(
+        "📦 Set conversations in Redux:",
+        state.conversations.map((c) => ({
+          _id: c._id,
+          name: c.user.name,
+          lastMessageCreatedAt: c.lastMessage?.createdAt,
+          updatedAt: c.updatedAt,
+          createdAt: c.createdAt,
+        }))
       );
     },
     addConversation: (state, action: PayloadAction<Conversation>) => {
@@ -57,15 +81,35 @@ const chatSlice = createSlice({
       );
       if (!exists) {
         state.conversations.push(action.payload);
-        state.conversations.sort(
-          (a, b) =>
-            new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
-            new Date(a.updatedAt || a.createdAt || new Date()).getTime()
-        );
+        state.conversations.sort((a, b) => {
+          const aDate =
+            a.lastMessage?.createdAt && dayjs(a.lastMessage.createdAt).isValid()
+              ? a.lastMessage.createdAt
+              : a.updatedAt && dayjs(a.updatedAt).isValid()
+              ? a.updatedAt
+              : a.createdAt && dayjs(a.createdAt).isValid()
+              ? a.createdAt
+              : new Date().toISOString();
+          const bDate =
+            b.lastMessage?.createdAt && dayjs(b.lastMessage.createdAt).isValid()
+              ? b.lastMessage.createdAt
+              : b.updatedAt && dayjs(b.updatedAt).isValid()
+              ? b.updatedAt
+              : b.createdAt && dayjs(b.createdAt).isValid()
+              ? b.createdAt
+              : new Date().toISOString();
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
+        });
+        console.log("📦 Added conversation to Redux:", action.payload._id, {
+          lastMessageCreatedAt: action.payload.lastMessage?.createdAt,
+          updatedAt: action.payload.updatedAt,
+          createdAt: action.payload.createdAt,
+        });
       }
     },
     selectConversation: (state, action: PayloadAction<Conversation>) => {
       state.selectedConversation = action.payload;
+      console.log("📌 Selected conversation in Redux:", action.payload._id);
     },
     setMessages: (
       state,
@@ -73,9 +117,9 @@ const chatSlice = createSlice({
     ) => {
       const { conversationId, messages } = action.payload;
       console.log(
-        "Setting messages for conversation:",
+        "📬 Setting messages for conversation:",
         conversationId,
-        messages
+        messages.length
       );
       state.messagesByConversation = {
         ...state.messagesByConversation,
@@ -91,7 +135,6 @@ const chatSlice = createSlice({
       action: PayloadAction<{ conversationId: string; message: MessageType }>
     ) => {
       const { conversationId, message } = action.payload;
-      // Ensure createdAt is a valid ISO string, fallback to Date.now()
       const validatedMessage: MessageType = {
         ...message,
         createdAt:
@@ -101,19 +144,24 @@ const chatSlice = createSlice({
       };
       if (!message.createdAt) {
         console.warn(
-          `Missing createdAt for message: ${message._id || "unknown"}`,
+          `⚠️ Missing createdAt for message: ${message._id || "unknown"}`,
           message
         );
       } else if (!dayjs(message.createdAt).isValid()) {
         console.warn(
-          `Invalid createdAt for message: ${message._id || "unknown"}`,
+          `⚠️ Invalid createdAt for message: ${message._id || "unknown"}`,
           message.createdAt
         );
       }
       const messages = state.messagesByConversation[conversationId] || [];
       const exists = messages.some((m) => m._id === validatedMessage._id);
       if (!exists) {
-        console.log("Adding message to Redux:", validatedMessage);
+        console.log("📬 Adding message to Redux:", {
+          conversationId,
+          messageId: validatedMessage._id,
+          createdAt: validatedMessage.createdAt,
+          content: validatedMessage.content,
+        });
         state.messagesByConversation = {
           ...state.messagesByConversation,
           [conversationId]: [...messages, validatedMessage].sort(
@@ -136,13 +184,42 @@ const chatSlice = createSlice({
                 }
               : conv
           )
-          .sort(
-            (a, b) =>
-              new Date(b.updatedAt || b.createdAt || new Date()).getTime() -
-              new Date(a.updatedAt || a.createdAt || new Date()).getTime()
-          );
+          .sort((a, b) => {
+            const aDate =
+              a.lastMessage?.createdAt &&
+              dayjs(a.lastMessage.createdAt).isValid()
+                ? a.lastMessage.createdAt
+                : a.updatedAt && dayjs(a.updatedAt).isValid()
+                ? a.updatedAt
+                : a.createdAt && dayjs(a.createdAt).isValid()
+                ? a.createdAt
+                : new Date().toISOString();
+            const bDate =
+              b.lastMessage?.createdAt &&
+              dayjs(b.lastMessage.createdAt).isValid()
+                ? b.lastMessage.createdAt
+                : b.updatedAt && dayjs(b.updatedAt).isValid()
+                ? b.updatedAt
+                : b.createdAt && dayjs(b.createdAt).isValid()
+                ? b.createdAt
+                : new Date().toISOString();
+            return new Date(bDate).getTime() - new Date(aDate).getTime();
+          });
+        console.log(
+          "📦 Updated conversations after adding message:",
+          state.conversations.map((c) => ({
+            _id: c._id,
+            name: c.user.name,
+            lastMessageCreatedAt: c.lastMessage?.createdAt,
+            updatedAt: c.updatedAt,
+            createdAt: c.createdAt,
+          }))
+        );
       } else {
-        console.log("Message already exists in Redux:", validatedMessage._id);
+        console.log(
+          "ℹ️ Message already exists in Redux:",
+          validatedMessage._id
+        );
       }
     },
     clearMessages: (state, action: PayloadAction<string>) => {
@@ -150,6 +227,7 @@ const chatSlice = createSlice({
         ...state.messagesByConversation,
         [action.payload]: [],
       };
+      console.log("🧹 Cleared messages for conversation:", action.payload);
     },
   },
 });
