@@ -106,7 +106,7 @@ const StudentFeedback: React.FC = () => {
                     Amount
                   </th>
                   <th className="text-left py-3 px-2 font-medium text-gray-600">
-                    Status
+                    Feedback Status
                   </th>
                   <th className="text-left py-3 px-2 font-medium text-gray-600">
                     Feedback

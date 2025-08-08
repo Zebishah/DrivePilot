@@ -128,18 +128,24 @@ const reviewResolver = {
             pendingBookings++;
           }
         }
-
-        const totalRequiredHours = totalBookedSlots; // Each slot = 1 hour
+        const totalRequiredHours = totalBookedSlots;
 
         const lessonHoursLeft = student.lessonHoursLeft
           ? parseFloat(student.lessonHoursLeft)
           : null;
 
-        const remainingHours =
+        const completedHours = Math.max(
+          lessonHoursLeft !== null
+            ? lessonHoursLeft - totalRequiredHours
+            : completedSlots
+        );
+
+        const remainingHours = Math.max(
           lessonHoursLeft !== null
             ? lessonHoursLeft
-            : Math.max(0, totalRequiredHours - completedHours);
-        const completedHours = remainingHours - totalRequiredHours;
+            : totalRequiredHours - completedHours
+        );
+
         return {
           totalRequiredHours,
           completedHours,

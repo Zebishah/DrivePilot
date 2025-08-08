@@ -106,7 +106,7 @@ const Dashboard: React.FC = () => {
       </div>
     );
   }
-
+  console.log("hoursProgress:", hoursProgress);
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-8xl mx-auto">

@@ -29,7 +29,10 @@ const studentBookingResolver = {
 
       // Get ALL bookings first
       const allBookings = await StudentBooking.find({ studentId: user.id })
-        .populate("instructorId", "_id firstName lastName email description")
+        .populate(
+          "instructorId",
+          "_id firstName lastName email description profileImage"
+        )
         .sort({ createdAt: -1 });
 
       // Filter each booking to only show present/future slots

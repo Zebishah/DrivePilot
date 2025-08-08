@@ -113,7 +113,10 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                           : "View Feedback"}
                       </Link>
                     ) : (
-                      <button className="px-4 py-2 bg-gray-500 text-white rounded-md text-sm font-medium">
+                      <button
+                        className="px-4 py-2 bg-gray-500 text-white rounded-md text-sm font-medium"
+                        disabled
+                      >
                         Give Feedback
                       </button>
                     )}
