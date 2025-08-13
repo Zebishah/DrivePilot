@@ -61,6 +61,7 @@ const instructorTypeDefs = gql`
     averageRating: Float
     totalReviews: String
     experience: String
+    verificationStatus: String
     phone: String
     rating: Float
     profileImage: String

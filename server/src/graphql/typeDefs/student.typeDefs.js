@@ -53,6 +53,7 @@ const studentTypeDefs = gql`
     bookingDate: String!
     payment: Float!
     status: String!
+    instructorName: String!
     endDate: String!
     startTime: String!
     endTime: String!

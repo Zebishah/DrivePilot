@@ -50,12 +50,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin-dashboard/documentsManagement",
     },
     {
-      text: "Instructor Manage",
+      text: "Instructor Management",
       icon: LayoutGrid,
       path: "/admin-dashboard/InstructorManagement",
     },
     {
-      text: "Student Manage",
+      text: "Student Management",
       icon: LayoutGrid,
       path: "/admin-dashboard/StudentManagement",
     },

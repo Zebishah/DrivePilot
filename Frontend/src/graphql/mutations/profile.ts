@@ -19,6 +19,7 @@ export const GET_TEACHER_PROFILE = gql`
         documentType
         documentUrl
         status
+        createdAt
       }
       reviewRating
       dateOfBirth
@@ -97,6 +98,7 @@ export const GET_STUDENT_LESSON_HISTORY = gql`
       status
       endDate
       startTime
+      instructorName
       endTime
       slotStatus
       bookingStatus

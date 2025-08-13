@@ -474,126 +474,136 @@ const InstructorsInfo: React.FC = () => {
           <div className="flex flex-col md:flex-row p-4 font-poppins">
             {/* Instructor List */}
             <div className="w-full md:w-1/2 space-y-4 relative max-h-[900px] overflow-y-auto pr-2">
-              {instructors.map((instructor) => (
-                <div
-                  key={instructor._id}
-                  className="pl-4 drop-shadow-md mt-4 bg-white rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative"
-                >
-                  {/* Instructor card content */}
-                  <div className="flex flex-col items-center md:items-start md:w-1/3">
-                    <img
-                      src={
-                        instructor.profileImage ||
-                        "/images/Portrait_Placeholder.png"
-                      }
-                      alt="Instructor"
-                      className="w-24 h-24 rounded-full mb-4 object-cover"
-                    />
-                    <h2 className="text-lg font-bold mb-1">
-                      {instructor.firstName} {instructor.lastName}
-                    </h2>
-                    <Tooltip
-                      title={instructor.address || ""}
-                      arrow
-                      placement="top"
-                    >
-                      <p className="text-gray-500 mb-2 cursor-pointer">
-                        {instructor.address && instructor.address.length > 30
-                          ? instructor.address.slice(0, 30) + "..."
-                          : instructor.address}
-                      </p>
-                    </Tooltip>
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {instructor.totalReviews > 0 ? (
-                        // Show filled stars when rating exists
-                        <>
-                          {[1].map((_, i) => (
-                            <IoStarSharp
-                              key={i}
-                              style={{
-                                color: "#FFDB20",
-                                marginRight: "0.5rem",
-                              }}
-                            />
-                          ))}
-                          <p className="mr-0.5">({instructor.totalReviews})</p>
-                        </>
-                      ) : (
-                        // Show empty star with "No reviews yet" when no rating
-                        <>
-                          <IoStarOutline
-                            style={{ color: "grey", marginRight: "0.5rem" }}
-                          />
-                          <p className="mr-0.5 text-gray-500">No reviews yet</p>
-                        </>
-                      )}
-                    </Box>
-                  </div>
-
-                  {/* Right side details */}
-                  <div className="w-full p-6">
-                    <div className="text-left">
-                      <p className="flex items-center gap-2 mb-2">
-                        <FaBook />{" "}
-                        {`${instructor.details?.degree} Years` || "N/A"}
-                      </p>
-                      <p className="flex items-center gap-2 mb-2">
-                        <FaCar /> {instructor.details?.car || "N/A"}
-                      </p>
-                      <p className="flex items-center gap-2 mb-2">
-                        <FaCogs /> {instructor.details?.type || "N/A"}
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <FaMoneyBillWave />
-                        {instructor.details?.rate
-                          ? (() => {
-                              return (
-                                <>
-                                  <span
-                                    className={`${instructor.details.lessonDiscount > 0 ? "line-through" : ""} text-gray-800`}
-                                  >
-                                    CHF {instructor.details.rate}/hr
-                                  </span>
-                                  {instructor.details.lessonDiscount > 0 ? (
-                                    <span className="ml-2 text-green-600 font-semibold">
-                                      CHF{" "}
-                                      {(
-                                        instructor.details.rate *
-                                        (1 -
-                                          instructor.details.lessonDiscount /
-                                            100)
-                                      ).toFixed(2)}
-                                    </span>
-                                  ) : null}
-                                </>
-                              );
-                            })()
-                          : "N/A"}
-                      </p>
-                      {instructor.details.lessonDiscount > 0 && (
-                        <p className="flex items-center gap-2 mt-2">
-                          <BadgePercent size={18} />
-                          {instructor.details?.lessonDiscount || "N/A"}%
+              {instructors
+                .filter(
+                  (instructor) =>
+                    instructor.verificationStatus !== "rejected" &&
+                    instructor.verificationStatus !== "pending"
+                )
+                .map((instructor) => (
+                  <div
+                    key={instructor._id}
+                    className="pl-4 drop-shadow-md mt-4 bg-white rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative"
+                  >
+                    {/* Instructor card content */}
+                    <div className="flex flex-col items-center md:items-start md:w-1/3">
+                      <img
+                        src={
+                          instructor.profileImage ||
+                          "/images/Portrait_Placeholder.png"
+                        }
+                        alt="Instructor"
+                        className="w-24 h-24 rounded-full mb-4 object-cover"
+                      />
+                      <h2 className="text-lg font-bold mb-1">
+                        {instructor.firstName} {instructor.lastName}
+                      </h2>
+                      <Tooltip
+                        title={instructor.address || ""}
+                        arrow
+                        placement="top"
+                      >
+                        <p className="text-gray-500 mb-2 cursor-pointer">
+                          {instructor.address && instructor.address.length > 30
+                            ? instructor.address.slice(0, 30) + "..."
+                            : instructor.address}
                         </p>
-                      )}
+                      </Tooltip>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        {instructor.totalReviews > 0 ? (
+                          // Show filled stars when rating exists
+                          <>
+                            {[1].map((_, i) => (
+                              <IoStarSharp
+                                key={i}
+                                style={{
+                                  color: "#FFDB20",
+                                  marginRight: "0.5rem",
+                                }}
+                              />
+                            ))}
+                            <p className="mr-0.5">
+                              ({instructor.totalReviews})
+                            </p>
+                          </>
+                        ) : (
+                          // Show empty star with "No reviews yet" when no rating
+                          <>
+                            <IoStarOutline
+                              style={{ color: "grey", marginRight: "0.5rem" }}
+                            />
+                            <p className="mr-0.5 text-gray-500">
+                              No reviews yet
+                            </p>
+                          </>
+                        )}
+                      </Box>
                     </div>
-                    <Button
-                      variant="contained"
-                      className="w-full"
-                      style={{
-                        backgroundColor: "#5FC2D3",
-                        borderRadius: "10px",
-                        marginTop: "2rem",
-                        textTransform: "none",
-                        color: "black",
-                      }}
-                      onClick={() => handleViewDetails(instructor._id)}
-                    >
-                      Book Now
-                    </Button>
+
+                    {/* Right side details */}
+                    <div className="w-full p-6">
+                      <div className="text-left">
+                        <p className="flex items-center gap-2 mb-2">
+                          <FaBook />{" "}
+                          {`${instructor.details?.degree} Years` || "N/A"}
+                        </p>
+                        <p className="flex items-center gap-2 mb-2">
+                          <FaCar /> {instructor.details?.car || "N/A"}
+                        </p>
+                        <p className="flex items-center gap-2 mb-2">
+                          <FaCogs /> {instructor.details?.type || "N/A"}
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <FaMoneyBillWave />
+                          {instructor.details?.rate
+                            ? (() => {
+                                return (
+                                  <>
+                                    <span
+                                      className={`${instructor.details.lessonDiscount > 0 ? "line-through" : ""} text-gray-800`}
+                                    >
+                                      CHF {instructor.details.rate}/hr
+                                    </span>
+                                    {instructor.details.lessonDiscount > 0 ? (
+                                      <span className="ml-2 text-green-600 font-semibold">
+                                        CHF{" "}
+                                        {(
+                                          instructor.details.rate *
+                                          (1 -
+                                            instructor.details.lessonDiscount /
+                                              100)
+                                        ).toFixed(2)}
+                                      </span>
+                                    ) : null}
+                                  </>
+                                );
+                              })()
+                            : "N/A"}
+                        </p>
+                        {instructor.details.lessonDiscount > 0 && (
+                          <p className="flex items-center gap-2 mt-2">
+                            <BadgePercent size={18} />
+                            {instructor.details?.lessonDiscount || "N/A"}%
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="contained"
+                        className="w-full"
+                        style={{
+                          backgroundColor: "#5FC2D3",
+                          borderRadius: "10px",
+                          marginTop: "2rem",
+                          textTransform: "none",
+                          color: "black",
+                        }}
+                        onClick={() => handleViewDetails(instructor._id)}
+                      >
+                        Book Now
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
               {/* {hasMore && (
               <div className="text-center mt-4">

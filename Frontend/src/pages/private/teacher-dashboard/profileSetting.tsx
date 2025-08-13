@@ -21,6 +21,7 @@ import { AvailabilityTab } from "./tabs/AvailabilityTab";
 import { RatingsTab } from "./tabs/RatingsTab";
 import { PaymentTab } from "./tabs/PaymentTab";
 import { LuMapPin } from "react-icons/lu";
+import { create } from "lodash";
 type TabValue = "documents" | "tariff" | "availability" | "ratings" | "payment";
 
 export default function ProfileSetting() {
@@ -61,6 +62,7 @@ export default function ProfileSetting() {
   interface Document {
     documentType: string;
     documentUrl: string;
+    createdAt: string;
     status: "pending" | "accepted" | "rejected";
   }
   interface ProfileData {
@@ -98,17 +100,19 @@ export default function ProfileSetting() {
     rating: 4, // This field isn't in your API response
     introduction: teacherData.description,
     documents:
-      teacherData.documents.map(
-        (doc: {
-          documentType: string;
-          documentUrl: string;
-          status: string;
-        }) => ({
+      teacherData.documents
+        .map((doc) => ({
           documentType: doc.documentType,
           documentUrl: doc.documentUrl,
           status: doc.status,
-        })
-      ) || [], // Ensure documents is an array even if empty
+          createdAt: new Date(parseInt(doc.createdAt)).toISOString(), // Convert to proper date
+          originalTimestamp: doc.createdAt, // Keep original if needed
+        }))
+        .sort(
+          (a, b) =>
+            parseInt(b.originalTimestamp) - parseInt(a.originalTimestamp)
+        ) || [],
+
     reviewRating: teacherData.reviewRating,
   };
   const isRefetching = networkStatus === NetworkStatus.refetch;

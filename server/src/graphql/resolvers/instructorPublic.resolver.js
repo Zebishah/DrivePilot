@@ -220,6 +220,7 @@ const instructorResolver = {
               address: instructor.address,
               description: instructor.description,
               experience: instructor.experience,
+              verificationStatus: instructor.verificationStatus || "",
               phone: instructor.phone,
               rating: instructor.rating,
               profileImage: instructor.profileImage || "",

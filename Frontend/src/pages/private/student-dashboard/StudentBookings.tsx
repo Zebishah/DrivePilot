@@ -11,6 +11,7 @@ interface LessonHistoryItem {
   endDate: string;
   startTime: string;
   endTime: string;
+  instructorName: string;
   slotStatus: string;
   bookingStatus: string;
   instructorId: string;
@@ -93,6 +94,7 @@ const LessonBookingHistory: React.FC = () => {
         <div className="flex bg-gray-50 border-b border-gray-100 font-medium">
           <div className="flex-1 p-4">Lesson Booked</div>
           <div className="flex-1 p-4">Booking Date</div>
+          <div className="flex-1 p-4">Instructor</div>
           <div className="flex-1 p-4">Time Slot</div>
           <div className="flex-1 p-4">Payment (CHF)</div>
           <div className="flex-1 p-4">Status</div>
@@ -111,6 +113,9 @@ const LessonBookingHistory: React.FC = () => {
                 </div>
                 <div className="flex-1 p-4 flex items-center">
                   {lesson.bookingDate}
+                </div>
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.instructorName}
                 </div>
                 <div className="flex-1 p-4 flex items-center">
                   {lesson.startTime} - {lesson.endTime}
