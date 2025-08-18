@@ -23,6 +23,7 @@ import { Reviews } from "@mui/icons-material";
 import { fallbackInstructor, fallbackTariff } from "../../types/HourSlots";
 import { BackButton } from "./common/BackButton";
 import { IoStarOutline, IoStarSharp } from "react-icons/io5";
+import InstructorReviews from "../StudentComponents/InstructorReviews";
 
 // GraphQL Query remains the same as previous implementation
 
@@ -367,7 +368,15 @@ const ProfileSummary: React.FC = () => {
             loading={loading}
           />
         )}
-        {activeTab === 2 && <Reviews loading={loading} />}
+        {activeTab === 2 && (
+          <>
+            {" "}
+            <InstructorReviews
+              instructorId={instructor._id}
+              activeTab={activeTab}
+            />{" "}
+          </>
+        )}
       </Box>
     </Box>
   );

@@ -118,13 +118,60 @@ const instructorTypeDefs = gql`
     tariff: InstructorTariff
     availability: [InstructorAvailability!]
   }
+  type InstructorAnalytics {
+    totalStudents: Int!
+    activeBookings: Int!
+    totalEarnings: Float!
+    lastBooking: StudentBookingNew
+    averageLessonsPerStudent: Float!
+    cancellationRate: Float!
+    attendanceRate: Float!
+    instructor: Instructor!
+  }
+  type StudentBookingNew {
+    _id: ID!
+    studentId: UserNew
+    instructorId: Instructor
+    slots: [SlotNew] # single or multiple slots
+    totalAmount: Float
+    finalAmount: Float
+    status: String
+    createdAt: String
+    updatedAt: String
+    studentTotalLessons: Int
+  }
 
+  type SlotNew {
+    date: String
+    startTime: String
+    endTime: String
+    booked: Boolean
+    review: Boolean
+    status: String
+  }
+
+  type UserNew {
+    _id: ID!
+    firstName: String
+    lastName: String
+    email: String
+    profileImage: String
+  }
+
+  type Instructor {
+    _id: ID!
+    firstName: String
+    lastName: String
+    email: String
+    address: String
+    profileImage: String
+  }
   type Query {
     getNearbyInstructors(
       filter: InstructorFilterInput
       offset: Int = 0
     ): InstructorPaginationResult
-
+    getInstructorAnalytics(instructorId: ID!): InstructorAnalytics!
     getInstructorPublicProfile(id: ID!): InstructorPublicProfile
   }
 `;

@@ -73,7 +73,6 @@ const reviewResolver = {
         .populate("studentId", "_id firstName lastName profileImage")
         .populate("instructorId", "_id firstName lastName profileImage")
         .sort({ createdAt: -1 });
-
       return reviews;
     },
     getStudentHoursProgress: async (_, { studentId }) => {

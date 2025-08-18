@@ -6,6 +6,7 @@ const User = require("../../models/User");
 const { calculateDistance } = require("../../utils/geoUtils");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { Review } = require("../../models/Reviews");
+const studentBookingModel = require("../../models/studentBooking.model");
 
 const instructorResolver = {
   Query: {
@@ -115,7 +116,7 @@ const instructorResolver = {
         } else {
           // Non-geographic query
 
-          const [results, count] = await Promise.all([
+          const [results, count] = await Promise?.all([
             User.Instructor.find(baseQuery),
             User.Instructor.countDocuments(baseQuery),
           ]);
@@ -258,6 +259,130 @@ const instructorResolver = {
         console.error("Error in getNearbyInstructors:", error);
         throw new Error(`Failed to fetch instructors: ${error.message}`);
       }
+    },
+
+    getInstructorAnalytics: async (_, { instructorId }) => {
+      const bookings = await studentBookingModel
+        .find({ instructorId })
+        .populate("studentId")
+        .populate("instructorId"); // important
+
+      if (!bookings.length) {
+        return {
+          totalStudents: 0,
+          activeBookings: 0,
+          totalEarnings: 0,
+          lastBooking: null,
+          averageLessonsPerStudent: 0,
+          cancellationRate: 0,
+          attendanceRate: 0,
+          instructor: await Instructor.findById(instructorId),
+        };
+      }
+
+      const uniqueStudents = new Set(
+        bookings.map((b) => b.studentId?._id?.toString())
+      );
+
+      // total students
+      const totalStudents = uniqueStudents.size;
+
+      // active bookings (future or confirmed)
+      const activeBookings = bookings.reduce((count, booking) => {
+        const activeSlots = booking.slots.filter((slot) =>
+          ["booked", "pending"].includes(slot.status)
+        ).length;
+        return count + activeSlots;
+      }, 0);
+
+      // total earnings
+      const totalEarnings = bookings.reduce(
+        (sum, b) => sum + (b.finalAmount || 0),
+        0
+      );
+
+      // last booking
+      const lastSlot = bookings
+        .flatMap((b) =>
+          b.slots.map((s) => ({
+            ...(s.toObject?.() || s),
+            slotId: s._id,
+            booking: b,
+          }))
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+        )[0];
+
+      let lastBooking = null;
+
+      if (lastSlot) {
+        // find student of last booking
+        const lastStudentId = lastSlot.booking.studentId?._id?.toString();
+
+        // count all lessons by this student with this instructor
+        const studentTotalLessons = bookings.reduce((sum, b) => {
+          if (b.studentId?._id?.toString() === lastStudentId) {
+            return sum + b.slots.length;
+          }
+          return sum;
+        }, 0);
+
+        lastBooking = {
+          _id: lastSlot.slotId,
+          studentId: lastSlot.booking.studentId,
+          instructorId: lastSlot.booking.instructorId,
+          slots: [lastSlot],
+          totalAmount: lastSlot.booking.totalAmount,
+          finalAmount: lastSlot.booking.finalAmount,
+          status: lastSlot.status,
+          createdAt: lastSlot.booking.createdAt,
+          updatedAt: lastSlot.booking.updatedAt,
+          studentTotalLessons, // 🔥 new field
+        };
+      }
+
+      // lessons count (slots are lessons)
+      const totalLessons = bookings.reduce((sum, b) => sum + b.slots.length, 0);
+
+      const averageLessonsPerStudent = totalStudents
+        ? totalLessons / totalStudents
+        : 0;
+
+      const cancelledLessons = bookings.reduce(
+        (sum, b) =>
+          sum + b.slots.filter((s) => s.status === "cancelled").length,
+        0
+      );
+
+      const cancellationRate = totalLessons
+        ? (cancelledLessons / totalLessons) * 100
+        : 0;
+
+      const attendedLessons = bookings.reduce(
+        (sum, b) =>
+          sum +
+          b.slots.filter(
+            (s) => new Date(s.date) < new Date() && s.status === "booked"
+          ).length,
+        0
+      );
+
+      const attendanceRate = totalLessons
+        ? (attendedLessons / totalLessons) * 100
+        : 0;
+
+      return {
+        totalStudents,
+        activeBookings,
+        totalEarnings,
+        lastBooking,
+        averageLessonsPerStudent,
+        cancellationRate,
+        attendanceRate,
+        instructor: await User.Instructor.findById(instructorId),
+      };
     },
     getInstructorPublicProfile: async (_, { id }) => {
       try {

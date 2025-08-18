@@ -51,6 +51,7 @@ import { InstructorManagement } from "../pages/private/admin-dashboard/Instructo
 import { StudentManagement } from "../pages/private/admin-dashboard/StudentManagement";
 import InstructorChatPage from "../pages/private/teacher-dashboard/chat";
 import StudentChatPage from "../pages/private/student-dashboard/chat";
+import { InstructorAnalyticsDashboard } from "../components/InstructorComponent/InstructorAnalytics/InstructorAnalyticsDashboard";
 
 const router = createBrowserRouter([
   {
@@ -120,7 +121,7 @@ const router = createBrowserRouter([
     path: "/teacher-dashboard",
     element: <TeacherRoutes />,
     children: [
-      { path: "overview", element: <TeacherOverview /> },
+      { path: "overview", element: <InstructorAnalyticsDashboard /> },
       {
         path: "settings",
         element: <ProfileSetting />,
@@ -128,6 +129,9 @@ const router = createBrowserRouter([
           { path: "edit-profile", element: <EditProfile /> }, // Nested under settings
         ],
       },
+
+      { path: "search/instructors/:id", element: <OurInstructor /> },
+      { path: "booking-details", element: <BookingDetails /> },
       { path: "help-support", element: <FAQPage /> },
       { path: "feedback", element: <StudentFeedback /> },
       { path: "feedbackForm/:lessonId/:studentId", element: <FeedbackForm /> },
