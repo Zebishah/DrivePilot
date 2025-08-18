@@ -91,7 +91,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
               {" "}
               <StatsCard
                 title="Money Earned"
-                value={`${analytics?.totalEarnings}$`}
+                value={`${String(analytics?.totalEarnings).slice(0, 6)}$`}
                 icon={DollarSign}
                 bgColor="bg-yellow-200"
                 iconColor="bg-yellow-400"

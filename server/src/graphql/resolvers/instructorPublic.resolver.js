@@ -276,7 +276,7 @@ const instructorResolver = {
           averageLessonsPerStudent: 0,
           cancellationRate: 0,
           attendanceRate: 0,
-          instructor: await Instructor.findById(instructorId),
+          instructor: await User.Instructor.findById(instructorId),
         };
       }
 
