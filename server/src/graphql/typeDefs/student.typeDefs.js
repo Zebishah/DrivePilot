@@ -55,6 +55,7 @@ const studentTypeDefs = gql`
     status: String!
     instructorName: String!
     endDate: String!
+    FinalPrice: Float!
     startTime: String!
     endTime: String!
     slotStatus: String!

@@ -106,6 +106,12 @@ const StudentFeedback: React.FC = () => {
                     Amount
                   </th>
                   <th className="text-left py-3 px-2 font-medium text-gray-600">
+                    Lesson Date
+                  </th>
+                  <th className="text-left py-3 px-2 font-medium text-gray-600">
+                    Lesson Time
+                  </th>
+                  <th className="text-left py-3 px-2 font-medium text-gray-600">
                     Feedback Status
                   </th>
                   <th className="text-left py-3 px-2 font-medium text-gray-600">
@@ -142,8 +148,15 @@ const StudentFeedback: React.FC = () => {
                     <td className="py-4 px-2 text-gray-600">
                       Lesson {booking._id.charAt(booking._id.length - 1)}
                     </td>
+
                     <td className="py-4 px-2 text-gray-600">
                       CHF {booking.finalAmount}
+                    </td>
+                    <td className="py-4 px-2 text-gray-600">
+                      {booking.slots[0].date}
+                    </td>
+                    <td className="py-4 px-2 text-gray-600">
+                      {booking.slots[0].startTime} - {booking.slots[0].endTime}
                     </td>
                     <td className="py-4 px-2">
                       <span

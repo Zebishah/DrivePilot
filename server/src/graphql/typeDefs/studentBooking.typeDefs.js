@@ -48,6 +48,7 @@ const studentBookingTypeDefs = gql`
     slots: [Slot!]!
     totalAmount: Int!
     finalAmount: Float!
+
     paymentMethod: PaymentMethod!
     status: BookingStatus!
     profileImage: String

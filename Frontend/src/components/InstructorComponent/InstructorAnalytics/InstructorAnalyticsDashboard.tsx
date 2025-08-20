@@ -55,7 +55,7 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
 
 export const InstructorAnalyticsDashboard: React.FC = () => {
   const { user } = useAuth();
-  console.log("User:", user);
+
   const { data, loading, error } = useQuery(GET_INSTRUCTOR_ANALYTICS, {
     variables: { instructorId: user?.id },
   });

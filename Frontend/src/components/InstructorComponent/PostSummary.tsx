@@ -272,7 +272,29 @@ const ProfileSummary: React.FC = () => {
               </Box>
               <Box sx={{ paddingLeft: "2rem" }}>
                 <Typography variant="body2">
-                  <strong>CHF {tariff.lessonFee || 0}/lesson</strong>
+                  {tariff.lessonFee
+                    ? (() => {
+                        return (
+                          <>
+                            <span
+                              className={`${tariff.lessonDiscount > 0 ? "line-through" : ""} text-gray-800`}
+                            >
+                              CHF {tariff.lessonFee}/hr
+                            </span>
+                            {tariff.lessonDiscount > 0 ? (
+                              <span className="ml-2 text-green-600 font-semibold">
+                                CHF{" "}
+                                {(
+                                  tariff.lessonFee *
+                                  (1 - tariff.lessonDiscount / 100)
+                                ).toFixed(2)}
+                              </span>
+                            ) : null}
+                          </>
+                        );
+                      })()
+                    : "N/A"}
+                  {/* <strong>CHF {tariff.lessonFee || 0}/lesson</strong> */}
                 </Typography>
                 <Typography sx={{ fontFamily: "Poppins, sans-serif" }}>
                   Fair
