@@ -21,6 +21,9 @@ import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import type { IconType } from "react-icons/lib";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../store";
+import { clearUnreadMessages } from "../../store/slices/chatSlice";
 
 export interface MenuItem {
   text: string;
@@ -51,6 +54,8 @@ export default function Sidebar({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const router = useLocation();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const dispatch = useDispatch();
+  const { unreadMessages } = useSelector((state: RootState) => state.chat);
 
   const listItemVariants = {
     hidden: { opacity: 0, x: -20 },
@@ -177,6 +182,12 @@ export default function Sidebar({
                           ? "rgba(0, 0, 0, 0.12)"
                           : "rgba(0, 0, 0, 0.04)",
                       },
+                      position: "relative",
+                    }}
+                    onClick={() => {
+                      if (item.text === "Messages") {
+                        dispatch(clearUnreadMessages());
+                      }
                     }}
                   >
                     <ListItemIcon sx={{ minWidth: 40 }}>
@@ -196,6 +207,20 @@ export default function Sidebar({
                         fontWeight: isActive ? 500 : 400,
                       }}
                     />
+                    {item.text === "Messages" && unreadMessages && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          right: 10,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          width: 10,
+                          height: 10,
+                          bgcolor: "red",
+                          borderRadius: "50%",
+                        }}
+                      />
+                    )}
                   </ListItemButton>
                 </Link>
               )}

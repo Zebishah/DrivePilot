@@ -32,12 +32,14 @@ interface ChatState {
   conversations: Conversation[];
   selectedConversation: Conversation | null;
   messagesByConversation: { [conversationId: string]: MessageType[] };
+  unreadMessages: boolean;
 }
 
 const initialState: ChatState = {
   conversations: [],
   selectedConversation: null,
   messagesByConversation: {},
+  unreadMessages: false,
 };
 
 const chatSlice = createSlice({
@@ -229,6 +231,14 @@ const chatSlice = createSlice({
       };
       console.log("🧹 Cleared messages for conversation:", action.payload);
     },
+    setHasUnreadMessages: (state) => {
+      state.unreadMessages = true;
+      console.log("🔔 Set unread messages to true");
+    },
+    clearUnreadMessages: (state) => {
+      state.unreadMessages = false;
+      console.log("🔔 Cleared unread messages");
+    },
   },
 });
 
@@ -239,6 +249,8 @@ export const {
   setMessages,
   addMessage,
   clearMessages,
+  setHasUnreadMessages,
+  clearUnreadMessages,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;
