@@ -51,6 +51,8 @@ interface Booking {
   slots: AvailabilitySlot[];
   status: string;
   createdAt: string;
+  initialAmount: number;
+  finalAmount: number;
 }
 
 const BookLesson: React.FC = () => {
@@ -118,6 +120,8 @@ const BookLesson: React.FC = () => {
         isCurrentBooking: false,
         bookingId: booking._id,
         slotId: id,
+        finalAmountPrice: booking.finalAmount,
+        initialAmount: booking.totalAmount,
         status: booking.status,
         slot: slot,
       },

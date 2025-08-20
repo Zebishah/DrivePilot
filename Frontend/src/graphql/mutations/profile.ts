@@ -95,6 +95,7 @@ export const GET_STUDENT_LESSON_HISTORY = gql`
       lessonBooked
       bookingDate
       payment
+      FinalPrice
       status
       endDate
       startTime

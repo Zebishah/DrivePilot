@@ -97,8 +97,8 @@ const studentResolver = {
 
             const endDate = slot.date.split("-").reverse().join("-");
 
-            const paymentPerSlot = booking.totalAmount / booking.slots.length;
-
+            const paymentPerSlot = booking.totalAmount;
+            const finalPrice = Math.round(booking.finalAmount);
             let status = slot.status;
             if (slot.status === "available") {
               status = booking.status;
@@ -110,12 +110,13 @@ const studentResolver = {
             lessons.push({
               lessonBooked: `Lesson ${booking._id.toString().substr(-4)}-${slotIndex + 1}`,
               bookingDate: bookingDate,
-              payment: Math.round(paymentPerSlot * 100) / 100,
+              payment: Math.round(paymentPerSlot),
               status: statusDisplay,
               endDate: endDate,
               startTime: slot.startTime,
               endTime: slot.endTime,
               slotStatus: slot.status,
+              FinalPrice: Math.round(finalPrice),
               bookingStatus: booking.status,
               instructorName: booking.instructorId
                 ? `${booking.instructorId.firstName} ${booking.instructorId.lastName}`

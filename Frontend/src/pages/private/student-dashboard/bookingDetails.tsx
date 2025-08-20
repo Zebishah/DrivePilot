@@ -47,6 +47,8 @@ const BookingDetails: React.FC = () => {
     status,
     bookingId,
     booking,
+    initialAmount,
+    finalAmountPrice,
     slotId,
     instructorId,
     slot,
@@ -321,6 +323,40 @@ const BookingDetails: React.FC = () => {
           <Typography variant="body1">
             <strong>Total Duration:</strong> {selectedAvailability?.length || 0}{" "}
             Hours
+          </Typography>
+          <Typography variant="body1">
+            <strong>Base Price:</strong>{" "}
+            {initialAmount
+              ? (() => {
+                  return (
+                    <>
+                      <span
+                        className={`${initialAmount !== finalAmountPrice ? "line-through" : ""} text-gray-800`}
+                      >
+                        CHF {initialAmount}/hr
+                      </span>
+                      {initialAmount !== finalAmountPrice ? (
+                        <span className="ml-2 text-green-600 font-semibold">
+                          CHF {finalAmountPrice.toFixed(2)}
+                        </span>
+                      ) : null}
+                    </>
+                  );
+                })()
+              : "0"}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Discount:</strong>
+            {
+              <span className="ml-2 text-red-500 font-semibold text-sm">
+                (
+                {(
+                  ((initialAmount - finalAmountPrice) / initialAmount) *
+                  100
+                ).toFixed(0)}
+                % OFF)
+              </span>
+            }
           </Typography>
           <Typography variant="body1">
             <strong>Start Date:</strong>{" "}

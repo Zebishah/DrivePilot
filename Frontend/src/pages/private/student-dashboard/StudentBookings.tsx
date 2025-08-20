@@ -10,6 +10,7 @@ interface LessonHistoryItem {
   status: string;
   endDate: string;
   startTime: string;
+  FinalPrice: number;
   endTime: string;
   instructorName: string;
   slotStatus: string;
@@ -97,6 +98,7 @@ const LessonBookingHistory: React.FC = () => {
           <div className="flex-1 p-4">Instructor</div>
           <div className="flex-1 p-4">Time Slot</div>
           <div className="flex-1 p-4">Payment (CHF)</div>
+          <div className="flex-1 p-4">Final price (CHF)</div>
           <div className="flex-1 p-4">Status</div>
           <div className="flex-1 p-4">End Date</div>
         </div>
@@ -122,6 +124,9 @@ const LessonBookingHistory: React.FC = () => {
                 </div>
                 <div className="flex-1 p-4 flex items-center">
                   {lesson.payment.toFixed(2)} CHF
+                </div>
+                <div className="flex-1 p-4 flex items-center">
+                  {lesson.FinalPrice.toFixed(2)} CHF
                 </div>
                 <div
                   className={`flex-1 p-4 flex items-center font-medium ${getStatusColor(
