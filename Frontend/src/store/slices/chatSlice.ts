@@ -39,7 +39,7 @@ const initialState: ChatState = {
   conversations: [],
   selectedConversation: null,
   messagesByConversation: {},
-  unreadMessages: false,
+  unreadMessages: localStorage.getItem("unreadMessages") === "true",
 };
 
 const chatSlice = createSlice({
@@ -233,10 +233,12 @@ const chatSlice = createSlice({
     },
     setHasUnreadMessages: (state) => {
       state.unreadMessages = true;
+      localStorage.setItem("unreadMessages", "true");
       console.log("🔔 Set unread messages to true");
     },
     clearUnreadMessages: (state) => {
       state.unreadMessages = false;
+      localStorage.setItem("unreadMessages", "false");
       console.log("🔔 Cleared unread messages");
     },
   },
