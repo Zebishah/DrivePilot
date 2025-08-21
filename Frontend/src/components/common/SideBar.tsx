@@ -187,6 +187,7 @@ export default function Sidebar({
                     onClick={() => {
                       if (item.text === "Messages") {
                         dispatch(clearUnreadMessages());
+                        localStorage.setItem("unreadMessages", "false");
                       }
                     }}
                   >

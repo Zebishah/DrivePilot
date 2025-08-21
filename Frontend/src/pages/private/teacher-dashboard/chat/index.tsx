@@ -6,6 +6,7 @@ import { RootState } from "../../../../store";
 import {
   selectConversation,
   clearMessages,
+  clearUnreadMessages,
 } from "../../../../store/slices/chatSlice";
 import { useAuth } from "../../../../context/AuthContext";
 import { UserType } from "../../../../types/chatTypes";
@@ -22,6 +23,9 @@ const InstructorChatPage: React.FC = () => {
       const mostRecentConversation = conversations[0];
       dispatch(selectConversation(mostRecentConversation));
     }
+    // Clear unread messages when entering chat page
+    dispatch(clearUnreadMessages());
+    localStorage.setItem("unreadMessages", "false");
   }, [conversations, selectedConversation, dispatch]);
 
   useEffect(() => {
@@ -55,7 +59,7 @@ const InstructorChatPage: React.FC = () => {
         _id: selectedConversation._id,
         participants: [currentUser, selectedConversation.user],
         lastMessage: selectedConversation.lastMessage,
-      };
+      } as ConversationType;
     }
     return null;
   }, [selectedConversation, currentUser]);
@@ -105,4 +109,5 @@ const InstructorChatPage: React.FC = () => {
     </div>
   );
 };
+
 export default InstructorChatPage;

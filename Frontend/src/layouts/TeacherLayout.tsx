@@ -210,6 +210,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
         !location.pathname.includes("/chat")
       ) {
         dispatch(setHasUnreadMessages());
+        localStorage.setItem("unreadMessages", "true");
       }
     };
 
