@@ -23,3 +23,52 @@ export const GET_MY_CONTACT_DETAIL = gql`
     }
   }
 `;
+
+export const GET_ADMIN_ANALYTICS = gql`
+  query GetAdminAnalytics($filter: AnalyticsFilterInput) {
+    getAdminAnalytics(filter: $filter) {
+      overallStats {
+        totalRegistrations
+        totalLessonsBooked
+        reviewsGiven
+        lessonAttendance
+        attendanceRate
+      }
+      graphData {
+        activeUsers {
+          time
+          students
+          instructors
+        }
+        averageRevenuePerInstructor {
+          time
+          averageRevenue
+        }
+        bookingsPerInstructor {
+          time
+          averageBookings
+        }
+        totalEarnings {
+          time
+          totalEarnings
+        }
+        conversionRates {
+          time
+          visitors
+          registrations
+          rate
+        }
+      }
+    }
+  }
+`;
+
+export const GET_ALL_INSTRUCTORS = gql`
+  query GetAllInstructors {
+    getAllInstructors {
+      _id
+      firstName
+      lastName
+    }
+  }
+`;

@@ -7,6 +7,7 @@ const { calculateDistance } = require("../../utils/geoUtils");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { Review } = require("../../models/Reviews");
 const studentBookingModel = require("../../models/studentBooking.model");
+const dayjs = require("dayjs");
 
 const instructorResolver = {
   Query: {
@@ -296,11 +297,24 @@ const instructorResolver = {
       }, 0);
 
       // total earnings
-      const totalEarnings = bookings.reduce(
-        (sum, b) => sum + (b.finalAmount || 0),
-        0
-      );
+      const totalEarnings = bookings.reduce((sum, booking) => {
+        const slotEarnings = booking.slots.reduce((slotSum, slot) => {
+          if (slot.status === "booked" && slot.booked) {
+            // combine date + startTime into a full datetime
+            const slotDateTime = dayjs(
+              `${slot.date} ${slot.startTime}`,
+              "YYYY-MM-DD HH:mm"
+            );
 
+            if (slotDateTime.isBefore(dayjs())) {
+              slotSum += booking.finalAmount || 0; // count full amount per booked slot
+            }
+          }
+          return slotSum;
+        }, 0);
+
+        return sum + slotEarnings;
+      }, 0);
       // last booking
       const lastSlot = bookings
         .flatMap((b) =>

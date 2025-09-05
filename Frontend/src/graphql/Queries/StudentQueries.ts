@@ -189,7 +189,18 @@ export const DELETE_STUDENTS = gql`
     }
   }
 `;
-
+export const RECORD_VISITOR = gql`
+  mutation RecordVisitor($input: VisitorInput!) {
+    recordVisitor(input: $input) {
+      id
+      visitorId
+      visitCount
+      isUniqueVisitor
+      firstVisit
+      lastVisit
+    }
+  }
+`;
 // ✅ Get only completed bookings by student
 export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
   query GetCompletedStudentBookings {

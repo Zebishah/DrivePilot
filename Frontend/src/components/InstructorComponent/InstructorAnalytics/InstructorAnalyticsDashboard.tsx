@@ -152,7 +152,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             title="Average Lessons Per Student"
             subtitle="Average number of lessons booked by a student"
             percentage={analytics.averageLessonsPerStudent}
-            value={`${Math.round(analytics.averageLessonsPerStudent)}%`}
+            value={`${Math.round(analytics.averageLessonsPerStudent)}`}
             color="#99F6E4"
           />
         </div>

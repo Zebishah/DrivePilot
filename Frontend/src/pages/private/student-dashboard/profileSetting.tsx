@@ -254,17 +254,6 @@ export default function StudentProfileSetting() {
                       </Typography>
                     </Tooltip>
                   </Box>
-
-                  <Box sx={{ display: "flex", gap: 0.5, mt: 1 }}>
-                    {[...Array(5)].map((_, index) => (
-                      <Star
-                        key={index}
-                        size={20}
-                        fill={index < profileData.rating ? "#FFD700" : "none"}
-                        stroke={index < profileData.rating ? "#FFD700" : "#ccc"}
-                      />
-                    ))}
-                  </Box>
                 </Box>
               </Box>
               <Typography

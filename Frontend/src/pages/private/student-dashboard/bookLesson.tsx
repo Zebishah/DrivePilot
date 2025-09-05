@@ -97,6 +97,9 @@ const BookLesson: React.FC = () => {
         instructorData,
         paymentMethod: paymentData,
         isCurrentBooking: true,
+        bookedLessonFee: instructorData.lessonFee,
+        bookedLessonDiscount: instructorData.lessonDiscount,
+        FinalPricePerLesson: instructorData.FinalPricePerLesson,
         instructorId: instructorData?.id,
       },
     });

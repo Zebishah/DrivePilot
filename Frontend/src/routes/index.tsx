@@ -20,7 +20,9 @@ import AuthSuccess from "../pages/public/auth/AuthSucess";
 import TeacherOverview from "../pages/private/teacher-dashboard/teacher0verview";
 import StudentOverview from "../pages/private/student-dashboard/studentOverview";
 import AdminRoutes from "./AdminRoutes";
-import AdminOverview from "../pages/private/admin-dashboard/adminOverview";
+import AdminOverview, {
+  AnalyticsDashboard,
+} from "../pages/private/admin-dashboard/adminOverview";
 import AdminAccess from "../pages/private/admin-dashboard/AdminAccess";
 import ProfileSetting from "../pages/private/teacher-dashboard/profileSetting";
 import EditProfile from "../pages/private/teacher-dashboard/editProfile";
@@ -52,6 +54,8 @@ import { StudentManagement } from "../pages/private/admin-dashboard/StudentManag
 import InstructorChatPage from "../pages/private/teacher-dashboard/chat";
 import StudentChatPage from "../pages/private/student-dashboard/chat";
 import { InstructorAnalyticsDashboard } from "../components/InstructorComponent/InstructorAnalytics/InstructorAnalyticsDashboard";
+
+import StudentBookingTable from "../components/AdminComponents/StudentBookingTable";
 
 const router = createBrowserRouter([
   {
@@ -144,7 +148,8 @@ const router = createBrowserRouter([
     path: "/admin-dashboard",
     element: <AdminRoutes />,
     children: [
-      { path: "overview", element: <AdminOverview /> },
+      { path: "overview", element: <AnalyticsDashboard /> },
+      { path: "bookingManagement", element: <StudentBookingTable /> },
       { path: "admin-access", element: <AdminAccess /> },
       {
         path: "documentsManagement",

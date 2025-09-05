@@ -9,6 +9,7 @@ const teacherAvailabilityModel = require("../../models/teacherAvailability.model
 const { default: mongoose } = require("mongoose");
 const { User } = require("../../models/User");
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
+const studentBookingModel = require("../../models/studentBooking.model");
 
 const studentBookingResolver = {
   Query: {

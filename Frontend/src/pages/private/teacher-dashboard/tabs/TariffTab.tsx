@@ -27,7 +27,7 @@ import {
 } from "../../../../graphql/mutations/tariff";
 import { startOfDay } from "date-fns";
 import toast from "react-hot-toast";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Loader2 } from "lucide-react";
 
 // Update your BulkLessonPackage interface
 interface BulkLessonPackage {
@@ -133,7 +133,12 @@ export const TariffTab: React.FC = () => {
     }
   }, [tariffData.FinalPricePerLesson]);
 
-  if (loading) return <Typography>Loading...</Typography>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-[20vh]">
+        <Loader2 />
+      </div>
+    );
   if (error) return <Typography>Error: {error.message}</Typography>;
 
   // Handle changes to lesson fee with validation
@@ -536,7 +541,7 @@ export const TariffTab: React.FC = () => {
                       <LabelWithTooltip
                         htmlFor={`title-${index}`}
                         label="Package title"
-                        tooltip="TTitle of the package (e.g., “10 Lesson Pack”)"
+                        tooltip="Title of the package (e.g., “10 Lesson Pack”)"
                       />
                       <FormControl fullWidth>
                         <TextField

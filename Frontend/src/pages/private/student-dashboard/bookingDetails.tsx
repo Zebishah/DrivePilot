@@ -51,6 +51,9 @@ const BookingDetails: React.FC = () => {
     finalAmountPrice,
     slotId,
     instructorId,
+    bookedLessonFee,
+    bookedLessonDiscount,
+    FinalPricePerLesson,
     slot,
   } = location.state || {};
 
@@ -73,8 +76,8 @@ const BookingDetails: React.FC = () => {
     },
   });
   // Calculate total amount based on number of lessons and lesson fee
-  const lessonFee = instructorData?.lessonFee;
-  const lessonDiscount = instructorData?.lessonDiscount;
+  const lessonFee = bookedLessonFee;
+  const lessonDiscount = bookedLessonDiscount;
   const totalAmount = Number(selectedAvailability?.length * lessonFee) || 10;
   const finalAmount = Number(
     (totalAmount * (1 - lessonDiscount / 100)).toFixed(2)
@@ -326,18 +329,18 @@ const BookingDetails: React.FC = () => {
           </Typography>
           <Typography variant="body1">
             <strong>Base Price:</strong>{" "}
-            {initialAmount
+            {bookedLessonFee
               ? (() => {
                   return (
                     <>
                       <span
-                        className={`${initialAmount !== finalAmountPrice ? "line-through" : ""} text-gray-800`}
+                        className={`${bookedLessonFee !== FinalPricePerLesson ? "line-through" : ""} text-gray-800`}
                       >
-                        CHF {initialAmount}/hr
+                        CHF {bookedLessonFee}/hr
                       </span>
-                      {initialAmount !== finalAmountPrice ? (
+                      {bookedLessonFee !== FinalPricePerLesson ? (
                         <span className="ml-2 text-green-600 font-semibold">
-                          CHF {finalAmountPrice.toFixed(2)}
+                          CHF {FinalPricePerLesson.toFixed(2)}
                         </span>
                       ) : null}
                     </>
@@ -349,12 +352,7 @@ const BookingDetails: React.FC = () => {
             <strong>Discount:</strong>
             {
               <span className="ml-2 text-red-500 font-semibold text-sm">
-                (
-                {(
-                  ((initialAmount - finalAmountPrice) / initialAmount) *
-                  100
-                ).toFixed(0)}
-                % OFF)
+                ({lessonDiscount?.toFixed(0)}% OFF)
               </span>
             }
           </Typography>

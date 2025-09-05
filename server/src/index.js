@@ -57,7 +57,7 @@ async function startApolloServer() {
     schema,
     context: async ({ req }) => {
       const auth = await authMiddleware(req);
-      return { user: auth.user };
+      return { user: auth.user, req };
     },
   });
 

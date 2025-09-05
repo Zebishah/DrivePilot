@@ -13,7 +13,9 @@ const feedbackResolvers = require("../graphql/resolvers/LessonFeedBack.resolver"
 const reviewResolver = require("../graphql/resolvers/Review.resolver");
 const studentDashboardResolver = require("../graphql/resolvers/studentDashboard.resolver");
 const chatResolvers = require("../graphql/resolvers/chat.resolvers");
-
+const visitorResolvers = require("../graphql/resolvers/visitor.resolver");
+const adminAnalyticsResolvers = require("../graphql/resolvers/AdminAnalytics.resolver");
+const AdminBookingResolvers = require("../graphql/resolvers/AdminBookingType.resolver");
 const resolvers = mergeResolvers([
   userResolvers,
   SignupLinkResolver,
@@ -28,6 +30,9 @@ const resolvers = mergeResolvers([
   reviewResolver,
   studentDashboardResolver,
   chatResolvers,
+  AdminBookingResolvers,
+  visitorResolvers,
+  adminAnalyticsResolvers,
 ]);
 
 module.exports = resolvers;

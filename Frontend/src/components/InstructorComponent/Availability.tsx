@@ -234,7 +234,7 @@ const Availability: React.FC<AvailabilityProps> = ({
         toast.error("Please select an availability slot before booking.");
         return;
       }
-
+      console.log("tariff", tariff);
       if (location.pathname.includes("/student-dashboard/search")) {
         navigate("/student-dashboard/book", {
           state: {
@@ -247,6 +247,7 @@ const Availability: React.FC<AvailabilityProps> = ({
               description: instructor.description,
               lessonFee: tariff.lessonFee,
               lessonDiscount: tariff.lessonDiscount,
+              FinalPricePerLesson: tariff.FinalPricePerLesson,
               discountStartDate: tariff.discountStartDate,
               discountEndDate: tariff.discountEndDate,
             },
@@ -560,7 +561,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                         </Box>
 
                         {/* Add hour selection button for multi-hour slots */}
-                        {getDurationInHours(slot.time) > 1 && (
+                        {getDurationInHours(slot.time) > 0 && (
                           <Chip
                             icon={<IoTimeOutline size={14} />}
                             label="Select Hours"

@@ -133,6 +133,23 @@ const studentBookingTypeDefs = gql`
     createdAt: String
     updatedAt: String
   }
+  input UpdateBookingStatusInput {
+    bookingId: ID!
+    studentId: ID!
+
+    status: String!
+  }
+
+  input CancelBookingInput {
+    bookingId: ID!
+    studentId: ID!
+    slotId: ID!
+  }
+  type BookingResponse {
+    _id: ID!
+    status: String!
+    message: String!
+  }
   type Query {
     getStudentBookings: [StudentBooking!]!
     getCompletedStudentBookings: [StudentBooking!]!

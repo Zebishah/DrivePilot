@@ -55,6 +55,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin-dashboard/InstructorManagement",
     },
     {
+      text: "Bookings Management",
+      icon: LayoutGrid,
+      path: "/admin-dashboard/bookingManagement",
+    },
+    {
       text: "Student Management",
       icon: LayoutGrid,
       path: "/admin-dashboard/StudentManagement",

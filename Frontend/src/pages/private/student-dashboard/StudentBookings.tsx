@@ -97,8 +97,8 @@ const LessonBookingHistory: React.FC = () => {
           <div className="flex-1 p-4">Booking Date</div>
           <div className="flex-1 p-4">Instructor</div>
           <div className="flex-1 p-4">Time Slot</div>
-          <div className="flex-1 p-4">Payment (CHF)</div>
-          <div className="flex-1 p-4">Final price (CHF)</div>
+          <div className="flex-1 p-4">Lesson Price (CHF)</div>
+          <div className="flex-1 p-4">Final Price (CHF)</div>
           <div className="flex-1 p-4">Status</div>
           <div className="flex-1 p-4">End Date</div>
         </div>
