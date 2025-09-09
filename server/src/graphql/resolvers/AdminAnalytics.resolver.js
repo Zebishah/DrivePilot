@@ -111,10 +111,12 @@ const adminAnalyticsResolvers = {
       const attendedLessons = attendedLessonsAgg[0]?.count || 0;
 
       // Attendance rate
-      const attendanceRate =
-        totalLessonsBooked > 0
-          ? (totalLessonsBooked / attendedLessons) * 100
-          : 0;
+      let attendanceRate = 0;
+
+      if (totalLessonsBooked > 0) {
+        attendanceRate = (attendedLessons / totalLessonsBooked) * 100;
+        attendanceRate = Math.min(attendanceRate, 100); // cap at 100%
+      }
 
       const overallStats = {
         totalRegistrations,
