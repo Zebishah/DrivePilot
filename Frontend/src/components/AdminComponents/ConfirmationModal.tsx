@@ -1,6 +1,4 @@
-"use client";
-
-import type React from "react";
+import React from "react";
 import { AlertTriangle, X } from "lucide-react";
 
 interface ConfirmationModalProps {
@@ -44,10 +42,14 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div
-                  className={`flex-shrink-0 rounded-full p-2 ${variant === "danger" ? "bg-red-100" : "bg-blue-100"}`}
+                  className={`flex-shrink-0 rounded-full p-2 ${
+                    variant === "danger" ? "bg-red-100" : "bg-blue-100"
+                  }`}
                 >
                   <AlertTriangle
-                    className={`h-5 w-5 ${variant === "danger" ? "text-red-600" : "text-blue-600"}`}
+                    className={`h-5 w-5 ${
+                      variant === "danger" ? "text-red-600" : "text-blue-600"
+                    }`}
                   />
                 </div>
                 <h3 className="text-lg font-medium text-gray-900">{title}</h3>

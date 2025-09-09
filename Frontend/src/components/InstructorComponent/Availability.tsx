@@ -101,6 +101,7 @@ const Availability: React.FC<AvailabilityProps> = ({
 
   const instructor =
     data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
+  console.log("instructor", instructor);
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   // Create an array of available dates from availabilityData
   const availableDates = useMemo(() => {
@@ -228,6 +229,7 @@ const Availability: React.FC<AvailabilityProps> = ({
         startTime: hourSlot.startTime,
         endTime: hourSlot.endTime,
       }));
+      console.log("formattedAvailability", formattedAvailability);
 
       // Call your existing handleBookNow logic
       if (formattedAvailability.length === 0) {
@@ -236,21 +238,42 @@ const Availability: React.FC<AvailabilityProps> = ({
       }
       console.log("tariff", tariff);
       if (location.pathname.includes("/student-dashboard/search")) {
-        navigate("/student-dashboard/book", {
+        // navigate("/student-dashboard/booking-details", {
+        //   state: {
+        //     instructorId: instructorData,
+        //     selectedAvailability: formattedAvailability,
+        //     instructorData: {
+        //       id: instructor._id,
+        //       name: `${instructor.firstName} ${instructor.lastName}`,
+        //       email: instructor.email,
+        //       description: instructor.description,
+        //       lessonFee: tariff.lessonFee,
+        //       lessonDiscount: tariff.lessonDiscount,
+        //       FinalPricePerLesson: tariff.FinalPricePerLesson,
+        //       discountStartDate: tariff.discountStartDate,
+        //       discountEndDate: tariff.discountEndDate,
+        //     },
+        //   },
+        // });
+        console.log("instructorData", instructorData);
+        const paymentData = {
+          type: "card",
+          cardNumber: "5105 **** **** 0505",
+        };
+
+        navigate("/student-dashboard/booking-details", {
           state: {
-            instructorId: instructorData,
             selectedAvailability: formattedAvailability,
-            instructorData: {
-              id: instructor._id,
-              name: `${instructor.firstName} ${instructor.lastName}`,
-              email: instructor.email,
-              description: instructor.description,
-              lessonFee: tariff.lessonFee,
-              lessonDiscount: tariff.lessonDiscount,
-              FinalPricePerLesson: tariff.FinalPricePerLesson,
-              discountStartDate: tariff.discountStartDate,
-              discountEndDate: tariff.discountEndDate,
-            },
+            instructorData,
+            paymentMethod: paymentData,
+            isCurrentBooking: true,
+            bookedLessonFee: tariff.lessonFee,
+            bookedLessonDiscount: tariff.lessonDiscount,
+            FinalPricePerLesson: tariff.FinalPricePerLesson,
+            instructorId: instructorData,
+            name: `${instructor.firstName} ${instructor.lastName}`,
+            email: instructor.email,
+            description: instructor.description,
           },
         });
       } else {

@@ -1,7 +1,4 @@
-"use client";
-
-import type React from "react";
-import { useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 
 interface StatusDropdownProps {
@@ -23,8 +20,8 @@ const StatusDropdownAdmin: React.FC<StatusDropdownProps> = ({
     { value: "pending", label: "Pending", color: "text-yellow-700" },
     { value: "confirmed", label: "Confirmed", color: "text-green-700" },
     { value: "completed", label: "Completed", color: "text-blue-700" },
-    { value: "refund", label: "Refund", color: "text-cyan-600" },
-    { value: "cancelled", label: "Cancel", color: "text-red-700" },
+    { value: "cancelled", label: "Cancelled", color: "text-red-700" },
+    { value: "semi_cancelled", label: "Semi Cancelled", color: "text-red-600" },
   ];
 
   useEffect(() => {
@@ -47,61 +44,34 @@ const StatusDropdownAdmin: React.FC<StatusDropdownProps> = ({
   }, [isOpen, onToggle]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "text-green-600";
-      case "pending":
-        return "text-yellow-600";
-      case "cancelled":
-        return "text-red-600";
-      case "refund":
-        return "text-cyan-600";
-      case "completed":
-        return "text-blue-600";
-      default:
-        return "text-gray-600";
-    }
-  };
-
-  const getStatusBg = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-green-100";
-      case "pending":
-        return "bg-yellow-100";
-      case "cancelled":
-        return "bg-red-100";
-      case "refund":
-        return "bg-cyan-100";
-      case "completed":
-        return "bg-blue-100";
-      default:
-        return "bg-gray-100";
-    }
+    const statusOption = statusOptions.find((opt) => opt.value === status);
+    return statusOption?.color || "text-gray-700";
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={onToggle}
-        className={`inline-flex items-center px-3 py-1 rounded text-sm font-medium ${getStatusBg(currentStatus)} ${getStatusColor(currentStatus)} hover:opacity-80 transition-opacity duration-150`}
+        className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
       >
-        <span className="capitalize">
-          {currentStatus === "cancelled" ? "Cancel" : currentStatus}
+        <span className={`capitalize ${getStatusColor(currentStatus)}`}>
+          {currentStatus.replace("_", " ")}
         </span>
         <ChevronDown
-          className={`ml-1 h-3 w-3 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+          className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-150 ${
+            isOpen ? "rotate-180" : ""
+          }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 animate-in fade-in duration-150">
           <div className="py-1">
             {statusOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => onStatusChange(option.value)}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 transition-colors duration-150 ${
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 transition-colors duration-150 ${
                   option.value === currentStatus
                     ? "bg-blue-50 text-blue-700"
                     : option.color

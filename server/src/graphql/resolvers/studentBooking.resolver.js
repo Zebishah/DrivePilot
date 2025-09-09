@@ -10,6 +10,7 @@ const { default: mongoose } = require("mongoose");
 const { User } = require("../../models/User");
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
+const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 
 const studentBookingResolver = {
   Query: {
@@ -330,9 +331,23 @@ const studentBookingResolver = {
         const savedBooking = await StudentBooking.findById(booking._id)
           .populate(
             "instructorId",
-            "_id firstName lastName email description profileImage"
+            "_id firstName lastName email phone description profileImage address"
           )
-          .populate("studentId", "_id firstName lastName email profileImage");
+          .populate(
+            "studentId",
+            "_id firstName lastName email phone profileImage homeAddress"
+          );
+        console.log("saved booking", savedBooking);
+        const bookingData = JSON.parse(JSON.stringify(savedBooking));
+        // 5. Send email notifications to all parties
+        console.log("bookingData", bookingData);
+        try {
+          await notifyBookingParties(bookingData, "booking_created");
+          console.log("Booking creation emails sent successfully");
+        } catch (emailError) {
+          console.error("Failed to send booking creation emails:", emailError);
+          // Don't throw error here as booking was successful
+        }
 
         return savedBooking;
       } catch (error) {
@@ -343,19 +358,42 @@ const studentBookingResolver = {
         throw error;
       }
     },
+
     updateBookingStatus: async (_, { bookingId, status }, { user }) => {
       validateUser(user);
-      const booking = await StudentBooking.findById(bookingId);
+
+      const booking = await StudentBooking.findById(bookingId)
+        .populate("instructorId", "_id firstName lastName email phone")
+        .populate("studentId", "_id firstName lastName email phone");
+
       if (!booking) {
         throw new UserInputError("Booking not found");
       }
-      if (booking.instructorId.toString() !== user.id.toString()) {
+
+      if (booking.instructorId._id.toString() !== user.id.toString()) {
         throw new AuthenticationError("Not authorized to update this booking");
       }
+
+      const oldStatus = booking.status;
       booking.status = status;
       await booking.save();
+
+      // Send email notifications if status actually changed
+      if (oldStatus !== status) {
+        try {
+          await notifyBookingParties(booking, "booking_status_updated");
+          console.log("Booking status update emails sent successfully");
+        } catch (emailError) {
+          console.error(
+            "Failed to send booking status update emails:",
+            emailError
+          );
+        }
+      }
+
       return booking;
     },
+
     cancelBookingSlot: async (_, { bookingId, slotId }, { user }) => {
       validateUser(user);
 
@@ -363,15 +401,18 @@ const studentBookingResolver = {
       session.startTransaction();
 
       try {
-        // 1. Find the booking
-        const booking =
-          await StudentBooking.findById(bookingId).session(session);
+        // 1. Find the booking with populated data
+        const booking = await StudentBooking.findById(bookingId)
+          .populate("instructorId", "_id firstName lastName email phone")
+          .populate("studentId", "_id firstName lastName email phone")
+          .session(session);
+
         if (!booking) throw new UserInputError("Booking not found");
 
         const uid = user.id.toString();
         if (
-          booking.studentId.toString() !== uid &&
-          booking.instructorId.toString() !== uid
+          booking.studentId._id.toString() !== uid &&
+          booking.instructorId._id.toString() !== uid
         ) {
           throw new AuthenticationError(
             "Not authorized to cancel this booking"
@@ -389,25 +430,27 @@ const studentBookingResolver = {
         // 3. Mark the slot as cancelled in the booking
         slot.status = "cancelled";
         slot.booked = false;
+        slot.cancellationDate = new Date();
 
         // 4. Check if all slots are cancelled to determine booking status
         const allSlotsCancelled = booking.slots.every(
           (s) => s.status === "cancelled"
         );
 
-        // If all slots are cancelled, mark booking as cancelled, otherwise semi-cancelled
+        const oldStatus = booking.status;
         if (allSlotsCancelled) {
           booking.status = "cancelled";
+          booking.cancellationDate = new Date();
         } else {
           booking.status = "semi_cancelled";
         }
 
         await booking.save({ session });
 
-        // 5. Remove the slot from teacher availability using the simple 'id' field
+        // 5. Remove the slot from teacher availability
         await teacherAvailabilityModel.updateOne(
           {
-            teacherId: booking.instructorId,
+            teacherId: booking.instructorId._id,
             "slots.id": slotId,
           },
           {
@@ -423,16 +466,15 @@ const studentBookingResolver = {
         // 6. Check if teacher availability document has any remaining slots
         const teacherAvailability = await teacherAvailabilityModel
           .findOne({
-            teacherId: booking.instructorId,
+            teacherId: booking.instructorId._id,
             date: slot.date,
           })
           .session(session);
 
-        // If no slots remain for this date, you might want to update the status
         if (teacherAvailability && teacherAvailability.slots.length === 0) {
           await teacherAvailabilityModel.updateOne(
             {
-              teacherId: booking.instructorId,
+              teacherId: booking.instructorId._id,
               date: slot.date,
             },
             {
@@ -443,18 +485,24 @@ const studentBookingResolver = {
         }
 
         await session.commitTransaction();
-        session.endSession();
 
-        // Populate the booking with related data before returning
-        const populatedBooking = await StudentBooking.findById(bookingId)
-          .populate("studentId")
-          .populate("instructorId");
+        // 7. Send email notifications
+        try {
+          await notifyBookingParties(booking, "booking_cancelled");
+          console.log("Booking cancellation emails sent successfully");
+        } catch (emailError) {
+          console.error(
+            "Failed to send booking cancellation emails:",
+            emailError
+          );
+        }
 
-        return populatedBooking;
+        return booking;
       } catch (err) {
         await session.abortTransaction();
-        session.endSession();
         throw err;
+      } finally {
+        session.endSession();
       }
     },
   },

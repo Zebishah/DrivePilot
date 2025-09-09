@@ -1,5 +1,4 @@
 import React from "react";
-import { Typography } from "@mui/material";
 import InstructorReviews from "../../../../components/StudentComponents/InstructorReviews";
 import { useAuth } from "../../../../context/AuthContext";
 

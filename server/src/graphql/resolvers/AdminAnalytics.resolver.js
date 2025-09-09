@@ -109,7 +109,7 @@ const adminAnalyticsResolvers = {
         { $count: "count" },
       ]);
       const attendedLessons = attendedLessonsAgg[0]?.count || 0;
-      console.log("stats", attendedLessons, totalLessonsBooked);
+
       // Attendance rate
       const attendanceRate =
         totalLessonsBooked > 0

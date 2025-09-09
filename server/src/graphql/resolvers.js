@@ -20,7 +20,11 @@ const {
   createAuthToken,
   verifyResetToken,
 } = require("../services/tokenService");
-const { generateOTP, sendOtpEmail } = require("../utils/SendOtpEmail");
+const {
+  generateOTP,
+  sendOtpEmail,
+  notifyDocumentStatusParties,
+} = require("../utils/SendOtpEmail");
 const studentBookingModel = require("../models/studentBooking.model");
 const { Review } = require("../models/Reviews");
 require("dotenv").config();
@@ -593,11 +597,16 @@ instead.`);
           throw new UserInputError("Document not found");
         }
 
+        // Store the old status for comparison
+        const oldStatus = document.status;
+
         // Check if this is a Swiss Driving License document
         const isSwissLicenseFront =
           document.documentType === "Swiss Driving License (Front)";
         const isSwissLicenseBack =
           document.documentType === "Swiss Driving License (Back)";
+
+        let updatedDocuments = [];
 
         if (isSwissLicenseFront || isSwissLicenseBack) {
           // Update both front and back Swiss Driving License documents
@@ -607,15 +616,51 @@ instead.`);
               doc.documentType === "Swiss Driving License (Back)"
             ) {
               doc.status = status;
+              updatedDocuments.push(doc);
             }
           });
         } else {
           // Update only the specific document
           document.status = status;
+          updatedDocuments.push(document);
         }
 
         // Save the instructor
         await instructor.save();
+
+        // Send email notifications for each updated document (only if status actually changed)
+        if (oldStatus !== status) {
+          try {
+            // Send notification for the primary document that was requested to be updated
+            await notifyDocumentStatusParties(
+              {
+                _id: document._id,
+                documentType: document.documentType,
+                documentUrl: document.documentUrl,
+                status: status,
+              },
+              {
+                firstName: instructor.firstName,
+                lastName: instructor.lastName,
+                email: instructor.email,
+              },
+              "document_status_updated"
+            );
+            return {
+              _id: document._id,
+              documentType: document.documentType,
+              documentUrl: document.documentUrl,
+              status: document.status,
+            };
+          } catch (emailError) {
+            console.error(
+              "Failed to send document status update email:",
+              emailError
+            );
+            // Don't throw the error - we still want to return the updated document
+            // even if email sending fails
+          }
+        }
 
         return {
           _id: document._id,

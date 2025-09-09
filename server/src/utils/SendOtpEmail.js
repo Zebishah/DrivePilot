@@ -160,22 +160,506 @@ const sendOtpEmail = async (email, otp, type) => {
     </div>
   `;
   }
+
   const mailOptions = {
     from: `"Drive School" <${process.env.EMAIL_USER}>`,
     to: email,
     subject,
     html: message,
   };
+
   const transporter = nodemailer.createTransport({
-    host: process.env.DOMAIN_HOST, // Use the correct SMTP host
-    port: 587, // SMTP port (587 is common for TLS)
-    secure: false, // true for 465, false for other ports
+    host: process.env.DOMAIN_HOST,
+    port: 587,
+    secure: false, // true for port 465, false for 587
     auth: {
-      user: process.env.DOMAIN_MAIL, // Your email address
-      pass: process.env.DOMAIN_PASS, // Your app password
+      user: process.env.DOMAIN_MAIL,
+      pass: process.env.DOMAIN_PASS,
     },
   });
 
   await transporter.sendMail(mailOptions);
 };
-module.exports = { generateOTP, sendOtpEmail };
+
+// New booking notification functions
+const sendBookingEmail = async (recipients, bookingData, type) => {
+  const transporter = nodemailer.createTransport({
+    host: process.env.DOMAIN_HOST,
+    port: 587,
+    secure: false, // true for port 465, false for 587
+    auth: {
+      user: process.env.DOMAIN_MAIL,
+      pass: process.env.DOMAIN_PASS,
+    },
+  });
+
+  let subject = "";
+  let message = "";
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (timeStr) => {
+    const [hour, minute] = timeStr.split(":");
+    const date = new Date();
+    date.setHours(parseInt(hour), parseInt(minute));
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  console.log("bookingData", bookingData);
+  // Generate slots HTML
+  const slotsHtml = bookingData.slots
+    .map(
+      (slot) => `
+    <div style="background-color: #f8f9fa; border-radius: 6px; padding: 15px; margin-bottom: 10px; border-left: 4px solid #3d5afe;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: #333; font-size: 16px;">${formatDate(slot.date)}</strong>
+          <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}</p>
+        </div>
+        <span style="background-color: ${slot.status === "confirmed" ? "#28a745" : slot.status === "cancelled" ? "#dc3545" : "#ffc107"}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; text-transform: capitalize;">${slot.status}</span>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  switch (type) {
+    case "booking_created":
+      subject = "🎉 New Booking Confirmed - DSP";
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: #28a745; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">🎉 Booking Confirmed!</h2>
+            
+            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${bookingData.id || "N/A"}</h3>
+              <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">Your driving lesson has been successfully booked!</p>
+            </div>
+            
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Booking Details</h3>
+              
+              <div style="margin-bottom: 20px;">
+                <p style="margin-bottom: 8px;"><strong>Student:</strong> ${bookingData.student?.firstName || ""} ${bookingData.student?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${bookingData.instructor?.firstName || ""} ${bookingData.instructor?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">${bookingData.status || "Confirmed"}</span></p>
+                <p style="margin-bottom: 8px;"><strong>Total Price:</strong> $${bookingData.totalAmount || "0"}</p>
+                <p style="margin-bottom: 8px;"><strong>Final Price:</strong> $${bookingData.finalAmount || "0"}</p>
+              </div>
+              
+              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Scheduled Sessions:</h4>
+              ${slotsHtml}
+            </div>
+            
+            <div style="background-color: #e3f2fd; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+              <h4 style="color: #1976d2; margin-bottom: 15px;">📞 Address Information</h4>
+              <p style="margin-bottom: 8px;"><strong>Student Address:</strong> ${bookingData.studentAddress || "N/A"}</p>
+              <p style="margin-bottom: 0;"><strong>Instructor Address:</strong> ${bookingData.instructorAddress || "N/A"}</p>
+            </div>
+            
+            <p style="margin-bottom: 25px; font-size: 16px;">Please ensure you're available at the scheduled times. For any changes or questions, contact support immediately.</p>
+          </div>
+          
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
+
+    case "booking_cancelled":
+      subject = "❌ Booking Cancelled - DSP";
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: #dc3545; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">❌ Booking Cancelled</h2>
+            
+            <div style="background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${bookingData.id || "N/A"}</h3>
+              <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">This booking has been cancelled</p>
+            </div>
+            
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Cancelled Booking Details</h3>
+              
+              <div style="margin-bottom: 20px;">
+                <p style="margin-bottom: 8px;"><strong>Student:</strong> ${bookingData.student?.firstName || ""} ${bookingData.student?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${bookingData.instructor?.firstName || ""} ${bookingData.instructor?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: #dc3545; font-weight: bold;">${bookingData.status || "Cancelled"}</span></p>
+                <p style="margin-bottom: 8px;"><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</p>
+                ${bookingData.reason ? `<p style="margin-bottom: 8px;"><strong>Reason:</strong> ${bookingData.reason}</p>` : ""}
+              </div>
+              
+              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Cancelled Sessions:</h4>
+              ${slotsHtml}
+            </div>
+            
+            <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions about this cancellation, please contact our support team.</p>
+          </div>
+          
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
+
+    case "booking_status_updated":
+      subject = "📝 Booking Status Updated - DSP";
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: #ffc107; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">📝 Booking Status Updated</h2>
+            
+            <div style="background: linear-gradient(135deg, #ffc107 0%, #ffca28 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #333; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${bookingData.id || "N/A"}</h3>
+              <p style="color: rgba(0,0,0,0.7); margin: 0; font-size: 16px; text-align: center;">Your booking status has been updated</p>
+            </div>
+            
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Updated Booking Details</h3>
+              
+              <div style="margin-bottom: 20px;">
+                <p style="margin-bottom: 8px;"><strong>Student:</strong> ${bookingData.student?.firstName || ""} ${bookingData.student?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${bookingData.instructor?.firstName || ""} ${bookingData.instructor?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>New Status:</strong> <span style="color: #ffc107; font-weight: bold;">${bookingData.status || "Updated"}</span></p>
+                <p style="margin-bottom: 8px;"><strong>Update Date:</strong> ${new Date().toLocaleDateString()}</p>
+              </div>
+              
+              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Session Details:</h4>
+              ${slotsHtml}
+            </div>
+            
+            <p style="margin-bottom: 25px; font-size: 16px;">Please review the updated status and contact support if you have any concerns.</p>
+          </div>
+          
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
+  }
+
+  // Send emails to all recipients
+  const emailPromises = recipients.map((recipient) => {
+    const mailOptions = {
+      from: `"Drive School" <${process.env.EMAIL_USER}>`,
+      to: recipient.email,
+      subject: subject,
+      html: message,
+    };
+    return transporter.sendMail(mailOptions);
+  });
+
+  try {
+    await Promise.all(emailPromises);
+    console.log(
+      `Booking notification emails sent successfully to ${recipients.length} recipients`
+    );
+  } catch (error) {
+    console.error("Error sending booking notification emails:", error);
+    throw error;
+  }
+};
+const sendDocumentStatusEmail = async (recipients, documentData, type) => {
+  const transporter = nodemailer.createTransport({
+    host: process.env.DOMAIN_HOST,
+    port: 587,
+    secure: false, // true for port 465, false for 587
+    auth: {
+      user: process.env.DOMAIN_MAIL,
+      pass: process.env.DOMAIN_PASS,
+    },
+  });
+
+  let subject = "";
+  let message = "";
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "accepted":
+        return "#28a745";
+      case "rejected":
+        return "#dc3545";
+      case "pending":
+        return "#ffc107";
+      default:
+        return "#6c757d";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "accepted":
+        return "✅";
+      case "rejected":
+        return "❌";
+      case "pending":
+        return "⏳";
+      default:
+        return "📄";
+    }
+  };
+
+  switch (type) {
+    case "document_status_updated":
+      const statusIcon = getStatusIcon(documentData.status);
+      const statusColor = getStatusColor(documentData.status);
+
+      subject = `${statusIcon} Document Status Updated - ${documentData.documentType} - DSP`;
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: ${statusColor}; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">${statusIcon} Document Status Updated</h2>
+            
+            <div style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}cc 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Document ID: #${documentData.id || "N/A"}</h3>
+              <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">Your document status has been updated to: <strong>${documentData.status.toUpperCase()}</strong></p>
+            </div>
+            
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Document Details</h3>
+              
+              <div style="margin-bottom: 20px;">
+                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${documentData.instructor?.firstName || ""} ${documentData.instructor?.lastName || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Email:</strong> ${documentData.instructor?.email || ""}</p>
+                <p style="margin-bottom: 8px;"><strong>Document Type:</strong> ${documentData.documentType || "N/A"}</p>
+                <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${documentData.status || "N/A"}</span></p>
+                <p style="margin-bottom: 8px;"><strong>Update Date:</strong> ${new Date().toLocaleDateString(
+                  "en-US",
+                  {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }
+                )}</p>
+                <p style="margin-bottom: 8px;"><strong>Update Time:</strong> ${new Date().toLocaleTimeString(
+                  "en-US",
+                  {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  }
+                )}</p>
+              </div>
+              
+              ${
+                documentData.documentUrl
+                  ? `
+                <div style="background-color: #e3f2fd; border-radius: 6px; padding: 15px; margin-top: 15px;">
+                  <p style="margin-bottom: 8px; color: #1976d2;"><strong>📎 Document Link:</strong></p>
+                  <a href="${documentData.documentUrl}" target="_blank" style="color: #3d5afe; text-decoration: none; font-weight: 500;">View Document</a>
+                </div>
+              `
+                  : ""
+              }
+            </div>
+            
+            ${
+              documentData.status === "accepted"
+                ? `
+              <div style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                <h4 style="color: #155724; margin-bottom: 15px;">🎉 Congratulations!</h4>
+                <p style="color: #155724; margin: 0;">Your document has been approved. You can now proceed with your instructor registration process.</p>
+              </div>
+            `
+                : documentData.status === "rejected"
+                  ? `
+              <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                <h4 style="color: #721c24; margin-bottom: 15px;">⚠️ Document Rejected</h4>
+                <p style="color: #721c24; margin: 0;">Your document has been rejected. Please review the requirements and resubmit a new document. Contact support if you need assistance.</p>
+                ${documentData.rejectionReason ? `<p style="color: #721c24; margin: 10px 0 0 0;"><strong>Reason:</strong> ${documentData.rejectionReason}</p>` : ""}
+              </div>
+            `
+                  : `
+              <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                <h4 style="color: #856404; margin-bottom: 15px;">⏳ Under Review</h4>
+                <p style="color: #856404; margin: 0;">Your document is currently under review. We'll notify you once the review is complete.</p>
+              </div>
+            `
+            }
+            
+            <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions about this status update, please contact our support team.</p>
+          </div>
+          
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+            <p style="margin-top: 10px;">
+              <a href="mailto:${process.env.ADMIN_EMAIL || "support@drivingschool.com"}" style="color: #3d5afe; text-decoration: none;">Contact Support</a>
+            </p>
+          </div>
+        </div>
+      `;
+      break;
+
+    default:
+      throw new Error(`Unknown email type: ${type}`);
+  }
+
+  // Send emails to all recipients
+  const emailPromises = recipients.map((recipient) => {
+    const mailOptions = {
+      from: `"Driving School Platform" <${process.env.EMAIL_USER}>`,
+      to: recipient.email,
+      subject: subject,
+      html: message,
+    };
+    return transporter.sendMail(mailOptions);
+  });
+
+  try {
+    await Promise.all(emailPromises);
+    console.log(
+      `Document status notification emails sent successfully to ${recipients.length} recipients`
+    );
+  } catch (error) {
+    console.error("Error sending document status notification emails:", error);
+    throw error;
+  }
+};
+// Function to notify all parties about booking events
+const notifyBookingParties = async (
+  bookingData,
+  type,
+  adminEmail = process.env.ADMIN_EMAIL
+) => {
+  try {
+    const recipients = [];
+
+    // Add student
+    if (bookingData.studentId && bookingData.studentId.email) {
+      recipients.push({
+        email: bookingData.studentId.email,
+        role: "student",
+        name: `${bookingData.studentId.firstName} ${bookingData.studentId.lastName}`,
+      });
+    }
+
+    // Add instructor
+    if (bookingData.instructorId && bookingData.instructorId.email) {
+      recipients.push({
+        email: bookingData.instructorId.email,
+        role: "instructor",
+        name: `${bookingData.instructorId.firstName} ${bookingData.instructorId.lastName}`,
+      });
+    }
+
+    // Add admin
+    if (adminEmail) {
+      recipients.push({
+        email: adminEmail,
+        role: "admin",
+        name: "Admin Team",
+      });
+    }
+
+    if (recipients.length > 0) {
+      await sendBookingEmail(
+        recipients,
+        {
+          id: bookingData._id,
+          status: bookingData.status,
+          slots: bookingData.slots,
+          totalAmount: bookingData.totalAmount,
+          finalAmount: bookingData.finalAmount,
+          studentAddress: bookingData.studentId.homeAddress,
+          instructorAddress: bookingData.instructorId.address,
+          student: bookingData.studentId, // Changed from bookingData.studentId
+          instructor: bookingData.instructorId, // Changed from bookingData.instructorId
+          reason: bookingData.reason || null,
+        },
+        type
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error in notifyBookingParties:", error);
+    return false;
+  }
+};
+const notifyDocumentStatusParties = async (
+  documentData,
+  instructorData,
+  type,
+  adminEmail = process.env.ADMIN_EMAIL
+) => {
+  try {
+    const recipients = [];
+
+    // Add instructor (always notify the instructor whose document status changed)
+    if (instructorData && instructorData.email) {
+      recipients.push({
+        email: instructorData.email,
+        role: "instructor",
+        name: `${instructorData.firstName || ""} ${instructorData.lastName || ""}`.trim(),
+      });
+    }
+
+    // Add admin (always notify admin about status changes)
+    if (adminEmail) {
+      recipients.push({
+        email: adminEmail,
+        role: "admin",
+        name: "Admin Team",
+      });
+    }
+
+    if (recipients.length > 0) {
+      await sendDocumentStatusEmail(
+        recipients,
+        {
+          id: documentData._id || documentData.id,
+          documentType: documentData.documentType,
+          documentUrl: documentData.documentUrl,
+          status: documentData.status,
+          instructor: instructorData,
+          rejectionReason: documentData.rejectionReason || null,
+        },
+        type
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error in notifyDocumentStatusParties:", error);
+    return false;
+  }
+};
+
+module.exports = {
+  generateOTP,
+  sendOtpEmail,
+  sendBookingEmail,
+  notifyBookingParties,
+  sendDocumentStatusEmail, // New function
+  notifyDocumentStatusParties, // New function
+};

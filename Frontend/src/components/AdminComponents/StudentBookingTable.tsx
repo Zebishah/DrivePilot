@@ -6,12 +6,8 @@ import {
   Clock,
   DollarSign,
   User,
-  Car,
-  MapPin,
   X,
-  AlertTriangle,
-  Edit2,
-  Eye,
+  Loader2,
 } from "lucide-react";
 import {
   CancelBookingInput,
@@ -23,6 +19,7 @@ import {
   CANCEL_BOOKING_ADMIN,
   UPDATE_BOOKING_STATUS,
 } from "../../graphql/mutations/AdminBookingsShowcase";
+import toast from "react-hot-toast";
 
 interface BookingsTableProps {
   className?: string;
@@ -72,16 +69,16 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={onToggle}
-        className="inline-flex items-center px-2 py-1 text-xs rounded border border-gray-200 bg-white hover:bg-gray-50"
+        className="inline-flex items-center px-2 py-1 text-xs border border-gray-200 rounded-full bg-white hover:bg-gray-50"
       >
-        Choose one
+        status
         <ChevronDown
           className={`ml-1 h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded shadow-lg z-50">
+        <div className="absolute right-0 rounded-md mt-1 w-32 bg-white border border-gray-200 shadow-lg z-50">
           <div className="py-1">
             {statusOptions.map((option) => (
               <button
@@ -240,7 +237,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           className={`px-2 py-1 text-xs rounded-full ${
                             slot.status === "booked"
                               ? "bg-green-100 text-green-800"
-                              : slot.status === "available"
+                              : slot.status === "refund"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : slot.status === "cancelled"
                                   ? "bg-red-100 text-red-800"
@@ -293,14 +290,35 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
     </div>
   );
 };
+type SpinnerSize = "sm" | "md" | "lg";
 
+const LoadingSpinner = ({ size = "lg" }: { size?: SpinnerSize }) => {
+  const sizeClasses: Record<SpinnerSize, string> = {
+    sm: "h-4 w-4",
+    md: "h-5 w-5",
+    lg: "h-6 w-6",
+  };
+
+  return <Loader2 className={`animate-spin ${sizeClasses[size]}`} />;
+};
+
+// Loading Overlay Component
+const LoadingOverlay = ({ message = "Processing..." }) => (
+  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-xl">
+    <div className="flex flex-col items-center space-y-3">
+      <LoadingSpinner size="lg" />
+      <p className="text-sm font-medium text-gray-600">{message}</p>
+    </div>
+  </div>
+);
 // Cancel Booking Modal Component
 interface CancelBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: () => void;
   booking: StudentBooking | null;
   slotId: string | null;
+  isLoading?: boolean; // Add this prop
 }
 
 const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
@@ -309,27 +327,12 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   onConfirm,
   booking,
   slotId,
+  isLoading = false, // Add this prop with default value
 }) => {
-  const [reason, setReason] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   if (!isOpen || !booking || !slotId) return null;
 
   const selectedSlot = booking.slots.find((slot) => slot._id === slotId);
   if (!selectedSlot) return null;
-
-  const handleSubmit = async () => {
-    if (!reason.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      await onConfirm(reason);
-      setReason("");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "long",
@@ -337,16 +340,18 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
       year: "numeric",
     });
   };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div
           className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={!isLoading ? onClose : undefined} // Prevent closing when loading
         />
 
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle relative">
+          {/* Loading Overlay - use isLoading prop */}
+          {isLoading && <LoadingOverlay message="Cancelling booking..." />}
+
           <div className="bg-white px-6 pt-6 pb-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900 text-center w-full">
@@ -354,13 +359,13 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
               </h3>
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
+                disabled={isLoading} // Disable when loading
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <div className="bg-[#5EC2D226] rounded-lg p-4 mb-4">
               <h4 className="font-medium text-gray-900 mb-3">Details</h4>
 
               {/* Payment Method */}
@@ -371,7 +376,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 <div>
                   <p className="text-sm text-gray-600">Credit card</p>
                   <p className="text-xs text-gray-500">
-                    {booking.paymentMethod.cardNumber
+                    {booking.paymentMethod?.cardNumber
                       ? `**** **** **** ${booking.paymentMethod.cardNumber.slice(-4)}`
                       : "**** **** **** 0505"}
                   </p>
@@ -432,18 +437,19 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              disabled={isSubmitting}
-              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50"
+              disabled={isLoading} // Disable when loading
+              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               No
             </button>
             <button
               type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50"
+              onClick={onConfirm}
+              disabled={isLoading} // Disable when loading
+              className="px-6 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              {isSubmitting ? "Cancelling..." : "Yes"}
+              {isLoading && <LoadingSpinner size="sm" />}
+              <span>{isLoading ? "Cancelling..." : "Yes"}</span>
             </button>
           </div>
         </div>
@@ -452,13 +458,14 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   );
 };
 
-// Refund Confirmation Modal Component
+// Update the RefundConfirmationModal interface and component
 interface RefundConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   booking: StudentBooking | null;
   slotId: string | null;
+  isLoading?: boolean; // Add this prop
 }
 
 const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
@@ -467,23 +474,12 @@ const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
   onConfirm,
   booking,
   slotId,
+  isLoading = false, // Add this prop with default value
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   if (!isOpen || !booking || !slotId) return null;
 
   const selectedSlot = booking.slots.find((slot) => slot._id === slotId);
   if (!selectedSlot) return null;
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      await onConfirm();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "long",
@@ -491,16 +487,18 @@ const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
       year: "numeric",
     });
   };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div
           className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={!isLoading ? onClose : undefined} // Prevent closing when loading
         />
 
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle relative">
+          {/* Loading Overlay - use isLoading prop */}
+          {isLoading && <LoadingOverlay message="Processing refund..." />}
+
           <div className="bg-white px-6 pt-6 pb-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900 text-center w-full">
@@ -508,7 +506,8 @@ const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
               </h3>
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
+                disabled={isLoading} // Disable when loading
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -566,23 +565,23 @@ const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
               </p>
             </div>
           </div>
-
           <div className="bg-gray-50 px-6 py-4 flex justify-center space-x-3">
             <button
               type="button"
               onClick={onClose}
-              disabled={isSubmitting}
-              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50"
+              disabled={isLoading} // Disable when loading
+              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50"
+              onClick={onConfirm}
+              disabled={isLoading} // Disable when loading
+              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              {isSubmitting ? "Processing..." : "Confirm Refund"}
+              {isLoading && <LoadingSpinner size="sm" />}
+              <span>{isLoading ? "Processing..." : "Confirm Refund"}</span>
             </button>
           </div>
         </div>
@@ -590,7 +589,6 @@ const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
     </div>
   );
 };
-
 // Main Component
 const StudentBookingTable: React.FC<BookingsTableProps> = ({
   className = "",
@@ -607,7 +605,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     null
   );
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
+  // Add these loading states
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
   const { data, loading, error, refetch } = useQuery(GET_ALL_STUDENT_BOOKINGS, {
     fetchPolicy: "cache-and-network",
   });
@@ -620,12 +620,16 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       setSelectedBooking(null);
       setSelectedSlotId(null);
       setPendingStatusChange(null);
+      setIsProcessingRefund(false); // Reset loading state
+      toast.success("Booking status changed successfully");
       setActiveDropdown(null);
     },
     onError: (error) => {
+      toast.error("Error updating booking status");
       console.error("Error updating booking status:", error);
       setShowRefundModal(false);
       setShowConfirmModal(false);
+      setIsProcessingRefund(false); // Reset loading state
     },
   });
 
@@ -636,10 +640,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       setSelectedBooking(null);
       setSelectedSlotId(null);
       setActiveDropdown(null);
+      setIsCancelling(false); // Reset loading state
+      toast.success("Booking cancelled successfully");
     },
     onError: (error) => {
+      toast.error("Error cancelling booking");
       console.error("Error cancelling booking:", error);
       setShowCancelModal(false);
+      setIsCancelling(false); // Reset loading state
     },
   });
 
@@ -666,6 +674,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   const confirmStatusChange = () => {
     if (!selectedBooking || !selectedSlotId || !pendingStatusChange) return;
 
+    setIsProcessingRefund(true); // Set loading state
+
     const input: UpdateBookingStatusInput = {
       bookingId: selectedBooking._id,
       slotId: selectedSlotId,
@@ -675,8 +685,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     updateBookingStatus({ variables: { input } });
   };
 
-  const handleCancelBooking = (reason: string) => {
+  const handleCancelBooking = () => {
     if (!selectedBooking || !selectedSlotId) return;
+
+    setIsCancelling(true); // Set loading state
 
     const input: CancelBookingInput = {
       bookingId: selectedBooking._id,
@@ -720,10 +732,31 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   }
 
   const bookings: StudentBooking[] = data?.getAllStudentBookings || [];
+  const formatCancellationDateTime = (timestamp: string | number) => {
+    if (!timestamp) return "-";
 
+    const date = new Date(Number(timestamp));
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) return "-";
+
+    const dateStr = date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `${dateStr} ${timeStr}`;
+  };
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
     >
       <div className="px-6 py-4 border-b border-gray-200">
         <h2 className="text-lg font-medium text-gray-900">All Student</h2>
@@ -738,6 +771,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Lesson Date
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Cancellation Date
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Instructor
@@ -787,6 +823,12 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
+                      {formatCancellationDateTime(booking.cancellationDate)}
+                    </div>
+                  </td>
+
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
                       {booking.instructorId.firstName}{" "}
                       {booking.instructorId.lastName}
                     </div>
@@ -795,10 +837,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                        className={`inline-flex px-3 py-2 text-xs font-medium rounded-full ${
                           slot.status === "cancelled"
                             ? "bg-red-100 text-red-800"
-                            : slot.status === "Refund"
+                            : slot.status === "refund"
                               ? "bg-blue-100 text-blue-800"
                               : "bg-gray-100 text-gray-800"
                         }`}
@@ -819,10 +861,6 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                           );
                         }}
                       />
-
-                      <button className="p-1 text-gray-400 hover:text-gray-600">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
                     </div>
                   </td>
 
@@ -832,7 +870,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                         setSelectedBooking(booking);
                         setShowDetailsModal(true);
                       }}
-                      className="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 text-xs rounded transition-colors duration-150"
+                      className="bg-[#5FC2D3] hover:bg-[#3c8e9c] text-white px-3 py-2.5 text-xs rounded-full transition-colors duration-150"
                     >
                       View Details
                     </button>
@@ -869,26 +907,34 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       <CancelBookingModal
         isOpen={showCancelModal}
         onClose={() => {
-          setShowCancelModal(false);
-          setSelectedBooking(null);
-          setSelectedSlotId(null);
+          if (!isCancelling) {
+            // Prevent closing while loading
+            setShowCancelModal(false);
+            setSelectedBooking(null);
+            setSelectedSlotId(null);
+          }
         }}
         onConfirm={handleCancelBooking}
         booking={selectedBooking}
         slotId={selectedSlotId}
+        isLoading={isCancelling} // Pass loading state
       />
 
       <RefundConfirmationModal
         isOpen={showRefundModal}
         onClose={() => {
-          setShowRefundModal(false);
-          setSelectedBooking(null);
-          setSelectedSlotId(null);
-          setPendingStatusChange(null);
+          if (!isProcessingRefund) {
+            // Prevent closing while loading
+            setShowRefundModal(false);
+            setSelectedBooking(null);
+            setSelectedSlotId(null);
+            setPendingStatusChange(null);
+          }
         }}
         onConfirm={confirmStatusChange}
         booking={selectedBooking}
         slotId={selectedSlotId}
+        isLoading={isProcessingRefund} // Pass loading state
       />
     </div>
   );

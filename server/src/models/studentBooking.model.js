@@ -31,13 +31,14 @@ const studentBookingSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        cancellationDate: { type: Date }, // 👈 slot-level cancellation
         review: {
           type: Boolean,
           default: false,
         },
         status: {
           type: String,
-          enum: ["available", "booked", "cancelled"],
+          enum: ["available", "booked", "cancelled", "refund"],
           default: "available",
         },
       },
@@ -60,6 +61,7 @@ const studentBookingSchema = new mongoose.Schema(
         required: false,
       },
     },
+    cancellationDate: { type: Date },
     feedBackStatus: {
       type: String,
       enum: ["pending", "completed"],
@@ -72,6 +74,7 @@ const studentBookingSchema = new mongoose.Schema(
         "confirmed",
         "cancelled",
         "completed",
+        "refund",
         "semi_cancelled",
       ],
       default: "pending",

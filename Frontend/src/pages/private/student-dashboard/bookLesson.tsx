@@ -106,6 +106,7 @@ const BookLesson: React.FC = () => {
   };
 
   const handleBookingClick = (booking: Booking, id: string, slot: Slot) => {
+    console.log("Clicked booking:", booking);
     navigate("/student-dashboard/booking-details", {
       state: {
         selectedAvailability: slot ? [slot] : booking.slots,
@@ -115,6 +116,9 @@ const BookLesson: React.FC = () => {
           email: booking.instructorId.email,
           description: booking.instructorId.description,
         },
+        name: `${booking.instructorId.firstName} ${booking.instructorId.lastName}`,
+        email: booking.instructorId.email,
+        description: booking.instructorId.description,
         instructorId: booking?.instructorId?._id,
         paymentMethod: {
           type: "card",

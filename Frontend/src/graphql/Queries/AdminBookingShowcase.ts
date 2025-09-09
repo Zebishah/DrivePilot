@@ -38,6 +38,7 @@ export const GET_ALL_STUDENT_BOOKINGS = gql`
       }
       totalAmount
       finalAmount
+      cancellationDate
       paymentMethod {
         type
         cardNumber

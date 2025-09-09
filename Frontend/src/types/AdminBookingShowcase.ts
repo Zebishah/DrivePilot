@@ -27,7 +27,7 @@ export interface BookingSlot {
   endTime: string;
   booked: boolean;
   review: boolean;
-  status: "available" | "booked" | "cancelled" | "Refund";
+  status: "available" | "booked" | "cancelled" | "refund";
 }
 
 export interface PaymentMethod {
@@ -41,6 +41,7 @@ export interface StudentBooking {
   instructorId: Instructor;
   slots: BookingSlot[];
   totalAmount: number;
+  cancellationDate: string;
   finalAmount: number;
   paymentMethod: PaymentMethod;
   feedBackStatus: "pending" | "completed";
@@ -48,6 +49,7 @@ export interface StudentBooking {
     | "pending"
     | "confirmed"
     | "cancelled"
+    | "refund"
     | "completed"
     | "semi_cancelled";
   createdAt: string;
@@ -61,6 +63,7 @@ export interface UpdateBookingStatusInput {
     | "pending"
     | "confirmed"
     | "cancelled"
+    | "refund"
     | "completed"
     | "semi_cancelled";
 }

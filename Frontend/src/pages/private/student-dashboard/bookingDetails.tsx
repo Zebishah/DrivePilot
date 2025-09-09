@@ -55,8 +55,11 @@ const BookingDetails: React.FC = () => {
     bookedLessonDiscount,
     FinalPricePerLesson,
     slot,
+    name = "",
+    email = "",
+    description = "",
   } = location.state || {};
-
+  console.log("location.state", location.state);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCancelled = status === "cancelled";
@@ -78,11 +81,19 @@ const BookingDetails: React.FC = () => {
   // Calculate total amount based on number of lessons and lesson fee
   const lessonFee = bookedLessonFee;
   const lessonDiscount = bookedLessonDiscount;
+  const discount = initialAmount - finalAmountPrice; // 200
+  const discountPercentage = ((discount / initialAmount) * 100).toFixed(2); // "20.00"
+  console.log("lessonFee", lessonDiscount);
+
   const totalAmount = Number(selectedAvailability?.length * lessonFee) || 10;
   const finalAmount = Number(
     (totalAmount * (1 - lessonDiscount / 100)).toFixed(2)
   );
-
+  const initialPriceShown = bookedLessonFee ? bookedLessonFee : initialAmount;
+  const finalPriceShown = finalAmountPrice ? finalAmountPrice : finalAmount;
+  const finalDiscountShown = lessonDiscount
+    ? lessonDiscount
+    : discountPercentage;
   const handleConfirm = () => {
     setError(null);
     setIsConfirmDialogOpen(true);
@@ -101,7 +112,7 @@ const BookingDetails: React.FC = () => {
         throw new Error("No availability slots selected");
       }
 
-      if (!instructorData?.id) {
+      if (!instructorData) {
         throw new Error("Invalid instructor information");
       }
 
@@ -110,7 +121,7 @@ const BookingDetails: React.FC = () => {
       }
 
       const mutationInput = {
-        instructorId: instructorData.id,
+        instructorId: instructorData,
         slots: selectedAvailability.map((slot: any) => ({
           date: slot.date,
           startTime: slot.startTime,
@@ -327,20 +338,20 @@ const BookingDetails: React.FC = () => {
             <strong>Total Duration:</strong> {selectedAvailability?.length || 0}{" "}
             Hours
           </Typography>
-          <Typography variant="body1">
+          {/* <Typography variant="body1">
             <strong>Base Price:</strong>{" "}
-            {bookedLessonFee
+            {initialAmount
               ? (() => {
                   return (
                     <>
                       <span
-                        className={`${bookedLessonFee !== FinalPricePerLesson ? "line-through" : ""} text-gray-800`}
+                        className={`${initialAmount !== finalAmountPrice ? "line-through" : ""} text-gray-800`}
                       >
-                        CHF {bookedLessonFee}/hr
+                        CHF {initialAmount}/hr
                       </span>
-                      {bookedLessonFee !== FinalPricePerLesson ? (
+                      {initialAmount !== finalAmountPrice ? (
                         <span className="ml-2 text-green-600 font-semibold">
-                          CHF {FinalPricePerLesson.toFixed(2)}
+                          CHF {finalAmountPrice.toFixed(2)}
                         </span>
                       ) : null}
                     </>
@@ -352,7 +363,36 @@ const BookingDetails: React.FC = () => {
             <strong>Discount:</strong>
             {
               <span className="ml-2 text-red-500 font-semibold text-sm">
-                ({lessonDiscount?.toFixed(0)}% OFF)
+                ({discountPercentage}% OFF)
+              </span>
+            }
+          </Typography> */}
+          <Typography variant="body1">
+            <strong>Base Price:</strong>{" "}
+            {initialPriceShown
+              ? (() => {
+                  return (
+                    <>
+                      <span
+                        className={`${initialPriceShown !== finalPriceShown ? "line-through" : ""} text-gray-800`}
+                      >
+                        CHF {initialPriceShown}/hr
+                      </span>
+                      {initialPriceShown !== finalPriceShown ? (
+                        <span className="ml-2 text-green-600 font-semibold">
+                          CHF {finalPriceShown.toFixed(2)}
+                        </span>
+                      ) : null}
+                    </>
+                  );
+                })()
+              : "0"}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Discount:</strong>
+            {
+              <span className="ml-2 text-red-500 font-semibold text-sm">
+                ({finalDiscountShown}% OFF)
               </span>
             }
           </Typography>
@@ -442,25 +482,44 @@ const BookingDetails: React.FC = () => {
             Instructor Information
           </Typography>
           <Typography variant="body1">
-            <strong>Name:</strong> {instructorData?.name || "Not available"}
+            <strong>Name:</strong> {name || "Not available"}
           </Typography>
           <Typography variant="body1">
             <strong>Contact:</strong>{" "}
-            <a href={`mailto:${instructorData?.email}`}>
-              {instructorData?.email || "Not available"}
-            </a>
+            <a href={`mailto:${email}`}>{email || "Not available"}</a>
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
             <strong>Description:</strong>{" "}
-            {instructorData?.description || "No description available"}
+            {description || "No description available"}
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            <strong>Attention:</strong>This doesn’t apply to your current case,
+            but just so you know — cancellations made less than 48 hours before
+            a lesson are non-refundable, except in exceptional circumstances
+            (e.g. medical emergencies).
           </Typography>
         </CardContent>
       </Card>
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
         {isCurrentBooking ? (
-          <Button variant="contained" color="primary" onClick={handleConfirm}>
-            Confirm Booking
+          <Button
+            variant="contained"
+            onClick={handleConfirmBooking}
+            disabled={confirmLoading}
+            sx={{
+              width: "200px",
+              bgcolor: "#5ec2d2",
+              "&:hover": {
+                bgcolor: "rgba(65, 135, 147);",
+              },
+            }}
+          >
+            {confirmLoading ? (
+              <CircularProgress size={20} />
+            ) : (
+              "Confirm Booking"
+            )}
           </Button>
         ) : (
           <Button
@@ -536,10 +595,10 @@ const BookingDetails: React.FC = () => {
                 <strong>Lesson Number:</strong>{" "}
                 {selectedAvailability?.length || 0}
               </Typography>
-              <Typography variant="body1" gutterBottom>
+              {/* <Typography variant="body1" gutterBottom>
                 <strong>Duration:</strong>{" "}
-                {getSlotDurations(selectedAvailability).totalDuration} Hours
-              </Typography>
+                {getSlotDurations(selectedAvailability)?.totalDuration} Hours
+              </Typography> */}
               <Typography variant="body1" gutterBottom>
                 <strong>Total Amount:</strong> CHF {totalAmount}
               </Typography>

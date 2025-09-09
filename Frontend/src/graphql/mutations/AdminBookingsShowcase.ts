@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const UPDATE_BOOKING_STATUS = gql`
-  mutation UpdateBookingStatus($input: UpdateBookingStatusInput!) {
-    updateBookingStatus(input: $input) {
+  mutation UpdateBookingStatusAdmin($input: UpdateBookingStatusInputAdmin!) {
+    updateBookingStatusAdmin(input: $input) {
       _id
       status
       slots {
@@ -16,7 +16,7 @@ export const UPDATE_BOOKING_STATUS = gql`
 `;
 
 export const CANCEL_BOOKING_ADMIN = gql`
-  mutation CancelBookingAdmin($input: CancelBookingAdminInput!) {
+  mutation CancelBookingAdmin($input: CancelBookingAdminInputAdmin!) {
     cancelBookingAdmin(input: $input) {
       _id
       status
@@ -24,7 +24,9 @@ export const CANCEL_BOOKING_ADMIN = gql`
         _id
         status
         booked
+        cancellationDate
       }
+      cancellationDate
       updatedAt
     }
   }

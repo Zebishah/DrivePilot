@@ -43,6 +43,7 @@ const AdminBookingTypeDefs = gql`
     booked: Boolean!
     review: Boolean!
     status: SlotStatusAdmin!
+    cancellationDate: String # Add this field
   }
 
   type PaymentMethodAdmin {
@@ -60,6 +61,7 @@ const AdminBookingTypeDefs = gql`
     paymentMethod: PaymentMethodAdmin!
     feedBackStatus: FeedbackStatusAdmin!
     status: BookingStatusAdmin!
+    cancellationDate: String # Add this field
     createdAt: String!
     updatedAt: String!
   }
@@ -68,11 +70,13 @@ const AdminBookingTypeDefs = gql`
     available
     booked
     cancelled
+    refund
   }
 
   enum BookingStatusAdmin {
     pending
     confirmed
+    refund
     cancelled
     completed
     semi_cancelled
@@ -101,6 +105,7 @@ const AdminBookingTypeDefs = gql`
   }
 
   type Mutation {
+    # Fixed: Use the correct resolver name that matches your implementation
     updateBookingStatusAdmin(
       input: UpdateBookingStatusInputAdmin!
     ): StudentBookingAdmin!

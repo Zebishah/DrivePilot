@@ -7,11 +7,13 @@ const studentBookingTypeDefs = gql`
     semi_cancelled
     cancelled
     completed
+    refund
   }
   enum status {
     available
     booked
     cancelled
+    refund
   }
   enum feedBackStatusEnum {
     pending
