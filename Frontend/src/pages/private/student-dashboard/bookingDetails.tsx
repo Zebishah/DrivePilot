@@ -493,10 +493,11 @@ const BookingDetails: React.FC = () => {
             {description || "No description available"}
           </Typography>
           <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-            <strong>Attention:</strong>This doesn’t apply to your current case,
-            but just so you know — cancellations made less than 48 hours before
-            a lesson are non-refundable, except in exceptional circumstances
-            (e.g. medical emergencies).
+            <strong>Attention:</strong>
+            {""} This doesn’t apply to your current case, but just so you know —
+            cancellations made less than 48 hours before a lesson are
+            non-refundable, except in exceptional circumstances (e.g. medical
+            emergencies).
           </Typography>
         </CardContent>
       </Card>
@@ -654,10 +655,11 @@ const BookingDetails: React.FC = () => {
               </Typography>
 
               <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                <strong>Attention:</strong>This doesn’t apply to your current
-                case, but just so you know — cancellations made less than 48
-                hours before a lesson are non-refundable, except in exceptional
-                circumstances (e.g. medical emergencies).
+                <strong>Attention:</strong>
+                {""}This doesn’t apply to your current case, but just so you
+                know — cancellations made less than 48 hours before a lesson are
+                non-refundable, except in exceptional circumstances (e.g.
+                medical emergencies).
               </Typography>
             </Box>
           </DialogContent>
@@ -815,8 +817,9 @@ const BookingDetails: React.FC = () => {
                 </Typography>
 
                 <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                  <strong>Attention:</strong> If you cancel a lesson less than
-                  48 hours before its start time, no refund will be issued.
+                  <strong>Attention:</strong>
+                  {""} If you cancel a lesson less than 48 hours before its
+                  start time, no refund will be issued.
                 </Typography>
               </Box>
             </>

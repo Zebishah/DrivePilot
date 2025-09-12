@@ -25,7 +25,14 @@ import {
 } from "../../graphql/mutations/instructorPublic";
 import { getMapCenterAndMarkers } from "../../utils/mapUtils";
 import FilterPopover from "../FilterPopover";
-import { BadgePercent, Disc, Percent, TicketPercent, X } from "lucide-react";
+import {
+  BadgePercent,
+  Disc,
+  Percent,
+  Star,
+  TicketPercent,
+  X,
+} from "lucide-react";
 
 import InstructorsListSkeleton from "../loaders/InstructorsListSkeleton";
 import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
@@ -509,34 +516,49 @@ const InstructorsInfo: React.FC = () => {
                             : instructor.address}
                         </p>
                       </Tooltip>
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        {instructor.totalReviews > 0 ? (
-                          // Show filled stars when rating exists
-                          <>
-                            {[1].map((_, i) => (
-                              <IoStarSharp
-                                key={i}
-                                style={{
-                                  color: "#FFDB20",
-                                  marginRight: "0.5rem",
+                      <Box sx={{ display: "flex", gap: 0.5, mt: 1 }}>
+                        {[...Array(5)].map((_, index) => {
+                          const starNumber = index + 1;
+                          const rating = instructor.totalReviews;
+
+                          // Determine fill percentage for this star
+                          let fillPercentage = 0;
+                          if (rating >= starNumber) {
+                            fillPercentage = 100; // Full star
+                          } else if (rating > starNumber - 1) {
+                            fillPercentage = (rating - (starNumber - 1)) * 100; // Partial star
+                          }
+
+                          return (
+                            <Box
+                              key={index}
+                              sx={{
+                                position: "relative",
+                                display: "inline-block",
+                              }}
+                            >
+                              {/* Background star (unfilled) */}
+                              <Star size={20} fill="none" stroke="#ccc" />
+                              {/* Foreground star (filled portion) */}
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: `${fillPercentage}%`,
+                                  overflow: "hidden",
                                 }}
-                              />
-                            ))}
-                            <p className="mr-0.5">
-                              ({instructor.totalReviews})
-                            </p>
-                          </>
-                        ) : (
-                          // Show empty star with "No reviews yet" when no rating
-                          <>
-                            <IoStarOutline
-                              style={{ color: "grey", marginRight: "0.5rem" }}
-                            />
-                            <p className="mr-0.5 text-gray-500">
-                              No reviews yet
-                            </p>
-                          </>
-                        )}
+                              >
+                                <Star
+                                  size={20}
+                                  fill="#FFD700"
+                                  stroke="#FFD700"
+                                />
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                        <Box sx={{ ml: 0.5 }}>({instructor.totalReviews})</Box>
                       </Box>
                     </div>
 

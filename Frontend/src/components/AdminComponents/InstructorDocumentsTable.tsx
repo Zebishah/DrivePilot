@@ -1,6 +1,14 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { NetworkStatus, useQuery } from "@apollo/client";
-import { Search, Filter, Eye, User, FileText, RefreshCw } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Eye,
+  User,
+  FileText,
+  RefreshCw,
+  Calendar,
+} from "lucide-react";
 import { StatusDropdown } from "./StatusDropdown";
 
 import { useNavigate } from "react-router-dom";
@@ -19,6 +27,33 @@ export const InstructorDocumentsTable: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [instructorFilter, setInstructorFilter] = useState<string>("all");
   const isRefetching = networkStatus === NetworkStatus.refetch;
+
+  // Fetch documents when component mounts
+  useEffect(() => {
+    refetch();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Function to format timestamp to readable date/time
+  const formatDateTime = (timestamp: string) => {
+    try {
+      const date = new Date(parseInt(timestamp));
+      return {
+        date: date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        }),
+        time: date.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+      };
+    } catch (error) {
+      return { date: "Invalid Date", time: "" };
+    }
+  };
+
   // Flatten documents for table display
   const flattenedDocuments = useMemo(() => {
     if (!data?.allInstructors) return [];
@@ -65,12 +100,18 @@ export const InstructorDocumentsTable: React.FC = () => {
         });
       });
     });
-    return flattened;
+
+    // Sort by createdAt timestamp (latest to oldest)
+    return flattened.sort((a, b) => {
+      const timestampA = parseInt(a.createdAt);
+      const timestampB = parseInt(b.createdAt);
+      return timestampB - timestampA; // Descending order (latest first)
+    });
   }, [data]);
 
   // Filter documents
   const filteredDocuments = useMemo(() => {
-    return flattenedDocuments.filter((doc) => {
+    const filtered = flattenedDocuments.filter((doc) => {
       const matchesSearch =
         doc.instructor.firstName
           .toLowerCase()
@@ -87,6 +128,13 @@ export const InstructorDocumentsTable: React.FC = () => {
         instructorFilter === "all" || doc.instructor._id === instructorFilter;
 
       return matchesSearch && matchesStatus && matchesInstructor;
+    });
+
+    // Maintain sorting after filtering
+    return filtered.sort((a, b) => {
+      const timestampA = parseInt(a.createdAt);
+      const timestampB = parseInt(b.createdAt);
+      return timestampB - timestampA; // Descending order (latest first)
     });
   }, [flattenedDocuments, searchTerm, statusFilter, instructorFilter]);
 
@@ -133,7 +181,7 @@ export const InstructorDocumentsTable: React.FC = () => {
       </div>
     );
   }
-
+  console.log("filteredDocuments", filteredDocuments);
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className=" mx-auto px-4 sm:px-6 lg:px-8">
@@ -209,7 +257,7 @@ export const InstructorDocumentsTable: React.FC = () => {
         <div className="mb-4 flex justify-between w-full">
           <span className="text-sm text-gray-600">
             Showing {filteredDocuments.length} of {flattenedDocuments.length}{" "}
-            documents
+            documents (sorted by latest first)
           </span>
           <button
             onClick={() => refetch()}
@@ -261,6 +309,9 @@ export const InstructorDocumentsTable: React.FC = () => {
                     Location
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created Date & Time
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -269,111 +320,127 @@ export const InstructorDocumentsTable: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredDocuments.map((document) => (
-                  <tr
-                    key={`${document.instructor._id}-${document._id}`}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          {document.instructor.profileImage ? (
-                            <img
-                              className="h-10 w-10 rounded-full object-cover"
-                              src={document.instructor.profileImage}
-                              alt={`${document.instructor.firstName} ${document.instructor.lastName}`}
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                              <User className="h-5 w-5 text-gray-600" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {document.instructor.firstName}{" "}
-                            {document.instructor.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {document.instructor.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FileText className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">
-                          {document.documentType}
-                          {document.isCollective && (
-                            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                              Front & Back
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {document.isCollective &&
-                      document.collectiveGroupKey ===
-                        "Swiss Driving License" ? (
-                        <div className="space-y-1">
-                          {document.frontDocument && (
-                            <div className="text-xs text-gray-600">
-                              <span className="font-medium">Front:</span>{" "}
-                              {document.frontDocument.documentUrl
-                                ?.split("/")
-                                .pop()
-                                ?.substring(0, 30)}
-                              ...
-                            </div>
-                          )}
-                          {document.backDocument && (
-                            <div className="text-xs text-gray-600">
-                              <span className="font-medium">Back:</span>{" "}
-                              {document.backDocument.documentUrl
-                                ?.split("/")
-                                .pop()
-                                ?.substring(0, 30)}
-                              ...
-                            </div>
-                          )}
-                          {!document.frontDocument &&
-                            !document.backDocument && (
-                              <div className="text-xs text-gray-500">
-                                No documents available
+                {filteredDocuments.map((document) => {
+                  const dateTime = formatDateTime(document.createdAt);
+                  return (
+                    <tr
+                      key={`${document.instructor._id}-${document._id}`}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            {document.instructor.profileImage ? (
+                              <img
+                                className="h-10 w-10 rounded-full object-cover"
+                                src={document.instructor.profileImage}
+                                alt={`${document.instructor.firstName} ${document.instructor.lastName}`}
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                <User className="h-5 w-5 text-gray-600" />
                               </div>
                             )}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {document.instructor.firstName}{" "}
+                              {document.instructor.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {document.instructor.email}
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="text-xs text-gray-600">
-                          {document.documentUrl
-                            ?.split("/")
-                            .pop()
-                            ?.substring(0, 40)}
-                          ...
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">
+                            {document.documentType}
+                            {document.isCollective && (
+                              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                Front & Back
+                              </span>
+                            )}
+                          </span>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusDropdown
-                        currentStatus={document.status}
-                        documentId={document._id}
-                        isCollective={document.isCollective}
-                        documents={document.allSameTypeDocs}
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleViewDetails(document)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DC3D2] text-white rounded-lg hover:bg-[#5DC3D2] transition-colors"
-                      >
-                        <Eye size={16} />
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {document.isCollective &&
+                        document.collectiveGroupKey ===
+                          "Swiss Driving License" ? (
+                          <div className="space-y-1">
+                            {document.frontDocument && (
+                              <div className="text-xs text-gray-600">
+                                <span className="font-medium">Front:</span>{" "}
+                                {document.frontDocument.documentUrl
+                                  ?.split("/")
+                                  .pop()
+                                  ?.substring(0, 30)}
+                                ...
+                              </div>
+                            )}
+                            {document.backDocument && (
+                              <div className="text-xs text-gray-600">
+                                <span className="font-medium">Back:</span>{" "}
+                                {document.backDocument.documentUrl
+                                  ?.split("/")
+                                  .pop()
+                                  ?.substring(0, 30)}
+                                ...
+                              </div>
+                            )}
+                            {!document.frontDocument &&
+                              !document.backDocument && (
+                                <div className="text-xs text-gray-500">
+                                  No documents available
+                                </div>
+                              )}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-600">
+                            {document.documentUrl
+                              ?.split("/")
+                              .pop()
+                              ?.substring(0, 40)}
+                            ...
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                          <div className="text-sm">
+                            <div className="text-gray-900 font-medium">
+                              {dateTime.date}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {dateTime.time}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusDropdown
+                          currentStatus={document.status}
+                          documentId={document._id}
+                          isCollective={document.isCollective}
+                          documents={document.allSameTypeDocs}
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => handleViewDetails(document)}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DC3D2] text-white rounded-lg hover:bg-[#5DC3D2] transition-colors"
+                        >
+                          <Eye size={16} />
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

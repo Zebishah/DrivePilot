@@ -261,21 +261,41 @@ export default function ProfileSetting() {
                   </Box>
 
                   <Box sx={{ display: "flex", gap: 0.5, mt: 1 }}>
-                    {[...Array(5)].map((_, index) => (
-                      <Star
-                        key={index}
-                        size={20}
-                        fill={
-                          index < profileData.reviewRating ? "#FFD700" : "none"
-                        }
-                        stroke={
-                          index < profileData.reviewRating ? "#FFD700" : "#ccc"
-                        }
-                      />
-                    ))}
-                    {"("}
-                    {profileData.reviewRating}
-                    {")"}
+                    {[...Array(5)].map((_, index) => {
+                      const starNumber = index + 1;
+                      const rating = profileData.reviewRating;
+
+                      // Determine fill percentage for this star
+                      let fillPercentage = 0;
+                      if (rating >= starNumber) {
+                        fillPercentage = 100; // Full star
+                      } else if (rating > starNumber - 1) {
+                        fillPercentage = (rating - (starNumber - 1)) * 100; // Partial star
+                      }
+
+                      return (
+                        <Box
+                          key={index}
+                          sx={{ position: "relative", display: "inline-block" }}
+                        >
+                          {/* Background star (unfilled) */}
+                          <Star size={20} fill="none" stroke="#ccc" />
+                          {/* Foreground star (filled portion) */}
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: `${fillPercentage}%`,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <Star size={20} fill="#FFD700" stroke="#FFD700" />
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                    <Box sx={{ ml: 0.5 }}>({profileData.reviewRating})</Box>
                   </Box>
                 </Box>
               </Box>

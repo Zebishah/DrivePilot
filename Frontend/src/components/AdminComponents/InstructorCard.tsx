@@ -125,7 +125,7 @@ export const InstructorCard: React.FC<InstructorCardProps> = ({
                   isSelected ? "text-gray-100" : "text-gray-600"
                 }`}
               >
-                {rating || 0}%
+                ({rating || 0})
               </span>
             </div>
           </div>

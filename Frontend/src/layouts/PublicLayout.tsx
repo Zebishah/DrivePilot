@@ -49,22 +49,6 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
       <Navbar />
       <main>{children || <Outlet />}</main>
       <Footer />
-
-      {/* Optional: Add a small indicator for development */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="fixed bottom-4 right-4 z-50">
-          {isTracked && (
-            <div className="bg-green-500 text-white px-2 py-1 rounded text-xs">
-              👁️ Tracked
-            </div>
-          )}
-          {trackingError && (
-            <div className="bg-red-500 text-white px-2 py-1 rounded text-xs">
-              ❌ Tracking Failed
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
