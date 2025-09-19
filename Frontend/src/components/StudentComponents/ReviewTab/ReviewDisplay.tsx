@@ -7,6 +7,7 @@ import {
   useReviewByLessonSlot,
 } from "../../../hooks/UseReview";
 import { BackButton } from "../../InstructorComponent/common/BackButton";
+import { StarRating } from "./RatingComponent";
 
 const ReviewDisplayPage: React.FC = () => {
   const navigate = useNavigate();
@@ -256,22 +257,7 @@ const ReviewDisplayPage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Star Rating
                 </h3>
-                <div className="flex items-center space-x-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      size={24}
-                      className={`${
-                        star <= existingReview.reviewRating
-                          ? "text-yellow-400 fill-yellow-400"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  ))}
-                  <span className="ml-2 text-sm text-gray-600">
-                    ({existingReview.reviewRating}/5)
-                  </span>
-                </div>
+                <StarRating rating={existingReview.reviewRating} />
               </div>
 
               {/* Review Text */}

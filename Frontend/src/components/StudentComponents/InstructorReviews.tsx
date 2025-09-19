@@ -3,6 +3,7 @@ import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { Star, User } from "lucide-react";
 import { LoadingSpinner } from "../InstructorComponent/StudentsTracking/StudentHeader";
+import { StarRating } from "./ReviewTab/RatingComponent";
 
 // GraphQL Query
 const GET_INSTRUCTOR_REVIEWS = gql`
@@ -84,29 +85,6 @@ interface InstructorReviewsProps {
 }
 
 // Star Rating Component
-const StarRating: React.FC<StarRatingProps> = ({ rating, size = "sm" }) => {
-  const sizeClasses = {
-    sm: "w-4 h-4",
-    md: "w-5 h-5",
-    lg: "w-6 h-6",
-  };
-
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star: number) => (
-        <Star
-          key={star}
-          className={`${sizeClasses[size]} ${
-            star <= rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-          }`}
-        />
-      ))}
-      <span className="ml-2 text-sm font-medium text-gray-700">
-        {rating.toFixed(1)}
-      </span>
-    </div>
-  );
-};
 
 // Individual Review Card Component
 const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
@@ -182,7 +160,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
           </p>
 
           {/* Review Status Badge */}
-          {review.reviewStatus && (
+          {/* {review.reviewStatus && (
             <div className="mt-3">
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(review.reviewStatus)}`}
@@ -191,7 +169,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
                   review.reviewStatus.slice(1)}
               </span>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>
@@ -274,9 +252,9 @@ const InstructorReviews: React.FC<InstructorReviewsProps> = ({
               Reviews
             </h2>
             {reviews.length > 0 && (
-              <div className="flex items-center gap-4 px-6">
-                <StarRating rating={averageRating} size="md" />
-                <span className="text-gray-600">
+              <div className="flex items-center px-6 justify-center ">
+                <StarRating rating={averageRating} size="sm" />
+                <span className="text-gray-600 mt-1 ml-32">
                   ({reviews.length}{" "}
                   {reviews.length === 1 ? "review" : "reviews"})
                 </span>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Star, GraduationCap, Car, Settings, Eye } from "lucide-react";
 import { Instructor } from "../../types/Instructor";
+import { StarRating } from "../StudentComponents/ReviewTab/RatingComponent";
 
 interface InstructorCardProps {
   instructor: Instructor;
@@ -106,27 +107,7 @@ export const InstructorCard: React.FC<InstructorCardProps> = ({
 
           <div className="flex items-center mt-1">
             <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${
-                    i < Math.floor(rating)
-                      ? isSelected
-                        ? "text-white fill-white"
-                        : "text-yellow-400 fill-current"
-                      : isSelected
-                        ? "text-gray-200"
-                        : "text-gray-300"
-                  }`}
-                />
-              ))}
-              <span
-                className={`text-xs ml-1 ${
-                  isSelected ? "text-gray-100" : "text-gray-600"
-                }`}
-              >
-                ({rating || 0})
-              </span>
+              <StarRating rating={rating} size="sm" />
             </div>
           </div>
         </div>

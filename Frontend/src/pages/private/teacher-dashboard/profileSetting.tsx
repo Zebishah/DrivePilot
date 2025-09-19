@@ -478,7 +478,7 @@ export default function ProfileSetting() {
         scrollButtons="auto"
       >
         <Tab value="documents" label="Documents" />
-        <Tab value="tariff" label="Tariff Management" />
+        <Tab value="tariff" label="Price Management" />
         <Tab value="availability" label="Availability & Calendar" />
         <Tab value="ratings" label="Ratings & Scores" />
         <Tab value="payment" label="Payment Management" />

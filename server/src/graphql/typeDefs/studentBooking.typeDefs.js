@@ -43,6 +43,12 @@ const studentBookingTypeDefs = gql`
     description: String
   }
 
+  type TeacherTariffInfo {
+    lessonFee: Float
+    finalPricePerLesson: Float
+    lessonDiscount: Float
+  }
+
   type StudentBooking {
     _id: ID!
     studentId: UserBooking!
@@ -50,13 +56,13 @@ const studentBookingTypeDefs = gql`
     slots: [Slot!]!
     totalAmount: Int!
     finalAmount: Float!
-
     paymentMethod: PaymentMethod!
     status: BookingStatus!
     profileImage: String
     feedBackStatus: feedBackStatusEnum
     createdAt: String!
     updatedAt: String!
+    teacherTariff: TeacherTariffInfo # ✅ New field
   }
 
   input SlotInput {

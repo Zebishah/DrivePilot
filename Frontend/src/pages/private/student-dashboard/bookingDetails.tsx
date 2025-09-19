@@ -89,8 +89,13 @@ const BookingDetails: React.FC = () => {
   const finalAmount = Number(
     (totalAmount * (1 - lessonDiscount / 100)).toFixed(2)
   );
-  const initialPriceShown = bookedLessonFee ? bookedLessonFee : initialAmount;
-  const finalPriceShown = finalAmountPrice ? finalAmountPrice : finalAmount;
+  console.log("");
+  const initialPriceShown = bookedLessonFee
+    ? bookedLessonFee * selectedAvailability?.length
+    : initialAmount * selectedAvailability?.length;
+  const finalPriceShown = finalAmountPrice
+    ? finalAmountPrice * selectedAvailability?.length
+    : FinalPricePerLesson * selectedAvailability?.length;
   const finalDiscountShown = lessonDiscount
     ? lessonDiscount
     : discountPercentage;

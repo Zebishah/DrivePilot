@@ -144,7 +144,76 @@ const ReviewFormPage: React.FC = () => {
       </div>
     );
   }
-  console.log("slot", slot);
+  const handleStarClick = (star, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const starWidth = rect.width;
+    const isLeftHalf = clickX < starWidth / 2;
+
+    const newRating = isLeftHalf ? star - 0.5 : star;
+    setRating(newRating);
+  };
+
+  const handleStarHover = (star, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const hoverX = event.clientX - rect.left;
+    const starWidth = rect.width;
+    const isLeftHalf = hoverX < starWidth / 2;
+
+    const newHover = isLeftHalf ? star - 0.5 : star;
+    setHoveredRating(newHover);
+  };
+
+  const getStarFillClass = (star) => {
+    const currentRating = hoveredRating || rating;
+
+    if (star <= currentRating) {
+      return "text-yellow-400 fill-yellow-400"; // Full star
+    } else if (star - 0.5 === currentRating) {
+      return "text-yellow-400"; // Half star (outline only)
+    } else {
+      return "text-gray-300"; // Empty star
+    }
+  };
+
+  const renderStar = (star) => {
+    const currentRating = hoveredRating || rating;
+    const isHalfFilled = star - 0.5 === currentRating;
+
+    return (
+      <div key={star} className="relative">
+        <button
+          type="button"
+          onClick={(e) => handleStarClick(star, e)}
+          onMouseMove={(e) => handleStarHover(star, e)}
+          onMouseLeave={() => setHoveredRating(0)}
+          className="transition-colors duration-200 relative"
+        >
+          {/* Base star (outline) */}
+          <Star size={32} className={getStarFillClass(star)} />
+
+          {/* Half star overlay for partial fills */}
+          {isHalfFilled && (
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ width: "50%" }}
+            >
+              <Star size={32} className="text-yellow-400 fill-yellow-400" />
+            </div>
+          )}
+        </button>
+      </div>
+    );
+  };
+
+  const getRatingText = () => {
+    if (rating === 0) return "";
+    if (rating % 1 === 0) {
+      return `You rated ${rating} out of 5 stars`;
+    } else {
+      return `You rated ${rating} out of 5 stars`;
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <BackButton variant="outline" showIcon={true} />
@@ -202,33 +271,12 @@ const ReviewFormPage: React.FC = () => {
                 Give Star Rating
               </h3>
               <div className="flex justify-center space-x-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoveredRating(star)}
-                    onMouseLeave={() => setHoveredRating(0)}
-                    className="transition-colors duration-200"
-                  >
-                    <Star
-                      size={32}
-                      className={`${
-                        star <= (hoveredRating || rating)
-                          ? "text-yellow-400 fill-yellow-400"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  </button>
-                ))}
+                {[1, 2, 3, 4, 5].map((star) => renderStar(star))}
               </div>
               {rating > 0 && (
-                <p className="text-sm text-gray-600 mt-2">
-                  You rated {rating} out of 5 stars
-                </p>
+                <p className="text-sm text-gray-600 mt-2">{getRatingText()}</p>
               )}
             </div>
-
             {/* Review Text */}
             <div>
               <div className="flex items-center justify-between mb-2">

@@ -166,6 +166,7 @@ export const GET_ALL_STUDENTS_ADMIN = gql`
       documents {
         documentType
         documentUrl
+        status
       }
       createdAt
       updatedAt
