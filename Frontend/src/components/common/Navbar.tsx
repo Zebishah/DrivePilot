@@ -79,6 +79,26 @@ const Navbar: React.FC = () => {
             Our Instructors
           </NavLink>
         </li>
+        <div className="block md:hidden w-full">
+          <Button
+            onClick={() => {
+              window.location.href = "/auth/signin";
+            }}
+            variant="contained"
+            sx={{
+              paddingLeft: "2rem",
+              paddingRight: "2rem",
+              borderRadius: "10px",
+              backgroundColor: "#5EC2D2",
+              "&:hover": { backgroundColor: "#479A93" },
+              textTransform: "none",
+              color: "#000",
+              fontFamily: "Poppins, sans-serif",
+            }}
+          >
+            Sign In
+          </Button>
+        </div>
       </ul>
 
       {/* Button Section */}
