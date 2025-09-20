@@ -18,6 +18,7 @@ import {
 import { format } from "date-fns";
 import { StudentDetail } from "../../types/Student";
 import { gql, useMutation } from "@apollo/client";
+import toast from "react-hot-toast";
 
 interface StudentDetailModalProps {
   student: StudentDetail | null;
@@ -84,11 +85,11 @@ const DocumentStatusDropdown: React.FC<DocumentStatusDropdownProps> = ({
     UPDATE_DOCUMENT_STATUS_STUDENT,
     {
       onCompleted: (data) => {
-        console.log("Document status updated successfully:", data);
+        toast.success("Document status updated successfully");
         onStatusUpdate?.(document.documentType, currentStatus);
       },
       onError: (error) => {
-        console.error("Error updating document status:", error);
+        toast.error("Error updating document status");
         // Reset to previous status on error
         setCurrentStatus(document.status);
       },
