@@ -368,6 +368,11 @@ const typeDefs = gql`
     success: Boolean!
     message: String!
   }
+  enum DocumentStatus {
+    pending
+    accepted
+    rejected
+  }
   type Query {
     allInstructors: [Instructor!]!
     allInstructorsWithDetails: [InstructorWithDetails!]
@@ -402,6 +407,11 @@ const typeDefs = gql`
     ): InstructorDocumentsResponse!
 
     updateDocumentStatus(documentId: ID!, status: String!): InstructorDocument!
+    updateDocumentStatusStudent(
+      studentId: ID!
+      documentType: String!
+      status: DocumentStatus!
+    ): Student
     forgotPassword(email: String!): PasswordResetResponse!
     resetPassword(token: String!, newPassword: String!): PasswordResetResponse!
     changePassword(

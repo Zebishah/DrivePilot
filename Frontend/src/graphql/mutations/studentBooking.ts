@@ -54,6 +54,11 @@ export const GET_STUDENT_BOOKINGS = gql`
         type
         cardNumber
       }
+      teacherTariff {
+        lessonFee
+        finalPricePerLesson
+        lessonDiscount
+      }
     }
   }
 `;

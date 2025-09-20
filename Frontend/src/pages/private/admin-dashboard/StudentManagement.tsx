@@ -35,11 +35,13 @@ export const StudentManagement: React.FC = () => {
     GET_ALL_STUDENTS_ADMIN,
     {
       notifyOnNetworkStatusChange: true,
+      fetchPolicy: "network-only", // <— always request from server on mount
     }
   );
   const [deleteStudents, { loading: deleting }] = useMutation(DELETE_STUDENTS);
 
   const students: StudentDetail[] = data?.allStudentsWithLessonStats || [];
+
   const isRefetching = networkStatus === NetworkStatus.refetch;
   // Get unique locations for filter
   const availableLocations = useMemo(() => {
@@ -192,7 +194,7 @@ export const StudentManagement: React.FC = () => {
       </div>
     );
   }
-
+  console.log("selectedStudents:", selectedStudent);
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">

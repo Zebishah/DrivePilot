@@ -12,17 +12,13 @@ import {
   Clock,
   Eye,
   Download,
+  ChevronDown,
 } from "lucide-react";
 
 import { format } from "date-fns";
 import { StudentDetail } from "../../types/Student";
-
-interface Document {
-  documentType: string;
-  documentUrl?: string;
-  documentContent?: string;
-  // Add other document properties as needed
-}
+import { gql, useMutation } from "@apollo/client";
+import toast from "react-hot-toast";
 
 interface StudentDetailModalProps {
   student: StudentDetail | null;
@@ -36,6 +32,159 @@ interface DocumentViewerModalProps {
   onClose: () => void;
 }
 
+export const UPDATE_DOCUMENT_STATUS_STUDENT = gql`
+  mutation UpdateDocumentStatusStudent(
+    $studentId: ID!
+    $documentType: String!
+    $status: DocumentStatus!
+  ) {
+    updateDocumentStatusStudent(
+      studentId: $studentId
+      documentType: $documentType
+      status: $status
+    ) {
+      id
+      documents {
+        documentType
+        documentUrl
+        status
+        createdAt
+      }
+    }
+  }
+`;
+
+export interface Document {
+  documentType: string;
+  documentUrl?: string;
+  documentContent?: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt?: string;
+}
+
+export type DocumentStatus = "pending" | "accepted" | "rejected";
+
+// Document Status Dropdown Component
+interface DocumentStatusDropdownProps {
+  document: Document;
+  studentId: string;
+  onStatusUpdate?: (documentType: string, newStatus: DocumentStatus) => void;
+}
+
+const DocumentStatusDropdown: React.FC<DocumentStatusDropdownProps> = ({
+  document,
+  studentId,
+  onStatusUpdate,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<DocumentStatus>(
+    document.status
+  );
+
+  const [updateDocumentStatus, { loading }] = useMutation(
+    UPDATE_DOCUMENT_STATUS_STUDENT,
+    {
+      onCompleted: (data) => {
+        toast.success("Document status updated successfully");
+        onStatusUpdate?.(document.documentType, currentStatus);
+      },
+      onError: (error) => {
+        toast.error("Error updating document status");
+        // Reset to previous status on error
+        setCurrentStatus(document.status);
+      },
+    }
+  );
+
+  const statusOptions: {
+    value: DocumentStatus;
+    label: string;
+    color: string;
+  }[] = [
+    {
+      value: "pending",
+      label: "Pending",
+      color: "bg-yellow-100 text-yellow-700",
+    },
+    {
+      value: "accepted",
+      label: "Accepted",
+      color: "bg-green-100 text-green-700",
+    },
+    { value: "rejected", label: "Rejected", color: "bg-red-100 text-red-700" },
+  ];
+
+  const handleStatusChange = async (newStatus: DocumentStatus) => {
+    if (newStatus === currentStatus || loading) return;
+
+    setCurrentStatus(newStatus);
+    setIsOpen(false);
+
+    try {
+      await updateDocumentStatus({
+        variables: {
+          studentId,
+          documentType: document.documentType,
+          status: newStatus,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to update document status:", error);
+    }
+  };
+
+  const getCurrentStatusConfig = () => {
+    return (
+      statusOptions.find((option) => option.value === currentStatus) ||
+      statusOptions[0]
+    );
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={loading}
+        className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+          getCurrentStatusConfig().color
+        } ${loading ? "opacity-50 cursor-not-allowed" : "hover:opacity-80"}`}
+      >
+        {loading ? "Updating..." : getCurrentStatusConfig().label}
+        <ChevronDown
+          className={`ml-1 w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && !loading && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
+
+          {/* Dropdown Menu */}
+          <div className="absolute right-0 mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+            {statusOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleStatusChange(option.value)}
+                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                  option.value === currentStatus
+                    ? `${option.color}`
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // Document Viewer Modal Component
 const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   document,
@@ -47,12 +196,12 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const handleDownload = () => {
     if (document.documentUrl) {
       // Create a temporary link and trigger download
-      const link = document.createElement("a");
+      const link = window.document.createElement("a");
       link.href = document.documentUrl;
       link.download = document.documentType;
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
     }
   };
 
@@ -71,6 +220,13 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               {document.documentType}
             </h2>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={handleDownload}
+                className="flex items-center justify-center w-8 h-8 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                title="Download Document"
+              >
+                <Download className="w-4 h-4" />
+              </button>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -163,6 +319,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const handleCloseDocumentViewer = () => {
     setIsDocumentViewerOpen(false);
     setSelectedDocument(null);
+  };
+
+  const handleDocumentStatusUpdate = (
+    documentType: string,
+    newStatus: DocumentStatus
+  ) => {
+    // Optional: You can update the local state here if needed
+    console.log(`Document ${documentType} status updated to ${newStatus}`);
   };
 
   return (
@@ -361,9 +525,12 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full text-green-700 bg-green-100">
-                          verified
-                        </span>
+                        {/* Document Status Dropdown */}
+                        <DocumentStatusDropdown
+                          document={doc}
+                          studentId={student.id}
+                          onStatusUpdate={handleDocumentStatusUpdate}
+                        />
 
                         <button
                           onClick={() => handleViewDocument(doc)}

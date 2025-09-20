@@ -53,6 +53,11 @@ interface Booking {
   createdAt: string;
   initialAmount: number;
   finalAmount: number;
+  teacherTariff: {
+    lessonFee: number;
+    finalPricePerLesson: number;
+    lessonDiscount: number;
+  };
 }
 
 const BookLesson: React.FC = () => {
@@ -127,8 +132,8 @@ const BookLesson: React.FC = () => {
         isCurrentBooking: false,
         bookingId: booking._id,
         slotId: id,
-        finalAmountPrice: booking.finalAmount,
-        initialAmount: booking.totalAmount,
+        finalAmountPrice: booking.teacherTariff.finalPricePerLesson,
+        initialAmount: booking.teacherTariff.lessonFee,
         status: booking.status,
         slot: slot,
       },

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useMutation, gql } from "@apollo/client";
 import toast from "react-hot-toast";
+import { StarRating } from "../StudentComponents/ReviewTab/RatingComponent";
 
 // Simple date formatter
 const formatDate = (dateString) => {
@@ -294,17 +295,7 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
 
               <div className="flex items-center mb-3">
                 <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.floor(rating)
-                          ? "text-yellow-400 fill-current"
-                          : "text-gray-300"
-                      }`}
-                    />
-                  ))}
-                  <span className="text-sm text-gray-600 ml-2">{rating}%</span>
+                  <StarRating rating={rating || 0} size={16} isHalf={true} />
                 </div>
               </div>
               <div className="ml-3 flex items-center space-x-2">

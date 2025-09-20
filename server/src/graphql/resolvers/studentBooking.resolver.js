@@ -11,6 +11,7 @@ const { User } = require("../../models/User");
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
+const teacherTariffModel = require("../../models/teacherTariff.model");
 
 const studentBookingResolver = {
   Query: {
@@ -27,9 +28,9 @@ const studentBookingResolver = {
       validateUser(user);
 
       const currentDate = new Date();
-      currentDate.setHours(0, 0, 0, 0); // Set to start of today
+      currentDate.setHours(0, 0, 0, 0); // start of today
 
-      // Get ALL bookings first
+      // Get all bookings for this student
       const allBookings = await StudentBooking.find({ studentId: user.id })
         .populate(
           "instructorId",
@@ -37,24 +38,46 @@ const studentBookingResolver = {
         )
         .sort({ createdAt: -1 });
 
-      // Filter each booking to only show present/future slots
-      const filteredBookings = allBookings
-        .map((booking) => {
-          const futureSlots = booking.slots.filter((slot) => {
-            const slotDate = new Date(slot.date);
-            return slotDate >= currentDate;
-          });
+      const filteredBookings = [];
 
-          return {
-            ...booking.toObject(),
-            slots: futureSlots,
-          };
-        })
-        .filter((booking) => booking.slots.length > 0); // Remove bookings with no future slots
+      for (const booking of allBookings) {
+        // keep only today/future slots
+        const futureSlots = booking.slots.filter((slot) => {
+          const slotDate = new Date(slot.date);
+          return slotDate >= currentDate;
+        });
+
+        if (!futureSlots.length) continue;
+
+        // 🔑 Fetch the instructor's tariff (default or first)
+        const teacherTariff = await teacherTariffModel
+          .findOne({
+            teacherId: booking.instructorId._id,
+          })
+          .lean();
+
+        // Safely handle if no tariff found
+        const tariffDetails = teacherTariff
+          ? {
+              lessonFee: teacherTariff.lessonFee,
+              finalPricePerLesson: teacherTariff.FinalPricePerLesson,
+              lessonDiscount: teacherTariff.lessonDiscount,
+            }
+          : {
+              lessonFee: null,
+              finalPricePerLesson: null,
+              lessonDiscount: null,
+            };
+
+        filteredBookings.push({
+          ...booking.toObject(),
+          slots: futureSlots,
+          teacherTariff: tariffDetails, // ✅ Add tariff info here
+        });
+      }
 
       return filteredBookings;
     },
-
     getCompletedStudentBookings: async (_, __, { user }) => {
       validateUser(user);
 

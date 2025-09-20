@@ -25,7 +25,7 @@ const reviewTypeDefs = gql`
     slotDetails: SlotDetails!
   }
   input CreateReviewInput {
-    reviewRating: Int!
+    reviewRating: Float!
     reviewDescription: String!
     studentId: ID!
     instructorId: ID!
@@ -34,7 +34,7 @@ const reviewTypeDefs = gql`
   }
 
   input UpdateReviewInput {
-    reviewRating: Int
+    reviewRating: Float
     reviewDescription: String
   }
 
@@ -49,7 +49,7 @@ const reviewTypeDefs = gql`
   type Review {
     _id: ID!
     reviewStatus: String!
-    reviewRating: Int
+    reviewRating: Float
     reviewDescription: String
     studentId: ReviewUser!
     instructorId: ReviewUser!

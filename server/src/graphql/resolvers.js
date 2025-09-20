@@ -304,6 +304,7 @@ const resolvers = {
                 _id: doc._id.toString(),
                 documentType: doc.documentType,
                 documentUrl: doc.documentUrl,
+                status: doc.status,
               })),
             };
           })
@@ -451,35 +452,36 @@ instead.`);
         // Check if any documents being updated are already accepted
         for (const newDoc of documents) {
           const { documentType } = newDoc;
-
-          if (multipleUploadAllowed.includes(documentType)) {
-            // For multiple upload types, check if ALL documents of this type are accepted
-            const documentsOfThisType = existingDocuments.filter(
-              (doc) => doc.documentType === documentType
-            );
-
-            // If there are documents of this type and ALL of them are accepted, don't allow more uploads
-            if (documentsOfThisType.length > 0) {
-              const allAccepted = documentsOfThisType.every(
-                (doc) => doc.status === "accepted"
+          if (documentType !== "Other Document (Optional)") {
+            if (multipleUploadAllowed.includes(documentType)) {
+              // For multiple upload types, check if ALL documents of this type are accepted
+              const documentsOfThisType = existingDocuments.filter(
+                (doc) => doc.documentType === documentType
               );
-              if (allAccepted) {
+
+              // If there are documents of this type and ALL of them are accepted, don't allow more uploads
+              if (documentsOfThisType.length > 0) {
+                const allAccepted = documentsOfThisType.every(
+                  (doc) => doc.status === "accepted"
+                );
+                if (allAccepted) {
+                  throw new UserInputError(
+                    `Cannot upload more documents of type ${documentType} as all existing documents are already accepted`
+                  );
+                }
+              }
+            } else {
+              // For single upload types, check if there's already an accepted document
+              const acceptedDoc = existingDocuments.find(
+                (doc) =>
+                  doc.documentType === documentType && doc.status === "accepted"
+              );
+
+              if (acceptedDoc) {
                 throw new UserInputError(
-                  `Cannot upload more documents of type ${documentType} as all existing documents are already accepted`
+                  `Cannot update document ${documentType} as it is already accepted`
                 );
               }
-            }
-          } else {
-            // For single upload types, check if there's already an accepted document
-            const acceptedDoc = existingDocuments.find(
-              (doc) =>
-                doc.documentType === documentType && doc.status === "accepted"
-            );
-
-            if (acceptedDoc) {
-              throw new UserInputError(
-                `Cannot update document ${documentType} as it is already accepted`
-              );
             }
           }
         }
@@ -670,6 +672,35 @@ instead.`);
         };
       } catch (error) {
         throw error;
+      }
+    },
+    updateDocumentStatusStudent: async (
+      parent,
+      { studentId, documentType, status },
+      context
+    ) => {
+      try {
+        // Find the student and update the specific document status
+        const updatedStudent = await Student.findOneAndUpdate(
+          {
+            _id: studentId,
+            "documents.documentType": documentType,
+          },
+          {
+            $set: {
+              "documents.$.status": status,
+            },
+          },
+          { new: true }
+        );
+
+        if (!updatedStudent) {
+          throw new Error("Student or document not found");
+        }
+
+        return updatedStudent;
+      } catch (error) {
+        throw new Error(`Failed to update document status: ${error.message}`);
       }
     },
     verifyUser: async (_, { input }) => {

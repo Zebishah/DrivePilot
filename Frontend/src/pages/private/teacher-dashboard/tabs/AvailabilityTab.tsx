@@ -274,24 +274,30 @@ export const AvailabilityTab: React.FC = () => {
   // Sort slots chronologically if showing all slots
   const displaySlots = useMemo(() => {
     if (!filteredSlots.length) return [];
+    const today = new Date().toISOString().split("T")[0];
+    return [...filteredSlots]
+      .filter((slot) => {
+        // skip if date missing
+        if (!slot.date) return false;
+        return slot.date >= today;
+      })
+      .sort((a, b) => {
+        try {
+          // First compare by date - safely handle missing properties
+          const dateA = a.date || "";
+          const dateB = b.date || "";
+          const dateComparison = dateA.localeCompare(dateB);
+          if (dateComparison !== 0) return dateComparison;
 
-    return [...filteredSlots].sort((a, b) => {
-      try {
-        // First compare by date - safely handle missing properties
-        const dateA = a.date || "";
-        const dateB = b.date || "";
-        const dateComparison = dateA.localeCompare(dateB);
-        if (dateComparison !== 0) return dateComparison;
-
-        // Then compare by start time if dates are the same
-        const startTimeA = a.startTime || "";
-        const startTimeB = b.startTime || "";
-        return startTimeA.localeCompare(startTimeB);
-      } catch (err) {
-        console.error("Error sorting slots:", err);
-        return 0; // Keep original order on error
-      }
-    });
+          // Then compare by start time if dates are the same
+          const startTimeA = a.startTime || "";
+          const startTimeB = b.startTime || "";
+          return startTimeA.localeCompare(startTimeB);
+        } catch (err) {
+          console.error("Error sorting slots:", err);
+          return 0; // Keep original order on error
+        }
+      });
   }, [filteredSlots]);
 
   return (
