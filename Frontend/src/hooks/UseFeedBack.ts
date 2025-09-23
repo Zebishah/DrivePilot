@@ -26,8 +26,9 @@ export const useFeedback = () => {
 
   const { user } = useAuth();
   const { lessonId } = useParams<{ lessonId: string }>();
+  const { bookingId } = useParams<{ bookingId: string }>();
   const { studentId } = useParams<{ studentId: string }>();
-
+  console.log("console log", bookingId, lessonId, studentId);
   const navigate = useNavigate();
   const { data, loading: isStudentLoading } = useQuery(
     GET_STUDENT_LESSON_HOURS,
@@ -98,6 +99,7 @@ export const useFeedback = () => {
     try {
       const input = {
         lessonId,
+        bookingId,
         instructorId: user.id,
         instructorEmail: user.email,
         feedbackTags: formData.skills,
@@ -108,7 +110,10 @@ export const useFeedback = () => {
       await createFeedback({
         variables: { input },
         refetchQueries: [
-          { query: GET_FEEDBACK_BY_LESSON_ID, variables: { lessonId } },
+          {
+            query: GET_FEEDBACK_BY_LESSON_ID,
+            variables: { lessonId, bookingId },
+          },
         ],
         awaitRefetchQueries: true,
       });

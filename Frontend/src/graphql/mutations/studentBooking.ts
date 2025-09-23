@@ -72,7 +72,6 @@ export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
       status
       createdAt
       updatedAt
-
       instructorId {
         _id
         firstName
@@ -93,12 +92,12 @@ export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
         endTime
         booked
         status
+        feedBackStatus
       }
       paymentMethod {
         type
         cardNumber
       }
-      feedBackStatus
     }
   }
 `;

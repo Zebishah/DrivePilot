@@ -59,13 +59,13 @@ const studentBookingTypeDefs = gql`
     paymentMethod: PaymentMethod!
     status: BookingStatus!
     profileImage: String
-    feedBackStatus: feedBackStatusEnum
     createdAt: String!
     updatedAt: String!
     teacherTariff: TeacherTariffInfo # ✅ New field
   }
 
   input SlotInput {
+    id: ID
     date: String!
     startTime: String!
     endTime: String!
@@ -128,10 +128,12 @@ const studentBookingTypeDefs = gql`
   }
 
   type Slot {
+    _id: ID!
     date: String!
     startTime: String!
     endTime: String!
     booked: Boolean
+    feedBackStatus: feedBackStatusEnum
     status: status
     review: Boolean
   }

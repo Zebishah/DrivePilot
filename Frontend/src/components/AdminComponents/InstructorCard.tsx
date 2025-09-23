@@ -107,7 +107,7 @@ export const InstructorCard: React.FC<InstructorCardProps> = ({
 
           <div className="flex items-center mt-1">
             <div className="flex items-center">
-              <StarRating rating={rating} size="sm" />
+              <StarRating rating={rating} count={instructor.reviewsCount} />
             </div>
           </div>
         </div>

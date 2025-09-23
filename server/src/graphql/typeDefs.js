@@ -153,6 +153,7 @@ const typeDefs = gql`
     verificationStatus: String
     lessonPrice: Float
     studentCount: Int
+    reviewsCount: Int
     reviewRating: Float
     transmissionType: String
     gender: String
@@ -191,6 +192,7 @@ const typeDefs = gql`
     dateOfBirth: String
     languagePreference: [String] # Changed from String to [String]
     reviewRating: Float
+    reviewsCount: Int
   }
   type UserBase implements User {
     id: ID!

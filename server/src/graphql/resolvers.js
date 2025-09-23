@@ -86,6 +86,7 @@ const resolvers = {
           (sum, review) => sum + (review.reviewRating || 0),
           0
         );
+        const reviewsCount = reviews.length;
         const averageRating =
           reviews.length > 0 ? totalRating / reviews.length : null;
 
@@ -105,6 +106,7 @@ const resolvers = {
           dateOfBirth: instructor.dateOfBirth,
           languagePreference: instructor.languagePreference,
           reviewRating: averageRating, // 🔥 Include average review rating
+          reviewsCount: reviewsCount,
         };
       } catch (error) {
         console.error("Error in teacherProfile:", error);
@@ -195,7 +197,7 @@ const resolvers = {
             const reviewRating = reviews.length
               ? (totalRatings / reviews.length).toFixed(1)
               : null;
-
+            const reviewsCount = reviews.length;
             return {
               id: instructor._id.toString(),
               firstName: instructor.firstName,
@@ -226,7 +228,7 @@ const resolvers = {
               lessonPrice: tariff?.FinalPricePerLesson || null,
               studentCount: studentIds.size,
               reviewRating, // ⬅️ Average rating here
-              totalReviews: reviews.length,
+              reviewsCount,
             };
           })
         );

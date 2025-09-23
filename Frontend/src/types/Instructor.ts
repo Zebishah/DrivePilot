@@ -19,6 +19,7 @@ export interface Instructor {
   experience: string;
   description: string;
   gender: string;
+  reviewsCount: number;
   carName: string;
   transmissionType: string;
   verificationStatus: "pending" | "verified" | "rejected";

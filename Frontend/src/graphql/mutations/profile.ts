@@ -22,6 +22,7 @@ export const GET_TEACHER_PROFILE = gql`
         createdAt
       }
       reviewRating
+      reviewsCount
       dateOfBirth
       languagePreference
     }

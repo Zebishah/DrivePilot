@@ -4,6 +4,7 @@ module.exports = gql`
   type Feedback {
     _id: ID!
     lessonId: ID!
+    bookingId: ID!
     instructorId: ID!
     instructorEmail: String!
     feedbackTags: [String!]!
@@ -14,6 +15,7 @@ module.exports = gql`
 
   input CreateFeedbackInput {
     lessonId: ID!
+    bookingId: ID!
     instructorId: ID!
     instructorEmail: String!
     feedbackTags: [String!]!

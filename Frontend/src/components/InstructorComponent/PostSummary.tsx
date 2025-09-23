@@ -286,7 +286,12 @@ const ProfileSummary: React.FC = () => {
                         );
                       })}
                       <Box sx={{ ml: 0.5 }}>
-                        ({data?.getInstructorPublicProfile?.averageRating})
+                        ({data?.getInstructorPublicProfile?.reviewsCount} review
+                        {data?.getInstructorPublicProfile?.reviewsCount &&
+                        data?.getInstructorPublicProfile?.reviewsCount > 1
+                          ? "s"
+                          : ""}
+                        )
                       </Box>
                     </Box>
                   ) : (

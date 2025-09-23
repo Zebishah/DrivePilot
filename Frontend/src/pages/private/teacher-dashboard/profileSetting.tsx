@@ -79,6 +79,7 @@ export default function ProfileSetting() {
     introduction: string;
     documents: Document[];
     reviewRating: number;
+    reviewsCount: number;
   }
 
   const profileData: ProfileData = {
@@ -114,6 +115,7 @@ export default function ProfileSetting() {
         ) || [],
 
     reviewRating: teacherData.reviewRating,
+    reviewsCount: teacherData.reviewsCount,
   };
   const isRefetching = networkStatus === NetworkStatus.refetch;
   // Handle documents update callback
@@ -295,7 +297,13 @@ export default function ProfileSetting() {
                         </Box>
                       );
                     })}
-                    <Box sx={{ ml: 0.5 }}>({profileData.reviewRating})</Box>
+                    <Box sx={{ ml: 0.5 }}>
+                      ({profileData.reviewsCount} review
+                      {profileData.reviewsCount && profileData.reviewsCount > 1
+                        ? "s"
+                        : ""}
+                      )
+                    </Box>
                   </Box>
                 </Box>
               </Box>

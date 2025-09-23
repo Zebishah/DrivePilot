@@ -60,6 +60,7 @@ const instructorTypeDefs = gql`
     description: String
     averageRating: Float
     totalReviews: String
+    reviewsCount: Int
     experience: String
     verificationStatus: String
     phone: String
@@ -115,6 +116,7 @@ const instructorTypeDefs = gql`
   type InstructorPublicProfile {
     instructor: Instructor!
     averageRating: Float
+    reviewsCount: Int
     tariff: InstructorTariff
     availability: [InstructorAvailability!]
   }

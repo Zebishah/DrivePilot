@@ -5,6 +5,7 @@ export const CREATE_FEEDBACK = gql`
     createFeedback(input: $input) {
       _id
       lessonId
+      bookingId
       instructorId
       instructorEmail
       feedbackTags

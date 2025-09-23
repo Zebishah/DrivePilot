@@ -257,7 +257,10 @@ const ReviewDisplayPage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Star Rating
                 </h3>
-                <StarRating rating={existingReview.reviewRating} />
+                <StarRating
+                  rating={existingReview.reviewRating || 0}
+                  count={1}
+                />
               </div>
 
               {/* Review Text */}

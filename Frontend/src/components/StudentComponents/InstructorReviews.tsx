@@ -147,7 +147,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
               <h4 className="text-lg font-semibold text-gray-900">
                 {review.studentId?.firstName} {review.studentId?.lastName}
               </h4>
-              <StarRating rating={review.reviewRating} size="sm" />
+              <StarRating rating={review.reviewRating} count={1} />
             </div>
             <span className="text-sm text-gray-500">
               {formatDate(review.createdAt)}
@@ -253,8 +253,8 @@ const InstructorReviews: React.FC<InstructorReviewsProps> = ({
             </h2>
             {reviews.length > 0 && (
               <div className="flex items-center px-6 justify-center ">
-                <StarRating rating={averageRating} size="sm" />
-                <span className="text-gray-600 mt-1 ml-32">
+                <StarRating rating={averageRating} hideScore={true} />
+                <span className="text-gray-600 mt-2 ml-1 ">
                   ({reviews.length}{" "}
                   {reviews.length === 1 ? "review" : "reviews"})
                 </span>

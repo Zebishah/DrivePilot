@@ -34,16 +34,16 @@ export const GET_ALL_STUDENT_BOOKINGS = gql`
         endTime
         booked
         review
+        feedBackStatus
+        cancellationDate
         status
       }
       totalAmount
       finalAmount
-      cancellationDate
       paymentMethod {
         type
         cardNumber
       }
-      feedBackStatus
       status
       createdAt
       updatedAt

@@ -99,6 +99,7 @@ const Navbar: React.FC = () => {
             Sign In
           </Button>
         </div>
+        .{" "}
       </ul>
 
       {/* Button Section */}

@@ -27,6 +27,11 @@ const studentBookingSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        feedBackStatus: {
+          type: String,
+          enum: ["pending", "completed"],
+          default: "pending",
+        },
         booked: {
           type: Boolean,
           default: false,
@@ -62,11 +67,6 @@ const studentBookingSchema = new mongoose.Schema(
       },
     },
     cancellationDate: { type: Date },
-    feedBackStatus: {
-      type: String,
-      enum: ["pending", "completed"],
-      default: "pending",
-    },
     status: {
       type: String,
       enum: [

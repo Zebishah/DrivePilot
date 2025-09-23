@@ -572,7 +572,15 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     );
   }
 
-  const bookings: StudentBooking[] = data?.getAllStudentBookings || [];
+  const bookings = (data?.getAllStudentBookings || [])
+    .flatMap((b: StudentBooking) =>
+      b.slots.map((s) => ({ booking: b, slot: s }))
+    )
+    .sort((a, b) => {
+      const aTime = new Date(`${a.slot.date}T${a.slot.startTime}`).getTime();
+      const bTime = new Date(`${b.slot.date}T${b.slot.startTime}`).getTime();
+      return bTime - aTime; // 🔑 newest first
+    });
 
   return (
     <div

@@ -72,9 +72,14 @@ const feedbackResolvers = {
         if (!input.hoursRemaining || !input.message) {
           throw new Error("Title and message are required");
         }
-
+        console.log(
+          "console log",
+          input.bookingId,
+          input.lessonId,
+          input.studentId
+        );
         // Get the booking to retrieve studentId
-        const lessonObjectId = new mongoose.Types.ObjectId(input.lessonId);
+        const lessonObjectId = new mongoose.Types.ObjectId(input.bookingId);
         const booking = await StudentBooking.findById(lessonObjectId);
         if (!booking) throw new Error("Booking not found");
 
@@ -90,6 +95,7 @@ const feedbackResolvers = {
         // Check for existing feedback
         const existingFeedback = await Feedback.findOne({
           lessonId: input.lessonId,
+          bookingId: input.bookingId,
           instructorId: input.instructorId,
         });
 
@@ -103,6 +109,7 @@ const feedbackResolvers = {
           return {
             _id: updatedFeedback._id,
             lessonId: updatedFeedback.lessonId,
+            bookingId: updatedFeedback.bookingId,
             instructorId: updatedFeedback.instructorId,
             instructorEmail: updatedFeedback.instructorEmail,
             feedbackTags: updatedFeedback.feedbackTags,
@@ -115,23 +122,25 @@ const feedbackResolvers = {
         // Create new feedback
         const feedback = new Feedback({
           lessonId: input.lessonId,
+          bookingId: input.bookingId, // ✅ Add this line
           instructorId: input.instructorId,
           instructorEmail: input.instructorEmail,
           feedbackTags: input.feedbackTags,
           hoursRemaining: input.hoursRemaining,
           message: input.message,
-          studentId: studentId, // Add studentId from booking
+          studentId: studentId,
         });
 
         const savedFeedback = await feedback.save();
-
-        await StudentBooking.findByIdAndUpdate(lessonObjectId, {
-          $set: { feedBackStatus: "completed" },
-        });
+        await StudentBooking.updateOne(
+          { _id: input.bookingId, "slots._id": input.lessonId },
+          { $set: { "slots.$.feedBackStatus": "completed" } }
+        );
 
         return {
           _id: savedFeedback._id,
           lessonId: savedFeedback.lessonId,
+          bookingId: savedFeedback.bookingId,
           instructorId: savedFeedback.instructorId,
           instructorEmail: savedFeedback.instructorEmail,
           feedbackTags: savedFeedback.feedbackTags,
@@ -179,6 +188,8 @@ const feedbackResolvers = {
         return {
           _id: updatedFeedback._id,
           lessonId: updatedFeedback.lessonId,
+          bookingId: updatedFeedback.bookingId,
+          hoursRemaining: updatedFeedback.hoursRemaining,
           instructorId: updatedFeedback.instructorId,
           instructorEmail: updatedFeedback.instructorEmail,
           feedbackTags: updatedFeedback.feedbackTags,
@@ -212,6 +223,10 @@ const feedbackResolvers = {
             "Unauthorized: You can only delete your own feedback"
           );
         }
+        await StudentBooking.updateOne(
+          { _id: feedback.bookingId, "slots._id": feedback.lessonId },
+          { $set: { "slots.$.feedBackStatus": "pending" } }
+        );
 
         await Feedback.findByIdAndDelete(feedbackId);
         return true;

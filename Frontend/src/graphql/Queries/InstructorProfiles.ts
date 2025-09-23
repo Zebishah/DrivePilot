@@ -50,6 +50,7 @@ export const GET_ALL_INSTRUCTORS_DETAILS = gql`
       studentCount
       transmissionType
       reviewRating
+      reviewsCount
       isUserVerified
       profileImage
       createdAt
@@ -97,6 +98,7 @@ export const GET_TEACHER_PROFILE = gql`
       dateOfBirth
       languagePreference
       reviewRating
+      reviewsCount
     }
   }
 `;

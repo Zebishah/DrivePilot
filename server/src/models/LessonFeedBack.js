@@ -5,7 +5,12 @@ const feedbackSchema = new mongoose.Schema({
   lessonId: {
     type: mongoose.Schema.Types.ObjectId,
     required: [true, "Lesson ID is required"],
-    ref: "Lesson",
+    ref: "Booking",
+  },
+  bookingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: [true, "Booking ID is required"],
+    ref: "Booking",
   },
   instructorId: {
     type: mongoose.Schema.Types.ObjectId,

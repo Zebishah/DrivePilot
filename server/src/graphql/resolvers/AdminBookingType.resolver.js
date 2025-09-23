@@ -1,3 +1,4 @@
+const { UserInputError } = require("apollo-server-express");
 const studentBookingModel = require("../../models/studentBooking.model");
 
 const { User, Student, Instructor } = require("../../models/User");
@@ -147,7 +148,9 @@ const AdminBookingResolvers = {
         if (slotIndex === -1) {
           throw new Error("Slot not found");
         }
-
+        if (booking.slots[slotIndex].status === "cancelled") {
+          throw new UserInputError("Slot is already cancelled");
+        }
         // Update slot to cancelled and not booked
         booking.slots[slotIndex].status = "cancelled";
         booking.slots[slotIndex].booked = false;
@@ -187,7 +190,7 @@ const AdminBookingResolvers = {
 
         return booking;
       } catch (error) {
-        throw new Error(`Failed to cancel booking: ${error.message}`);
+        throw error;
       }
     },
   },

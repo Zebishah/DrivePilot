@@ -38,7 +38,7 @@ export const InstructorManagement: React.FC = () => {
     useMutation(DELETE_INSTRUCTORS);
 
   const instructors: Instructor[] = data?.allInstructorsWithDetails || [];
-  console.log("Instructors Data:", instructors);
+
   const isRefetching = networkStatus === NetworkStatus.refetch;
   // Apply filters to instructors
   const filteredInstructors = useMemo(() => {

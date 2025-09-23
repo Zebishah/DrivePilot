@@ -261,7 +261,7 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
                 <p style="margin-bottom: 8px;"><strong>Final Price:</strong> $${bookingData.finalAmount || "0"}</p>
               </div>
               
-              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Scheduled Sessions:</h4>
+              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Cancelled Sessions:</h4>
               ${slotsHtml}
             </div>
             

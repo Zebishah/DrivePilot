@@ -11,6 +11,7 @@ export const GET_NEARBY_INSTRUCTORS = gql`
         location
         address
         totalReviews
+        reviewsCount
         verificationStatus
         rating
         profileImage
@@ -54,7 +55,7 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         description
         experience
         rating
-
+        reviewsCount
         profileImage
         carName
         transmissionType
@@ -62,6 +63,7 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         languagePreference
       }
       averageRating
+      reviewsCount
       tariff {
         lessonFee
         lessonDiscount

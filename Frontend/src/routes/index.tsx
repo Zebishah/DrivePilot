@@ -138,7 +138,10 @@ const router = createBrowserRouter([
       { path: "booking-details", element: <BookingDetails /> },
       { path: "help-support", element: <FAQPage /> },
       { path: "feedback", element: <StudentFeedback /> },
-      { path: "feedbackForm/:lessonId/:studentId", element: <FeedbackForm /> },
+      {
+        path: "feedbackForm/:bookingId/:lessonId/:studentId",
+        element: <FeedbackForm />,
+      },
       { path: "studentProgress/:studentId", element: <StudentDashboard /> },
       { path: "my-students", element: <StudentsProgressDashboard /> },
       { path: "chat", element: <InstructorChatPage /> },

@@ -120,69 +120,68 @@ const StudentFeedback: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {completedBookings.map((booking) => (
-                  <tr key={booking._id} className="border-b border-gray-100">
-                    <td className="py-4 px-2">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 flex items-center justify-center">
-                          {booking.studentId?.profileImage ? (
-                            <img
-                              src={booking.studentId.profileImage}
-                              alt="Profile"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-gray-600 font-medium text-sm">
-                              {booking.studentId.firstName.charAt(0)}
-                              {booking.studentId.lastName.charAt(0)}
-                            </span>
-                          )}
+                {completedBookings.flatMap((booking, index) =>
+                  booking.slots.map((slot, i) => (
+                    <tr
+                      key={`${slot.id}-${i}`}
+                      className="border-b border-gray-100"
+                    >
+                      <td className="py-4 px-2">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 flex items-center justify-center">
+                            {booking.studentId?.profileImage ? (
+                              <img
+                                src={booking.studentId.profileImage}
+                                alt="Profile"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-gray-600 font-medium text-sm">
+                                {booking.studentId.firstName.charAt(0)}
+                                {booking.studentId.lastName.charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-medium text-gray-800">
+                            {booking.studentId.firstName}{" "}
+                            {booking.studentId.lastName}
+                          </span>
                         </div>
-
-                        <span className="font-medium text-gray-800">
-                          {booking.studentId.firstName}{" "}
-                          {booking.studentId.lastName}
+                      </td>
+                      <td className="py-4 px-2 text-gray-600">
+                        Lesson {booking._id.charAt(booking._id.length - 1)}
+                      </td>
+                      <td className="py-4 px-2 text-gray-600">
+                        CHF {booking.finalAmount}
+                      </td>
+                      <td className="py-4 px-2 text-gray-600">{slot.date}</td>
+                      <td className="py-4 px-2 text-gray-600">
+                        {slot.startTime} - {slot.endTime}
+                      </td>
+                      <td className="py-4 px-2">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            slot.feedBackStatus === "completed"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {slot.feedBackStatus}
                         </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-2 text-gray-600">
-                      Lesson {booking._id.charAt(booking._id.length - 1)}
-                    </td>
-
-                    <td className="py-4 px-2 text-gray-600">
-                      CHF {booking.finalAmount}
-                    </td>
-                    <td className="py-4 px-2 text-gray-600">
-                      {booking.slots[0].date}
-                    </td>
-                    <td className="py-4 px-2 text-gray-600">
-                      {booking.slots[0].startTime} - {booking.slots[0].endTime}
-                    </td>
-                    <td className="py-4 px-2">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-      ${
-        booking.feedBackStatus === "completed"
-          ? "bg-green-100 text-green-800"
-          : "bg-red-100 text-red-800"
-      }`}
-                      >
-                        {booking.feedBackStatus}
-                      </span>
-                    </td>
-
-                    <td className="py-4 px-2">
-                      <Link
-                        to={`/teacher-dashboard/feedbackForm/${booking._id}/${booking.studentId._id}`}
-                        className="px-4 py-2 bg-[#5CC2D2] text-white rounded-md hover:bg-[#288d9c] transition-colors text-sm font-medium"
-                      >
-                        {booking.feedBackStatus === "pending"
-                          ? "Give Feedback"
-                          : "View Feedback"}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-4 px-2">
+                        <Link
+                          to={`/teacher-dashboard/feedbackForm/${booking._id}/${slot.id}/${booking.studentId._id}`}
+                          className="px-4 py-2 bg-[#5CC2D2] text-white rounded-md hover:bg-[#288d9c] transition-colors text-sm font-medium"
+                        >
+                          {slot.feedBackStatus === "pending"
+                            ? "Give Feedback"
+                            : "View Feedback"}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -89,16 +89,18 @@ export const GET_STUDENT_DASHBOARD = gql`
           profileImage
         }
         slots {
+          _id
           date
           startTime
           endTime
           booked
+          feedBackStatus
         }
         totalAmount
         status
         createdAt
         updatedAt
-        feedBackStatus
+
         profileImage
       }
       uncompletedBookings {
@@ -124,12 +126,13 @@ export const GET_STUDENT_DASHBOARD = gql`
           startTime
           endTime
           booked
+          feedBackStatus
         }
         totalAmount
         status
         createdAt
         updatedAt
-        feedBackStatus
+
         profileImage
       }
     }

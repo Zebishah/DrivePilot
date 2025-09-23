@@ -19,7 +19,16 @@ export const FAQListHeader: React.FC = () => (
 
 export const EmptyFAQState: React.FC = () => (
   <Paper sx={{ minHeight: 400 }}>
-    <Box textAlign="center" py={8}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        mt: 10,
+      }}
+      textAlign="center"
+      py={8}
+    >
       <MdOutlineQuestionAnswer
         style={{ fontSize: 64, color: "#ccc", marginBottom: 2 }}
       />

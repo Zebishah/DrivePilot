@@ -79,11 +79,11 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             {student.lessonHoursLeft}
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className=" bg-gray-200 rounded-full h-2">
           <div
             className="bg-[#5FC2D3] h-2 rounded-full transition-all duration-300"
             style={{
-              width: `${student.lessonHoursLeft}%`,
+              width: `${student.lessonHoursLeft || 0}%`,
             }}
           />
         </div>

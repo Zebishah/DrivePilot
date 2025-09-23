@@ -374,7 +374,7 @@ const InstructorsInfo: React.FC = () => {
   }, [data?.getNearbyInstructors?.instructors, filtersApplied]);
 
   return (
-    <div className="max-w-screen-xl mx-auto overflow-x-hidden">
+    <div className="w-full mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
         Nearby Instructors
       </h1>
@@ -490,10 +490,10 @@ const InstructorsInfo: React.FC = () => {
                 .map((instructor) => (
                   <div
                     key={instructor._id}
-                    className="pl-4 drop-shadow-md mt-4 bg-white rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative"
+                    className="pl-4 drop-shadow-md mt-4 bg-white pt-2 rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative "
                   >
                     {/* Instructor card content */}
-                    <div className="flex flex-col items-center md:items-start md:w-1/3">
+                    <div className="flex flex-col items-center md:items-start md:w-1/3 mb-2">
                       <img
                         src={
                           instructor.profileImage ||
@@ -516,49 +516,66 @@ const InstructorsInfo: React.FC = () => {
                             : instructor.address}
                         </p>
                       </Tooltip>
-                      <Box sx={{ display: "flex", gap: 0.5, mt: 1 }}>
-                        {[...Array(5)].map((_, index) => {
-                          const starNumber = index + 1;
-                          const rating = instructor.totalReviews;
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 0.5,
+                          mt: 1,
+                          flexDirection: "column",
+                        }}
+                      >
+                        <Box>
+                          {[...Array(5)].map((_, index) => {
+                            const starNumber = index + 1;
+                            const rating = instructor.totalReviews;
 
-                          // Determine fill percentage for this star
-                          let fillPercentage = 0;
-                          if (rating >= starNumber) {
-                            fillPercentage = 100; // Full star
-                          } else if (rating > starNumber - 1) {
-                            fillPercentage = (rating - (starNumber - 1)) * 100; // Partial star
-                          }
+                            // Determine fill percentage for this star
+                            let fillPercentage = 0;
+                            if (rating >= starNumber) {
+                              fillPercentage = 100; // Full star
+                            } else if (rating > starNumber - 1) {
+                              fillPercentage =
+                                (rating - (starNumber - 1)) * 100; // Partial star
+                            }
 
-                          return (
-                            <Box
-                              key={index}
-                              sx={{
-                                position: "relative",
-                                display: "inline-block",
-                              }}
-                            >
-                              {/* Background star (unfilled) */}
-                              <Star size={20} fill="none" stroke="#ccc" />
-                              {/* Foreground star (filled portion) */}
+                            return (
                               <Box
+                                key={index}
                                 sx={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  width: `${fillPercentage}%`,
-                                  overflow: "hidden",
+                                  position: "relative",
+                                  display: "inline-block",
                                 }}
                               >
-                                <Star
-                                  size={20}
-                                  fill="#FFD700"
-                                  stroke="#FFD700"
-                                />
+                                {/* Background star (unfilled) */}
+                                <Star size={20} fill="none" stroke="#ccc" />
+                                {/* Foreground star (filled portion) */}
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: `${fillPercentage}%`,
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <Star
+                                    size={20}
+                                    fill="#FFD700"
+                                    stroke="#FFD700"
+                                  />
+                                </Box>
                               </Box>
-                            </Box>
-                          );
-                        })}
-                        <Box sx={{ ml: 0.5 }}>({instructor.totalReviews})</Box>
+                            );
+                          })}
+                        </Box>
+                        <Box sx={{ ml: 0.5 }}>
+                          ({instructor.reviewsCount || 0} review
+                          {instructor.reviewsCount &&
+                          instructor.reviewsCount > 1
+                            ? "s"
+                            : ""}
+                          )
+                        </Box>
                       </Box>
                     </div>
 

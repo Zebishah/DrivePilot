@@ -231,6 +231,7 @@ const instructorResolver = {
               transmissionType: instructor.transmissionType,
               distance: instructor.distance,
               totalReviews: reviewData.averageRating,
+              reviewsCount: reviewData.totalReviews,
               details: {
                 degree: instructor.experience,
                 car: instructor.carName,
@@ -493,6 +494,7 @@ const instructorResolver = {
             coordinates: instructor.coordinates || null,
           },
           averageRating: Math.round(averageRating * 10) / 10,
+          reviewsCount: totalReviews,
           tariff,
           availability: formattedAvailability,
         };

@@ -295,7 +295,10 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
 
               <div className="flex items-center mb-3">
                 <div className="flex items-center">
-                  <StarRating rating={rating || 0} size={16} isHalf={true} />
+                  <StarRating
+                    rating={rating || 0}
+                    count={instructor.reviewsCount}
+                  />
                 </div>
               </div>
               <div className="ml-3 flex items-center space-x-2">

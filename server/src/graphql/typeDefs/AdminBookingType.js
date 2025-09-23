@@ -43,6 +43,7 @@ const AdminBookingTypeDefs = gql`
     booked: Boolean!
     review: Boolean!
     status: SlotStatusAdmin!
+    feedBackStatus: FeedbackStatusAdmin!
     cancellationDate: String # Add this field
   }
 
@@ -59,7 +60,6 @@ const AdminBookingTypeDefs = gql`
     totalAmount: Float!
     finalAmount: Float!
     paymentMethod: PaymentMethodAdmin!
-    feedBackStatus: FeedbackStatusAdmin!
     status: BookingStatusAdmin!
     cancellationDate: String # Add this field
     createdAt: String!

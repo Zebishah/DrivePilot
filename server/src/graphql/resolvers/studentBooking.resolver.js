@@ -93,24 +93,35 @@ const studentBookingResolver = {
       const completedLessons = [];
 
       for (const booking of allBookings) {
-        if (!booking.slots || booking.slots.length === 0) continue;
+        if (!booking.slots?.length) continue;
 
-        for (const slot of booking.slots) {
+        // ✅ gather all slots for this booking that are completed
+        const completedSlots = booking.slots.filter((slot) => {
           const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
+          return (
+            slotEndDateTime <= now &&
+            slot.status !== "cancelled" &&
+            slot.status !== "refund"
+          );
+        });
 
-          if (slotEndDateTime <= now) {
-            completedLessons.push({
-              ...booking.toObject(), // ensure it's plain JS object
-              slots: [slot], // only include this slot
-            });
-          }
+        if (completedSlots.length) {
+          // ✅ push only one object per booking, with all its completed slots
+          completedLessons.push({
+            ...booking.toObject(),
+            slots: completedSlots,
+          });
         }
       }
 
-      // Sort by latest slot time (descending)
+      // Sort by latest slot end time (descending)
       completedLessons.sort((a, b) => {
-        const aEnd = new Date(`${a.slots[0].date}T${a.slots[0].endTime}:00`);
-        const bEnd = new Date(`${b.slots[0].date}T${b.slots[0].endTime}:00`);
+        const aEnd = new Date(
+          `${a.slots[a.slots.length - 1].date}T${a.slots[a.slots.length - 1].endTime}:00`
+        );
+        const bEnd = new Date(
+          `${b.slots[b.slots.length - 1].date}T${b.slots[b.slots.length - 1].endTime}:00`
+        );
         return bEnd - aEnd;
       });
 

@@ -644,7 +644,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       toast.success("Booking cancelled successfully");
     },
     onError: (error) => {
-      toast.error("Error cancelling booking");
+      toast.error(error.message);
       console.error("Error cancelling booking:", error);
       setShowCancelModal(false);
       setIsCancelling(false); // Reset loading state
@@ -823,7 +823,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      {formatCancellationDateTime(booking.cancellationDate)}
+                      {formatCancellationDateTime(slot.cancellationDate)}
                     </div>
                   </td>
 
