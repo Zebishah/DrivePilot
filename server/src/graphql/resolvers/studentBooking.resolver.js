@@ -43,8 +43,7 @@ const studentBookingResolver = {
       for (const booking of allBookings) {
         // keep only today/future slots
         const futureSlots = booking.slots.filter((slot) => {
-          const slotDate = new Date(slot.date);
-          return slotDate >= currentDate;
+          return slot;
         });
 
         if (!futureSlots.length) continue;

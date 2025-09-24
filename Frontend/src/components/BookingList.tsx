@@ -16,6 +16,7 @@ import { useState } from "react";
 import { Booking } from "../types/Student";
 import { Slot } from "../types/Bookings";
 import { useNavigate } from "react-router-dom";
+import { all } from "axios";
 
 interface BookingListProps {
   bookings: Booking[];
@@ -78,11 +79,19 @@ export const BookingList: React.FC<BookingListProps> = ({
         ),
       }))
       .filter((b) => b.slots.length > 0);
-
+    const futureBookings = bookings
+      .map((b) => ({
+        ...b,
+        slots: b.slots.filter(
+          (s) => getSlotStartDateTime(s).getTime() > Date.now()
+        ),
+      }))
+      .filter((b) => b.slots.length > 0);
     const allSlots = bookings.flatMap((b) => b.slots);
     const otherSlots = pastBookings.flatMap((b) => b.slots);
-    const confirmedSlots = otherSlots.filter((s) => s.status === "booked");
+    const confirmedSlots = futureBookings.flatMap((b) => b.slots);
     const cancelledSlots = otherSlots.filter((s) => s.status === "cancelled");
+    const refundSlots = allSlots.filter((s) => s.status === "refund");
     const historySlots = allSlots.filter(
       (s) => getSlotStartDateTime(s).getTime() > Date.now()
     );
@@ -91,7 +100,7 @@ export const BookingList: React.FC<BookingListProps> = ({
       all: allSlots.length,
       confirmed: confirmedSlots.length,
       cancelled: cancelledSlots.length,
-      refund: otherSlots.filter((s) => s.status === "refund").length,
+      refund: refundSlots.length,
       history: historySlots.length,
     };
   };
@@ -121,7 +130,7 @@ export const BookingList: React.FC<BookingListProps> = ({
       : tabValue === 3 // ✅ History tab
         ? pastBookings
         : filterBookingsBySlotStatus(
-            pastBookings,
+            bookings,
             tabValue === 1 ? "cancelled" : tabValue === 2 ? "refund" : "all"
           );
 
