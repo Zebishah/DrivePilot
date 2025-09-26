@@ -176,6 +176,8 @@ const sendOtpEmail = async (email, otp, type) => {
       user: process.env.DOMAIN_MAIL,
       pass: process.env.DOMAIN_PASS,
     },
+    connectionTimeout: 30_000, // 30 seconds
+    socketTimeout: 30_000, // 30 seconds
   });
 
   await transporter.sendMail(mailOptions);
@@ -191,6 +193,8 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
       user: process.env.DOMAIN_MAIL,
       pass: process.env.DOMAIN_PASS,
     },
+    connectionTimeout: 30_000, // 30 seconds
+    socketTimeout: 30_000, // 30 seconds
   });
 
   let subject = "";
@@ -393,6 +397,8 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
       user: process.env.DOMAIN_MAIL,
       pass: process.env.DOMAIN_PASS,
     },
+    connectionTimeout: 30_000, // 30 seconds
+    socketTimeout: 30_000, // 30 seconds
   });
 
   let subject = "";
