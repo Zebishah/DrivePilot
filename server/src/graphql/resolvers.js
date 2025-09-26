@@ -843,17 +843,19 @@ instead.`);
         }
 
         // If verified, send two-factor authentication OTP
-        const otp = generateOTP();
-
-        await Otp.create({
-          email: user.email,
-          otp,
-          type: "two_factor_auth",
-          status: "unused",
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-        });
-
-        await sendOtpEmail(user.email, otp, "two_factor_auth");
+        if (user?.role !== "Admin") {
+          const otp = generateOTP();
+          console.log("user come fpr two factor auth otp");
+          await Otp.create({
+            email: user.email,
+            otp,
+            type: "two_factor_auth",
+            status: "unused",
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+          });
+          console.log("user come fpr two factor auth");
+          await sendOtpEmail(user.email, otp, "two_factor_auth");
+        }
 
         return {
           success: true,
