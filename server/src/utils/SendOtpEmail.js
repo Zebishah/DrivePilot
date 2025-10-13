@@ -27,6 +27,63 @@ const sendOtpEmail = async (email, otp, type) => {
       </div>
     </div>
   `;
+  } else if (type === "instructor_Verification") {
+    subject = "Verification of Your Account";
+    message = `
+  <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1 style="color: #5ec2d2; font-size: 24px; font-weight: 600; margin-bottom: 10px;">
+        Driving School Platform
+      </h1>
+    </div>
+
+    <div style="color: #333333; line-height: 1.6;">
+      <h2 style="color: ${
+        otp === "verified" ? "#28a745" : "#d9534f"
+      }; font-size: 22px; font-weight: 600; margin-bottom: 20px; text-align: center;">
+        ${
+          otp === "verified"
+            ? "Your Instructor Account Has Been Verified!"
+            : "Your Instructor Account Has Been Unverified"
+        }
+      </h2>
+
+      <p style="margin-bottom: 25px; font-size: 16px;">
+        ${
+          otp === "verified"
+            ? `Congratulations! Your instructor account has been successfully <strong>verified</strong> by our administrative team. You can now log in to your dashboard, manage your lessons, and start accepting students.`
+            : `We wanted to let you know that your instructor account has been <strong>unverified</strong> by our administrative team. This may be due to missing information or an issue that requires further review.`
+        }
+      </p>
+
+      ${
+        otp === "verified"
+          ? `<div style="background-color: #e8f9f0; border: 1px solid #b2f2bb; border-radius: 6px; padding: 15px; text-align: center; margin-bottom: 25px;">
+              <p style="color: #28a745; font-weight: 600; font-size: 16px;">✅ You now have full instructor access!</p>
+              <a href="${process.env.Frontend_URL}" style="display: inline-block; margin-top: 10px; background-color: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: 500;">Go to Dashboard</a>
+            </div>`
+          : `<div style="background-color: #fff5f5; border: 1px solid #f5c2c7; border-radius: 6px; padding: 15px; text-align: center; margin-bottom: 25px;">
+              <p style="color: #d9534f; font-weight: 600; font-size: 16px;">⚠️ Your account is temporarily restricted.</p>
+              <p style="font-size: 14px; color: #555;">Please contact our support team for assistance or to provide any missing documentation.</p>
+              <a href="mailto:support@drivingschool.com" style="display: inline-block; margin-top: 10px; background-color: #d9534f; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: 500;">Contact Support</a>
+            </div>`
+      }
+
+      <p style="margin-bottom: 25px; font-size: 15px;">
+        ${
+          otp === "verified"
+            ? `We’re excited to have you on board and look forward to seeing your teaching journey grow with us!`
+            : `Once your account has been reviewed and verified again, you’ll regain full instructor privileges.`
+        }
+      </p>
+    </div>
+
+    <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
+      <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+      <p>If you have any questions, please contact our support team.</p>
+    </div>
+  </div>
+`;
   } else if (type === "two_factor_auth") {
     subject = "Your Security Authentication Code";
     message = `
@@ -49,7 +106,7 @@ const sendOtpEmail = async (email, otp, type) => {
       </div>
     </div>
   `;
-  } else if (type === "welcome_email") {
+  } else if (type === "welcome_email_Instructor") {
     subject = "Welcome to Your Driving Journey with DSP!";
     message = `
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
@@ -58,10 +115,11 @@ const sendOtpEmail = async (email, otp, type) => {
       </div>
       
       <div style="color: #333333; line-height: 1.6;">
-        <h1 style="color: #3d5afe; font-size: 28px; font-weight: 700; margin-bottom: 20px; text-align: center;">Welcome to Your Driving Journey!</h1>
+        <h1 style="color: #3d5afe; font-size: 28px; font-weight: 700; margin-bottom: 20px; text-align: center;">Welcome to Our Driving School Platform!</h1>
         
         <div style="background: linear-gradient(135deg, #3d5afe 0%, #536dfe 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-          <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 15px; text-align: center;">Your Account is Now Active</h2>
+          <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 15px; text-align: center;">We Will Review the documents you have submitted</h2>
+          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Once All Documents will approved you will be visible on the platform and students will be able to book lessons with you!</p>
           <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Thank you for choosing our Driving School Platform. We're excited to help you on your path to becoming a confident and skilled driver!</p>
         </div>
         
@@ -69,29 +127,13 @@ const sendOtpEmail = async (email, otp, type) => {
         
         <p style="margin-bottom: 20px; font-size: 16px;">Welcome to our driving community! We're thrilled to have you on board and can't wait to support you throughout your learning journey. Your account has been successfully created and is ready to use.</p>
         
-        <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin: 25px 0;">
-          <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 15px;">Get Started in 3 Simple Steps:</h3>
-          <ol style="padding-left: 20px; margin-bottom: 0;">
-            <li style="margin-bottom: 12px;"><strong>Complete your profile</strong> - Add your personal details and preferences</li>
-            <li style="margin-bottom: 12px;"><strong>Browse available courses</strong> - Find the perfect learning path for your needs</li>
-            <li style="margin-bottom: 0;"><strong>Book your first lesson</strong> - Get behind the wheel with our expert instructors</li>
-          </ol>
-        </div>
         
         <div style="text-align: center; margin: 30px 0;">
           <a href="${
             process.env.Frontend_URL
           }auth/signin" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
         </div>
-        
-        <p style="margin-bottom: 20px; font-size: 16px;">Our platform offers:</p>
-        <ul style="padding-left: 20px; margin-bottom: 25px;">
-          <li style="margin-bottom: 10px;">Flexible scheduling for lessons</li>
-          <li style="margin-bottom: 10px;">Comprehensive learning materials</li>
-          <li style="margin-bottom: 10px;">Progress tracking and feedback</li>
-          <li style="margin-bottom: 10px;">Expert instructors with years of experience</li>
-        </ul>
-        
+                
         <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions or need assistance, our support team is always here to help. Simply reply to this email or contact us through our website.</p>
         
         <p style="margin-bottom: 25px; font-size: 16px;">We look forward to being part of your driving success story!</p>
@@ -101,17 +143,53 @@ const sendOtpEmail = async (email, otp, type) => {
       </div>
       
       <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-        <div style="margin-bottom: 15px;">
-          <a href="#" style="display: inline-block; margin: 0 8px;"><img src="https://yourdomain.com/facebook-icon.png" alt="Facebook" style="height: 24px; width: 24px;"></a>
-          <a href="#" style="display: inline-block; margin: 0 8px;"><img src="https://yourdomain.com/instagram-icon.png" alt="Instagram" style="height: 24px; width: 24px;"></a>
-          <a href="#" style="display: inline-block; margin: 0 8px;"><img src="https://yourdomain.com/twitter-icon.png" alt="Twitter" style="height: 24px; width: 24px;"></a>
-        </div>
+       
         <p style="margin-bottom: 8px;">&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-        <div style="margin: 15px 0;">
-          <a href="#" style="color: #3d5afe; text-decoration: none; margin: 0 10px;">Help Center</a>
-          <a href="#" style="color: #3d5afe; text-decoration: none; margin: 0 10px;">Privacy Policy</a>
-          <a href="#" style="color: #3d5afe; text-decoration: none; margin: 0 10px;">Terms of Service</a>
+       
+        <p style="margin-top: 15px;">You received this email because you signed up for an account on our Driving School Platform.</p>
+      </div>
+    </div>
+  `;
+  } else if (type === "welcome_email_Student") {
+    subject = "Welcome to Your Driving Journey with DSP!";
+    message = `
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+      <div style="text-align: center; margin-bottom: 25px;">
+        <img src="https://yourdomain.com/logo.png" alt="Driving School Platform" style="max-height: 70px;" />
+      </div>
+      
+      <div style="color: #333333; line-height: 1.6;">
+        <h1 style="color: #3d5afe; font-size: 28px; font-weight: 700; margin-bottom: 20px; text-align: center;">Welcome to Our Driving School Platform!</h1>
+        
+        <div style="background: linear-gradient(135deg, #3d5afe 0%, #536dfe 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+          <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 15px; text-align: center;">We Will Review Your Profile Soon And Will Review Your Documents As Well</h2>
+          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Your Documents will approved Soon And Now you can easily Book lessons with the instructors!</p>
+          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Thank you for choosing our Driving School Platform. We're excited to help you on your path to becoming a confident and skilled driver!</p>
         </div>
+        
+        <p style="margin-bottom: 20px; font-size: 16px;">Dear ${otp},</p>
+        
+        <p style="margin-bottom: 20px; font-size: 16px;">Welcome to our driving community! We're thrilled to have you on board and can't wait to support you throughout your learning journey. Your account has been successfully created and is ready to use.</p>
+        
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${
+            process.env.Frontend_URL
+          }auth/signin" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
+        </div>
+                
+        <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions or need assistance, our support team is always here to help. Simply reply to this email or contact us through our website.</p>
+        
+        <p style="margin-bottom: 25px; font-size: 16px;">We look forward to being part of your driving success story!</p>
+        
+        <p style="margin-bottom: 10px; font-size: 16px;">Safe driving,</p>
+        <p style="font-size: 16px; font-weight: 600; color: #3d5afe; margin-bottom: 0;">The DSP Team</p>
+      </div>
+      
+      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+       
+        <p style="margin-bottom: 8px;">&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+      
         <p style="margin-top: 15px;">You received this email because you signed up for an account on our Driving School Platform.</p>
       </div>
     </div>

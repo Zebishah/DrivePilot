@@ -271,31 +271,48 @@ export const AvailabilityTab: React.FC = () => {
     });
   }, [data?.teacherAvailability, selectedDate]);
 
-  // Sort slots chronologically if showing all slots
   const displaySlots = useMemo(() => {
     if (!filteredSlots.length) return [];
-    const today = new Date().toISOString().split("T")[0];
+
+    const now = new Date();
+    const today = format(now, "yyyy-MM-dd");
+
     return [...filteredSlots]
       .filter((slot) => {
-        // skip if date missing
-        if (!slot.date) return false;
-        return slot.date >= today;
+        if (!slot.date || !slot.endTime) return false;
+
+        const slotDate = format(new Date(slot.date), "yyyy-MM-dd");
+
+        // Skip slots from past days
+        if (isBefore(new Date(slotDate), startOfDay(now))) return false;
+
+        // For today's slots, check if end time has passed
+        if (slotDate === today) {
+          const [endHours, endMinutes] = slot.endTime.split(":").map(Number);
+          const slotEndTime = new Date(slotDate);
+          slotEndTime.setHours(endHours, endMinutes, 0, 0);
+
+          // Hide slot only if end time is already in the past
+          return isAfter(slotEndTime, now);
+        }
+
+        // For future dates, keep all
+        return true;
       })
       .sort((a, b) => {
         try {
-          // First compare by date - safely handle missing properties
+          // Sort by date, then start time
           const dateA = a.date || "";
           const dateB = b.date || "";
           const dateComparison = dateA.localeCompare(dateB);
           if (dateComparison !== 0) return dateComparison;
 
-          // Then compare by start time if dates are the same
           const startTimeA = a.startTime || "";
           const startTimeB = b.startTime || "";
           return startTimeA.localeCompare(startTimeB);
         } catch (err) {
           console.error("Error sorting slots:", err);
-          return 0; // Keep original order on error
+          return 0;
         }
       });
   }, [filteredSlots]);

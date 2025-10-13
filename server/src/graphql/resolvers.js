@@ -398,7 +398,11 @@ instead.`);
       if (!updatedInstructor) {
         throw new Error("Instructor not found");
       }
-
+      await sendOtpEmail(
+        updatedInstructor.email,
+        status,
+        "instructor_Verification"
+      );
       return updatedInstructor;
     },
     updateInstructorDocuments: async (_, { input }, { user }) => {
@@ -795,6 +799,8 @@ instead.`);
       }
     },
     signIn: async (_, { email, password }) => {
+      const emailLower = email.toLowerCase();
+      email = emailLower;
       try {
         const user = await User.findOne({ email });
         if (!user) {
@@ -944,6 +950,22 @@ instead.`);
           updateData,
           { new: true }
         );
+        if (!user.isUserVerified) {
+          // Delete existing unused email verification OTPs
+          if (user?.role === "Student") {
+            await sendOtpEmail(
+              user.email,
+              user.firstName,
+              "welcome_email_Student"
+            );
+          } else if (user?.role === "Instructor") {
+            await sendOtpEmail(
+              user.email,
+              user.firstName,
+              "welcome_email_Instructor"
+            );
+          }
+        }
 
         return updatedStudent;
       } catch (error) {

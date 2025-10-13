@@ -39,7 +39,7 @@ router.get(
     res
       .status(307)
       .redirect(
-        `${frontendURL}auth/auth-success?token=${encodeURIComponent(token)}`
+        `${frontendURL}/auth/auth-success?token=${encodeURIComponent(token)}`
       );
   }
 );
@@ -73,7 +73,7 @@ router.get(
     res
       .status(307)
       .redirect(
-        `${frontendURL}auth/auth-success?token=${encodeURIComponent(token)}`
+        `${frontendURL}/auth/auth-success?token=${encodeURIComponent(token)}`
       );
   }
 );

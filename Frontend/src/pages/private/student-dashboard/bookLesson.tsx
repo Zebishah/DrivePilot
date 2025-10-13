@@ -282,7 +282,11 @@ const BookLesson: React.FC = () => {
 
   return (
     <Box sx={{ px: 3, py: 1, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
-      <BackButton variant="outline" label="Back" />
+      <BackButton
+        to="/student-dashboard/search"
+        variant="outline"
+        label="Back"
+      />
       {/* Payment Methods Card - Only show if we have selectedAvailability */}
       {selectedAvailability && selectedAvailability.length > 0 && (
         <Card>

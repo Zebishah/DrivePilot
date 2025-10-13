@@ -69,7 +69,64 @@ export const BookingList: React.FC<BookingListProps> = ({
 
   const getSlotStartDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.startTime}`); // assumes date = "YYYY-MM-DD" and startTime = "HH:mm"
+  const getSlotEndDateTime = (slot: Slot) =>
+    new Date(`${slot.date}T${slot.endTime}`);
+  const categorizeBookings = (bookings: Booking[]) => {
+    const upcoming: Booking[] = [];
+    const cancelled: Booking[] = [];
+    const refund: Booking[] = [];
+    const history: Booking[] = [];
 
+    const now = new Date();
+
+    bookings.forEach((booking) => {
+      const upcomingSlots: Slot[] = [];
+      const cancelledSlots: Slot[] = [];
+      const refundSlots: Slot[] = [];
+      const historySlots: Slot[] = [];
+
+      booking.slots.forEach((slot) => {
+        const endTime = getSlotEndDateTime(slot);
+
+        // Determine if slot is past or future
+        const isPast = endTime.getTime() < now.getTime();
+
+        if (slot.status === "cancelled") {
+          cancelledSlots.push(slot);
+          if (isPast) historySlots.push(slot);
+        } else if (slot.status === "refund") {
+          refundSlots.push(slot);
+          if (isPast) historySlots.push(slot);
+        } else if (!isPast) {
+          // Booked & still future
+          upcomingSlots.push(slot);
+        } else {
+          // Booked but past end time -> goes to history
+          historySlots.push(slot);
+        }
+      });
+
+      if (upcomingSlots.length > 0)
+        upcoming.push({ ...booking, slots: upcomingSlots });
+      if (cancelledSlots.length > 0)
+        cancelled.push({ ...booking, slots: cancelledSlots });
+      if (refundSlots.length > 0)
+        refund.push({ ...booking, slots: refundSlots });
+      if (historySlots.length > 0)
+        history.push({ ...booking, slots: historySlots });
+    });
+
+    return { upcoming, cancelled, refund, history };
+  };
+
+  const { upcoming, cancelled, refund, history } = categorizeBookings(bookings);
+
+  const slotCounts = {
+    confirmed: upcoming.reduce((acc, b) => acc + b.slots.length, 0),
+    cancelled: cancelled.reduce((acc, b) => acc + b.slots.length, 0),
+    refund: refund.reduce((acc, b) => acc + b.slots.length, 0),
+    history: history.reduce((acc, b) => acc + b.slots.length, 0),
+  };
   const getSlotCounts = (bookings: Booking[]) => {
     const pastBookings = bookings
       .map((b) => ({
@@ -122,26 +179,34 @@ export const BookingList: React.FC<BookingListProps> = ({
       ),
     }))
     .filter((b) => b.slots.length > 0);
-  const slotCounts = getSlotCounts(bookings);
 
-  const filteredBookings =
-    tabValue === 0 // ✅ Upcoming tab
-      ? futureBookings
-      : tabValue === 3 // ✅ History tab
-        ? pastBookings
-        : filterBookingsBySlotStatus(
-            bookings,
-            tabValue === 1 ? "cancelled" : tabValue === 2 ? "refund" : "all"
-          );
+  let filteredBookings: Booking[] = [];
+  switch (tabValue) {
+    case 0:
+      filteredBookings = upcoming;
+      break;
+    case 1:
+      filteredBookings = cancelled;
+      break;
+    case 2:
+      filteredBookings = refund;
+      break;
+    case 3:
+      filteredBookings = history;
+      break;
+    default:
+      filteredBookings = upcoming;
+  }
 
+  // Sort newest first
   const sortedBookings = filteredBookings.sort((a, b) => {
     const aLatest = Math.max(
-      ...a.slots.map((s) => getSlotStartDateTime(s).getTime())
+      ...a.slots.map((s) => getSlotEndDateTime(s).getTime())
     );
     const bLatest = Math.max(
-      ...b.slots.map((s) => getSlotStartDateTime(s).getTime())
+      ...b.slots.map((s) => getSlotEndDateTime(s).getTime())
     );
-    return bLatest - aLatest; // newest first
+    return bLatest - aLatest;
   });
 
   const currentBookings = sortedBookings.slice(

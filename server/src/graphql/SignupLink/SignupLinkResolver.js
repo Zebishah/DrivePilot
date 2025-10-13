@@ -157,7 +157,7 @@ const SignupLinkResolver = {
 
       const token = uuidv4();
       const baseUrl = process.env.Frontend_URL || "http://localhost:5137";
-      const signupLink = `${baseUrl}signup/${token}`;
+      const signupLink = `${baseUrl}/signup/${token}`;
 
       const newSignupToken = new SignupToken({
         firstName,

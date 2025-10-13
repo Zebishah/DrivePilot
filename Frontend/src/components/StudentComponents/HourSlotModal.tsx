@@ -182,12 +182,18 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
 
         <Grid container spacing={2}>
           {hourSlots.map((slot) => {
+            const slotDateTime = dayjs(
+              `${originalSlot.date} ${slot.startTime}`
+            );
+            const isPast = slotDateTime.isBefore(dayjs());
+
             return (
               <Grid item xs={12} sm={6} md={4} key={slot.id}>
                 <HourSlotCard
                   slot={slot}
                   isSelected={selectedHourSlots.includes(slot.id)}
-                  onClick={handleSlotClick}
+                  onClick={!isPast ? handleSlotClick : undefined} // disable click
+                  disabled={isPast} // pass disabled prop
                 />
               </Grid>
             );

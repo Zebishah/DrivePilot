@@ -211,6 +211,7 @@ export const DocumentDetailsPage: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-900">
                       Document Status
                     </h2>
+
                     {selectedDoc && (
                       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                         {/* Submitted on */}
@@ -244,18 +245,21 @@ export const DocumentDetailsPage: React.FC = () => {
                       </div>
                     )}
 
-                    {decodeURIComponent(documentType || "") ===
-                    "Swiss Driving License" ? (
+                    {/* ✅ Use selectedDoc for current status */}
+                    {selectedDoc && (
                       <StatusDropdown
-                        currentStatus={documentsOfType[0].status}
-                        documentId={documentsOfType[0]._id}
-                        isCollective={true}
-                        documents={documentsOfType}
-                      />
-                    ) : (
-                      <StatusDropdown
-                        currentStatus={documentsOfType[0].status}
-                        documentId={documentsOfType[0]._id}
+                        currentStatus={selectedDoc.status}
+                        documentId={selectedDoc._id}
+                        isCollective={
+                          decodeURIComponent(documentType || "") ===
+                          "Swiss Driving License"
+                        }
+                        documents={
+                          decodeURIComponent(documentType || "") ===
+                          "Swiss Driving License"
+                            ? documentsOfType
+                            : undefined
+                        }
                       />
                     )}
                   </div>

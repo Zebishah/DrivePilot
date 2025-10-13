@@ -1,9 +1,9 @@
-// components/HourSlotCard.tsx
 import React from "react";
 import { Card, CardContent, Typography, Box, Chip } from "@mui/material";
 import { FaRegCheckCircle } from "react-icons/fa";
 import { IoMdTime } from "react-icons/io";
 import { SlotCardProps } from "../../types/HourSlots";
+import dayjs from "dayjs";
 
 const HourSlotCard: React.FC<SlotCardProps> = ({
   slot,
@@ -11,7 +11,12 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
   onClick,
 }) => {
   const isBooked = slot.booked;
-  const isDisabled = isBooked;
+
+  // Combine date + startTime to check if the slot is in the past
+  const isPast = dayjs(`${slot.date} ${slot.startTime}`).isBefore(dayjs());
+
+  // Slot should be disabled if it's either booked or in the past
+  const isDisabled = isBooked || isPast;
 
   return (
     <Card
@@ -48,21 +53,21 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
         },
       }}
     >
-      {/* Booked Tag */}
-      {isBooked && (
+      {/* Tag — Booked or Past */}
+      {(isBooked || isPast) && (
         <Box
           sx={{
             position: "absolute",
-            top: 1,
+            top: 8,
             right: 8,
             zIndex: 1,
           }}
         >
           <Chip
-            label="Booked"
+            label={isBooked ? "Booked" : "Not Available"}
             size="small"
             sx={{
-              backgroundColor: "#ef4444",
+              backgroundColor: isBooked ? "#ef4444" : "#94a3b8",
               color: "white",
               fontWeight: "600",
               fontSize: "10px",
@@ -77,6 +82,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
       )}
 
       <CardContent sx={{ p: 2 }}>
+        {/* Time Range */}
         <Box
           sx={{
             display: "flex",
@@ -111,6 +117,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
           </Typography>
         </Box>
 
+        {/* Duration */}
         <Box
           sx={{
             display: "flex",

@@ -14,6 +14,7 @@ import {
   Alert,
   CircularProgress,
   DialogTitle,
+  Tooltip,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -252,7 +253,13 @@ const BookingDetails: React.FC = () => {
       setCancelLoading(false);
     }
   };
-
+  const isLessonPast = selectedAvailability?.length
+    ? new Date(
+        `${selectedAvailability[selectedAvailability.length - 1].date}T${
+          selectedAvailability[selectedAvailability.length - 1].endTime
+        }`
+      ).getTime() < Date.now()
+    : false;
   return (
     <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <BackButton variant="outline" showIcon={true} />
@@ -299,21 +306,61 @@ const BookingDetails: React.FC = () => {
             </Typography>
           )} */}
           <Box>
-            <Button
-              variant="contained"
-              sx={{ mr: 1 }}
-              onClick={handleReschedule}
+            <Tooltip
+              title={isLessonPast ? "You can’t reschedule past bookings." : ""}
+              arrow
             >
-              Rescheduling
-            </Button>
+              <span>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleReschedule}
+                  disabled={isLessonPast}
+                  sx={{
+                    width: "200px",
+                    opacity: isLessonPast ? 0.6 : 1,
+                    pointerEvents: isLessonPast ? "none" : "auto",
+                    bgcolor: isLessonPast ? "#d3d3d3" : "#5ec2d2",
+                    mr: 2,
+                    "&:hover": {
+                      bgcolor: isLessonPast ? "#d3d3d3" : "rgba(65, 135, 147)",
+                    },
+                  }}
+                >
+                  Reschedule
+                </Button>
+              </span>
+            </Tooltip>
+
             {!isCancelled && (
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleOpenCancel}
+              <Tooltip
+                title={isLessonPast ? "You can’t cancel past bookings." : ""}
+                arrow
               >
-                Cancel Booking
-              </Button>
+                <span>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={handleCancelBooking}
+                    disabled={isLessonPast || cancelLoading}
+                    sx={{
+                      width: "200px",
+                      opacity: isLessonPast ? 0.6 : 1,
+                      pointerEvents: isLessonPast ? "none" : "auto",
+                      bgcolor: isLessonPast ? "#d3d3d3" : "#f44336",
+                      "&:hover": {
+                        bgcolor: isLessonPast ? "#d3d3d3" : "#d32f2f",
+                      },
+                    }}
+                  >
+                    {cancelLoading ? (
+                      <CircularProgress size={20} />
+                    ) : (
+                      "Cancel Lesson"
+                    )}
+                  </Button>
+                </span>
+              </Tooltip>
             )}
           </Box>
         </Box>
