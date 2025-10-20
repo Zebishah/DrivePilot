@@ -4,8 +4,7 @@ let socket: Socket | null = null;
 const MAX_ATTEMPTS = 5;
 let currentAttempts = 0;
 
-const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_SERVER_URL || "http://localhost:4000";
+const SOCKET_URL = import.meta.env.VITE_APP_AUTH_URL || "http://localhost:4000";
 
 /**
  * Initialize and connect socket with authentication token
