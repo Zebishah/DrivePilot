@@ -3,13 +3,13 @@ const studentBookingModel = require("../../models/studentBooking.model");
 
 const { User, Student, Instructor } = require("../../models/User");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
+const StudentBooking = require("../../models/StudentBooking");
 
 const AdminBookingResolvers = {
   Query: {
     getAllStudentBookings: async () => {
       try {
-        const bookings = await studentBookingModel
-          .find({})
+        const bookings = await StudentBooking.find({})
           .populate({
             path: "studentId",
             model: "Student",
@@ -24,19 +24,17 @@ const AdminBookingResolvers = {
           })
           .sort({ createdAt: -1 });
 
-        // Add slotsCount to each booking
         const bookingsWithCount = bookings.map((b) => ({
           ...b.toObject(),
           slotsCount: b.slots?.length || 0,
         }));
 
-        // Total slots across all bookings
         const totalSlots = bookingsWithCount.reduce(
           (sum, b) => sum + b.slotsCount,
           0
         );
 
-        console.log("Bookings found:", bookingsWithCount.length);
+        console.log("Bookings found:", bookings.length);
         console.log("Total slots found:", totalSlots);
 
         return bookingsWithCount;

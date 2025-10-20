@@ -95,19 +95,35 @@ const adminAnalyticsResolvers = {
       });
 
       // Lesson attendance: Booked slots in range where date < now
-      const nowStr = now.format("YYYY-MM-DD");
+      const nowStr = now.format("YYYY-MM-DDTHH:mm");
+
       const attendedLessonsAgg = await studentBookingModel.aggregate([
         { $match: matchInstructor },
         { $unwind: "$slots" },
         {
+          $addFields: {
+            slotEndDateTime: {
+              $dateFromString: {
+                dateString: { $concat: ["$slots.date", "T", "$slots.endTime"] },
+              },
+            },
+          },
+        },
+        {
           $match: {
-            "slots.date": { $lt: nowStr }, // Date has passed (crossed current date)
             "slots.booked": true,
             "slots.status": "booked",
+            slotEndDateTime: {
+              $gte: fromDateObj,
+              $lte: toDateObj,
+              // ✅ only count if it has already passed
+              $lt: now.toDate(),
+            },
           },
         },
         { $count: "count" },
       ]);
+
       const attendedLessons = attendedLessonsAgg[0]?.count || 0;
 
       // Attendance rate

@@ -10,7 +10,7 @@ const connectDB = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const cors = require("cors");
 const http = require("http");
-const { initSocket } = require("./socket");
+const { initSocket, setIOInstance } = require("./socket");
 
 // ✅ Connect to MongoDB
 connectDB();
@@ -49,7 +49,10 @@ app.use(authRoutes);
 const schema = makeExecutableSchema({ typeDefs, resolvers });
 
 // ✅ Initialize Socket.IO server (real-time chat)
-initSocket(httpServer, allowedOrigins);
+const io = initSocket(httpServer, allowedOrigins);
+
+// ✅ Store io instance globally for use in resolvers
+setIOInstance(io);
 
 // ✅ Setup Apollo Server (GraphQL API)
 async function startApolloServer() {
@@ -57,6 +60,7 @@ async function startApolloServer() {
     schema,
     context: async ({ req }) => {
       const auth = await authMiddleware(req);
+      // No need to pass io here anymore
       return { user: auth.user, req };
     },
   });

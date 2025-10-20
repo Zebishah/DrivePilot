@@ -12,7 +12,7 @@ const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const teacherTariffModel = require("../../models/teacherTariff.model");
-
+const { getIOInstance } = require("../../socket");
 const studentBookingResolver = {
   Query: {
     // getStudentBookings: async (_, __, { user }) => {
@@ -77,6 +77,34 @@ const studentBookingResolver = {
 
       return filteredBookings;
     },
+    getUnseenBookingsCount: async (_, __, { user }) => {
+      try {
+        if (!user || user.role !== "Admin") {
+          throw new Error("Unauthorized");
+        }
+
+        // Get the last time admin viewed bookings
+        // You can store this in a separate AdminActivity collection or in the Admin model
+        const admin = await Admin.findById(user.id);
+        const lastViewedAt = admin?.lastBookingViewedAt || new Date(0);
+
+        // Count bookings created after last viewed time
+        const unseenCount = await StudentBooking.countDocuments({
+          createdAt: { $gt: lastViewedAt },
+        });
+
+        console.log(`📊 Admin ${user.id} has ${unseenCount} unseen bookings`);
+
+        return {
+          count: unseenCount,
+          lastViewedAt,
+        };
+      } catch (error) {
+        console.error("Error getting unseen bookings count:", error);
+        throw error;
+      }
+    },
+
     getCompletedStudentBookings: async (_, __, { user }) => {
       validateUser(user);
 
@@ -381,7 +409,15 @@ const studentBookingResolver = {
           console.error("Failed to send booking creation emails:", emailError);
           // Don't throw error here as booking was successful
         }
-
+        // ✅ NOTIFY ALL ADMINS VIA SOCKET.IO
+        const io = getIOInstance();
+        if (io && io.notifyNewBooking) {
+          console.log("📢 Notifying admins about new booking via Socket.IO");
+          io.notifyNewBooking(bookingData);
+          console.log("📢 Admins notified about new booking via Socket.IO");
+        } else {
+          console.warn("⚠️ Socket.IO instance not available for notifications");
+        }
         return savedBooking;
       } catch (error) {
         console.error("Booking creation error:", error);
@@ -391,7 +427,25 @@ const studentBookingResolver = {
         throw error;
       }
     },
+    markBookingsAsViewed: async (_, __, { user }) => {
+      try {
+        if (!user || user.role !== "Admin") {
+          throw new Error("Unauthorized");
+        }
 
+        // Update the admin's last viewed timestamp
+        await Admin.findByIdAndUpdate(user.id, {
+          lastBookingViewedAt: new Date(),
+        });
+
+        console.log(`✅ Admin ${user.id} marked bookings as viewed`);
+
+        return { success: true };
+      } catch (error) {
+        console.error("Error marking bookings as viewed:", error);
+        throw error;
+      }
+    },
     updateBookingStatus: async (_, { bookingId, status }, { user }) => {
       validateUser(user);
 

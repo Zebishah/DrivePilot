@@ -20,10 +20,10 @@ const studentDashboardResolver = {
       let semiCancelled = 0;
       let currentBookings = 0;
       const instructorSet = new Set();
-
+      const now = new Date();
       for (const booking of bookings) {
         for (const slot of booking.slots) {
-          totalLessons++; // Count all slots
+          if (slot.status !== "cancelled") totalLessons++; // Count all slots
 
           if (slot.booked) bookedLessons++;
 
@@ -31,7 +31,13 @@ const studentDashboardResolver = {
 
           if (slot.status === "semi_cancelled") semiCancelled++;
 
-          if (slot.booked && slot.status === "booked") currentBookings++; // ✅ Fixed
+          if (
+            slot.booked &&
+            slot.status === "booked" &&
+            new Date(`${slot.date}T${slot.endTime}`) > now
+          ) {
+            currentBookings++;
+          }
         }
 
         instructorSet.add(booking.instructorId.toString());

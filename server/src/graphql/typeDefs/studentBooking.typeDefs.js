@@ -165,12 +165,14 @@ const studentBookingTypeDefs = gql`
     getCompletedStudentBookings: [StudentBooking!]!
     getStudentDashboardDetails(studentId: ID!): StudentDashboardDetails
     getInstructorBookings: [StudentBooking!]!
+    getUnseenBookingsCount: Int!
   }
 
   type Mutation {
     createBooking(input: StudentBookingInput!): StudentBooking!
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
+    markBookingsAsViewed: Boolean!
   }
 `;
 

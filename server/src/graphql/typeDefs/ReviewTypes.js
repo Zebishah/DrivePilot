@@ -11,9 +11,9 @@ const reviewTypeDefs = gql`
   }
 
   type StudentBookingSlot {
-    lessonNumber: String!
+    lessonNumber: String
     lessonId: ID!
-    instructorName: String!
+    instructorName: String
     instructorId: ID!
     studentId: ID!
     dateOfBooking: String!
@@ -21,7 +21,7 @@ const reviewTypeDefs = gql`
     isCompleted: Boolean!
     isReviewed: Boolean!
     slotId: String!
-    profileImage: String!
+    profileImage: String
     slotDetails: SlotDetails!
   }
   input CreateReviewInput {

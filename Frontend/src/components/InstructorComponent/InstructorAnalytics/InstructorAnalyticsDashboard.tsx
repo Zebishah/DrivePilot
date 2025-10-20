@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Users, Calendar, DollarSign, Award } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { LastTrainedStudent } from "./LastTrainedStudent";
@@ -42,6 +42,7 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
           status
         }
         studentTotalLessons
+        studentLocation
       }
       instructor {
         firstName
@@ -56,9 +57,14 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
 export const InstructorAnalyticsDashboard: React.FC = () => {
   const { user } = useAuth();
 
-  const { data, loading, error } = useQuery(GET_INSTRUCTOR_ANALYTICS, {
+  const { data, loading, error, refetch } = useQuery(GET_INSTRUCTOR_ANALYTICS, {
     variables: { instructorId: user?.id },
+    fetchPolicy: "no-cache",
   });
+
+  useEffect(() => {
+    if (user?.id) refetch();
+  }, [user, refetch]);
 
   if (loading) return <LoadingSpinner />;
   if (error) return <p>Error: {error.message}</p>;
@@ -117,6 +123,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             }
             satisfaction={100}
             completionDate={analytics.lastBooking?.slots[0]?.date}
+            studentLocation={analytics.lastBooking?.studentLocation}
           />
         </div>
 

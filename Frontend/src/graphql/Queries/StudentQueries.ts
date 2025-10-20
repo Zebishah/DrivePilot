@@ -153,7 +153,22 @@ export const GET_STUDENT_BOOKINGS = gql`
     }
   }
 `;
+export const GET_UNSEEN_BOOKINGS_COUNT = gql`
+  query GetUnseenBookingsCount {
+    getUnseenBookingsCount {
+      count
+      lastViewedAt
+    }
+  }
+`;
 
+export const MARK_BOOKINGS_AS_VIEWED = gql`
+  mutation MarkBookingsAsViewed {
+    markBookingsAsViewed {
+      success
+    }
+  }
+`;
 export const GET_ALL_STUDENTS_ADMIN = gql`
   query AllStudentsWithLessonStats {
     allStudentsWithLessonStats {

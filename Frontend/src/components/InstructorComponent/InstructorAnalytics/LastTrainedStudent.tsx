@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { UserNew } from "../../../types/InstructorAnalytics";
+import { Link } from "react-router-dom";
 
 interface LastTrainedStudentProps {
   student: UserNew | null;
@@ -8,6 +9,7 @@ interface LastTrainedStudentProps {
   joiningDate?: string;
   satisfaction?: number;
   completionDate?: string;
+  studentLocation: string | null;
 }
 
 export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
@@ -16,6 +18,7 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
   joiningDate,
   satisfaction = 100,
   completionDate,
+  studentLocation,
 }) => {
   if (!student) {
     return (
@@ -24,9 +27,12 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
           <h3 className="text-lg font-semibold text-gray-900">
             Last Trained Student
           </h3>
-          <button className="bg-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors">
+          <Link
+            className="bg-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors"
+            to="/teacher-dashboard/my-students"
+          >
             View
-          </button>
+          </Link>
         </div>
         <div className="text-center py-8 text-gray-500">
           No student data available
@@ -41,9 +47,12 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
         <h3 className="text-lg font-semibold text-gray-900">
           Last Trained Student
         </h3>
-        <button className="bg-[#5EC2D2] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#5EC2D2] transition-colors">
+        <Link
+          className="bg-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-600 transition-colors"
+          to="/teacher-dashboard/my-students"
+        >
           View
-        </button>
+        </Link>
       </div>
 
       <div className="flex items-center space-x-4 mb-6 ">
@@ -65,7 +74,7 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
           <h4 className="text-lg font-semibold text-gray-900">
             {student.firstName} {student.lastName}
           </h4>
-          <p className="text-gray-600 text-sm">Houston, UK</p>
+          <p className="text-gray-600 text-sm">{studentLocation}</p>
         </div>
         <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <ChevronRight size={20} className="text-gray-400" />

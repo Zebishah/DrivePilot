@@ -216,7 +216,11 @@ const ReviewFormPage: React.FC = () => {
   };
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <BackButton variant="outline" showIcon={true} />
+      <BackButton
+        variant="outline"
+        showIcon={true}
+        to="/student-dashboard/reviews"
+      />
       <div className=" mx-auto mt-3">
         <div className="bg-white rounded-lg shadow-xl">
           {/* Header */}

@@ -29,6 +29,7 @@ export interface MenuItem {
   text: string;
   icon: LucideIcon | IconType;
   path: string;
+  badge?: number;
 }
 
 interface SidebarProps {
@@ -208,19 +209,29 @@ export default function Sidebar({
                         fontWeight: isActive ? 500 : 400,
                       }}
                     />
-                    {item.text === "Messages" && unreadMessages && (
+                    {((item.badge && item.badge > 0) ||
+                      (item.text === "Messages" && unreadMessages)) && (
                       <Box
                         sx={{
                           position: "absolute",
                           right: 10,
                           top: "50%",
                           transform: "translateY(-50%)",
-                          width: 10,
-                          height: 10,
                           bgcolor: "red",
+                          color: "white",
                           borderRadius: "50%",
+                          minWidth: 18,
+                          height: 18,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.7rem",
+                          fontWeight: "bold",
+                          px: 0.5,
                         }}
-                      />
+                      >
+                        {item.badge ? item.badge : ""}
+                      </Box>
                     )}
                   </ListItemButton>
                 </Link>

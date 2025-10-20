@@ -288,12 +288,21 @@ const instructorResolver = {
 
       // total students
       const totalStudents = uniqueStudents.size;
-
+      const now = new Date();
       // active bookings (future or confirmed)
       const activeBookings = bookings.reduce((count, booking) => {
-        const activeSlots = booking.slots.filter((slot) =>
-          ["booked", "pending"].includes(slot.status)
-        ).length;
+        const activeSlots = booking.slots.filter((slot) => {
+          // Combine date and time into a full DateTime
+          const slotStart = new Date(`${slot.date}T${slot.startTime}`);
+          const slotEnd = new Date(`${slot.date}T${slot.endTime}`);
+
+          // Check if status is active and slot time is in the future
+          const isActiveStatus = ["booked", "confirmed"].includes(slot.status);
+          const isFuture = slotEnd > now; // Still upcoming or ongoing
+
+          return isActiveStatus && isFuture;
+        }).length;
+
         return count + activeSlots;
       }, 0);
 
@@ -317,6 +326,7 @@ const instructorResolver = {
         return sum + slotEarnings;
       }, 0);
       // last booking
+      // last booking
       const lastSlot = bookings
         .flatMap((b) =>
           b.slots.map((s) => ({
@@ -333,12 +343,11 @@ const instructorResolver = {
       let lastBooking = null;
 
       if (lastSlot) {
-        // find student of last booking
-        const lastStudentId = lastSlot.booking.studentId?._id?.toString();
+        const lastStudent = lastSlot.booking.studentId;
 
         // count all lessons by this student with this instructor
         const studentTotalLessons = bookings.reduce((sum, b) => {
-          if (b.studentId?._id?.toString() === lastStudentId) {
+          if (b.studentId?._id?.toString() === lastStudent?._id?.toString()) {
             return sum + b.slots.length;
           }
           return sum;
@@ -346,7 +355,7 @@ const instructorResolver = {
 
         lastBooking = {
           _id: lastSlot.slotId,
-          studentId: lastSlot.booking.studentId,
+          studentId: lastStudent,
           instructorId: lastSlot.booking.instructorId,
           slots: [lastSlot],
           totalAmount: lastSlot.booking.totalAmount,
@@ -354,10 +363,10 @@ const instructorResolver = {
           status: lastSlot.status,
           createdAt: lastSlot.booking.createdAt,
           updatedAt: lastSlot.booking.updatedAt,
-          studentTotalLessons, // 🔥 new field
+          studentTotalLessons,
+          studentLocation: lastStudent?.location || null, // ✅ Added field
         };
       }
-
       // lessons count (slots are lessons)
       const totalLessons = bookings.reduce((sum, b) => sum + b.slots.length, 0);
 
@@ -375,14 +384,19 @@ const instructorResolver = {
         ? (cancelledLessons / totalLessons) * 100
         : 0;
 
-      const attendedLessons = bookings.reduce(
-        (sum, b) =>
+      const attendedLessons = bookings.reduce((sum, b) => {
+        return (
           sum +
-          b.slots.filter(
-            (s) => new Date(s.date) < new Date() && s.status === "booked"
-          ).length,
-        0
-      );
+          b.slots.filter((s) => {
+            // Combine date and start time into one full timestamp
+            const slotDateTime = new Date(`${s.date}T${s.startTime}`);
+            const now = new Date();
+
+            // A lesson is considered "attended" if it has already started and is booked
+            return slotDateTime < now && s.status === "booked";
+          }).length
+        );
+      }, 0);
 
       const attendanceRate = totalLessons
         ? (attendedLessons / totalLessons) * 100

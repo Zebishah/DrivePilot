@@ -141,6 +141,7 @@ const instructorTypeDefs = gql`
     createdAt: String
     updatedAt: String
     studentTotalLessons: Int
+    studentLocation: String
   }
 
   type SlotNew {

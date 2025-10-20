@@ -1,16 +1,18 @@
 "use client";
 
 import type React from "react";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
-
 import Sidebar, { type MenuItem } from "../components/common/SideBar";
 import Navbar from "../components/common/DashNavBar";
 import { LayoutGrid, HelpCircle, LogOut, UserRoundCog } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useBookingNotifications } from "../utils/useBookingNotification";
+import { initSocket } from "../utils/socket";
+// ✅ Import initSocket
+
 const theme = createTheme({
   palette: {
     primary: {
@@ -33,12 +35,40 @@ const DRAWER_WIDTH = 280;
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-
   const nav = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // ✅ Initialize socket connection when component mounts
+  useEffect(() => {
+    if (user?.role === "Admin") {
+      console.log("🔌 Initializing socket for admin:", user.id);
+      initSocket();
+    }
+  }, [user]);
+
+  // ✅ Use booking notifications hook
+  const { unseenBookingsCount, clearUnseenCount, isRegistered } =
+    useBookingNotifications(user?.id || "", user?.role || "");
+
+  console.log("Admin Layout State:", {
+    unseenBookingsCount,
+    isRegistered,
+    userId: user?.id,
+    role: user?.role,
+    pathname: location.pathname,
+  });
+
+  // ✅ Clear unseen count when visiting booking management page
+  useEffect(() => {
+    if (location.pathname === "/admin-dashboard/bookingManagement") {
+      console.log("📍 On booking management page, clearing count");
+      clearUnseenCount();
+    }
+  }, [location.pathname, clearUnseenCount]);
+
   const menuItems: MenuItem[] = [
     { text: "Overview", icon: LayoutGrid, path: "/admin-dashboard/overview" },
-
     {
       text: "Admin Access",
       icon: UserRoundCog,
@@ -58,6 +88,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       text: "Booking Management",
       icon: LayoutGrid,
       path: "/admin-dashboard/bookingManagement",
+      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined, // ✅ Only show badge if > 0
     },
     {
       text: "Student Management",
@@ -73,13 +104,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           },
         ]
       : []),
-
     { text: "Logout", icon: LogOut, path: "/logout" },
   ];
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
   const handleLogout = () => {
     logout();
     nav("/auth/signin");
@@ -101,9 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <Box
           component="main"
           sx={{
-            // flexGrow: 1,
             width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-            // ml: { sm: `${DRAWER_WIDTH}px` },
           }}
         >
           <Navbar

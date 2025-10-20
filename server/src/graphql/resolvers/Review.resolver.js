@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const { Review } = require("../../models/Reviews");
 const StudentBooking = require("../../models/studentBooking.model");
 const { Student } = require("../../models/User");
@@ -69,10 +70,18 @@ const reviewResolver = {
       return allSlots;
     },
     getInstructorReviews: async (_, { instructorId }) => {
-      const reviews = await Review.find({ instructorId })
+      const id = mongoose.Types.ObjectId.isValid(instructorId)
+        ? new mongoose.Types.ObjectId(instructorId)
+        : instructorId; // keep string if not valid ObjectId
+
+      const reviews = await Review.find({ instructorId: id })
         .populate("studentId", "_id firstName lastName profileImage")
         .populate("instructorId", "_id firstName lastName profileImage")
         .sort({ createdAt: -1 });
+
+      console.log(
+        `Fetched ${reviews.length} reviews for instructor ${instructorId}`
+      );
       return reviews;
     },
     getStudentHoursProgress: async (_, { studentId }) => {

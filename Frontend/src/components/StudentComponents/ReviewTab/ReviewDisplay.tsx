@@ -160,7 +160,11 @@ const ReviewDisplayPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <BackButton variant="outline" showIcon={true} />
+      <BackButton
+        variant="outline"
+        showIcon={true}
+        to="/student-dashboard/reviews"
+      />
       <div className=" mx-auto mt-4">
         {/* Success Message */}
         {successVisible && (
@@ -201,17 +205,17 @@ const ReviewDisplayPage: React.FC = () => {
             <div className="p-6 ">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  {existingReview.instructorId.profileImage ? (
+                  {existingReview?.instructorId?.profileImage ? (
                     <img
-                      src={existingReview.instructorId.profileImage}
-                      alt={existingReview.instructorId.profileImage}
+                      src={existingReview?.instructorId?.profileImage}
+                      alt={existingReview?.instructorId?.profileImage}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <span className="text-white font-bold text-lg">
-                      {existingReview.instructorName
-                        .split(" ")
-                        .map((n) => n[0])
+                      {existingReview?.instructorName
+                        ?.split(" ")
+                        ?.map((n) => n[0])
                         .join("")}
                     </span>
                   )}
