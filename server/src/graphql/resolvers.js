@@ -335,6 +335,8 @@ const resolvers = {
         signUpSchema.parse(input);
 
         // Check if user exists
+        const emailLower = input.email.toLowerCase();
+        input.email = emailLower;
         const existingUser = await User.findOne({ email: input.email });
         if (existingUser) {
           throw new UserInputError(`This email is already linked to a ${existingUser?.authProvider} account. Please sign in with ${existingUser?.authProvider}
@@ -930,6 +932,10 @@ instead.`);
         throw new UserInputError("User is not a student");
       }
 
+      const existingStudent = await Student.findById(user.id);
+      if (!existingStudent) {
+        throw new UserInputError("Student not found");
+      }
       try {
         // Update the schema validation if needed
         studentProfileSchema.parse(input);
@@ -950,22 +956,12 @@ instead.`);
           updateData,
           { new: true }
         );
-        if (!user.isUserVerified) {
-          // Delete existing unused email verification OTPs
-          if (user?.role === "Student") {
-            await sendOtpEmail(
-              user.email,
-              user.firstName,
-              "welcome_email_Student"
-            );
-          } else if (user?.role === "Instructor") {
-            await sendOtpEmail(
-              user.email,
-              user.firstName,
-              "welcome_email_Instructor"
-            );
-          }
-        }
+
+        await sendOtpEmail(
+          user.email,
+          existingStudent.firstName,
+          "welcome_email_Student"
+        );
 
         return updatedStudent;
       } catch (error) {
@@ -986,7 +982,11 @@ instead.`);
       if (user.role !== "Instructor") {
         throw new UserInputError("User is not an instructor");
       }
-
+      console.log("Instructor profile input:", user);
+      const existingInstructor = await Instructor.findById(user.id);
+      if (!existingInstructor) {
+        throw new UserInputError("Instructor not found");
+      }
       try {
         // First validate the basic schema
         instructorProfileSchema.parse(input);
@@ -1022,6 +1022,14 @@ instead.`);
             isProfileComplete: true,
           },
           { new: true }
+        );
+
+        // Delete existing unused email verification OTPs
+
+        await sendOtpEmail(
+          user.email,
+          existingInstructor.firstName,
+          "welcome_email_Instructor"
         );
 
         return updatedInstructor;

@@ -374,7 +374,7 @@ const InstructorsInfo: React.FC = () => {
   }, [data?.getNearbyInstructors?.instructors, filtersApplied]);
 
   return (
-    <div className="w-full mx-auto overflow-x-hidden">
+    <div className="w-[90%] mx-auto overflow-x-hidden">
       <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
         Nearby Instructors
       </h1>

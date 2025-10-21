@@ -70,6 +70,7 @@ const adminAnalyticsResolvers = {
 
       // Total registrations: Users created in the date range
       const totalRegistrations = await User.countDocuments({
+        role: { $in: ["Student", "Instructor"] }, // ✅ Only Students & Instructors
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
       });
 
@@ -184,6 +185,7 @@ const adminAnalyticsResolvers = {
       });
 
       const allUsers = await User.find({
+        role: { $in: ["Student", "Instructor"] }, // ✅ Only Students & Instructors
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
       });
 

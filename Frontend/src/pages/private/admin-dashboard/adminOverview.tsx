@@ -357,9 +357,11 @@ export function AnalyticsDashboard() {
   // Calculate collective totals from the conversion rates data
   const totalVisitors =
     graphData?.conversionRates.reduce((sum, d) => sum + d.visitors, 0) || 0;
+  console.log("grpahdata.conversation", graphData?.conversionRates);
   const totalRegistrations =
     graphData?.conversionRates.reduce((sum, d) => sum + d.registrations, 0) ||
     0;
+  console.log("total", totalRegistrations);
 
   if (analyticsLoading) {
     return (

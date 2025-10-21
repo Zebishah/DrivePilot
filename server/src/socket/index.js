@@ -7,12 +7,16 @@ const allowedOrigins = [
   "https://studio.apollographql.com",
 ];
 
+if (process.env.Frontend_URL) {
+  allowedOrigins.push(process.env.Frontend_URL);
+}
+
 // Store admin socket connections
 const adminSockets = new Map();
 
 function initSocket(server) {
   const io = new Server(server, {
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     cors: {
       origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {

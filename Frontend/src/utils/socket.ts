@@ -1,7 +1,7 @@
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 15;
 let currentAttempts = 0;
 
 const SOCKET_URL = import.meta.env.VITE_APP_AUTH_URL || "http://localhost:4000";
@@ -28,7 +28,7 @@ export const connectSocket = (token?: string): Socket => {
 
   // Create new socket instance
   socket = io(SOCKET_URL, {
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     reconnection: true,
     reconnectionAttempts: MAX_ATTEMPTS,
     reconnectionDelay: 1000,

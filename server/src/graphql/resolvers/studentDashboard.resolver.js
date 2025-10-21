@@ -31,12 +31,16 @@ const studentDashboardResolver = {
 
           if (slot.status === "semi_cancelled") semiCancelled++;
 
-          if (
-            slot.booked &&
-            slot.status === "booked" &&
-            new Date(`${slot.date}T${slot.endTime}`) > now
-          ) {
-            currentBookings++;
+          if (slot.booked && slot.status === "booked") {
+            const now = new Date();
+
+            // Combine slot date + end time into one Date object (local time)
+            const slotEnd = new Date(`${slot.date}T${slot.endTime}`);
+
+            // Count as current booking only if the end time is in the future
+            if (slotEnd > now) {
+              currentBookings++;
+            }
           }
         }
 
