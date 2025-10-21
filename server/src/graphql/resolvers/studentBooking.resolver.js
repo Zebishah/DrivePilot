@@ -188,10 +188,9 @@ const studentBookingResolver = {
       for (const booking of allBookings) {
         if (!booking.slots || booking.slots.length === 0) continue;
 
-        totalLessonCount += 1;
-
         // Calculate total duration per booking
         for (const slot of booking.slots) {
+          totalLessonCount += 1;
           const start = new Date(`${slot.date}T${slot.startTime}:00`);
           const end = new Date(`${slot.date}T${slot.endTime}:00`);
           const duration = (end - start) / (1000 * 60); // minutes

@@ -15,8 +15,14 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
   selectedTab,
   setSelectedTab,
 }) => {
-  console.log("Completed Bookings:", completedBookings);
-  console.log("Uncompleted Bookings:", uncompletedBookings);
+  const totalCompletedSlots = completedBookings.reduce(
+    (count, booking) => count + (booking.slots?.length || 0),
+    0
+  );
+  const totalUncompletedSlots = uncompletedBookings.reduce(
+    (count, booking) => count + (booking.slots?.length || 0),
+    0
+  );
   return (
     <div className=" bg-white rounded-lg shadow-sm p-6 ">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -33,7 +39,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          Completed ({completedBookings.length})
+          Completed ({totalCompletedSlots})
         </button>
         <button
           onClick={() => setSelectedTab("uncompleted")}
@@ -43,7 +49,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          In Progress ({uncompletedBookings.length})
+          In Progress ({totalUncompletedSlots})
         </button>
       </div>
 
