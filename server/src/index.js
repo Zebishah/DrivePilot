@@ -26,7 +26,10 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://studio.apollographql.com",
 ];
-
+// Add frontend URL from env if provided
+if (process.env.Frontend_URL) {
+  allowedOrigins.push(process.env.Frontend_URL);
+}
 app.use(
   cors({
     origin: (origin, callback) => {
