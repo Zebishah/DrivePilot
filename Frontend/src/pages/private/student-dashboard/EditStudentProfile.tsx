@@ -690,7 +690,7 @@ export default function EditStudentProfile() {
                     }
                     onChange={handleDateOfBirthChange}
                     disabled={!!data.studentProfile.dateOfBirth} // Disable if value exists
-                    maxDate={maxAllowedDOB} // Max = must be born on or before this date
+                    maxDate={new Date()} // Max = must be born on or before this date
                     slotProps={{
                       textField: {
                         fullWidth: true,

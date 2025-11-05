@@ -102,6 +102,7 @@ const AdminBookingTypeDefs = gql`
 
   type Query {
     getAllStudentBookings: [StudentBookingAdmin!]!
+    getInstructorBookingsById(instructorId: ID!): [StudentBookingAdmin!]!
   }
 
   type Mutation {

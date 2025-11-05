@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const TeacherAvailability = require("../../models/teacherAvailability.model");
 const { startOfMonth, endOfMonth } = require("date-fns");
 
@@ -11,19 +12,29 @@ const resolvers = {
         const startDate = startOfMonth(monthDate);
         const endDate = endOfMonth(monthDate);
 
-        const slots = await TeacherAvailability.find({
+        // ✅ Find all availability docs for this teacher in the given month
+        const availabilities = await TeacherAvailability.find({
           teacherId: user.id,
-        }).sort({ date: -1 });
+          date: { $gte: startDate, $lte: endDate },
+        }).sort({ date: 1 });
 
-        return slots.map((slot) => ({
-          id: slot.id,
-          date: slot.date.toISOString(),
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          status: slot.status,
+        // ✅ Format response
+        return availabilities.map((availability) => ({
+          id: availability._id.toString(),
+          date: availability.date.toISOString(),
+          status: availability.status,
+          availableSlots: availability.availableSlots.map((slot) => ({
+            id: slot.id,
+            date: slot.date,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: slot.status,
+            booked: slot.booked,
+          })),
         }));
       } catch (error) {
-        throw new Error("Error fetching availability slots");
+        console.error("Error fetching teacher availability:", error);
+        throw new Error("Error fetching teacher availability");
       }
     },
   },
@@ -38,40 +49,74 @@ const resolvers = {
       const newStatus = input.status || "available";
 
       try {
-        // Fetch existing slots on the same date for the same teacher
-        const existingSlots = await TeacherAvailability.find({
+        // 1️⃣ Check if a TeacherAvailability document already exists for this teacher on the same date
+        let availability = await TeacherAvailability.findOne({
           teacherId: user.id,
           date: newDate,
         });
 
-        // Check if new slot overlaps with any existing slot
-        const hasOverlap = existingSlots.some((slot) => {
-          const existingStart = slot.startTime;
-          const existingEnd = slot.endTime;
-
-          return newStart < existingEnd && existingStart < newEnd;
-        });
-
-        if (hasOverlap) {
-          throw new Error("Time slot overlaps with an existing availability.");
+        // 2️⃣ Check for overlapping slots
+        if (availability) {
+          const overlap = availability.availableSlots.some(
+            (slot) => newStart < slot.endTime && newEnd > slot.startTime // overlap condition
+          );
+          if (overlap) {
+            throw new Error(
+              "This time slot overlaps with an existing availability for the same teacher."
+            );
+          }
         }
 
-        const slot = await TeacherAvailability.create({
-          teacherId: user.id,
-          date: newDate,
-          startTime: newStart,
-          endTime: newEnd,
-          status: "available",
-        });
+        // 3️⃣ Validate start/end time
+        const startHour = parseInt(newStart.split(":")[0], 10);
+        const endHour = parseInt(newEnd.split(":")[0], 10);
+        if (startHour >= endHour) {
+          throw new Error("End time must be greater than start time");
+        }
+
+        // 4️⃣ Generate new hourly slots
+        const newSlots = [];
+        for (let hour = startHour; hour < endHour; hour++) {
+          const start = `${hour.toString().padStart(2, "0")}:00`;
+          const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
+
+          newSlots.push({
+            id: new mongoose.Types.ObjectId().toString(),
+            date: input.date,
+            startTime: start,
+            endTime: end,
+            booked: false,
+            status: "available",
+          });
+        }
+
+        // 5️⃣ If availability exists, append new slots; else create a new document
+        if (availability) {
+          availability.availableSlots.push(...newSlots);
+          await availability.save();
+        } else {
+          availability = await TeacherAvailability.create({
+            teacherId: user.id,
+            date: newDate,
+            startTime: newStart,
+            endTime: newEnd,
+            status: newStatus,
+            availableSlots: newSlots,
+            bookedSlots: [],
+          });
+        }
 
         return {
-          id: slot._id,
-          date: slot.date.toISOString(),
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          status: slot.status,
+          id: availability._id,
+          date: availability.date.toISOString(),
+          startTime: availability.startTime,
+          endTime: availability.endTime,
+          status: availability.status,
+          availableSlots: availability.availableSlots,
+          bookedSlots: availability.bookedSlots,
         };
       } catch (error) {
+        console.error("Error adding availability slot:", error);
         throw new Error(error.message || "Error adding availability slot");
       }
     },
@@ -80,13 +125,21 @@ const resolvers = {
       if (!user) throw new Error("Not authenticated");
 
       try {
-        const result = await TeacherAvailability.deleteOne({
-          _id: id,
-          teacherId: user.id,
-        });
+        // Find the document that contains this slot in availableSlots
+        const result = await TeacherAvailability.updateOne(
+          {
+            teacherId: user.id,
+            "availableSlots.id": id, // find the document containing this slot
+          },
+          {
+            $pull: { availableSlots: { id } }, // remove that specific slot
+          }
+        );
 
-        return result.deletedCount > 0;
+        // result.modifiedCount > 0 means the slot was deleted
+        return result.modifiedCount > 0;
       } catch (error) {
+        console.error("Error deleting slot:", error);
         throw new Error("Error deleting availability slot");
       }
     },

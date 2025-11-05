@@ -152,38 +152,40 @@ const InstructorsInfo: React.FC = () => {
   useEffect(() => {
     const initializeCoordinates = async () => {
       try {
-        // Priority 1: If student has a profile location, use that
-        if (studentData?.studentProfile?.location) {
-          const coordinates = await fetchCoordinatesForLocation(
-            studentData.studentProfile.location
-          );
-          if (coordinates) {
-            setFilters((prev) => ({ ...prev, coordinates }));
-            setIsInitialLoad(false);
-            return; // Exit early, don't fetch user location
-          }
-        }
-
-        // Priority 2: If no student profile location, use user's current location
-
+        // Try to use user's current coordinates immediately
         const userCoords = await getUserLocation();
-
         setFilters((prev) => ({
           ...prev,
           coordinates: userCoords,
         }));
-        setIsInitialLoad(false);
+        setIsInitialLoad(false); // Allow instructor query to start now
+
+        // Then run geocoding in the background (non-blocking)
+        if (studentData?.studentProfile?.location) {
+          fetchCoordinatesForLocation(studentData.studentProfile.location)
+            .then((coords) => {
+              if (coords) {
+                setFilters((prev) => ({
+                  ...prev,
+                  coordinates: coords,
+                }));
+              }
+            })
+            .catch((err) => {
+              console.warn("Geocoding failed (ignored):", err);
+            });
+        }
       } catch (error) {
         console.error("Error initializing coordinates:", error);
         setIsInitialLoad(false);
       }
     };
 
-    // Only run if we haven't loaded coordinates yet or if student data changes
-    if (isInitialLoad || studentData) {
+    if (isInitialLoad) {
       initializeCoordinates();
     }
   }, [studentData?.studentProfile?.location, isInitialLoad]);
+
   const [filtersApplied, setFiltersApplied] = useState(false);
 
   const { loading, error, data } = useQuery(GET_NEARBY_INSTRUCTORS, {

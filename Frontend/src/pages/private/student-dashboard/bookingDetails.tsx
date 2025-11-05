@@ -559,7 +559,7 @@ const BookingDetails: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleConfirmBooking}
-            disabled={confirmLoading}
+            disabled={confirmLoading || !initialPriceShown}
             sx={{
               width: "200px",
               bgcolor: "#5ec2d2",

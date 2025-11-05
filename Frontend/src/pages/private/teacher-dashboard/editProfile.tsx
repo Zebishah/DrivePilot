@@ -498,11 +498,7 @@ export default function EditProfile() {
 
     handleInputChange("phone", value); // Save only 9-digit number (e.g., 791234567)
   };
-  const maxAllowedDOB = new Date(
-    today.getFullYear() - 23,
-    today.getMonth(),
-    today.getDate()
-  ); //
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
       <BackButton variant="outline" label="Back" />
@@ -753,7 +749,7 @@ export default function EditProfile() {
                     }
                     onChange={handleDateOfBirthChange}
                     disabled={!!data.teacherProfile.dateOfBirth} // Disable if value exists
-                    maxDate={maxAllowedDOB} // Max = must be born on or before this date
+                    maxDate={new Date()} // Max = must be born on or before this date
                     slotProps={{
                       textField: {
                         fullWidth: true,

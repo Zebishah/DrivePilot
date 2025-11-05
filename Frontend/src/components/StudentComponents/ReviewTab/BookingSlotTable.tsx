@@ -6,13 +6,15 @@ import { useNavigate } from "react-router-dom";
 
 interface BookingSlotsTableProps {
   bookingSlots: StudentBookingSlot[];
-  onAddReview: (slot: StudentBookingSlot) => void;
+  onAddReview: (slot: StudentBookingSlot, isFeedbackRating: boolean) => void;
   onEditReview: (slot: StudentBookingSlot) => void;
   onDeleteReview: (slot: StudentBookingSlot) => void;
   onShowReview: (slot: StudentBookingSlot) => void;
   onViewAllBookings?: () => void; // New prop for view all functionality
-  refetch?: () => void;
+  refetchSlots?: () => void;
+  refetchReviews?: () => void;
   isRefetching?: boolean;
+  isFeedbackRating?: boolean;
 }
 
 const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
@@ -21,8 +23,10 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
   onEditReview,
   onDeleteReview,
   onShowReview,
-  refetch,
+  refetchSlots,
+  refetchReviews,
   isRefetching,
+  isFeedbackRating,
 }) => {
   const navigate = useNavigate();
   const formatDate = (dateString: string) => {
@@ -58,12 +62,12 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
     if (!slot.isCompleted) {
       return (
         <button
-          onClick={() => onAddReview(slot)}
+          onClick={() => onAddReview(slot, isFeedbackRating || false)}
           disabled={true}
           className="inline-flex items-center px-3 py-2 text-sm text-white bg-[#999999] rounded-md transition-colors"
         >
           <Plus size={16} className="mr-1" />
-          Add Review
+          Add Feedback
         </button>
       );
     }
@@ -76,7 +80,7 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
             className="inline-flex items-center px-3 py-2 text-sm text-[#4DD0E1] bg-blue-50 rounded-md hover:bg-[#81d5ff5e] transition-colors"
           >
             <Eye size={16} className="mr-1" />
-            Show Review
+            Show Feedback
           </button>
           {/* <button
             onClick={() => onEditReview(slot)}
@@ -98,11 +102,11 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
 
     return (
       <button
-        onClick={() => onAddReview(slot)}
+        onClick={() => onAddReview(slot, isFeedbackRating || false)}
         className="inline-flex items-center px-3 py-2 text-sm text-white bg-[#4DD0E1] rounded-md hover:bg-[#38b5c5] transition-colors"
       >
         <Plus size={16} className="mr-1" />
-        Add Review
+        Add Feedback
       </button>
     );
   };
@@ -113,7 +117,10 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
         <h3 className="text-lg font-semibold text-gray-800">Booking Slots</h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => refetch()}
+            onClick={() => {
+              if (refetchSlots) refetchSlots();
+              if (refetchReviews) refetchReviews();
+            }}
             title="Refresh Students"
             disabled={isRefetching}
             className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -170,10 +177,10 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
                 Time
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+                Slot Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Review Status
+                Feedback Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions

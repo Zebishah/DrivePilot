@@ -51,17 +51,15 @@ interface AvailabilitySlot {
 }
 
 // Custom day component to show slots count
-function CustomDay(
+
+export function CustomDay(
   props: PickersDayProps<Date> & {
     highlightedDays?: { date: string; count: number }[];
   }
 ) {
   const { highlightedDays = [], day, outsideCurrentMonth, ...other } = props;
 
-  const isHighlighted = highlightedDays.some((highlight) =>
-    isSameDay(new Date(highlight.date + "T00:00:00"), day)
-  );
-
+  // Find the slot count for this day
   const slotCount =
     highlightedDays.find((highlight) =>
       isSameDay(new Date(highlight.date + "T00:00:00"), day)
@@ -70,7 +68,7 @@ function CustomDay(
   return (
     <Badge
       overlap="circular"
-      badgeContent={isHighlighted ? slotCount : undefined}
+      badgeContent={slotCount > 0 ? slotCount : undefined} // Only show badge if count > 0
       sx={{
         "& .MuiBadge-badge": {
           backgroundColor: "#5ec2d2",
@@ -96,7 +94,7 @@ function CustomDay(
             height: "40px",
             margin: "2px",
           },
-          ...(isHighlighted && {
+          ...(slotCount > 0 && {
             backgroundColor: "rgba(94, 194, 210, 0.1)",
             "&:hover": {
               backgroundColor: "rgba(94, 194, 210, 0.2)",
@@ -128,20 +126,9 @@ export const AvailabilityTab: React.FC = () => {
   const highlightedDays = useMemo(() => {
     if (!data?.teacherAvailability) return [];
 
-    const groupedSlots = data.teacherAvailability.reduce(
-      (acc: { [key: string]: number }, slot: AvailabilitySlot) => {
-        // Ensure we're using the date in local timezone
-        const date = new Date(slot.date);
-        const localDate = format(date, "yyyy-MM-dd");
-        acc[localDate] = (acc[localDate] || 0) + 1;
-        return acc;
-      },
-      {}
-    );
-
-    return Object.entries(groupedSlots).map(([date, count]) => ({
-      date,
-      count: count as number,
+    return data.teacherAvailability.map((availability) => ({
+      date: format(new Date(availability.date), "yyyy-MM-dd"),
+      count: availability.availableSlots.length,
     }));
   }, [data?.teacherAvailability]);
 
@@ -277,46 +264,56 @@ export const AvailabilityTab: React.FC = () => {
     const now = new Date();
     const today = format(now, "yyyy-MM-dd");
 
-    return [...filteredSlots]
-      .filter((slot) => {
-        if (!slot.date || !slot.endTime) return false;
+    // Flatten all availableSlots from each teacherAvailability record
+    const allSlots = filteredSlots.flatMap((record) =>
+      record.availableSlots.map((slot) => ({
+        ...slot,
+        date: record.date, // attach parent date
+        teacherStatus: record.status, // optional if needed
+      }))
+    );
 
-        const slotDate = format(new Date(slot.date), "yyyy-MM-dd");
+    // Filter out past slots
+    const validSlots = allSlots.filter((slot) => {
+      if (!slot.date || !slot.endTime) return false;
 
-        // Skip slots from past days
-        if (isBefore(new Date(slotDate), startOfDay(now))) return false;
+      const slotDate = format(new Date(slot.date), "yyyy-MM-dd");
 
-        // For today's slots, check if end time has passed
-        if (slotDate === today) {
-          const [endHours, endMinutes] = slot.endTime.split(":").map(Number);
-          const slotEndTime = new Date(slotDate);
-          slotEndTime.setHours(endHours, endMinutes, 0, 0);
+      // ❌ Skip past days entirely
+      if (isBefore(new Date(slotDate), startOfDay(now))) return false;
 
-          // Hide slot only if end time is already in the past
-          return isAfter(slotEndTime, now);
-        }
+      // 🕒 For today's slots, hide past ones
+      if (slotDate === today) {
+        const [endHours, endMinutes] = slot.endTime.split(":").map(Number);
+        const slotEndTime = new Date(slotDate);
+        slotEndTime.setHours(endHours, endMinutes, 0, 0);
 
-        // For future dates, keep all
-        return true;
-      })
-      .sort((a, b) => {
-        try {
-          // Sort by date, then start time
-          const dateA = a.date || "";
-          const dateB = b.date || "";
-          const dateComparison = dateA.localeCompare(dateB);
-          if (dateComparison !== 0) return dateComparison;
+        return isAfter(slotEndTime, now); // ✅ Keep only if slot ends in future
+      }
 
-          const startTimeA = a.startTime || "";
-          const startTimeB = b.startTime || "";
-          return startTimeA.localeCompare(startTimeB);
-        } catch (err) {
-          console.error("Error sorting slots:", err);
-          return 0;
-        }
-      });
+      // ✅ Keep all future slots
+      return true;
+    });
+
+    // Sort by date and start time
+    return validSlots.sort((a, b) => {
+      try {
+        const dateA = a.date || "";
+        const dateB = b.date || "";
+        const dateComparison = dateA.localeCompare(dateB);
+        if (dateComparison !== 0) return dateComparison;
+
+        const startTimeA = a.startTime || "";
+        const startTimeB = b.startTime || "";
+        return startTimeA.localeCompare(startTimeB);
+      } catch (err) {
+        console.error("Error sorting slots:", err);
+        return 0;
+      }
+    });
   }, [filteredSlots]);
 
+  console.log("displaySlots", displaySlots);
   return (
     <Box sx={{ p: 2 }}>
       <Grid container spacing={3}>
@@ -620,6 +617,7 @@ export const AvailabilityTab: React.FC = () => {
                   />
                 </Box>
                 <Box sx={{ display: "flex", gap: 2 }}>
+                  {/* Start Time */}
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 1 }}
                   >
@@ -629,8 +627,13 @@ export const AvailabilityTab: React.FC = () => {
                     <TimePicker
                       label="Start Time"
                       value={startTime}
-                      onChange={setStartTime}
+                      onChange={(newValue) => {
+                        if (newValue) setStartTime(newValue);
+                      }}
                       disabled={isAddingSlot}
+                      ampm={false} // ✅ Force 24-hour format
+                      minutesStep={5} // optional: step interval
+                      format="HH:mm" // ✅ Show as 24-hour
                       slotProps={{
                         textField: {
                           fullWidth: true,
@@ -644,6 +647,8 @@ export const AvailabilityTab: React.FC = () => {
                       }}
                     />
                   </Box>
+
+                  {/* End Time */}
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 1 }}
                   >
@@ -653,8 +658,13 @@ export const AvailabilityTab: React.FC = () => {
                     <TimePicker
                       label="End Time"
                       value={endTime}
-                      onChange={setEndTime}
+                      onChange={(newValue) => {
+                        if (newValue) setEndTime(newValue);
+                      }}
                       disabled={isAddingSlot}
+                      ampm={false} // ✅ 24-hour clock
+                      minutesStep={5}
+                      format="HH:mm"
                       slotProps={{
                         textField: {
                           fullWidth: true,

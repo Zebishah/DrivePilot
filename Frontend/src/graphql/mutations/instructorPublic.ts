@@ -27,22 +27,28 @@ export const GET_NEARBY_INSTRUCTORS = gql`
           lessonDiscount
         }
         availability {
-          _id
+          id
           date
-          startTime
-          endTime
+          status
+          availableSlots {
+            id
+            date
+            startTime
+            endTime
+            booked
+            status
+          }
         }
       }
       totalCount
     }
   }
 `;
-
 export const GET_INSTRUCTOR_PROFILE = gql`
   query GetInstructorPublicProfile($id: ID!) {
     getInstructorPublicProfile(id: $id) {
       instructor {
-        _id
+        id
         firstName
         lastName
         email
@@ -68,6 +74,8 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         lessonFee
         lessonDiscount
         FinalPricePerLesson
+        discountStartDate
+        discountEndDate
         bulkPackages {
           title
           lessons
@@ -79,25 +87,16 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         }
       }
       availability {
-        _id
+        id
         date
-        startTime
-        endTime
-        booked
         status
-        slots {
-          date
-          startTime
-          endTime
-          booked
-        }
-        hourlySlots {
+        availableSlots {
           id
           date
           startTime
           endTime
           booked
-          originalSlotId
+          status
         }
       }
     }

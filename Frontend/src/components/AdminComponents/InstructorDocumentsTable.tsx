@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { StatusDropdown } from "./StatusDropdown";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { GET_ALL_INSTRUCTORS } from "../../graphql/Queries/InstructorProfiles";
 import { FlattenedDocument, Instructor } from "../../types/Instructor";
 
@@ -23,15 +23,33 @@ export const InstructorDocumentsTable: React.FC = () => {
       notifyOnNetworkStatusChange: true, // ✅ Required for refetch status to trigger
     }
   );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [instructorFilter, setInstructorFilter] = useState<string>("all");
+
   const isRefetching = networkStatus === NetworkStatus.refetch;
 
-  // Fetch documents when component mounts
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || ""
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get("status") || "all"
+  );
+  const [instructorFilter, setInstructorFilter] = useState(
+    searchParams.get("instructor") || "all"
+  );
   useEffect(() => {
-    refetch();
-  }, []); // Empty dependency array means this runs once on mount
+    const params: any = {};
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== "all") params.status = statusFilter;
+    if (instructorFilter !== "all") params.instructor = instructorFilter;
+
+    setSearchParams(params);
+  }, [searchTerm, statusFilter, instructorFilter]);
+
+  // Fetch documents when component mounts
+  // useEffect(() => {
+  //   refetch();
+  // }, []); // Empty dependency array means this runs once on mount
 
   // Function to format timestamp to readable date/time
   const formatDateTime = (timestamp: string) => {
@@ -181,7 +199,7 @@ export const InstructorDocumentsTable: React.FC = () => {
       </div>
     );
   }
-  console.log("filteredDocuments", filteredDocuments);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className=" mx-auto px-4 sm:px-6 lg:px-8">
@@ -306,7 +324,7 @@ export const InstructorDocumentsTable: React.FC = () => {
                     Document Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                    Document Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created Date & Time

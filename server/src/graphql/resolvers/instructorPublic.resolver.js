@@ -164,27 +164,46 @@ const instructorResolver = {
 
         // Build availability query for additional data
         const availabilityQuery = { teacherId: { $in: instructorIds } };
+
         if (filter.availableDates?.length) {
-          availabilityQuery.date = {
-            $in: filter.availableDates.map((d) => new Date(d)),
-          };
+          const dateObjects = filter.availableDates.map((d) => new Date(d));
+          availabilityQuery.date = { $in: dateObjects };
         }
 
-        const [tariffs, availability] = await Promise.all([
+        const [tariffs, availabilityDocs] = await Promise.all([
           teacherTariffModel.find({ teacherId: { $in: instructorIds } }),
           teacherAvailabilityModel.find(availabilityQuery),
         ]);
 
+        // 🆕 Transform availabilityDocs into a more usable map
+        const availabilityMap = new Map();
+
+        availabilityDocs.forEach((doc) => {
+          const teacherId = doc.teacherId.toString();
+          const slots = (doc.availableSlots || []).map((slot) => ({
+            id: slot.id,
+            date: slot.date,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            booked: slot.booked,
+            status: slot.status,
+          }));
+
+          if (!availabilityMap.has(teacherId)) {
+            availabilityMap.set(teacherId, []);
+          }
+          availabilityMap.get(teacherId).push({
+            id: doc._id.toString(),
+            date: doc.date.toISOString(),
+            status: doc.status,
+            availableSlots: slots,
+          });
+        });
+
         const tariffMap = new Map(
           tariffs.map((t) => [t.teacherId.toString(), t])
         );
-        const availabilityMap = availability.reduce((map, slot) => {
-          if (!map.has(slot.teacherId.toString())) {
-            map.set(slot.teacherId.toString(), []);
-          }
-          map.get(slot.teacherId.toString()).push(slot);
-          return map;
-        }, new Map());
+
         const reviewsAggregation = await Review.aggregate([
           {
             $group: {
@@ -436,51 +455,61 @@ const instructorResolver = {
         ]);
 
         // Build hourly slot chunks with accurate booking status
-        const formattedAvailability = availability.map((slot) => {
+        const formattedAvailability = availability.map((slotDoc) => {
+          // Each slotDoc = one day's availability
+          const daySlots = slotDoc.availableSlots || [];
+
           const resultSlots = [];
 
-          const [startHour, startMinute] = slot.startTime
-            .split(":")
-            .map(Number);
-          const [endHour, endMinute] = slot.endTime.split(":").map(Number);
+          daySlots.forEach((slot) => {
+            // Parse start/end times
+            if (!slot.startTime || !slot.endTime) return; // ✅ safeguard
 
-          const startInMinutes = startHour * 60 + startMinute;
-          const endInMinutes = endHour * 60 + endMinute;
+            const [startHour, startMinute] = slot.startTime
+              .split(":")
+              .map(Number);
+            const [endHour, endMinute] = slot.endTime.split(":").map(Number);
 
-          for (
-            let time = startInMinutes;
-            time + 60 <= endInMinutes;
-            time += 60
-          ) {
-            const hour = Math.floor(time / 60);
-            const minute = time % 60;
-            const nextHour = Math.floor((time + 60) / 60);
-            const nextMinute = (time + 60) % 60;
+            const startInMinutes = startHour * 60 + startMinute;
+            const endInMinutes = endHour * 60 + endMinute;
 
-            const subSlotStart = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
-            const subSlotEnd = `${nextHour.toString().padStart(2, "0")}:${nextMinute.toString().padStart(2, "0")}`;
+            for (
+              let time = startInMinutes;
+              time + 60 <= endInMinutes;
+              time += 60
+            ) {
+              const hour = Math.floor(time / 60);
+              const minute = time % 60;
+              const nextHour = Math.floor((time + 60) / 60);
+              const nextMinute = (time + 60) % 60;
 
-            const matchingSlot = slot.slots?.find(
-              (s) => s.startTime === subSlotStart && s.endTime === subSlotEnd
-            );
+              const subSlotStart = `${hour.toString().padStart(2, "0")}:${minute
+                .toString()
+                .padStart(2, "0")}`;
+              const subSlotEnd = `${nextHour.toString().padStart(2, "0")}:${nextMinute
+                .toString()
+                .padStart(2, "0")}`;
 
-            resultSlots.push({
-              id: `${slot._id.toString()}_${subSlotStart}_${subSlotEnd}`,
-              startTime: subSlotStart,
-              endTime: subSlotEnd,
-              booked: matchingSlot?.booked ?? false,
-              date: slot.date.toISOString().split("T")[0],
-              originalSlotId: slot._id.toString(),
-            });
-          }
+              resultSlots.push({
+                id: `${slotDoc._id.toString()}_${subSlotStart}_${subSlotEnd}`,
+                startTime: subSlotStart,
+                endTime: subSlotEnd,
+                booked: slot.booked ?? false,
+                date: slotDoc.date.toISOString().split("T")[0],
+                originalSlotId: slotDoc._id.toString(),
+              });
+            }
+          });
 
           return {
-            ...slot,
-            _id: slot._id.toString(),
-            date: slot.date.toISOString().split("T")[0],
+            id: slotDoc._id.toString(),
+            date: slotDoc.date.toISOString().split("T")[0],
+            status: slotDoc.status,
+            availableSlots: daySlots,
             hourlySlots: resultSlots,
           };
         });
+
         const reviewStats = await Review.aggregate([
           {
             $match: {
@@ -504,7 +533,7 @@ const instructorResolver = {
         return {
           instructor: {
             ...instructor,
-            _id: instructor._id.toString(),
+            id: instructor._id.toString(),
             coordinates: instructor.coordinates || null,
           },
           averageRating: Math.round(averageRating * 10) / 10,

@@ -4,6 +4,7 @@ const studentBookingModel = require("../../models/studentBooking.model");
 const { User, Student, Instructor } = require("../../models/User");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = require("../../models/StudentBooking");
+const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 
 const AdminBookingResolvers = {
   Query: {
@@ -40,6 +41,33 @@ const AdminBookingResolvers = {
         return bookingsWithCount;
       } catch (error) {
         throw new Error(`Failed to fetch student bookings: ${error.message}`);
+      }
+    },
+    getInstructorBookingsById: async (_, { instructorId }) => {
+      try {
+        const bookings = await StudentBooking.find({ instructorId })
+          .populate({
+            path: "studentId",
+            model: "Student",
+            select:
+              "_id firstName lastName email phone profileImage homeAddress location zipCode",
+          })
+          .populate({
+            path: "instructorId",
+            model: "Instructor",
+            select:
+              "_id firstName lastName email phone profileImage carName transmissionType experience location",
+          })
+          .sort({ createdAt: -1 });
+
+        return bookings.map((b) => ({
+          ...b.toObject(),
+          slotsCount: b.slots?.length || 0,
+        }));
+      } catch (error) {
+        throw new Error(
+          `Failed to fetch bookings for instructor: ${error.message}`
+        );
       }
     },
   },
@@ -131,51 +159,79 @@ const AdminBookingResolvers = {
               "_id firstName lastName email phone profileImage carName transmissionType experience location",
           });
 
-        if (!booking) {
-          throw new Error("Booking not found");
-        }
-
-        // Verify the student ID matches
-        if (booking.studentId._id.toString() !== studentId) {
+        if (!booking) throw new Error("Booking not found");
+        if (booking.studentId._id.toString() !== studentId)
           throw new Error("Student ID does not match booking");
-        }
 
         const slotIndex = booking.slots.findIndex(
           (slot) => slot._id.toString() === slotId
         );
-        if (slotIndex === -1) {
-          throw new Error("Slot not found");
-        }
-        if (booking.slots[slotIndex].status === "cancelled") {
+        if (slotIndex === -1) throw new Error("Slot not found");
+
+        const slot = booking.slots[slotIndex];
+        if (slot.status === "cancelled")
           throw new UserInputError("Slot is already cancelled");
-        }
-        // Update slot to cancelled and not booked
-        booking.slots[slotIndex].status = "cancelled";
-        booking.slots[slotIndex].booked = false;
-        booking.slots[slotIndex].cancellationDate = new Date();
 
-        // Update overall booking status
-        const remainingBookedSlots = booking.slots.filter(
-          (slot) => slot._id.toString() !== slotId && slot.booked
-        );
+        // Update slot
+        slot.status = "cancelled";
+        slot.booked = false;
+        slot.cancellationDate = new Date();
 
-        if (remainingBookedSlots.length === 0) {
-          booking.status = "cancelled";
+        const remainingBookedSlots = booking.slots.filter((s) => s.booked);
+        booking.status = remainingBookedSlots.length
+          ? "semi_cancelled"
+          : "cancelled";
+        if (remainingBookedSlots.length === 0)
           booking.cancellationDate = new Date();
-        } else {
-          booking.status = "semi_cancelled";
-        }
-
+        if (reason) booking.reason = reason;
         booking.updatedAt = new Date();
-
-        // Add reason to booking if provided
-        if (reason) {
-          booking.reason = reason;
-        }
 
         await booking.save();
 
-        // Send email notifications
+        // ✅ Update teacher availability
+        const teacherAvailability = await teacherAvailabilityModel.findOne({
+          teacherId: booking.instructorId._id,
+          date: new Date(slot.date),
+        });
+
+        if (teacherAvailability) {
+          // 1️⃣ Remove from booked slots
+          teacherAvailability.slots = teacherAvailability.slots.filter(
+            (s) => s.id !== slot._id.toString()
+          );
+
+          // 2️⃣ Add or mark as available
+          const existingAvailable = teacherAvailability.availableSlots.find(
+            (s) =>
+              s.date === slot.date &&
+              s.startTime === slot.startTime &&
+              s.endTime === slot.endTime
+          );
+
+          if (existingAvailable) {
+            existingAvailable.booked = false;
+            existingAvailable.status = "available";
+          } else {
+            teacherAvailability.availableSlots.push({
+              id: new mongoose.Types.ObjectId().toString(),
+              date: slot.date,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              booked: false,
+              status: "available",
+            });
+          }
+
+          // 3️⃣ Update overall status
+          const hasAvailable = teacherAvailability.availableSlots.some(
+            (s) => s.booked === false
+          );
+          teacherAvailability.status = hasAvailable ? "available" : "booked";
+
+          await teacherAvailability.save();
+        }
+
+        // Notify parties
         try {
           await notifyBookingParties(booking, "booking_cancelled");
           console.log("Admin booking cancellation emails sent successfully");

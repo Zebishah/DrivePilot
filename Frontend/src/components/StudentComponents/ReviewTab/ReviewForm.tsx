@@ -16,9 +16,10 @@ import { BackButton } from "../../InstructorComponent/common/BackButton";
 const ReviewFormPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { slot, isEdit } = location.state as {
+  const { slot, isEdit, isFeedbackRating } = location.state as {
     slot: StudentBookingSlot;
     isEdit: boolean;
+    isFeedbackRating: boolean;
   };
 
   const [rating, setRating] = useState(0);
@@ -135,7 +136,11 @@ const ReviewFormPage: React.FC = () => {
         <div className="text-center">
           <p className="text-gray-600 mb-4">No slot information available</p>
           <button
-            onClick={() => navigate("/student-dashboard/reviews")}
+            onClick={() =>
+              navigate(
+                `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`
+              )
+            }
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
             Back to Dashboard
@@ -219,7 +224,7 @@ const ReviewFormPage: React.FC = () => {
       <BackButton
         variant="outline"
         showIcon={true}
-        to="/student-dashboard/reviews"
+        to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`}
       />
       <div className=" mx-auto mt-3">
         <div className="bg-white rounded-lg shadow-xl">
@@ -227,7 +232,7 @@ const ReviewFormPage: React.FC = () => {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">
-                {isEdit ? "Edit Review" : "Give Review"}
+                {isEdit ? "Edit Feedback" : "Give Feedback"}
               </h2>
               <button
                 onClick={handleCancel}
@@ -285,7 +290,7 @@ const ReviewFormPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-lg font-semibold text-gray-900">
-                  Give Review
+                  Give Feedback
                 </label>
                 <div className="flex space-x-2">
                   <button

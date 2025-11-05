@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Download,
   ExternalLink,
+  FileText,
 } from "lucide-react";
 import { InstructorDocument } from "../../types/Instructor";
 
@@ -20,7 +21,6 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
-  // ✅ Call onDocumentSelect whenever currentIndex changes
   useEffect(() => {
     if (documents.length > 0) {
       onDocumentSelect?.(documents[currentIndex]);
@@ -44,6 +44,7 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
   };
 
   const currentDocument = documents[currentIndex];
+  const isPdf = currentDocument.documentUrl?.toLowerCase().endsWith(".pdf");
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -80,18 +81,28 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
         </div>
       </div>
 
-      {/* Image Container */}
+      {/* Document Viewer */}
       <div className="relative">
         <div className="aspect-video bg-gray-100 flex items-center justify-center">
-          <img
-            src={currentDocument.documentUrl}
-            alt={currentDocument.documentType}
-            className="max-w-full max-h-full object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                "https://via.placeholder.com/800x600?text=Document+Not+Available";
-            }}
-          />
+          {isPdf ? (
+            <iframe
+              src={`${currentDocument.documentUrl}#view=fitH`}
+              title={currentDocument.documentType}
+              className="w-full h-[70vh] border-0"
+            >
+              <p>PDF preview not available. Please open in new tab.</p>
+            </iframe>
+          ) : (
+            <img
+              src={currentDocument.documentUrl}
+              alt={currentDocument.documentType}
+              className="max-w-full max-h-[70vh] object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  "https://via.placeholder.com/800x600?text=Document+Not+Available";
+              }}
+            />
+          )}
         </div>
 
         {/* Navigation Arrows */}
@@ -117,27 +128,36 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
       {documents.length > 1 && (
         <div className="px-6 py-4 bg-gray-50">
           <div className="flex gap-2 overflow-x-auto">
-            {documents.map((doc, index) => (
-              <button
-                key={doc._id}
-                onClick={() => setCurrentIndex(index)}
-                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                  index === currentIndex
-                    ? "border-blue-500 ring-2 ring-blue-200"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-              >
-                <img
-                  src={doc.documentUrl}
-                  alt={doc.documentType}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      "https://via.placeholder.com/64x64?text=Doc";
-                  }}
-                />
-              </button>
-            ))}
+            {documents.map((doc, index) => {
+              const pdf = doc.documentUrl?.toLowerCase().endsWith(".pdf");
+              return (
+                <button
+                  key={doc._id}
+                  onClick={() => setCurrentIndex(index)}
+                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    index === currentIndex
+                      ? "border-blue-500 ring-2 ring-blue-200"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  {pdf ? (
+                    <div className="flex items-center justify-center h-full bg-gray-200 text-gray-500">
+                      <FileText size={28} />
+                    </div>
+                  ) : (
+                    <img
+                      src={doc.documentUrl}
+                      alt={doc.documentType}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "https://via.placeholder.com/64x64?text=Doc";
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

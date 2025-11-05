@@ -329,7 +329,7 @@ const studentResolver = {
                 "_id firstName lastName email profileImage"
               )
               .lean();
-            console.log("Bookings for student:", bookings);
+
             let totalLessonCount = 0;
             let totalDurationMinutes = 0;
             let remainingDurationMinutes = 0;

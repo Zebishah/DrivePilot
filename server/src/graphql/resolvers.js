@@ -1048,7 +1048,7 @@ instead.`);
       const fileKey = `${folder}/${userId}/${Date.now()}-${fileName}`;
 
       const s3Params = {
-        Bucket: "dspbucket918",
+        Bucket: process.env.BUCKET_NAME,
         Key: fileKey,
         Expires: 60,
         ContentType: fileType,
@@ -1056,7 +1056,7 @@ instead.`);
 
       const uploadUrl = await s3.getSignedUrlPromise("putObject", s3Params);
 
-      const fileUrl = `https://dspbucket918.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+      const fileUrl = `https://${process.env.BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
 
       return { uploadUrl, fileUrl };
     },

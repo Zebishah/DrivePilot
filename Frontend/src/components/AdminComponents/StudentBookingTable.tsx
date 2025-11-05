@@ -41,10 +41,18 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
 }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // All possible status options
   const statusOptions = [
     { value: "Refund", label: "Refund" },
     { value: "Cancel", label: "Cancel" },
   ];
+
+  // Filter out "Cancel" option if already cancelled
+  const filteredOptions =
+    currentStatus?.toLowerCase() === "cancel" ||
+    currentStatus?.toLowerCase() === "cancelled"
+      ? statusOptions.filter((option) => option.value !== "Cancel")
+      : statusOptions;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -80,7 +88,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
       {isOpen && (
         <div className="absolute right-0 rounded-md mt-1 w-32 bg-white border border-gray-200 shadow-lg z-50">
           <div className="py-1">
-            {statusOptions.map((option) => (
+            {filteredOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => onStatusChange(option.value)}
@@ -340,6 +348,16 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
       year: "numeric",
     });
   };
+  function formatTo12Hour(time: string): string {
+    if (!time) return "";
+    const [hoursStr, minutesStr] = time.split(":");
+    let hours = parseInt(hoursStr, 10);
+    const minutes = minutesStr || "00";
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12; // convert 0 -> 12 for midnight
+    return `${hours}:${minutes} ${ampm}`;
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -397,8 +415,8 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Duration:</span>
-                  <span className="text-gray-900">15 days</span>
+                  <span className="text-gray-600">lesson time:</span>
+                  <span className="text-gray-900">1 hour</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount:</span>
@@ -409,9 +427,11 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Start Date:</span>
                   <span className="text-gray-900">
-                    {formatDate(selectedSlot.date)}
+                    {formatDate(selectedSlot.date)},{" "}
+                    {formatTo12Hour(selectedSlot.startTime)}
                   </span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-gray-600">End Date:</span>
                   <span className="text-gray-900">
@@ -419,6 +439,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                       booking.slots[booking.slots.length - 1]?.date ||
                         selectedSlot.date
                     )}
+                    , {formatTo12Hour(selectedSlot.endTime)}
                   </span>
                 </div>
               </div>
@@ -656,6 +677,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     slotId: string,
     newStatus: string
   ) => {
+    console.log("Selected Booking:", booking);
     setSelectedBooking(booking);
     setSelectedSlotId(slotId);
 

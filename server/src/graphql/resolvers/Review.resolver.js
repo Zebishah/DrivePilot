@@ -138,21 +138,42 @@ const reviewResolver = {
         }
         const totalRequiredHours = totalBookedSlots;
 
+        // ✅ Parse student lesson hours safely
         const lessonHoursLeft = student.lessonHoursLeft
           ? parseFloat(student.lessonHoursLeft)
-          : null;
+          : 0;
 
-        const completedHours = Math.max(
-          lessonHoursLeft !== null
-            ? lessonHoursLeft - totalRequiredHours
-            : completedSlots
-        );
+        const safeLessonHoursLeft = isNaN(lessonHoursLeft)
+          ? 0
+          : lessonHoursLeft;
 
-        const remainingHours = Math.max(
-          lessonHoursLeft !== null
-            ? lessonHoursLeft
-            : totalRequiredHours - completedHours
-        );
+        // ✅ Determine remaining hours
+        // Use manual override if exists, else compute dynamically
+        let remainingHours =
+          safeLessonHoursLeft > 0
+            ? safeLessonHoursLeft
+            : Math.max(totalRequiredHours - completedSlots, 0);
+
+        // ✅ Always keep result non-negative
+        if (remainingHours < 0) remainingHours = Math.abs(remainingHours);
+
+        // ✅ Completed hours are *based on slots that have ended in the past*
+
+        let completedHours = 0;
+
+        for (const booking of allBookings) {
+          for (const slot of booking.slots) {
+            if (slot.booked) {
+              const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+              if (slotEnd <= now) completedHours++;
+            }
+          }
+        }
+
+        // ✅ Ensure completed hours don't exceed total
+        if (completedHours > totalRequiredHours) {
+          completedHours = totalRequiredHours;
+        }
 
         return {
           totalRequiredHours,

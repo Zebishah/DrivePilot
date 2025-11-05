@@ -12,9 +12,10 @@ import { StarRating } from "./RatingComponent";
 const ReviewDisplayPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { slot, showSuccessMessage } = location.state as {
+  const { slot, showSuccessMessage, isFeedbackRating } = location.state as {
     slot: StudentBookingSlot;
     showSuccessMessage?: boolean;
+    isFeedbackRating: boolean;
   };
 
   const [successVisible, setSuccessVisible] = useState(
@@ -65,11 +66,15 @@ const ReviewDisplayPage: React.FC = () => {
         });
 
         // Navigate back to dashboard after successful deletion
-        navigate("/student-dashboard/reviews", {
-          state: {
-            message: "Review deleted successfully!",
-          },
-        });
+
+        navigate(
+          `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`,
+          {
+            state: {
+              message: "Review deleted successfully!",
+            },
+          }
+        );
       }
     } catch (error) {
       console.error("Error deleting review:", error);
@@ -83,8 +88,13 @@ const ReviewDisplayPage: React.FC = () => {
     setShowDeleteModal(false);
   };
 
+  /**
+   * Navigate back to the reviews page.
+   */
   const handleBack = () => {
-    navigate("/student-dashboard/reviews");
+    navigate(
+      `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`
+    );
   };
 
   if (!slot) {
@@ -93,7 +103,11 @@ const ReviewDisplayPage: React.FC = () => {
         <div className="text-center">
           <p className="text-gray-600 mb-4">No slot information available</p>
           <button
-            onClick={() => navigate("/student-dashboard/reviews")}
+            onClick={() =>
+              navigate(
+                `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`
+              )
+            }
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
             Back to Dashboard
@@ -126,6 +140,7 @@ const ReviewDisplayPage: React.FC = () => {
                   state: {
                     slot,
                     isEdit: false,
+                    isFeedbackRating,
                   },
                 })
               }
@@ -134,7 +149,11 @@ const ReviewDisplayPage: React.FC = () => {
               Create Review
             </button>
             <button
-              onClick={() => navigate("/student-dashboard/reviews")}
+              onClick={() =>
+                navigate(
+                  `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`
+                )
+              }
               className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
             >
               Back to Dashboard
@@ -163,7 +182,7 @@ const ReviewDisplayPage: React.FC = () => {
       <BackButton
         variant="outline"
         showIcon={true}
-        to="/student-dashboard/reviews"
+        to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`}
       />
       <div className=" mx-auto mt-4">
         {/* Success Message */}
@@ -185,16 +204,16 @@ const ReviewDisplayPage: React.FC = () => {
             <div className="p-6 ">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Your Review
+                  Your Feedback
                 </h2>
               </div>
             </div>
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <Link
-                to={"/student-dashboard/reviews"}
+                to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
               >
-                Give Review
+                Give Feedback
                 <Edit size={12} className="ml-2" />
               </Link>
             </div>

@@ -393,7 +393,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Duration:</span>
-                  <span className="text-gray-900">15 days</span>
+                  <span className="text-gray-900">1 hour</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount:</span>

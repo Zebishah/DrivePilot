@@ -52,7 +52,7 @@ const ProfileSummary: React.FC = () => {
     errorPolicy: "all",
     fetchPolicy: "cache-and-network", // Ensures fresh data
   });
-
+  console.log("data profile sumary", data);
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };

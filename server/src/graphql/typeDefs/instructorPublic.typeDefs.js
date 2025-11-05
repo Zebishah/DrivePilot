@@ -10,44 +10,37 @@ const instructorTypeDefs = gql`
     discountEndDate: String
     lessonDiscount: String
   }
-  enum status {
-    available
-    booked
-    cancelled
-  }
-  type Slot {
-    startTime: String!
-    endTime: String!
-    date: String!
-    booked: Boolean
-    status: status
-  }
-
-  type HourlySlot {
-    id: String!
-    startTime: String!
-    endTime: String!
-    date: String!
-    booked: Boolean
-    status: status
-    originalSlotId: ID
-  }
-
-  type InstructorAvailability {
-    _id: ID!
-    date: String!
-    startTime: String!
-    endTime: String!
-    booked: Boolean # Changed from Boolean to Boolean (nullable)
-    status: AvailabilityStatus
-    slots: [Slot!]
-    hourlySlots: [HourlySlot!]
-  }
 
   enum AvailabilityStatus {
     available
     booked
     cancelled
+  }
+
+  type InstructorAvailability {
+    id: ID!
+    date: String!
+    status: AvailabilityStatus
+    availableSlots: [InstructorSlot!]! # ✅ changed from slots → availableSlots
+  }
+
+  type InstructorSlot {
+    id: ID
+    date: String!
+    startTime: String!
+    endTime: String!
+    booked: Boolean
+    status: AvailabilityStatus
+  }
+
+  type HourlySlot {
+    id: ID!
+    date: String!
+    startTime: String!
+    endTime: String!
+    booked: Boolean
+    status: AvailabilityStatus
+    originalSlotId: ID!
   }
 
   type Instructor {
@@ -101,6 +94,8 @@ const instructorTypeDefs = gql`
     packageDiscount: Float
     lessonDiscount: Float
     FinalPricePerLesson: Float
+    discountStartDate: String
+    discountEndDate: String
   }
 
   type BulkLessonPackage {
@@ -118,8 +113,9 @@ const instructorTypeDefs = gql`
     averageRating: Float
     reviewsCount: Int
     tariff: InstructorTariff
-    availability: [InstructorAvailability!]
+    availability: [InstructorAvailability!]!
   }
+
   type InstructorAnalytics {
     totalStudents: Int!
     activeBookings: Int!
@@ -130,11 +126,12 @@ const instructorTypeDefs = gql`
     attendanceRate: Float!
     instructor: Instructor!
   }
+
   type StudentBookingNew {
     _id: ID!
     studentId: UserNew
     instructorId: Instructor
-    slots: [SlotNew] # single or multiple slots
+    slots: [SlotNew]
     totalAmount: Float
     finalAmount: Float
     status: String
@@ -161,14 +158,6 @@ const instructorTypeDefs = gql`
     profileImage: String
   }
 
-  type Instructor {
-    _id: ID!
-    firstName: String
-    lastName: String
-    email: String
-    address: String
-    profileImage: String
-  }
   type Query {
     getNearbyInstructors(
       filter: InstructorFilterInput

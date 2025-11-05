@@ -20,7 +20,7 @@ import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../graphql/Queries/StudentQueries";
 import { StudentBooking } from "../types/Bookings";
 import { ConversationType, MessageType } from "../types/chatTypes";
-import { getSocket } from "../utils/socket";
+import { getSocket, initSocket } from "../utils/socket";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addMessage,
@@ -29,6 +29,8 @@ import {
 } from "../store/slices/chatSlice";
 import { RootState } from "../store";
 import dayjs from "dayjs";
+import { useBookingNotifications } from "../utils/useBookingNotification";
+import { MdOutlineFeedback } from "react-icons/md";
 
 const theme = createTheme({
   palette: {
@@ -50,37 +52,6 @@ interface StudentLayoutProps {
 
 const DRAWER_WIDTH = 280;
 
-const menuItems: MenuItem[] = [
-  { text: "Overview", icon: LayoutGrid, path: "/student-dashboard/overview" },
-  {
-    text: "Search Instructors",
-    icon: Search,
-    path: "/student-dashboard/search",
-  },
-  { text: "Booked Lessons", icon: BookOpen, path: "/student-dashboard/book" },
-  {
-    text: "Profile Setting",
-    icon: Settings,
-    path: "/student-dashboard/settings",
-  },
-  {
-    text: "Help & Support",
-    icon: HelpCircle,
-    path: "/student-dashboard/help-support",
-  },
-  {
-    text: "FeedBack & Rating",
-    icon: MessageSquare,
-    path: "/student-dashboard/reviews",
-  },
-  {
-    text: "Messages",
-    icon: MessageSquare,
-    path: "/student-dashboard/chat",
-  },
-  { text: "Logout", icon: LogOut, path: "/logout" },
-];
-
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
@@ -90,7 +61,26 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
+  useEffect(() => {
+    if (user?.role === "Student") {
+      console.log("🔌 Initializing socket for student:", user.id);
+      initSocket();
+    }
+  }, [user]);
 
+  // ✅ Use booking notifications hook
+  const { unseenBookingsCount, clearUnseenCount } = useBookingNotifications(
+    user?.id || "",
+    user?.role || ""
+  );
+
+  // ✅ Clear unseen count when visiting booking management page
+  useEffect(() => {
+    if (location.pathname === "/student-dashboard/book") {
+      console.log("📍 On booking management page, clearing count");
+      clearUnseenCount();
+    }
+  }, [location.pathname, clearUnseenCount]);
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -231,6 +221,46 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       socket.off("receive_message", handleReceiveMessage);
     };
   }, [conversations, dispatch, user, location.pathname]);
+  const menuItems: MenuItem[] = [
+    { text: "Overview", icon: LayoutGrid, path: "/student-dashboard/overview" },
+    {
+      text: "Search Instructors",
+      icon: Search,
+      path: "/student-dashboard/search",
+    },
+    {
+      text: "Booked Lessons",
+      icon: BookOpen,
+      path: "/student-dashboard/book",
+      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined,
+    },
+    {
+      text: "Profile Setting",
+      icon: Settings,
+      path: "/student-dashboard/settings",
+    },
+    {
+      text: "Help & Support",
+      icon: HelpCircle,
+      path: "/student-dashboard/help-support",
+    },
+    {
+      text: "Progress Tracking",
+      icon: MessageSquare,
+      path: "/student-dashboard/reviews",
+    },
+    {
+      text: "Feedback & Rating",
+      icon: MdOutlineFeedback,
+      path: "/student-dashboard/Feedback",
+    },
+    {
+      text: "Messages",
+      icon: MessageSquare,
+      path: "/student-dashboard/chat",
+    },
+    { text: "Logout", icon: LogOut, path: "/logout" },
+  ];
 
   return (
     <ThemeProvider theme={theme}>

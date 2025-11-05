@@ -12,7 +12,6 @@ const slotSchema = new mongoose.Schema({
     default: "available",
   },
 });
-
 const availabilitySlotSchema = new mongoose.Schema(
   {
     teacherId: {
@@ -24,19 +23,16 @@ const availabilitySlotSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    startTime: {
-      type: String,
-      required: true,
-    },
-    endTime: {
-      type: String,
-      required: true,
-    },
     status: {
       type: String,
       enum: ["available", "booked", "cancelled"],
       default: "available",
     },
+    availableSlots: {
+      type: [slotSchema],
+      default: [],
+    },
+
     slots: {
       type: [slotSchema],
       required: false, // Optional; can be added during booking
@@ -48,11 +44,11 @@ const availabilitySlotSchema = new mongoose.Schema(
   }
 );
 
+// Avoid duplicate date/time range for the same teacher
 availabilitySlotSchema.index(
   { teacherId: 1, date: 1, startTime: 1, endTime: 1 },
   { unique: true }
 );
-
 availabilitySlotSchema.index({ teacherId: 1, date: 1 });
 
 module.exports = mongoose.model("TeacherAvailability", availabilitySlotSchema);

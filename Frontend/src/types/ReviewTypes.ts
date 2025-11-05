@@ -64,6 +64,7 @@ export interface StudentHoursProgress {
   remainingHours: number;
   studentInfo: StudentInfo;
   bookingsBreakdown: BookingsBreakdown;
+  lastLessonDate?: string; // e.g., "2025-11-03T12:00:00Z"
 }
 
 export interface CreateReviewInput {

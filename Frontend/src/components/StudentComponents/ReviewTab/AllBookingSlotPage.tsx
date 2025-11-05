@@ -62,7 +62,7 @@ const AllBookingSlotsPage: React.FC<AllBookingSlotsPageProps> = () => {
     });
   };
   const onGoBack = () => {
-    navigate("/student-dashboard/reviews");
+    navigate("/student-dashboard/Feedback");
   };
   const handleEditReview = (slot: StudentBookingSlot) => {
     // Navigate to review form page with slot data for editing
@@ -292,7 +292,7 @@ const AllBookingSlotsPage: React.FC<AllBookingSlotsPageProps> = () => {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Review Status
+                    Feedback Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions

@@ -18,7 +18,7 @@ import { FaUserGraduate } from "react-icons/fa6";
 import { useQuery } from "@apollo/client";
 import { GET_ALL_STUDENTS } from "../graphql/Queries/StudentQueries";
 import { ConversationType, MessageType } from "../types/chatTypes";
-import { getSocket } from "../utils/socket";
+import { getSocket, initSocket } from "../utils/socket";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addMessage,
@@ -28,6 +28,7 @@ import {
 import { RootState } from "../store";
 import { Student } from "../types/Student";
 import dayjs from "dayjs";
+import { useBookingNotifications } from "../utils/useBookingNotification";
 
 const theme = createTheme({
   palette: {
@@ -47,36 +48,6 @@ interface TeacherLayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems: MenuItem[] = [
-  { text: "Overview", icon: LayoutGrid, path: "/teacher-dashboard/overview" },
-  {
-    text: "Profile Setting",
-    icon: Settings,
-    path: "/teacher-dashboard/settings",
-  },
-  {
-    text: "Help & Support",
-    icon: HelpCircle,
-    path: "/teacher-dashboard/help-support",
-  },
-  {
-    text: "Feedback",
-    icon: MessageSquare,
-    path: "/teacher-dashboard/feedback",
-  },
-  {
-    text: "My Students",
-    icon: FaUserGraduate,
-    path: "/teacher-dashboard/my-students",
-  },
-  {
-    text: "Messages",
-    icon: MessageSquare,
-    path: "/teacher-dashboard/chat",
-  },
-  { text: "Logout", icon: LogOut, path: "/logout" },
-];
-
 const DRAWER_WIDTH = 280;
 
 export default function TeacherLayout({ children }: TeacherLayoutProps) {
@@ -88,6 +59,26 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
+  useEffect(() => {
+    if (user?.role === "Instructor") {
+      console.log("🔌 Initializing socket for instructor:", user.id);
+      initSocket();
+    }
+  }, [user]);
+
+  // ✅ Use booking notifications hook
+  const { unseenBookingsCount, clearUnseenCount } = useBookingNotifications(
+    user?.id || "",
+    user?.role || ""
+  );
+
+  // ✅ Clear unseen count when visiting booking management page
+  useEffect(() => {
+    if (location.pathname === "/teacher-dashboard/bookingManagement") {
+      console.log("📍 On booking management page, clearing count");
+      clearUnseenCount();
+    }
+  }, [location.pathname, clearUnseenCount]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -223,7 +214,42 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       socket.off("receive_message", handleReceiveMessage);
     };
   }, [conversations, dispatch, user, location.pathname]);
-
+  const menuItems: MenuItem[] = [
+    { text: "Overview", icon: LayoutGrid, path: "/teacher-dashboard/overview" },
+    {
+      text: "Profile Setting",
+      icon: Settings,
+      path: "/teacher-dashboard/settings",
+    },
+    {
+      text: "Help & Support",
+      icon: HelpCircle,
+      path: "/teacher-dashboard/help-support",
+    },
+    {
+      text: "Feedback",
+      icon: MessageSquare,
+      path: "/teacher-dashboard/feedback",
+    },
+    {
+      text: "My Students",
+      icon: FaUserGraduate,
+      path: "/teacher-dashboard/my-students",
+    },
+    {
+      text: "Booking Management",
+      icon: LayoutGrid,
+      path: "/teacher-dashboard/bookingManagement",
+      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined, // ✅ Only show badge if > 0
+    },
+    {
+      text: "Messages",
+      icon: MessageSquare,
+      path: "/teacher-dashboard/chat",
+    },
+    { text: "Logout", icon: LogOut, path: "/logout" },
+  ];
+  console.log("Teacher Layout Rendered", unseenBookingsCount);
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

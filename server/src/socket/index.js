@@ -11,8 +11,10 @@ if (process.env.Frontend_URL) {
   allowedOrigins.push(process.env.Frontend_URL);
 }
 
-// Store admin socket connections
-const adminSockets = new Map();
+// Store socket connections by role
+const adminSockets = new Map(); // userId -> socketId
+const instructorSockets = new Map(); // instructorId -> socketId
+const studentSockets = new Map(); // studentId -> socketId
 
 function initSocket(server) {
   const io = new Server(server, {
@@ -48,8 +50,41 @@ function initSocket(server) {
         console.log(`👤 Admin registered: ${userId} (${socket.id})`);
         console.log(`📊 Total admins registered: ${adminSockets.size}`);
 
-        // ✅ Send confirmation back to client
         socket.emit("admin_registered", {
+          success: true,
+          userId,
+          socketId: socket.id,
+        });
+      }
+    });
+
+    // Handle instructor registration
+    socket.on("register_instructor", (data) => {
+      const { userId, role } = data;
+      if (role === "Instructor") {
+        instructorSockets.set(userId, socket.id);
+        console.log(`👨‍🏫 Instructor registered: ${userId} (${socket.id})`);
+        console.log(
+          `📊 Total instructors registered: ${instructorSockets.size}`
+        );
+
+        socket.emit("instructor_registered", {
+          success: true,
+          userId,
+          socketId: socket.id,
+        });
+      }
+    });
+
+    // Handle student registration
+    socket.on("register_student", (data) => {
+      const { userId, role } = data;
+      if (role === "Student") {
+        studentSockets.set(userId, socket.id);
+        console.log(`👨‍🎓 Student registered: ${userId} (${socket.id})`);
+        console.log(`📊 Total students registered: ${studentSockets.size}`);
+
+        socket.emit("student_registered", {
           success: true,
           userId,
           socketId: socket.id,
@@ -92,12 +127,13 @@ function initSocket(server) {
 
     // Handle booking viewed event
     socket.on("booking_viewed", (data) => {
-      const { userId } = data;
-      console.log(`👀 Admin ${userId} viewed bookings`);
+      const { userId, role } = data;
+      console.log(`👀 ${role} ${userId} viewed bookings`);
     });
 
     socket.on("disconnect", () => {
       console.log("🔌 Client disconnected:", socket.id);
+
       // Remove from admin sockets
       for (const [userId, socketId] of adminSockets.entries()) {
         if (socketId === socket.id) {
@@ -106,21 +142,68 @@ function initSocket(server) {
           break;
         }
       }
+
+      // Remove from instructor sockets
+      for (const [userId, socketId] of instructorSockets.entries()) {
+        if (socketId === socket.id) {
+          instructorSockets.delete(userId);
+          console.log(`👨‍🏫 Instructor ${userId} removed from registry`);
+          break;
+        }
+      }
+
+      // Remove from student sockets
+      for (const [userId, socketId] of studentSockets.entries()) {
+        if (socketId === socket.id) {
+          studentSockets.delete(userId);
+          console.log(`👨‍🎓 Student ${userId} removed from registry`);
+          break;
+        }
+      }
     });
   });
 
-  // Expose method to notify admins about new bookings
+  // Expose method to notify about new bookings
   io.notifyNewBooking = (bookingData) => {
+    const instructorId =
+      bookingData.instructorId?._id || bookingData.instructorId;
+    const studentId = bookingData.studentId?._id || bookingData.studentId;
+
+    const bookingInfo = {
+      bookingId: bookingData._id,
+      studentName:
+        `${bookingData.studentId?.firstName || "Student"} ${bookingData.studentId?.lastName || ""}`.trim(),
+      instructorName:
+        `${bookingData.instructorId?.firstName || "Instructor"} ${bookingData.instructorId?.lastName || ""}`.trim(),
+      slotsCount: bookingData.slots?.length || 0,
+      createdAt: bookingData.createdAt,
+    };
+
+    // 1. Notify all admins
     console.log(`📢 Notifying ${adminSockets.size} admins about new booking`);
     adminSockets.forEach((socketId, userId) => {
-      io.to(socketId).emit("new_booking_created", {
-        bookingId: bookingData._id,
-        studentName: `${bookingData.studentId?.firstName} ${bookingData.studentId?.lastName}`,
-        instructorName: `${bookingData.instructorId?.firstName} ${bookingData.instructorId?.lastName}`,
-        slotsCount: bookingData.slots?.length || 0,
-        createdAt: bookingData.createdAt,
-      });
+      io.to(socketId).emit("new_booking_created", bookingInfo);
     });
+
+    // 2. Notify the specific instructor
+    if (instructorId && instructorSockets.has(instructorId)) {
+      const instructorSocketId = instructorSockets.get(instructorId);
+      console.log(`📢 Notifying instructor ${instructorId} about new booking`);
+      io.to(instructorSocketId).emit("instructor_booking_created", bookingInfo);
+    } else {
+      console.log(`⚠️ Instructor ${instructorId} not connected or not found`);
+    }
+
+    // 3. Notify the specific student (confirmation)
+    if (studentId && studentSockets.has(studentId)) {
+      const studentSocketId = studentSockets.get(studentId);
+      console.log(
+        `📢 Notifying student ${studentId} about booking confirmation`
+      );
+      io.to(studentSocketId).emit("student_booking_confirmed", bookingInfo);
+    } else {
+      console.log(`⚠️ Student ${studentId} not connected or not found`);
+    }
   };
 
   return io;

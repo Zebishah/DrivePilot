@@ -1,32 +1,42 @@
 const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
-  type AvailabilitySlot {
-    id: ID!
-    date: String!
-    startTime: String!
-    endTime: String!
-    status: AvailabilityStatus
-  }
-  enum AvailabilityStatus {
+  enum TeacherAvailabilityStatus {
     available
     booked
     cancelled
   }
 
-  input AvailabilitySlotInput {
+  type TeacherSlot {
+    id: ID!
     date: String!
     startTime: String!
     endTime: String!
-    status: AvailabilityStatus
+    booked: Boolean!
+    status: TeacherAvailabilityStatus!
+  }
+
+  type TeacherAvailability {
+    id: ID!
+    date: String!
+    status: TeacherAvailabilityStatus!
+    availableSlots: [TeacherSlot!]!
+    slots: [TeacherSlot!]
+  }
+
+  input TeacherAvailabilityInput {
+    date: String!
+    startTime: String!
+    endTime: String!
+    status: TeacherAvailabilityStatus
   }
 
   type Query {
-    teacherAvailability(month: String!): [AvailabilitySlot!]!
+    teacherAvailability(month: String!): [TeacherAvailability!]!
   }
 
   type Mutation {
-    addAvailabilitySlot(input: AvailabilitySlotInput!): AvailabilitySlot!
+    addAvailabilitySlot(input: TeacherAvailabilityInput!): TeacherAvailability!
     deleteAvailabilitySlot(id: ID!): Boolean!
   }
 `;

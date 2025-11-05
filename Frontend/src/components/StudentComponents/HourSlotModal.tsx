@@ -12,13 +12,37 @@ import {
   IconButton,
   Alert,
   CircularProgress,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { IoClose } from "react-icons/io5";
 import { CalendarCheck2 } from "lucide-react";
+import { FaRegCheckCircle } from "react-icons/fa";
+import { IoMdTime } from "react-icons/io";
 import dayjs from "dayjs";
-import HourSlotCard from "./HourSlotCard";
-import { generateHourSlots } from "../../utils/HourSlotsUtills";
-import { HourSlotModalProps } from "../../types/HourSlots";
+import { HourSlot } from "../../types/HourSlots";
+
+interface HourSlotModalProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (selectedSlots: HourSlot[]) => void;
+  originalSlot: {
+    id: string;
+    date: string;
+    formattedDate: string;
+    availableSlots: Array<{
+      id: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      booked: boolean;
+      status: string;
+    }>;
+    timeRange: string;
+    totalDuration: string;
+  };
+  loading?: boolean;
+}
 
 const HourSlotModal: React.FC<HourSlotModalProps> = ({
   open,
@@ -29,10 +53,14 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
 }) => {
   const [selectedHourSlots, setSelectedHourSlots] = useState<string[]>([]);
 
-  // Use hourlySlots directly from the originalSlot prop
-  const hourSlots = useMemo(() => {
-    return originalSlot.hourlySlots || [];
-  }, [originalSlot]);
+  const calculateDuration = (startTime: string, endTime: string) => {
+    const start = dayjs(`2000-01-01 ${startTime}`);
+    const end = dayjs(`2000-01-01 ${endTime}`);
+    const hours = end.diff(start, "hour", true);
+    const roundedHours = Math.round(hours * 2) / 2;
+    const hoursText = roundedHours === 1 ? "hr" : "hrs";
+    return `${roundedHours.toFixed(1)} ${hoursText}`;
+  };
 
   const handleSlotClick = (slotId: string) => {
     setSelectedHourSlots((prev) =>
@@ -43,9 +71,17 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
   };
 
   const handleConfirm = () => {
-    const selectedSlots = hourSlots.filter((slot) =>
-      selectedHourSlots.includes(slot.id)
-    );
+    const selectedSlots: HourSlot[] = originalSlot.availableSlots
+      .filter((slot) => selectedHourSlots.includes(slot.id))
+      .map((slot) => ({
+        id: slot.id,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        booked: slot.booked,
+        duration: calculateDuration(slot.startTime, slot.endTime),
+      }));
+
     onConfirm(selectedSlots);
   };
 
@@ -54,17 +90,17 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
     onClose();
   };
 
-  const formattedDate = dayjs(originalSlot.date).format("MMMM D, YYYY");
-
   return (
     <Dialog
       open={open}
       onClose={handleClose}
       maxWidth="md"
       fullWidth
-      BackdropProps={{
-        sx: {
-          backgroundColor: "rgba(0, 0, 0, 0.3)", // Change this value as needed
+      slotProps={{
+        backdrop: {
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.15)",
+          },
         },
       }}
       PaperProps={{
@@ -94,7 +130,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
               color: "#1e293b",
             }}
           >
-            Select Hour Slots
+            Select Time Slots
           </Typography>
         </Box>
         <IconButton
@@ -131,12 +167,11 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
               color: "#0c4a6e",
             }}
           >
-            Please note: the duration of one lesson may vary depending on the
-            instructor (it can be 40, 45, 50, or 60 minutes in practice).
+            Select the time slots you want to book for your lessons.
           </Typography>
         </Alert>
 
-        {/* Date and Original Time Info */}
+        {/* Date Info */}
         <Box
           sx={{
             p: 2,
@@ -154,7 +189,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
               mb: 1,
             }}
           >
-            {formattedDate}
+            {originalSlot.formattedDate}
           </Typography>
           <Typography
             variant="body1"
@@ -163,11 +198,11 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
               color: "#64748b",
             }}
           >
-            Original slot: {originalSlot.time} ({originalSlot.duration})
+            Available slots: {originalSlot.timeRange}
           </Typography>
         </Box>
 
-        {/* Hour Slots Grid */}
+        {/* Available Slots Grid */}
         <Typography
           variant="h6"
           sx={{
@@ -177,24 +212,133 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             mb: 2,
           }}
         >
-          Available Hour Slots
+          Available Time Slots
         </Typography>
 
         <Grid container spacing={2}>
-          {hourSlots.map((slot) => {
-            const slotDateTime = dayjs(
-              `${originalSlot.date} ${slot.startTime}`
-            );
+          {originalSlot.availableSlots.map((slot) => {
+            const slotDateTime = dayjs(`${slot.date} ${slot.startTime}`);
             const isPast = slotDateTime.isBefore(dayjs());
+            const isSelected = selectedHourSlots.includes(slot.id);
+            const duration = calculateDuration(slot.startTime, slot.endTime);
 
             return (
               <Grid item xs={12} sm={6} md={4} key={slot.id}>
-                <HourSlotCard
-                  slot={slot}
-                  isSelected={selectedHourSlots.includes(slot.id)}
-                  onClick={!isPast ? handleSlotClick : undefined} // disable click
-                  disabled={isPast} // pass disabled prop
-                />
+                <Card
+                  onClick={() =>
+                    !isPast && !slot.booked && handleSlotClick(slot.id)
+                  }
+                  sx={{
+                    position: "relative", // ✅ for absolute tag positioning
+                    borderRadius: "10px",
+                    backgroundColor: slot.booked
+                      ? "#f5f5f5"
+                      : isSelected
+                        ? "#5FC2D3"
+                        : "#5FC2D333",
+                    border: isSelected
+                      ? "2px solid #5FC2D3"
+                      : slot.booked
+                        ? "1px solid #e0e0e0"
+                        : "1px solid #cce4f7",
+                    boxShadow: isSelected
+                      ? "0px 4px 12px rgba(95, 194, 211, 0.3)"
+                      : 1,
+                    cursor: slot.booked || isPast ? "not-allowed" : "pointer",
+                    opacity: slot.booked || isPast ? 0.6 : 1,
+                    transition: "all 0.2s",
+                    "&:hover":
+                      !slot.booked && !isPast
+                        ? {
+                            transform: "translateY(-2px)",
+                            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+                          }
+                        : {},
+                  }}
+                >
+                  {/* 🔹 "Already Booked" tag (top-right corner) */}
+                  {slot.booked && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        px: 1,
+                        py: "2px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      Booked
+                    </Box>
+                  )}
+
+                  <CardContent>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                        gap: 1,
+                      }}
+                    >
+                      <FaRegCheckCircle
+                        style={{
+                          color: slot.booked
+                            ? "#9ca3af"
+                            : isSelected
+                              ? "white"
+                              : "#25D422",
+                        }}
+                      />
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: "600",
+                          fontFamily: "Poppins, sans-serif",
+                          color: isSelected
+                            ? "white"
+                            : slot.booked
+                              ? "#9ca3af"
+                              : "inherit",
+                        }}
+                      >
+                        {slot.startTime} - {slot.endTime}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <IoMdTime
+                        style={{
+                          color: isSelected
+                            ? "white"
+                            : slot.booked
+                              ? "#9ca3af"
+                              : "inherit",
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontWeight: "500",
+                          fontFamily: "Poppins, sans-serif",
+                          fontSize: "14px",
+                          color: isSelected
+                            ? "white"
+                            : slot.booked
+                              ? "#9ca3af"
+                              : "inherit",
+                        }}
+                        variant="body2"
+                      >
+                        {duration} lesson
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
               </Grid>
             );
           })}
@@ -217,7 +361,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                 color: "#0c4a6e",
               }}
             >
-              Selected: {selectedHourSlots.length} hour slot
+              Selected: {selectedHourSlots.length} time slot
               {selectedHourSlots.length !== 1 ? "s" : ""}
             </Typography>
           </Box>

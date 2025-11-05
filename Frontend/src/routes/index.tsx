@@ -56,6 +56,8 @@ import StudentChatPage from "../pages/private/student-dashboard/chat";
 import { InstructorAnalyticsDashboard } from "../components/InstructorComponent/InstructorAnalytics/InstructorAnalyticsDashboard";
 
 import StudentBookingTable from "../components/AdminComponents/StudentBookingTable";
+import StudentBookingWInst from "../components/InstructorComponent/StudentBookingWInst";
+import FeedBackAndRating from "../components/StudentComponents/ReviewTab/OnlyReviewsTab";
 
 const router = createBrowserRouter([
   {
@@ -115,6 +117,7 @@ const router = createBrowserRouter([
       { path: "booking-details", element: <BookingDetails /> },
       { path: "help-support", element: <FAQPage /> },
       { path: "reviews", element: <Dashboard /> },
+      { path: "Feedback", element: <FeedBackAndRating /> },
       { path: "review-form", element: <ReviewForm /> },
       { path: "review-display", element: <ReviewDisplay /> },
       { path: "allBookingSlots", element: <AllBookingSlotsPage /> },
@@ -138,6 +141,7 @@ const router = createBrowserRouter([
       { path: "booking-details", element: <BookingDetails /> },
       { path: "help-support", element: <FAQPage /> },
       { path: "feedback", element: <StudentFeedback /> },
+      { path: "bookingManagement", element: <StudentBookingWInst /> },
       {
         path: "feedbackForm/:bookingId/:lessonId/:studentId",
         element: <FeedbackForm />,

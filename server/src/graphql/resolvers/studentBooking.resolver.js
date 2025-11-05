@@ -211,6 +211,7 @@ const studentBookingResolver = {
         const lastEndTime = new Date(
           `${latestSlot.date}T${latestSlot.endTime}:00`
         );
+        console.log("Last end time:", lastEndTime, "Now:", now);
         const isCompleted = lastEndTime <= now;
 
         const finalBooking = {
@@ -327,9 +328,7 @@ const studentBookingResolver = {
         for (const slot of enrichedSlots) {
           const availability = await teacherAvailabilityModel.findOne({
             teacherId: instructorId,
-            date: slot.date,
-            startTime: { $lte: slot.startTime },
-            endTime: { $gte: slot.endTime },
+            date: new Date(slot.date),
           });
 
           if (!availability) continue;
@@ -351,34 +350,53 @@ const studentBookingResolver = {
             async ({ availability, slotsToAdd }) => {
               let hasChanges = false;
 
-              // Add new slots if they don't already exist
               for (const slot of slotsToAdd) {
-                const alreadyExists = availability.slots.some(
+                // Check if slot already exists in `slots` (booked list)
+                const alreadyBooked = availability.slots.some(
                   (s) =>
                     s.date === slot.date &&
                     s.startTime === slot.startTime &&
                     s.endTime === slot.endTime
                 );
 
-                if (!alreadyExists) {
+                if (!alreadyBooked) {
+                  // Mark slot as booked in booked list
                   availability.slots.push({
-                    id: slot.id, // ✅ Now consistent with StudentBooking slot
+                    id: slot.id,
                     date: slot.date,
                     startTime: slot.startTime,
                     endTime: slot.endTime,
                     booked: true,
                     status: "booked",
                   });
+
+                  // Find and update in availableSlots (mark as booked)
+                  const availableSlot = availability.availableSlots.find(
+                    (s) =>
+                      s.date === slot.date &&
+                      s.startTime === slot.startTime &&
+                      s.endTime === slot.endTime
+                  );
+
+                  if (availableSlot) {
+                    availableSlot.booked = true;
+                    availableSlot.status = "booked";
+                  }
+
                   hasChanges = true;
                 }
               }
 
-              // Only check and update status if we made changes
               if (hasChanges) {
-                // Check if all slots are now booked
-                const allSlotsBooked = checkAllSlotsBooked(availability);
-                if (allSlotsBooked) {
+                // If all availableSlots are booked, mark day as booked
+                const allBooked =
+                  availability.availableSlots.length > 0 &&
+                  availability.availableSlots.every((s) => s.booked === true);
+
+                if (allBooked) {
                   availability.status = "booked";
+                } else {
+                  availability.status = "available";
                 }
 
                 await availability.save();
@@ -386,7 +404,6 @@ const studentBookingResolver = {
             }
           )
         );
-
         // 4. Optional: populate instructor
         const savedBooking = await StudentBooking.findById(booking._id)
           .populate(
@@ -534,44 +551,51 @@ const studentBookingResolver = {
         await booking.save({ session });
 
         // 5. Remove the slot from teacher availability
-        await teacherAvailabilityModel.updateOne(
-          {
-            teacherId: booking.instructorId._id,
-            "slots.id": slotId,
-          },
-          {
-            $pull: {
-              slots: {
-                id: slotId,
-              },
-            },
-          },
-          { session }
-        );
-
-        // 6. Check if teacher availability document has any remaining slots
         const teacherAvailability = await teacherAvailabilityModel
           .findOne({
             teacherId: booking.instructorId._id,
-            date: slot.date,
+            date: new Date(slot.date),
           })
           .session(session);
 
-        if (teacherAvailability && teacherAvailability.slots.length === 0) {
-          await teacherAvailabilityModel.updateOne(
-            {
-              teacherId: booking.instructorId._id,
-              date: slot.date,
-            },
-            {
-              $set: { status: "available" },
-            },
-            { session }
+        if (teacherAvailability) {
+          // 1️⃣ Remove from booked slots
+          teacherAvailability.slots = teacherAvailability.slots.filter(
+            (s) => s.id !== slotId
           );
+
+          // 2️⃣ Add or mark slot as available again
+          const existingAvailable = teacherAvailability.availableSlots.find(
+            (s) =>
+              s.date === slot.date &&
+              s.startTime === slot.startTime &&
+              s.endTime === slot.endTime
+          );
+
+          if (existingAvailable) {
+            existingAvailable.booked = false;
+            existingAvailable.status = "available";
+          } else {
+            teacherAvailability.availableSlots.push({
+              id: new mongoose.Types.ObjectId().toString(),
+              date: slot.date,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              booked: false,
+              status: "available",
+            });
+          }
+
+          // 3️⃣ Update overall status
+          const hasAvailable = teacherAvailability.availableSlots.some(
+            (s) => s.booked === false
+          );
+          teacherAvailability.status = hasAvailable ? "available" : "booked";
+
+          await teacherAvailability.save({ session });
         }
 
         await session.commitTransaction();
-
         // 7. Send email notifications
         try {
           await notifyBookingParties(booking, "booking_cancelled");

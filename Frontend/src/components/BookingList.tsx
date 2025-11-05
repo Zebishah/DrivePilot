@@ -438,9 +438,16 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                               }}
                             >
-                              {slot.status === "booked"
+                              {/* {slot.status === "booked"
                                 ? "CONFIRMED"
-                                : slot.status.toUpperCase()}
+                                : slot.status.toUpperCase()} */}
+                              {tabValue === 0
+                                ? "UPCOMING"
+                                : tabValue === 3
+                                  ? "COMPLETED"
+                                  : slot.status === "booked"
+                                    ? "CONFIRMED"
+                                    : slot.status.toUpperCase()}
                             </Typography>
                           </Box>
                           <Box

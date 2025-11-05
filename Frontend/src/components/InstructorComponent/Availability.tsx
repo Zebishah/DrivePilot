@@ -27,7 +27,7 @@ import {
 } from "../../types/HourSlots";
 
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import HourSlotModal from "../StudentComponents/HourSlotModal";
 import { getDurationInHours } from "../../utils/HourSlotsUtills";
 import { IoTimeOutline } from "react-icons/io5";
@@ -84,31 +84,48 @@ const Availability: React.FC<AvailabilityProps> = ({
   loading,
   onSelectAvailability,
   selectedPackage,
-  instructorData,
 }) => {
-  const { error, data } = useQuery(GET_INSTRUCTOR_PROFILE, {
-    variables: { id: instructorData || "" },
-    errorPolicy: "all",
-    fetchPolicy: "cache-and-network", // Ensures fresh data
+  const { id: instructorData } = useParams<{ id: string }>();
+  const {
+    data,
+    loading: queryLoading,
+    error,
+  } = useQuery(GET_INSTRUCTOR_PROFILE, {
+    variables: { id: instructorData },
+    skip: !instructorData,
+    fetchPolicy: "network-only",
   });
 
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedSlotForModal, setSelectedSlotForModal] = useState<any>(null);
+  const [selectedDayData, setSelectedDayData] = useState<any>(null);
   const [hourSlotLoading, setHourSlotLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Debug logs
+  console.log("Query data:", data);
+  console.log("Query loading:", queryLoading);
+  console.log("Query error:", error);
+
   const instructor =
     data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
-  console.log("instructor", instructor);
+
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
+
   // Create an array of available dates from availabilityData
   const availableDates = useMemo(() => {
-    return availabilityData
-      .filter((slot) => dayjs(slot.date).isAfter(dayjs(), "day"))
-      .map((slot) => dayjs(slot.date));
-  }, [availabilityData]);
+    const availabilityList =
+      data?.getInstructorPublicProfile?.availability || [];
+
+    return availabilityList
+      .filter(
+        (day: any) =>
+          dayjs(day.date).isAfter(dayjs(), "day") ||
+          dayjs(day.date).isSame(dayjs(), "day")
+      )
+      .map((day: any) => dayjs(day.date));
+  }, [data]);
 
   const calculateDuration = (startTime: string, endTime: string) => {
     const start = dayjs(`2000-01-01 ${startTime}`);
@@ -118,44 +135,71 @@ const Availability: React.FC<AvailabilityProps> = ({
     // Round to nearest 0.5 hour and format
     const roundedHours = Math.round(hours * 2) / 2;
     const hoursText = roundedHours === 1 ? "hr" : "hrs";
-    return `${roundedHours.toFixed(1)} ${hoursText} lesson`;
+    return `${roundedHours.toFixed(1)} ${hoursText}`;
   };
 
-  // Filter slots based on selected date
-  const transformedSlots = useMemo(() => {
-    const availability = data?.getInstructorPublicProfile?.availability || [];
+  // Group availability by date - show one card per date
+  const groupedAvailability = useMemo(() => {
+    const availabilityList =
+      data?.getInstructorPublicProfile?.availability || [];
 
-    return availability
-      .filter((slot: any) => {
-        // Filter out past dates
-        if (dayjs(slot.date).isBefore(dayjs(), "day")) return false;
+    return availabilityList
+      .filter((day: any) => {
+        const dayDate = dayjs(day.date);
 
-        // If package selected, only show slots before or on the end date
+        // Skip past days
+        if (dayDate.isBefore(dayjs(), "day")) return false;
+
+        // Filter by selected package end date
         if (selectedPackage?.endDate) {
-          const slotDate = dayjs(slot.date);
           const packageEnd = dayjs(Number(selectedPackage.endDate));
           return (
-            slotDate.isSame(packageEnd, "day") ||
-            slotDate.isBefore(packageEnd, "day")
+            dayDate.isSame(packageEnd, "day") ||
+            dayDate.isBefore(packageEnd, "day")
           );
         }
 
-        // If date selected, show slots for that date
+        // Filter by date picker selection
         if (selectedDate) {
-          return dayjs(slot.date).isSame(selectedDate, "day");
+          return dayDate.isSame(selectedDate, "day");
         }
 
-        // Otherwise show all future slots
         return true;
       })
-      .map((slot: any) => ({
-        id: slot._id,
-        time: `${slot.startTime} - ${slot.endTime}`,
-        duration: calculateDuration(slot.startTime, slot.endTime),
-        date: slot.date,
-        booked: slot.hourlySlots?.every((hSlot: any) => hSlot.booked) || false,
-        hourlySlots: slot.hourlySlots || [],
-      }));
+      .map((day: any) => {
+        const slots = day.availableSlots || [];
+        const availableCount = slots.filter((s: any) => !s.booked).length;
+
+        // Calculate total time range
+        const times = slots.map((s: any) => ({
+          start: dayjs(`2000-01-01 ${s.startTime}`),
+          end: dayjs(`2000-01-01 ${s.endTime}`),
+        }));
+
+        const earliestStart = times.reduce(
+          (min, t) => (t.start.isBefore(min) ? t.start : min),
+          times[0]?.start
+        );
+        const latestEnd = times.reduce(
+          (max, t) => (t.end.isAfter(max) ? t.end : max),
+          times[0]?.end
+        );
+
+        const totalDuration = calculateDuration(
+          earliestStart?.format("HH:mm") || "00:00",
+          latestEnd?.format("HH:mm") || "00:00"
+        );
+
+        return {
+          id: day.id,
+          date: day.date,
+          formattedDate: dayjs(day.date).format("MMMM D, YYYY"),
+          availableSlots: slots,
+          availableCount,
+          timeRange: `${earliestStart?.format("HH:mm")} - ${latestEnd?.format("HH:mm")}`,
+          totalDuration,
+        };
+      });
   }, [data, selectedDate, selectedPackage]);
 
   // Custom date validation
@@ -173,25 +217,9 @@ const Availability: React.FC<AvailabilityProps> = ({
     </CalendarIconButton>
   ));
 
-  const handleCardClick = (id: string) => {
-    setSelectedSlots((prev) => {
-      // Create new selection array (correctly removing or adding the clicked ID)
-      const newSelection = prev.includes(id)
-        ? prev.filter((slotId) => slotId !== id)
-        : [...prev, id];
-
-      // Get the full availability data for ONLY the currently selected slots
-      const selectedAvailabilityData = availabilityData.filter((slot) =>
-        newSelection.includes(slot._id)
-      );
-
-      // Pass the filtered availability data to the parent component
-      if (onSelectAvailability) {
-        onSelectAvailability(selectedAvailabilityData);
-      }
-
-      return newSelection;
-    });
+  const handleDayCardClick = (dayData: any) => {
+    setSelectedDayData(dayData);
+    setModalOpen(true);
   };
 
   // Add package info message
@@ -206,18 +234,12 @@ const Availability: React.FC<AvailabilityProps> = ({
           mb: 2,
         }}
       >
-        {`Selected package: ${selectedPackage.lessons} lessons before
-
-        ${dayjs(Number(selectedPackage.endDate)).format("MMM D, YYYY")}`}
+        {`Selected package: ${selectedPackage.lessons} lessons before ${dayjs(Number(selectedPackage.endDate)).format("MMM D, YYYY")}`}
       </Typography>
     );
   };
-  const handleSelectHours = (slot: Slot) => {
-    setSelectedSlotForModal(slot);
-    setModalOpen(true);
-  };
 
-  // Add this function to handle hour slot confirmation
+  // Handle hour slot confirmation
   const handleHourSlotConfirm = async (selectedHourSlots: HourSlot[]) => {
     setHourSlotLoading(true);
 
@@ -229,33 +251,13 @@ const Availability: React.FC<AvailabilityProps> = ({
         startTime: hourSlot.startTime,
         endTime: hourSlot.endTime,
       }));
-      console.log("formattedAvailability", formattedAvailability);
 
-      // Call your existing handleBookNow logic
       if (formattedAvailability.length === 0) {
         toast.error("Please select an availability slot before booking.");
         return;
       }
-      console.log("tariff", tariff);
+
       if (location.pathname.includes("/student-dashboard/search")) {
-        // navigate("/student-dashboard/booking-details", {
-        //   state: {
-        //     instructorId: instructorData,
-        //     selectedAvailability: formattedAvailability,
-        //     instructorData: {
-        //       id: instructor._id,
-        //       name: `${instructor.firstName} ${instructor.lastName}`,
-        //       email: instructor.email,
-        //       description: instructor.description,
-        //       lessonFee: tariff.lessonFee,
-        //       lessonDiscount: tariff.lessonDiscount,
-        //       FinalPricePerLesson: tariff.FinalPricePerLesson,
-        //       discountStartDate: tariff.discountStartDate,
-        //       discountEndDate: tariff.discountEndDate,
-        //     },
-        //   },
-        // });
-        console.log("instructorData", instructorData);
         const paymentData = {
           type: "card",
           cardNumber: "5105 **** **** 0505",
@@ -289,8 +291,9 @@ const Availability: React.FC<AvailabilityProps> = ({
       setModalOpen(false);
     }
   };
+
   // Render loading state
-  if (loading) {
+  if (loading || queryLoading) {
     return (
       <Card
         sx={{
@@ -327,7 +330,7 @@ const Availability: React.FC<AvailabilityProps> = ({
   }
 
   // Render no availability message
-  if (!loading && (!availabilityData || availabilityData.length === 0)) {
+  if (!loading && groupedAvailability.length === 0) {
     return (
       <Card
         sx={{
@@ -435,15 +438,12 @@ const Availability: React.FC<AvailabilityProps> = ({
                           d.isSame(day, "day")
                         );
 
-                        // Base overrides for every day cell
                         const base: any = {
                           "&.MuiPickersDay-root": {
                             borderRadius: "50%",
-                            // Highlight today with a subtle outline
                             '&[aria-current="date"]': {
                               border: "2px solid #5fc2d3 !important",
                             },
-                            // Selected state
                             "&.Mui-selected": {
                               backgroundColor: "#5fc2d3 !important",
                               color: "#fff !important",
@@ -454,16 +454,15 @@ const Availability: React.FC<AvailabilityProps> = ({
                           },
                         };
 
-                        // If it's in your availableDates array, merge in these overrides:
                         if (isAvailable) {
                           return {
                             ...base,
                             "&.MuiPickersDay-root": {
                               ...base["&.MuiPickersDay-root"],
-                              color: "#00966D !important", // force green text
+                              color: "#00966D !important",
                               fontWeight: 700,
-                              border: "2px solid #00966D !important", // strong green border
-                              backgroundColor: "rgba(0,150,110,0.1) !important", // faint bg
+                              border: "2px solid #00966D !important",
+                              backgroundColor: "rgba(0,150,110,0.1) !important",
                               "&:hover": {
                                 backgroundColor: "#d1f0f7 !important",
                               },
@@ -471,7 +470,6 @@ const Availability: React.FC<AvailabilityProps> = ({
                           };
                         }
 
-                        // Otherwise just return the base
                         return base;
                       },
                     },
@@ -489,30 +487,26 @@ const Availability: React.FC<AvailabilityProps> = ({
             variant="subtitle1"
             marginTop={2}
           >
-            Select Available Time Slots
+            Select Available Days
           </Typography>
           <Grid container spacing={2} marginTop={2}>
-            {transformedSlots.length > 0 ? (
-              transformedSlots.map((slot) => (
-                <Grid item xs={12} sm={6} md={3} key={slot.id}>
+            {groupedAvailability.length > 0 ? (
+              groupedAvailability.map((dayData) => (
+                <Grid item xs={12} sm={6} md={3} key={dayData.id}>
                   <Card
-                    onClick={() => handleCardClick(slot.id)}
+                    onClick={() => handleDayCardClick(dayData)}
                     sx={{
                       borderRadius: "10px",
-                      backgroundColor: selectedSlots.includes(slot.id)
-                        ? "#5FC2D333"
-                        : "#5FC2D333",
-                      border: selectedSlots.includes(slot.id)
-                        ? "2px solid #828282"
-                        : "1px solid #cce4f7",
-                      boxShadow: selectedSlots.includes(slot.id)
-                        ? "0px 0px 10px rgba(0, 0, 0, 0.2)"
-                        : 1,
+                      backgroundColor: "#5FC2D333",
+                      border: "1px solid #cce4f7",
+                      boxShadow: 1,
                       width: "100%",
-                      transform: selectedSlots.includes(slot.id)
-                        ? "scale(1.05)"
-                        : "scale(1)",
+                      cursor: "pointer",
                       transition: "transform 0.2s, box-shadow 0.2s",
+                      "&:hover": {
+                        transform: "scale(1.02)",
+                        boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.15)",
+                      },
                     }}
                   >
                     <CardContent>
@@ -531,11 +525,11 @@ const Availability: React.FC<AvailabilityProps> = ({
                         <Typography
                           variant="body1"
                           sx={{
-                            fontWeight: "500",
+                            fontWeight: "600",
                             fontFamily: "Poppins, sans-serif",
                           }}
                         >
-                          {slot.date}
+                          {dayData.formattedDate}
                         </Typography>
                       </Box>
 
@@ -549,13 +543,13 @@ const Availability: React.FC<AvailabilityProps> = ({
                       >
                         <FaRegCheckCircle style={{ color: "#25D422" }} />
                         <Typography
-                          variant="body1"
+                          variant="body2"
                           sx={{
                             fontWeight: "500",
                             fontFamily: "Poppins, sans-serif",
                           }}
                         >
-                          {slot.time}
+                          {dayData.timeRange}
                         </Typography>
                       </Box>
 
@@ -577,54 +571,25 @@ const Availability: React.FC<AvailabilityProps> = ({
                               fontFamily: "Poppins, sans-serif",
                             }}
                             variant="body2"
-                            fontWeight="bold"
                           >
-                            {slot.duration}
+                            {dayData.totalDuration}
                           </Typography>
                         </Box>
 
-                        {/* Add hour selection button for multi-hour slots */}
-                        {getDurationInHours(slot.time) > 0 && (
-                          <Chip
-                            icon={<IoTimeOutline size={14} />}
-                            label="Select Hours"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent card click
-                              handleSelectHours(slot);
-                            }}
-                            sx={{
-                              backgroundColor: "#e0f2fe",
-                              color: "#0369a1",
-                              fontSize: "11px",
-                              fontFamily: "Poppins, sans-serif",
-                              fontWeight: "500",
-                              height: "24px",
-                              cursor: "pointer",
-                              "&:hover": {
-                                backgroundColor: "#bae6fd",
-                              },
-                            }}
-                          />
-                        )}
+                        <Chip
+                          label={`${dayData.availableCount} slots`}
+                          sx={{
+                            backgroundColor: "#e0f2fe",
+                            color: "#0369a1",
+                            fontSize: "11px",
+                            fontFamily: "Poppins, sans-serif",
+                            fontWeight: "500",
+                            height: "24px",
+                          }}
+                        />
                       </Box>
                     </CardContent>
                   </Card>
-
-                  <HourSlotModal
-                    open={modalOpen}
-                    onClose={() => setModalOpen(false)}
-                    onConfirm={handleHourSlotConfirm}
-                    originalSlot={
-                      selectedSlotForModal || {
-                        id: "",
-                        time: "",
-                        duration: "",
-                        date: "",
-                        booked: false,
-                      }
-                    }
-                    loading={hourSlotLoading}
-                  />
                 </Grid>
               ))
             ) : (
@@ -658,6 +623,24 @@ const Availability: React.FC<AvailabilityProps> = ({
           </Grid>
         </CardContent>
       </Card>
+
+      {/* Modal for showing hourly slots */}
+      <HourSlotModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={handleHourSlotConfirm}
+        originalSlot={
+          selectedDayData || {
+            id: "",
+            date: "",
+            formattedDate: "",
+            availableSlots: [],
+            timeRange: "",
+            totalDuration: "",
+          }
+        }
+        loading={hourSlotLoading}
+      />
     </div>
   );
 };

@@ -7,29 +7,18 @@ import {
   CardContent,
   Grid,
   Button,
-  Tabs,
-  Tab,
   CircularProgress,
   Tooltip,
 } from "@mui/material";
-import { Star, Edit, EditIcon } from "lucide-react";
+import { Edit } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
 import { LuMapPin } from "react-icons/lu";
 import { GET_STUDENT_PROFILE } from "../../../graphql/mutations/studentProfile";
-import { DocumentsTab } from "../teacher-dashboard/tabs/DocumentsTab";
-// import { TariffTab } from "../student-dashboard/tabs/TariffTab";
-// import { AvailabilityTab } from "../student-dashboard/tabs/AvailabilityTab";
-// import { RatingsTab } from "../student-dashboard/tabs/RatingsTab";
-// import { PaymentTab } from "../student-dashboard/tabs/PaymentTab";
-import ComingSoonPage from "./ComingSoonPage";
 import LessonBookingHistory from "./StudentBookings";
 import { useAuth } from "../../../context/AuthContext";
-type TabValue = "documents" | "tariff" | "availability" | "ratings" | "payment";
-
 export default function StudentProfileSetting() {
-  const [tabValue, setTabValue] = React.useState<TabValue>("documents");
   const navigate = useNavigate();
   const location = useLocation();
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
@@ -104,13 +93,6 @@ export default function StudentProfileSetting() {
           documentUrl: doc.documentUrl,
         })
       ) || [], // Ensure documents is an array even if empty
-  };
-
-  const handleTabChange = (
-    _event: React.SyntheticEvent,
-    newValue: TabValue
-  ) => {
-    setTabValue(newValue);
   };
 
   const handleEditProfile = () => {

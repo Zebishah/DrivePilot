@@ -12,28 +12,24 @@ interface NewBookingData {
 
 const UNSEEN_BOOKINGS_KEY = "unseen_bookings_count";
 
-// Helper functions for localStorage
+// Helper functions for in-memory storage (replacing localStorage)
+const storageMap = new Map<string, number>();
+
 const getStoredCount = (userId: string): number => {
-  try {
-    const stored = localStorage.getItem(`${UNSEEN_BOOKINGS_KEY}_${userId}`);
-    return stored ? parseInt(stored, 10) : 0;
-  } catch {
-    return 0;
-  }
+  return storageMap.get(`${UNSEEN_BOOKINGS_KEY}_${userId}`) || 0;
 };
 
 const setStoredCount = (userId: string, count: number): void => {
-  try {
-    localStorage.setItem(`${UNSEEN_BOOKINGS_KEY}_${userId}`, count.toString());
-  } catch (error) {
-    console.error("Failed to save count to localStorage:", error);
-  }
+  storageMap.set(`${UNSEEN_BOOKINGS_KEY}_${userId}`, count);
 };
 
 export const useBookingNotifications = (userId: string, role: string) => {
-  // ✅ Initialize from localStorage
   const [unseenBookingsCount, setUnseenBookingsCount] = useState(() => {
-    if (!userId || role !== "Admin") return 0;
+    if (
+      !userId ||
+      (role !== "Admin" && role !== "Instructor" && role !== "Student")
+    )
+      return 0;
     return getStoredCount(userId);
   });
 
@@ -45,20 +41,23 @@ export const useBookingNotifications = (userId: string, role: string) => {
     unseenBookingsCount,
   });
 
-  // ✅ Persist count to localStorage whenever it changes
+  // Persist count whenever it changes
   useEffect(() => {
-    if (userId && role === "Admin") {
+    if (
+      userId &&
+      (role === "Admin" || role === "Instructor" || role === "Student")
+    ) {
       setStoredCount(userId, unseenBookingsCount);
-      console.log(
-        "💾 Saved unseen count to localStorage:",
-        unseenBookingsCount
-      );
+      console.log("💾 Saved unseen count:", unseenBookingsCount);
     }
   }, [unseenBookingsCount, userId, role]);
 
   useEffect(() => {
-    if (!userId || role !== "Admin") {
-      console.log("❌ Not an admin or no userId, skipping registration");
+    if (
+      !userId ||
+      (role !== "Admin" && role !== "Instructor" && role !== "Student")
+    ) {
+      console.log("❌ Invalid role or no userId, skipping registration");
       return;
     }
 
@@ -70,13 +69,22 @@ export const useBookingNotifications = (userId: string, role: string) => {
 
     // Handle connection events
     const handleConnect = () => {
-      console.log("✅ Socket connected, registering admin...");
-      socket.emit("register_admin", { userId, role });
-      console.log("📤 Sent register_admin event", { userId, role });
+      console.log("✅ Socket connected, registering user...");
+
+      if (role === "Admin") {
+        socket.emit("register_admin", { userId, role });
+        console.log("📤 Sent register_admin event", { userId, role });
+      } else if (role === "Instructor") {
+        socket.emit("register_instructor", { userId, role });
+        console.log("📤 Sent register_instructor event", { userId, role });
+      } else if (role === "Student") {
+        socket.emit("register_student", { userId, role });
+        console.log("📤 Sent register_student event", { userId, role });
+      }
     };
 
-    const handleAdminRegistered = (data: any) => {
-      console.log("✅ Admin registration confirmed:", data);
+    const handleRegistered = (data: any) => {
+      console.log(`✅ ${role} registration confirmed:`, data);
       setIsRegistered(true);
     };
 
@@ -90,32 +98,48 @@ export const useBookingNotifications = (userId: string, role: string) => {
       setIsRegistered(false);
     };
 
-    // Listen for new booking events
+    // Listen for new booking events based on role
     const handleNewBooking = (data: NewBookingData) => {
       console.log("🔔 New booking notification received:", data);
 
       setUnseenBookingsCount((prev) => {
-        const newCount = prev + 1;
+        const newCount = prev + data.slotsCount;
         console.log(`📊 Updated unseen count: ${prev} -> ${newCount}`);
         return newCount;
       });
 
-      // Show toast notification
-      toast.success(
-        `New booking from ${data.studentName} (${data.slotsCount} slots)`,
-        {
-          duration: 5000,
-          icon: "🎉",
-        }
-      );
+      // Show appropriate toast based on role
+      let toastMessage = "";
+      if (role === "Admin") {
+        toastMessage = `New booking from ${data.studentName} (${data.slotsCount} slots)`;
+      } else if (role === "Instructor") {
+        toastMessage = `New booking from ${data.studentName} (${data.slotsCount} slots)`;
+      } else if (role === "Student") {
+        toastMessage = `Your booking with ${data.instructorName} is confirmed (${data.slotsCount} slots)`;
+      }
+
+      toast.success(toastMessage, {
+        duration: 5000,
+        icon: "🎉",
+      });
     };
 
     // Register event listeners
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleConnectError);
-    socket.on("admin_registered", handleAdminRegistered);
-    socket.on("new_booking_created", handleNewBooking);
+
+    // Register for specific role events
+    if (role === "Admin") {
+      socket.on("admin_registered", handleRegistered);
+      socket.on("new_booking_created", handleNewBooking);
+    } else if (role === "Instructor") {
+      socket.on("instructor_registered", handleRegistered);
+      socket.on("instructor_booking_created", handleNewBooking);
+    } else if (role === "Student") {
+      socket.on("student_registered", handleRegistered);
+      socket.on("student_booking_confirmed", handleNewBooking);
+    }
 
     // If already connected, register immediately
     if (socket.connected) {
@@ -128,8 +152,17 @@ export const useBookingNotifications = (userId: string, role: string) => {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
       socket.off("connect_error", handleConnectError);
-      socket.off("admin_registered", handleAdminRegistered);
-      socket.off("new_booking_created", handleNewBooking);
+
+      if (role === "Admin") {
+        socket.off("admin_registered", handleRegistered);
+        socket.off("new_booking_created", handleNewBooking);
+      } else if (role === "Instructor") {
+        socket.off("instructor_registered", handleRegistered);
+        socket.off("instructor_booking_created", handleNewBooking);
+      } else if (role === "Student") {
+        socket.off("student_registered", handleRegistered);
+        socket.off("student_booking_confirmed", handleNewBooking);
+      }
     };
   }, [userId, role]);
 
@@ -137,11 +170,11 @@ export const useBookingNotifications = (userId: string, role: string) => {
     console.log("🔄 Clearing unseen count");
     const socket = getSocket();
     if (socket) {
-      socket.emit("booking_viewed", { userId });
+      socket.emit("booking_viewed", { userId, role });
     }
 
     setUnseenBookingsCount(0);
-  }, [userId]);
+  }, [userId, role]);
 
   return {
     unseenBookingsCount,

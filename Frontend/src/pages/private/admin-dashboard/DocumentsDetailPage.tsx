@@ -14,6 +14,7 @@ import { GET_ALL_INSTRUCTORS } from "../../../graphql/Queries/InstructorProfiles
 import { Instructor, InstructorDocument } from "../../../types/Instructor";
 import { StatusDropdown } from "../../../components/AdminComponents/StatusDropdown";
 import { DocumentSlider } from "../../../components/AdminComponents/DocumentSlider";
+import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 
 export const DocumentDetailsPage: React.FC = () => {
   const { instructorId, documentType } = useParams<{
@@ -97,12 +98,13 @@ export const DocumentDetailsPage: React.FC = () => {
       <div className="bg-white border-b border-gray-200">
         <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <button
+            {/* <button
               onClick={() => navigate("/admin-dashboard/documentsManagement")}
               className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <ArrowLeft size={24} />
-            </button>
+            </button> */}
+            <BackButton variant="outline" label="Back" />
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 {decodeURIComponent(documentType || "")}

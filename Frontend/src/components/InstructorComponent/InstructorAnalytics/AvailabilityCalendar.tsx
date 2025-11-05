@@ -32,10 +32,7 @@ import {
 import { useQuery, useMutation } from "@apollo/client";
 
 import { toast } from "react-hot-toast";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+
 import {
   ADD_AVAILABILITY_SLOT,
   DELETE_AVAILABILITY_SLOT,

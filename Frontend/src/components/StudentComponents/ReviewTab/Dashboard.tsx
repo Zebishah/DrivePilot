@@ -44,12 +44,16 @@ const Dashboard: React.FC = () => {
 
   const { deleteReview, loading: deleteLoading } = useDeleteReview();
   const isRefetching = networkStatus === NetworkStatus.refetch;
-  const handleAddReview = (slot: StudentBookingSlot) => {
+  const handleAddReview = (
+    slot: StudentBookingSlot,
+    isFeedbackRating: boolean
+  ) => {
     // Navigate to review form page with slot data
     navigate("/student-dashboard/review-form", {
       state: {
         slot,
         isEdit: false,
+        isFeedbackRating: isFeedbackRating,
       },
     });
   };
@@ -60,6 +64,7 @@ const Dashboard: React.FC = () => {
       state: {
         slot,
         isEdit: true,
+        isFeedbackRating: false,
       },
     });
   };
@@ -69,6 +74,7 @@ const Dashboard: React.FC = () => {
     navigate("/student-dashboard/review-display", {
       state: {
         slot,
+        isFeedbackRating: false,
       },
     });
   };
@@ -116,7 +122,7 @@ const Dashboard: React.FC = () => {
 
         {/* Top Section - Chart and Progress */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div>
+          {/* <div>
             {hoursProgress && (
               <ProgressChart
                 completedHours={hoursProgress.completedHours}
@@ -125,10 +131,13 @@ const Dashboard: React.FC = () => {
                 studentInfo={hoursProgress.studentInfo}
               />
             )}
-          </div>
+          </div> */}
           <div>
             {hoursProgress && (
-              <StudentHoursProgressCard hoursProgress={hoursProgress} />
+              <StudentHoursProgressCard
+                hoursProgress={hoursProgress}
+                bookingSlots={bookingSlots}
+              />
             )}
           </div>
         </div>
@@ -141,8 +150,10 @@ const Dashboard: React.FC = () => {
             onEditReview={handleEditReview}
             onDeleteReview={handleDeleteReview}
             onShowReview={handleShowReview}
-            refetch={refetchReviews}
+            refetchSlots={refetchSlots}
+            refetchReviews={refetchReviews}
             isRefetching={isRefetching}
+            isFeedbackRating={false}
           />
         </div>
       </div>

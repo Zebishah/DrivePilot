@@ -50,3 +50,52 @@ export const GET_ALL_STUDENT_BOOKINGS = gql`
     }
   }
 `;
+export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
+  query GetInstructorBookingsById($instructorId: ID!) {
+    getInstructorBookingsById(instructorId: $instructorId) {
+      _id
+      studentId {
+        firstName
+        lastName
+        email
+        phone
+        profileImage
+        homeAddress
+        location
+        zipCode
+      }
+      instructorId {
+        _id
+        firstName
+        lastName
+        email
+        phone
+        profileImage
+        carName
+        transmissionType
+        experience
+        location
+      }
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        booked
+        review
+        feedBackStatus
+        cancellationDate
+        status
+      }
+      totalAmount
+      finalAmount
+      paymentMethod {
+        type
+        cardNumber
+      }
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;

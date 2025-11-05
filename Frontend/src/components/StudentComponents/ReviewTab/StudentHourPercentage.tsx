@@ -1,8 +1,14 @@
 import React from "react";
-import { StudentHoursProgress } from "../../../types/ReviewTypes";
+
+import {
+  StudentBookingSlot,
+  StudentHoursProgress,
+} from "../../../types/ReviewTypes";
+import { Tooltip } from "@mui/material";
 
 interface StudentHoursProgressCardProps {
   hoursProgress: StudentHoursProgress;
+  bookingSlots: StudentBookingSlot[];
 }
 
 const CircularProgress: React.FC<{
@@ -12,62 +18,108 @@ const CircularProgress: React.FC<{
   label: string;
   sublabel: string;
   displayValue?: number;
-}> = ({ value, max, color, label, sublabel, displayValue }) => {
+  tooltip: string;
+}> = ({ value, max, color, label, sublabel, displayValue, tooltip }) => {
   const percentage = value;
-  const circumference = 2 * Math.PI * 60; // Increased radius from 45 to 60
+  const circumference = 2 * Math.PI * 60;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-36 h-w-36 mb-4">
-        {" "}
-        {/* Increased from w-24 h-24 to w-36 h-w-36 */}
-        <svg className="w-36 h-w-36 transform -rotate-90" viewBox="0 0 140 140">
-          {" "}
-          {/* Increased viewBox from 100x100 to 140x140 */}
-          <circle
-            cx="70" /* Adjusted center from 50 to 70 */
-            cy="70" /* Adjusted center from 50 to 70 */
-            r="60" /* Increased radius from 45 to 60 */
-            stroke="#e5e7eb"
-            strokeWidth="12" /* Increased stroke width from 8 to 12 */
-            fill="none"
-          />
-          <circle
-            cx="70" /* Adjusted center from 50 to 70 */
-            cy="70" /* Adjusted center from 50 to 70 */
-            r="60" /* Increased radius from 45 to 60 */
-            stroke={color}
-            strokeWidth="12" /* Increased stroke width from 8 to 12 */
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            className="transition-all duration-300"
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold text-gray-800">
-            {" "}
-            {/* Increased text size from text-lg to text-2xl */}
-            {displayValue || value}
-          </span>
+    <Tooltip title={tooltip} arrow placement="top">
+      <div className="flex flex-col items-center cursor-help">
+        <div className="relative w-36 h-w-36 mb-4">
+          <svg
+            className="w-36 h-w-36 transform -rotate-90"
+            viewBox="0 0 140 140"
+          >
+            <circle
+              cx="70"
+              cy="70"
+              r="60"
+              stroke="#e5e7eb"
+              strokeWidth="12"
+              fill="none"
+            />
+            <circle
+              cx="70"
+              cy="70"
+              r="60"
+              stroke={color}
+              strokeWidth="12"
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-300"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-2xl font-bold text-gray-800">
+              {displayValue || value}
+            </span>
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-base font-medium text-gray-800">{label}</div>
+          <div className="text-sm text-gray-500">{sublabel}</div>
         </div>
       </div>
-      <div className="text-center">
-        <div className="text-base font-medium text-gray-800">{label}</div>{" "}
-        {/* Increased from text-sm to text-base */}
-        <div className="text-sm text-gray-500">{sublabel}</div>{" "}
-        {/* Increased from text-xs to text-sm */}
-      </div>
-    </div>
+    </Tooltip>
   );
 };
 
 const StudentHoursProgressCard: React.FC<StudentHoursProgressCardProps> = ({
   hoursProgress,
+  bookingSlots,
 }) => {
-  const { completedHours, remainingHours, totalRequiredHours } = hoursProgress;
+  console.log("bookingSlots in StudentHoursProgressCard:", bookingSlots);
+  const { completedHours, remainingHours, totalRequiredHours, lastLessonDate } =
+    hoursProgress;
+  function daysSinceLastCompletedLesson(slots: StudentBookingSlot[]) {
+    const completedSlots = slots.filter((s) => s.isCompleted);
+    if (completedSlots.length === 0) return null;
+
+    const dates = completedSlots
+      .map((s) => s.slotDetails?.date)
+      .filter((date): date is string => !!date);
+
+    if (dates.length === 0) return null;
+
+    // Sort descending to get the latest completed lesson
+    const lastLessonDateStr = dates.sort().reverse()[0];
+
+    const today = new Date();
+    const [year, month, day] = lastLessonDateStr.split("-").map(Number);
+
+    const lastLessonDate = new Date(year, month - 1, day);
+    console.log(
+      "lastLessonDate in daysSinceLastCompletedLesson:",
+      lastLessonDate
+    );
+    // Normalize both dates to midnight
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const lastLessonMidnight = new Date(
+      lastLessonDate.getFullYear(),
+      lastLessonDate.getMonth(),
+      lastLessonDate.getDate()
+    );
+
+    // Calculate difference in full days
+    const diffTime = todayMidnight.getTime() - lastLessonMidnight.getTime();
+    let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // ✅ Never negative — means the last lesson was in the future (maybe a scheduling issue)
+    if (diffDays < 0) diffDays = 0;
+
+    return {
+      lastLessonDate: lastLessonDateStr,
+      daysSinceLastLesson: diffDays,
+    };
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mx-auto h-[100%]">
@@ -80,10 +132,8 @@ const StudentHoursProgressCard: React.FC<StudentHoursProgressCardProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col items-center ">
-        {" "}
-        {/* Increased spacing from space-y-8 to space-y-10 */}
-        {/* Top single circle - Completed Hours */}
+      <div className="flex flex-col items-center">
+        {/* Completed Hours */}
         <div className="flex justify-center">
           <CircularProgress
             value={completedHours}
@@ -91,25 +141,37 @@ const StudentHoursProgressCard: React.FC<StudentHoursProgressCardProps> = ({
             color="#ef4444"
             label="Completed"
             sublabel="Hours"
+            tooltip="This is how many lessons you've already completed with an instructor. On average in Switzerland, students take around 30 lessons to be ready — but don’t stress! Everyone learns at their own pace 😉"
           />
         </div>
-        {/* Bottom two circles side-by-side */}
+
+        {/* Remaining & Time Since Last Lesson */}
         <div className="flex justify-center items-center space-x-32">
-          {" "}
-          {/* Reduced spacing from space-x-48 to space-x-32 to accommodate larger circles */}
           <CircularProgress
-            value={totalRequiredHours}
-            max={totalRequiredHours}
+            value={
+              ((daysSinceLastCompletedLesson(bookingSlots)
+                ?.daysSinceLastLesson ?? 0) /
+                30) *
+              100
+            }
+            max={100}
             color="#f59e0b"
-            label="Total Required"
-            sublabel="Hours"
+            label="Time Since Last"
+            sublabel="Lesson (Days)"
+            displayValue={
+              daysSinceLastCompletedLesson(bookingSlots)?.daysSinceLastLesson ??
+              0
+            }
+            tooltip="Time elapsed since your Last driving lesson on the platform."
           />
+
           <CircularProgress
             value={remainingHours}
             max={totalRequiredHours}
             color="#06b6d4"
             label="Remaining"
             sublabel="Hours"
+            tooltip="Estimated number of hours remaining before you are ready to take the driving exam. This is based on the opinion of your most recent instructor."
           />
         </div>
       </div>
