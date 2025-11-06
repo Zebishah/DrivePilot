@@ -23,6 +23,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
     (count, booking) => count + (booking.slots?.length || 0),
     0
   );
+  console.log("totalUncompletedSlots:", totalUncompletedSlots);
   return (
     <div className=" bg-white rounded-lg shadow-sm p-6 ">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">

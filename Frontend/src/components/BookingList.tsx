@@ -87,22 +87,20 @@ export const BookingList: React.FC<BookingListProps> = ({
 
       booking.slots.forEach((slot) => {
         const endTime = getSlotEndDateTime(slot);
-
-        // Determine if slot is past or future
         const isPast = endTime.getTime() < now.getTime();
 
         if (slot.status === "cancelled") {
           cancelledSlots.push(slot);
-          if (isPast) historySlots.push(slot);
         } else if (slot.status === "refund") {
           refundSlots.push(slot);
-          if (isPast) historySlots.push(slot);
         } else if (!isPast) {
-          // Booked & still future
-          upcomingSlots.push(slot);
-        } else {
-          // Booked but past end time -> goes to history
-          historySlots.push(slot);
+          upcomingSlots.push(slot); // future confirmed
+        } else if (
+          isPast &&
+          slot.status !== "cancelled" &&
+          slot.status !== "refund"
+        ) {
+          historySlots.push(slot); // completed lessons only
         }
       });
 
@@ -127,58 +125,6 @@ export const BookingList: React.FC<BookingListProps> = ({
     refund: refund.reduce((acc, b) => acc + b.slots.length, 0),
     history: history.reduce((acc, b) => acc + b.slots.length, 0),
   };
-  const getSlotCounts = (bookings: Booking[]) => {
-    const pastBookings = bookings
-      .map((b) => ({
-        ...b,
-        slots: b.slots.filter(
-          (s) => getSlotStartDateTime(s).getTime() < Date.now()
-        ),
-      }))
-      .filter((b) => b.slots.length > 0);
-    const futureBookings = bookings
-      .map((b) => ({
-        ...b,
-        slots: b.slots.filter(
-          (s) => getSlotStartDateTime(s).getTime() > Date.now()
-        ),
-      }))
-      .filter((b) => b.slots.length > 0);
-    const allSlots = bookings.flatMap((b) => b.slots);
-    const otherSlots = pastBookings.flatMap((b) => b.slots);
-    const confirmedSlots = futureBookings.flatMap((b) => b.slots);
-    const cancelledSlots = otherSlots.filter((s) => s.status === "cancelled");
-    const refundSlots = allSlots.filter((s) => s.status === "refund");
-    const historySlots = allSlots.filter(
-      (s) => getSlotStartDateTime(s).getTime() > Date.now()
-    );
-
-    return {
-      all: allSlots.length,
-      confirmed: confirmedSlots.length,
-      cancelled: cancelledSlots.length,
-      refund: refundSlots.length,
-      history: historySlots.length,
-    };
-  };
-  const pastBookings = bookings
-    .map((b) => ({
-      ...b,
-      slots: b.slots.filter(
-        (s) => getSlotStartDateTime(s).getTime() < Date.now()
-      ),
-    }))
-    .filter((b) => b.slots.length > 0);
-
-  // Future bookings: slots whose date+time is still ahead
-  const futureBookings = bookings
-    .map((b) => ({
-      ...b,
-      slots: b.slots.filter(
-        (s) => getSlotStartDateTime(s).getTime() > Date.now()
-      ),
-    }))
-    .filter((b) => b.slots.length > 0);
 
   let filteredBookings: Booking[] = [];
   switch (tabValue) {

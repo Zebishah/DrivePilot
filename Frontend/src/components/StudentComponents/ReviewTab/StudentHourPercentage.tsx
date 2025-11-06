@@ -76,43 +76,55 @@ const StudentHoursProgressCard: React.FC<StudentHoursProgressCardProps> = ({
   const { completedHours, remainingHours, totalRequiredHours, lastLessonDate } =
     hoursProgress;
   function daysSinceLastCompletedLesson(slots: StudentBookingSlot[]) {
-    const completedSlots = slots.filter((s) => s.isCompleted);
-    if (completedSlots.length === 0) return null;
-
-    const dates = completedSlots
-      .map((s) => s.slotDetails?.date)
-      .filter((date): date is string => !!date);
-
-    if (dates.length === 0) return null;
-
-    // Sort descending to get the latest completed lesson
-    const lastLessonDateStr = dates.sort().reverse()[0];
+    if (!slots || slots.length === 0) return null;
 
     const today = new Date();
-    const [year, month, day] = lastLessonDateStr.split("-").map(Number);
-
-    const lastLessonDate = new Date(year, month - 1, day);
-    console.log(
-      "lastLessonDate in daysSinceLastCompletedLesson:",
-      lastLessonDate
-    );
-    // Normalize both dates to midnight
     const todayMidnight = new Date(
       today.getFullYear(),
       today.getMonth(),
       today.getDate()
     );
+
+    // Get lessons whose date has already passed or are marked completed
+    const completedSlots = slots.filter((s) => {
+      const slotDateStr = s.slotDetails?.date;
+      if (!slotDateStr) return false;
+
+      const [year, month, day] = slotDateStr.split("-").map(Number);
+      const slotDate = new Date(year, month - 1, day);
+      const slotMidnight = new Date(
+        slotDate.getFullYear(),
+        slotDate.getMonth(),
+        slotDate.getDate()
+      );
+
+      // Consider it completed if either it's marked completed OR the date is in the past
+      return s.isCompleted || slotMidnight < todayMidnight;
+    });
+
+    if (completedSlots.length === 0) return null;
+
+    // Extract all past/completed lesson dates
+    const pastDates = completedSlots
+      .map((s) => s.slotDetails?.date)
+      .filter((date): date is string => !!date)
+      .sort()
+      .reverse(); // latest first
+
+    const lastLessonDateStr = pastDates[0];
+    console.log("lastLessonDateStr:", lastLessonDateStr);
+    const [year, month, day] = lastLessonDateStr.split("-").map(Number);
+    const lastLessonDate = new Date(year, month - 1, day);
     const lastLessonMidnight = new Date(
       lastLessonDate.getFullYear(),
       lastLessonDate.getMonth(),
       lastLessonDate.getDate()
     );
 
-    // Calculate difference in full days
+    // Calculate difference in days
     const diffTime = todayMidnight.getTime() - lastLessonMidnight.getTime();
     let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // ✅ Never negative — means the last lesson was in the future (maybe a scheduling issue)
     if (diffDays < 0) diffDays = 0;
 
     return {

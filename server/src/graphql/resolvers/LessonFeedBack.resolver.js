@@ -1,8 +1,9 @@
 // feedbackResolvers.js
 const { default: mongoose } = require("mongoose");
 const Feedback = require("../../models/LessonFeedBack"); // Make sure this path is correct
-const { User, Student } = require("../../models/User");
+const { User, Student, Instructor } = require("../../models/User");
 const StudentBooking = require("../../models/studentBooking.model");
+const { GraphQLError } = require("graphql");
 const feedbackResolvers = {
   Query: {
     getFeedbackByLessonId: async (_, { lessonId }, { user }) => {
@@ -72,16 +73,14 @@ const feedbackResolvers = {
         if (!input.hoursRemaining || !input.message) {
           throw new Error("Title and message are required");
         }
-        console.log(
-          "console log",
-          input.bookingId,
-          input.lessonId,
-          input.studentId
-        );
         // Get the booking to retrieve studentId
         const lessonObjectId = new mongoose.Types.ObjectId(input.bookingId);
         const booking = await StudentBooking.findById(lessonObjectId);
         if (!booking) throw new Error("Booking not found");
+        const instructor = await Instructor.findById(
+          input.instructorId || user.id
+        );
+        if (!instructor) throw new Error("Instructor not found");
 
         const studentId = booking.studentId;
 

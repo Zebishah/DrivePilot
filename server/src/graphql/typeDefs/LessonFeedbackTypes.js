@@ -21,11 +21,14 @@ module.exports = gql`
     feedbackTags: [String!]!
     hoursRemaining: String!
     message: String!
+    studentId: ID!
   }
   input UpdateFeedbackInput {
     feedbackId: ID!
     feedbackTags: [String!]!
     hoursRemaining: String!
+    studentId: ID!
+    instructorId: ID!
     message: String!
   }
 

@@ -171,9 +171,9 @@ const reviewResolver = {
         }
 
         // ✅ Ensure completed hours don't exceed total
-        if (completedHours > totalRequiredHours) {
-          completedHours = totalRequiredHours;
-        }
+        // if (completedHours > totalRequiredHours) {
+        //   completedHours = totalRequiredHours;
+        // }
 
         return {
           totalRequiredHours,

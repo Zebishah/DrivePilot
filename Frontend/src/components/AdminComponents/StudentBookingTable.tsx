@@ -427,8 +427,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Start Date:</span>
                   <span className="text-gray-900">
-                    {formatDate(selectedSlot.date)},{" "}
-                    {formatTo12Hour(selectedSlot.startTime)}
+                    {formatDate(selectedSlot.date)}, {selectedSlot.startTime}
                   </span>
                 </div>
 
@@ -439,7 +438,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                       booking.slots[booking.slots.length - 1]?.date ||
                         selectedSlot.date
                     )}
-                    , {formatTo12Hour(selectedSlot.endTime)}
+                    , {selectedSlot.endTime}
                   </span>
                 </div>
               </div>

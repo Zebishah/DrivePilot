@@ -71,14 +71,14 @@ const ReviewDisplayPage: React.FC = () => {
           `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`,
           {
             state: {
-              message: "Review deleted successfully!",
+              message: "Feedback deleted successfully!",
             },
           }
         );
       }
     } catch (error) {
-      console.error("Error deleting review:", error);
-      alert("Failed to delete review. Please try again.");
+      console.error("Error deleting Feedback:", error);
+      alert("Failed to delete Feedback. Please try again.");
     } finally {
       setShowDeleteModal(false);
     }
@@ -122,7 +122,7 @@ const ReviewDisplayPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading review...</p>
+          <p className="mt-4 text-gray-600">Loading Feedback...</p>
         </div>
       </div>
     );
@@ -132,7 +132,9 @@ const ReviewDisplayPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">No review found for this lesson</p>
+          <p className="text-gray-600 mb-4">
+            No Feedback found for this lesson
+          </p>
           <div className="space-x-4">
             <button
               onClick={() =>
@@ -191,7 +193,7 @@ const ReviewDisplayPage: React.FC = () => {
             <div className="flex items-center">
               <CheckCircle className="text-green-500 mr-2" size={20} />
               <span className="text-green-800">
-                Review submitted successfully!
+                Feedback submitted successfully!
               </span>
             </div>
           </div>

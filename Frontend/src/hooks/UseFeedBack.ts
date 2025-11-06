@@ -101,6 +101,7 @@ export const useFeedback = () => {
         lessonId,
         bookingId,
         instructorId: user.id,
+        studentId,
         instructorEmail: user.email,
         feedbackTags: formData.skills,
         hoursRemaining: formData.hoursRemaining,
@@ -133,6 +134,8 @@ export const useFeedback = () => {
       const input = {
         feedbackId,
         feedbackTags: formData.skills,
+        instructorId: user?.id,
+        studentId,
         hoursRemaining: formData.hoursRemaining,
         message: formData.pointsToWorkOn,
       };

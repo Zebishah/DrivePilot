@@ -73,7 +73,7 @@ const StudentFeedback: React.FC = () => {
 
   const completedBookings: StudentBooking[] =
     data?.getCompletedStudentBookings || [];
-
+  console.log("completedBookings:", completedBookings);
   return (
     <div className=" mx-auto p-2 bg-white space-y-8">
       {/* Give Feedback Table */}
