@@ -59,20 +59,33 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
+
+  // ✅ Initialize socket for instructor (check for both cases)
   useEffect(() => {
-    if (user?.role === "Instructor") {
-      console.log("🔌 Initializing socket for instructor:", user.id);
+    if (user?.role === "Instructor" || user?.role === "instructor") {
+      console.log(
+        "🔌 Initializing socket for instructor:",
+        user.id,
+        "Role:",
+        user.role
+      );
       initSocket();
     }
   }, [user]);
 
   // ✅ Use booking notifications hook
-  const { unseenBookingsCount, clearUnseenCount } = useBookingNotifications(
-    user?.id || "",
-    user?.role || ""
-  );
+  const { unseenBookingsCount, clearUnseenCount, isRegistered } =
+    useBookingNotifications(user?.id || "", user?.role || "");
 
-  // ✅ Clear unseen count when visiting booking management page
+  console.log("Teacher Layout State:", {
+    unseenBookingsCount,
+    isRegistered,
+    userId: user?.id,
+    role: user?.role,
+    pathname: location.pathname,
+  });
+
+  // ✅ Clear unseen count when visiting booking management page - FIXED PATH
   useEffect(() => {
     if (location.pathname === "/teacher-dashboard/bookingManagement") {
       console.log("📍 On booking management page, clearing count");
@@ -160,7 +173,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     dispatch(setConversations(conversationsData));
   }, [data, dispatch, user]);
 
-  // Socket setup
+  // Socket setup for chat
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !conversations.length) return;
@@ -201,7 +214,6 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
         !location.pathname.includes("/chat")
       ) {
         dispatch(setHasUnreadMessages());
-        localStorage.setItem("unreadMessages", "true");
       }
     };
 
@@ -214,6 +226,8 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       socket.off("receive_message", handleReceiveMessage);
     };
   }, [conversations, dispatch, user, location.pathname]);
+
+  // ✅ Menu items defined AFTER hook call to get latest count
   const menuItems: MenuItem[] = [
     { text: "Overview", icon: LayoutGrid, path: "/teacher-dashboard/overview" },
     {
@@ -240,7 +254,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       text: "Booking Management",
       icon: LayoutGrid,
       path: "/teacher-dashboard/bookingManagement",
-      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined, // ✅ Only show badge if > 0
+      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined,
     },
     {
       text: "Messages",
@@ -249,7 +263,14 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     },
     { text: "Logout", icon: LogOut, path: "/logout" },
   ];
-  console.log("Teacher Layout Rendered", unseenBookingsCount);
+
+  console.log(
+    "Teacher Layout Rendered - Unseen Count:",
+    unseenBookingsCount,
+    "Is Registered:",
+    isRegistered
+  );
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

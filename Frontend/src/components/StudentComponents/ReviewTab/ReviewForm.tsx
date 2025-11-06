@@ -219,6 +219,7 @@ const ReviewFormPage: React.FC = () => {
       return `You rated ${rating} out of 5 stars`;
     }
   };
+  console.log("isFeedbackRating", isFeedbackRating);
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <BackButton

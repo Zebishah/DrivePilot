@@ -44,7 +44,7 @@ const FeedBackAndRating: React.FC = () => {
       state: {
         slot,
         isEdit: false,
-        isFeedbackRating: isFeedbackRating,
+        isFeedbackRating: true,
       },
     });
   };
@@ -122,7 +122,7 @@ const FeedBackAndRating: React.FC = () => {
             refetchSlots={refetchSlots}
             refetchReviews={refetchReviews}
             isRefetching={isRefetching}
-            isFeedbackRating={false}
+            isFeedbackRating={true}
           />
         </div>
       </div>

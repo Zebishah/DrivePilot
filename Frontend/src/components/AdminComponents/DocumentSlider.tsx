@@ -98,13 +98,14 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
               alt={currentDocument.documentType}
               className="max-w-full max-h-[70vh] object-contain"
               onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  "https://via.placeholder.com/800x600?text=Document+Not+Available";
+                const target = e.target as HTMLImageElement;
+                target.onerror = null; // Prevent infinite loop
+                target.src =
+                  "https://via.placeholder.com/800x600?text=No+Preview+Available";
               }}
             />
           )}
         </div>
-
         {/* Navigation Arrows */}
         {documents.length > 1 && (
           <>
@@ -129,7 +130,71 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
         <div className="px-6 py-4 bg-gray-50">
           <div className="flex gap-2 overflow-x-auto">
             {documents.map((doc, index) => {
-              const pdf = doc.documentUrl?.toLowerCase().endsWith(".pdf");
+              const url = doc.documentUrl?.toLowerCase() || "";
+              const ext = url.split(".").pop() || "";
+
+              const isImage = /\.(jpeg|jpg|png|gif|webp|bmp|svg)$/i.test(url);
+              const isPdf = ext === "pdf";
+              const isWord = /(doc|docx)$/i.test(ext);
+              const isExcel = /(xls|xlsx|csv)$/i.test(ext);
+              const isText = /(txt|rtf)$/i.test(ext);
+              const isVideo = /(mp4|mov|avi|mkv|webm)$/i.test(ext);
+
+              // Choose icon for non-image files
+              const renderIcon = () => {
+                if (isPdf)
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-red-500">
+                      <FileText size={24} />
+                      <span className="text-[10px] text-gray-600 mt-1">
+                        PDF
+                      </span>
+                    </div>
+                  );
+                if (isWord)
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-blue-500">
+                      <FileText size={24} />
+                      <span className="text-[10px] text-gray-600 mt-1">
+                        DOC
+                      </span>
+                    </div>
+                  );
+                if (isExcel)
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-green-500">
+                      <FileText size={24} />
+                      <span className="text-[10px] text-gray-600 mt-1">
+                        XLS
+                      </span>
+                    </div>
+                  );
+                if (isText)
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                      <FileText size={24} />
+                      <span className="text-[10px] text-gray-600 mt-1">
+                        TXT
+                      </span>
+                    </div>
+                  );
+                if (isVideo)
+                  return (
+                    <div className="flex flex-col items-center justify-center h-full text-purple-500">
+                      <FileText size={24} />
+                      <span className="text-[10px] text-gray-600 mt-1">
+                        VID
+                      </span>
+                    </div>
+                  );
+                return (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                    <FileText size={24} />
+                    <span className="text-[10px] text-gray-600 mt-1">FILE</span>
+                  </div>
+                );
+              };
+
               return (
                 <button
                   key={doc._id}
@@ -140,20 +205,22 @@ export const DocumentSlider: React.FC<DocumentSliderProps> = ({
                       : "border-gray-300 hover:border-gray-400"
                   }`}
                 >
-                  {pdf ? (
-                    <div className="flex items-center justify-center h-full bg-gray-200 text-gray-500">
-                      <FileText size={28} />
-                    </div>
-                  ) : (
+                  {isImage ? (
                     <img
                       src={doc.documentUrl}
                       alt={doc.documentType}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "https://via.placeholder.com/64x64?text=Doc";
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src =
+                          "https://via.placeholder.com/64x64?text=IMG";
                       }}
                     />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      {renderIcon()}
+                    </div>
                   )}
                 </button>
               );
