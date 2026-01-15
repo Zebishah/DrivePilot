@@ -15,6 +15,9 @@ const instructorTypeDefs = gql`
     available
     booked
     cancelled
+    missed
+    completed
+    refund
   }
 
   type InstructorAvailability {

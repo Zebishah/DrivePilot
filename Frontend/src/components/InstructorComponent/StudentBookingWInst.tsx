@@ -1,117 +1,240 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation } from "@apollo/client";
+import React, { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@apollo/client/react";
 import {
-  ChevronDown,
   Calendar,
   Clock,
   DollarSign,
   User,
   X,
   Loader2,
+  ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
-import {
-  CancelBookingInput,
-  StudentBooking,
-  UpdateBookingStatusInput,
-} from "../../types/AdminBookingShowcase";
-
-import {
-  CANCEL_BOOKING_ADMIN,
-  UPDATE_BOOKING_STATUS,
-} from "../../graphql/mutations/AdminBookingsShowcase";
-import toast from "react-hot-toast";
+import { StudentBooking } from "../../types/Bookings";
 import { useAuth } from "../../context/AuthContext";
 import { GET_INSTRUCTOR_BOOKINGS_BY_ID } from "../../graphql/Queries/AdminBookingShowcase";
-
+import { UPDATE_SLOT_STATUS } from "../../graphql/mutations/studentBooking";
+import { createPortal } from "react-dom";
 interface BookingsTableProps {
   className?: string;
 }
 
-// Status Dropdown Component
-interface StatusDropdownProps {
-  currentStatus: string;
-  onStatusChange: (status: string) => void;
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-const StatusDropdown: React.FC<StatusDropdownProps> = ({
-  currentStatus,
-  onStatusChange,
-  isOpen,
-  onToggle,
-}) => {
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // All possible status options
-  const statusOptions = [
-    { value: "Refund", label: "Refund" },
-    { value: "Cancel", label: "Cancel" },
-  ];
-
-  // Filter out "Cancel" option if already cancelled
-  const filteredOptions =
-    currentStatus?.toLowerCase() === "cancel" ||
-    currentStatus?.toLowerCase() === "cancelled"
-      ? statusOptions.filter((option) => option.value !== "Cancel")
-      : statusOptions;
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        onToggle();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onToggle]);
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={onToggle}
-        className="inline-flex items-center px-2 py-1 text-xs border border-gray-200 rounded-full bg-white hover:bg-gray-50"
-      >
-        status
-        <ChevronDown
-          className={`ml-1 h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 rounded-md mt-1 w-32 bg-white border border-gray-200 shadow-lg z-50">
-          <div className="py-1">
-            {filteredOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => onStatusChange(option.value)}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// View Details Modal Component
 interface ViewDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   booking: StudentBooking | null;
 }
+
+interface StatusDropdownProps {
+  currentStatus: string;
+  slotId: string;
+  bookingId: string;
+  onStatusChange: (
+    bookingId: string,
+    slotId: string,
+    newStatus: string
+  ) => void;
+  disabled?: boolean;
+}
+
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  isLoading?: boolean;
+}
+
+const SLOT_STATUSES = [
+  // {
+  //   value: "available",
+  //   label: "Available",
+  //   color: "bg-gray-100 text-gray-800",
+  // },
+  { value: "booked", label: "Booked", color: "bg-green-100 text-green-800" },
+  {
+    value: "completed",
+    label: "Completed",
+    color: "bg-blue-100 text-blue-800",
+  },
+  { value: "refund", label: "Refund", color: "bg-yellow-100 text-yellow-800" },
+  { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
+  { value: "missed", label: "Missed", color: "bg-orange-100 text-orange-800" },
+];
+
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  isLoading = false,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div
+          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
+          onClick={!isLoading ? onClose : undefined}
+        />
+
+        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+          <div className="bg-white px-6 pt-6 pb-4">
+            <div className="flex items-start">
+              <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                <AlertTriangle className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900">
+                  {title}
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">{message}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-3">
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={onConfirm}
+              className="inline-flex w-full justify-center rounded-lg bg-[#5FC2D3] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3c8e9c] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto transition-colors duration-150"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  Updating...
+                </>
+              ) : (
+                "Confirm"
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={onClose}
+              className="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed sm:mt-0 sm:w-auto transition-colors duration-150"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatusDropdown: React.FC<StatusDropdownProps> = ({
+  currentStatus,
+  slotId,
+  bookingId,
+  onStatusChange,
+  disabled = false,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
+
+  const currentStatusObj =
+    SLOT_STATUSES.find((s) => s.value === currentStatus) || SLOT_STATUSES[0];
+
+  const handleStatusSelect = (newStatus: string) => {
+    if (newStatus !== currentStatus) {
+      onStatusChange(bookingId, slotId, newStatus);
+    }
+    setIsOpen(false);
+  };
+
+  // Calculate dropdown position
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        !buttonRef.current?.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <>
+      {/* Button stays inside table */}
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`inline-flex items-center justify-between px-3 py-2 text-xs font-medium rounded-full ${currentStatusObj.color} hover:opacity-80 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]`}
+      >
+        <span>{currentStatusObj.label}</span>
+        <ChevronDown
+          className={`ml-2 h-3.5 w-3.5 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* Dropdown via Portal */}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "absolute",
+              top: position.top,
+              left: position.left,
+              width: position.width,
+              zIndex: 9999,
+            }}
+            className="rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5"
+          >
+            <div className="py-1">
+              {SLOT_STATUSES.map((status) => (
+                <button
+                  key={status.value}
+                  onClick={() => handleStatusSelect(status.value)}
+                  className={`block w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 ${
+                    status.value === currentStatus
+                      ? "bg-gray-100 font-medium text-gray-900"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}
+                  >
+                    {status.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
+  );
+};
 
 const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
   isOpen,
@@ -159,7 +282,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
             </div>
 
             <div className="space-y-6">
-              {/* Student Info */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">
                   Student Information
@@ -190,7 +312,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Instructor Info */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">
                   Instructor Information
@@ -221,7 +342,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Lesson Slots */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Lesson Slots</h4>
                 <div className="space-y-2">
@@ -248,10 +368,10 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                             slot.status === "booked"
                               ? "bg-green-100 text-green-800"
                               : slot.status === "refund"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : slot.status === "cancelled"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : slot.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {slot.status}
@@ -262,7 +382,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Payment Info */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">
                   Payment Information
@@ -300,6 +419,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
     </div>
   );
 };
+
 type SpinnerSize = "sm" | "md" | "lg";
 
 const LoadingSpinner = ({ size = "lg" }: { size?: SpinnerSize }) => {
@@ -312,421 +432,72 @@ const LoadingSpinner = ({ size = "lg" }: { size?: SpinnerSize }) => {
   return <Loader2 className={`animate-spin ${sizeClasses[size]}`} />;
 };
 
-// Loading Overlay Component
-const LoadingOverlay = ({ message = "Processing..." }) => (
-  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-xl">
-    <div className="flex flex-col items-center space-y-3">
-      <LoadingSpinner size="lg" />
-      <p className="text-sm font-medium text-gray-600">{message}</p>
-    </div>
-  </div>
-);
-// Cancel Booking Modal Component
-interface CancelBookingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  booking: StudentBooking | null;
-  slotId: string | null;
-  isLoading?: boolean; // Add this prop
-}
-
-const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  booking,
-  slotId,
-  isLoading = false, // Add this prop with default value
-}) => {
-  if (!isOpen || !booking || !slotId) return null;
-
-  const selectedSlot = booking.slots.find((slot) => slot._id === slotId);
-  if (!selectedSlot) return null;
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-  function formatTo12Hour(time: string): string {
-    if (!time) return "";
-    const [hoursStr, minutesStr] = time.split(":");
-    let hours = parseInt(hoursStr, 10);
-    const minutes = minutesStr || "00";
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12 || 12; // convert 0 -> 12 for midnight
-    return `${hours}:${minutes} ${ampm}`;
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={!isLoading ? onClose : undefined} // Prevent closing when loading
-        />
-
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle relative">
-          {/* Loading Overlay - use isLoading prop */}
-          {isLoading && <LoadingOverlay message="Cancelling booking..." />}
-
-          <div className="bg-white px-6 pt-6 pb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 text-center w-full">
-                Are You Sure You Want to Cancel This Booking?
-              </h3>
-              <button
-                onClick={onClose}
-                disabled={isLoading} // Disable when loading
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="bg-[#5EC2D226] rounded-lg p-4 mb-4">
-              <h4 className="font-medium text-gray-900 mb-3">Details</h4>
-
-              {/* Payment Method */}
-              <div className="flex items-center space-x-2 mb-3">
-                <div className="w-8 h-5 bg-purple-500 text-white text-xs rounded flex items-center justify-center font-bold">
-                  S
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Credit card</p>
-                  <p className="text-xs text-gray-500">
-                    {booking.paymentMethod?.cardNumber
-                      ? `**** **** **** ${booking.paymentMethod.cardNumber.slice(-4)}`
-                      : "**** **** **** 0505"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Name:</span>
-                  <span className="text-gray-900">
-                    {booking.studentId.firstName} {booking.studentId.lastName}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Lesson Title:</span>
-                  <span className="text-gray-900">
-                    Beginner's Driving Course
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">lesson time:</span>
-                  <span className="text-gray-900">1 hour</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Amount:</span>
-                  <span className="text-gray-900">
-                    CHF {booking.finalAmount}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Start Date:</span>
-                  <span className="text-gray-900">
-                    {formatDate(selectedSlot.date)},{" "}
-                    {formatTo12Hour(selectedSlot.startTime)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-gray-600">End Date:</span>
-                  <span className="text-gray-900">
-                    {formatDate(
-                      booking.slots[booking.slots.length - 1]?.date ||
-                        selectedSlot.date
-                    )}
-                    , {formatTo12Hour(selectedSlot.endTime)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-600">
-                  <span className="font-medium">Description:</span> This course
-                  covers fundamental driving skills, including both theoretical
-                  lessons and practical on-road training.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4 flex justify-center space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isLoading} // Disable when loading
-              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              No
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={isLoading} // Disable when loading
-              className="px-6 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              {isLoading && <LoadingSpinner size="sm" />}
-              <span>{isLoading ? "Cancelling..." : "Yes"}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Update the RefundConfirmationModal interface and component
-interface RefundConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  booking: StudentBooking | null;
-  slotId: string | null;
-  isLoading?: boolean; // Add this prop
-}
-
-const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  booking,
-  slotId,
-  isLoading = false, // Add this prop with default value
-}) => {
-  if (!isOpen || !booking || !slotId) return null;
-
-  const selectedSlot = booking.slots.find((slot) => slot._id === slotId);
-  if (!selectedSlot) return null;
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={!isLoading ? onClose : undefined} // Prevent closing when loading
-        />
-
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle relative">
-          {/* Loading Overlay - use isLoading prop */}
-          {isLoading && <LoadingOverlay message="Processing refund..." />}
-
-          <div className="bg-white px-6 pt-6 pb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 text-center w-full">
-                Confirm Refund Processing
-              </h3>
-              <button
-                onClick={onClose}
-                disabled={isLoading} // Disable when loading
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">
-                    Refund Details
-                  </span>
-                </div>
-                <p className="text-sm text-blue-800">
-                  Are you sure you want to process a refund for this booking?
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Student:</span>
-                  <span className="text-gray-900">
-                    {booking.studentId.firstName} {booking.studentId.lastName}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Amount:</span>
-                  <span className="text-gray-900 font-medium">
-                    CHF {booking.finalAmount}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Lesson Date:</span>
-                  <span className="text-gray-900">
-                    {formatDate(selectedSlot.date)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Instructor:</span>
-                  <span className="text-gray-900">
-                    {booking.instructorId.firstName}{" "}
-                    {booking.instructorId.lastName}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-xs text-yellow-800">
-                <span className="font-medium">Note:</span> This action will
-                process a refund to the student's original payment method and
-                update the booking status.
-              </p>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-6 py-4 flex justify-center space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isLoading} // Disable when loading
-              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={isLoading} // Disable when loading
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              {isLoading && <LoadingSpinner size="sm" />}
-              <span>{isLoading ? "Processing..." : "Confirm Refund"}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-// Main Component
 const StudentBookingWInst: React.FC<BookingsTableProps> = ({
   className = "",
 }) => {
   const [selectedBooking, setSelectedBooking] = useState<StudentBooking | null>(
     null
   );
-  const { user } = useAuth();
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showRefundModal, setShowRefundModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
-    null
-  );
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  // Add these loading states
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    bookingId: string;
+    slotId: string;
+    newStatus: string;
+  } | null>(null);
+
+  const { user } = useAuth();
+
   const { data, loading, error, refetch } = useQuery(
     GET_INSTRUCTOR_BOOKINGS_BY_ID,
-
     {
       variables: { instructorId: user?.id },
       fetchPolicy: "cache-and-network",
     }
   );
 
-  const [updateBookingStatus] = useMutation(UPDATE_BOOKING_STATUS, {
-    onCompleted: () => {
-      refetch();
-      setShowConfirmModal(false);
-      setShowRefundModal(false);
-      setSelectedBooking(null);
-      setSelectedSlotId(null);
-      setPendingStatusChange(null);
-      setIsProcessingRefund(false); // Reset loading state
-      toast.success("Booking status changed successfully");
-      setActiveDropdown(null);
-    },
-    onError: (error) => {
-      toast.error("Error updating booking status");
-      console.error("Error updating booking status:", error);
-      setShowRefundModal(false);
-      setShowConfirmModal(false);
-      setIsProcessingRefund(false); // Reset loading state
-    },
-  });
-
-  const [cancelBookingAdmin] = useMutation(CANCEL_BOOKING_ADMIN, {
-    onCompleted: () => {
-      refetch();
-      setShowCancelModal(false);
-      setSelectedBooking(null);
-      setSelectedSlotId(null);
-      setActiveDropdown(null);
-      setIsCancelling(false); // Reset loading state
-      toast.success("Booking cancelled successfully");
-    },
-    onError: (error) => {
-      toast.error(error.message);
-      console.error("Error cancelling booking:", error);
-      setShowCancelModal(false);
-      setIsCancelling(false); // Reset loading state
-    },
-  });
+  const [updateSlotStatus, { loading: updateLoading }] = useMutation(
+    UPDATE_SLOT_STATUS,
+    {
+      onCompleted: () => {
+        setShowConfirmationModal(false);
+        setPendingStatusChange(null);
+        refetch();
+      },
+      onError: (err) => {
+        console.error("Error updating slot status:", err);
+        alert(`Failed to update status: ${err.message}`);
+        setShowConfirmationModal(false);
+        setPendingStatusChange(null);
+      },
+    }
+  );
 
   const handleStatusChange = (
-    booking: StudentBooking,
+    bookingId: string,
     slotId: string,
     newStatus: string
   ) => {
-    console.log("Selected Booking:", booking);
-    setSelectedBooking(booking);
-    setSelectedSlotId(slotId);
+    setPendingStatusChange({ bookingId, slotId, newStatus });
+    setShowConfirmationModal(true);
+  };
 
-    if (newStatus === "Cancel") {
-      setShowCancelModal(true);
-    } else if (newStatus === "Refund") {
-      setPendingStatusChange(newStatus.toLowerCase());
-      setShowRefundModal(true);
-    } else {
-      setPendingStatusChange(newStatus.toLowerCase());
-      setShowConfirmModal(true);
+  const confirmStatusChange = async () => {
+    if (!pendingStatusChange) return;
+
+    try {
+      await updateSlotStatus({
+        variables: {
+          input: {
+            bookingId: pendingStatusChange.bookingId,
+            slotId: pendingStatusChange.slotId,
+            status: pendingStatusChange.newStatus,
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Mutation error:", err);
     }
-    setActiveDropdown(null);
-  };
-
-  const confirmStatusChange = () => {
-    if (!selectedBooking || !selectedSlotId || !pendingStatusChange) return;
-
-    setIsProcessingRefund(true); // Set loading state
-
-    const input: UpdateBookingStatusInput = {
-      bookingId: selectedBooking._id,
-      slotId: selectedSlotId,
-      status: pendingStatusChange as any,
-    };
-
-    updateBookingStatus({ variables: { input } });
-  };
-
-  const handleCancelBooking = () => {
-    if (!selectedBooking || !selectedSlotId) return;
-
-    setIsCancelling(true); // Set loading state
-
-    const input: CancelBookingInput = {
-      bookingId: selectedBooking._id,
-      slotId: selectedSlotId,
-      studentId: selectedBooking.studentId._id,
-    };
-
-    cancelBookingAdmin({ variables: { input } });
   };
 
   const formatDate = (dateString: string) => {
@@ -743,6 +514,28 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  const formatCancellationDateTime = (timestamp: string | number) => {
+    if (!timestamp) return "-";
+
+    const date = new Date(Number(timestamp));
+
+    if (isNaN(date.getTime())) return "-";
+
+    const dateStr = date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `${dateStr} ${timeStr}`;
   };
 
   if (loading) {
@@ -762,34 +555,23 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
   }
 
   const bookings: StudentBooking[] = data?.getInstructorBookingsById || [];
-  const formatCancellationDateTime = (timestamp: string | number) => {
-    if (!timestamp) return "-";
 
-    const date = new Date(Number(timestamp));
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) return "-";
-
-    const dateStr = date.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    const timeStr = date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    return `${dateStr} ${timeStr}`;
+  const getStatusLabel = () => {
+    if (!pendingStatusChange) return "";
+    const statusObj = SLOT_STATUSES.find(
+      (s) => s.value === pendingStatusChange.newStatus
+    );
+    return statusObj?.label || pendingStatusChange.newStatus;
   };
+
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
     >
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-medium text-gray-900">All Student</h2>
+        <h2 className="text-lg font-medium text-gray-900">
+          All Student Bookings
+        </h2>
       </div>
 
       <div className="overflow-x-auto">
@@ -818,7 +600,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {bookings.map((booking) =>
-              booking.slots.map((slot, index) => (
+              booking.slots.map((slot) => (
                 <tr
                   key={`${booking._id}-${slot._id}`}
                   className="hover:bg-gray-50 transition-colors duration-150"
@@ -856,47 +638,21 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                       {formatCancellationDateTime(slot.cancellationDate)}
                     </div>
                   </td>
-
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
                       {booking.instructorId.firstName}{" "}
                       {booking.instructorId.lastName}
                     </div>
                   </td>
-
                   <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <span
-                        className={`inline-flex px-3 py-2 text-xs font-medium rounded-full ${
-                          slot.status === "cancelled"
-                            ? "bg-red-100 text-red-800"
-                            : slot.status === "refund"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {slot.status === "cancelled" ? "Cancel" : slot.status}
-                      </span>
-                      {user && user.role === "instructor" && (
-                        <StatusDropdown
-                          currentStatus={slot.status}
-                          onStatusChange={(newStatus) =>
-                            handleStatusChange(booking, slot._id, newStatus)
-                          }
-                          isOpen={
-                            activeDropdown === `${booking._id}-${slot._id}`
-                          }
-                          onToggle={() => {
-                            const dropdownId = `${booking._id}-${slot._id}`;
-                            setActiveDropdown(
-                              activeDropdown === dropdownId ? null : dropdownId
-                            );
-                          }}
-                        />
-                      )}
-                    </div>
+                    <StatusDropdown
+                      currentStatus={slot.status}
+                      slotId={slot._id}
+                      bookingId={booking._id}
+                      onStatusChange={handleStatusChange}
+                      disabled={updateLoading}
+                    />
                   </td>
-
                   <td className="px-6 py-4">
                     <button
                       onClick={() => {
@@ -927,7 +683,6 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         </div>
       )}
 
-      {/* Modals */}
       <ViewDetailsModal
         isOpen={showDetailsModal}
         onClose={() => {
@@ -937,37 +692,18 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         booking={selectedBooking}
       />
 
-      <CancelBookingModal
-        isOpen={showCancelModal}
+      <ConfirmationModal
+        isOpen={showConfirmationModal}
         onClose={() => {
-          if (!isCancelling) {
-            // Prevent closing while loading
-            setShowCancelModal(false);
-            setSelectedBooking(null);
-            setSelectedSlotId(null);
-          }
-        }}
-        onConfirm={handleCancelBooking}
-        booking={selectedBooking}
-        slotId={selectedSlotId}
-        isLoading={isCancelling} // Pass loading state
-      />
-
-      <RefundConfirmationModal
-        isOpen={showRefundModal}
-        onClose={() => {
-          if (!isProcessingRefund) {
-            // Prevent closing while loading
-            setShowRefundModal(false);
-            setSelectedBooking(null);
-            setSelectedSlotId(null);
+          if (!updateLoading) {
+            setShowConfirmationModal(false);
             setPendingStatusChange(null);
           }
         }}
         onConfirm={confirmStatusChange}
-        booking={selectedBooking}
-        slotId={selectedSlotId}
-        isLoading={isProcessingRefund} // Pass loading state
+        title="Confirm Status Change"
+        message={`Are you sure you want to change the status to "${getStatusLabel()}"? This action will update the booking and notify relevant parties.`}
+        isLoading={updateLoading}
       />
     </div>
   );

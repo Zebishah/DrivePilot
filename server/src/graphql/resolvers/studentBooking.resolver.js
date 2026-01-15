@@ -144,10 +144,14 @@ const studentBookingResolver = {
       // Sort by latest slot end time (descending)
       completedLessons.sort((a, b) => {
         const aEnd = new Date(
-          `${a.slots[a.slots.length - 1].date}T${a.slots[a.slots.length - 1].endTime}:00`
+          `${a.slots[a.slots.length - 1].date}T${
+            a.slots[a.slots.length - 1].endTime
+          }:00`
         );
         const bEnd = new Date(
-          `${b.slots[b.slots.length - 1].date}T${b.slots[b.slots.length - 1].endTime}:00`
+          `${b.slots[b.slots.length - 1].date}T${
+            b.slots[b.slots.length - 1].endTime
+          }:00`
         );
         return bEnd - aEnd;
       });
@@ -278,7 +282,6 @@ const studentBookingResolver = {
 
         const enrichedSlots = validatedInput.slots.map((slot) => ({
           ...slot,
-          id: new mongoose.Types.ObjectId().toString(), // ✅ Unique ID for slot
           booked: true,
           status: "booked",
           review: false,
@@ -352,39 +355,40 @@ const studentBookingResolver = {
 
               for (const slot of slotsToAdd) {
                 // Check if slot already exists in `slots` (booked list)
-                const alreadyBooked = availability.slots.some(
+                const savedSlot = booking.slots.find(
                   (s) =>
                     s.date === slot.date &&
                     s.startTime === slot.startTime &&
                     s.endTime === slot.endTime
                 );
 
-                if (!alreadyBooked) {
-                  // Mark slot as booked in booked list
-                  availability.slots.push({
-                    id: slot.id,
-                    date: slot.date,
-                    startTime: slot.startTime,
-                    endTime: slot.endTime,
-                    booked: true,
-                    status: "booked",
-                  });
+                if (!savedSlot) continue;
 
-                  // Find and update in availableSlots (mark as booked)
-                  const availableSlot = availability.availableSlots.find(
-                    (s) =>
-                      s.date === slot.date &&
-                      s.startTime === slot.startTime &&
-                      s.endTime === slot.endTime
-                  );
+                // Mark slot as booked in booked list
+                availability.slots.push({
+                  id: savedSlot._id.toString(),
+                  bookingId: booking._id.toString(),
+                  date: slot.date,
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                  booked: true,
+                  status: "booked",
+                });
 
-                  if (availableSlot) {
-                    availableSlot.booked = true;
-                    availableSlot.status = "booked";
-                  }
+                // Find and update in availableSlots (mark as booked)
+                const availableSlot = availability.availableSlots.find(
+                  (s) =>
+                    s.date === slot.date &&
+                    s.startTime === slot.startTime &&
+                    s.endTime === slot.endTime
+                );
 
-                  hasChanges = true;
+                if (availableSlot) {
+                  availableSlot.booked = true;
+                  availableSlot.status = "booked";
                 }
+
+                hasChanges = true;
               }
 
               if (hasChanges) {
@@ -414,13 +418,12 @@ const studentBookingResolver = {
             "studentId",
             "_id firstName lastName email phone profileImage homeAddress"
           );
-        console.log("saved booking", savedBooking);
+
         const bookingData = JSON.parse(JSON.stringify(savedBooking));
         // 5. Send email notifications to all parties
-        console.log("bookingData", bookingData);
+
         try {
           await notifyBookingParties(bookingData, "booking_created");
-          console.log("Booking creation emails sent successfully");
         } catch (emailError) {
           console.error("Failed to send booking creation emails:", emailError);
           // Don't throw error here as booking was successful
@@ -428,9 +431,7 @@ const studentBookingResolver = {
         // ✅ NOTIFY ALL ADMINS VIA SOCKET.IO
         const io = getIOInstance();
         if (io && io.notifyNewBooking) {
-          console.log("📢 Notifying admins about new booking via Socket.IO");
           io.notifyNewBooking(bookingData);
-          console.log("📢 Admins notified about new booking via Socket.IO");
         } else {
           console.warn("⚠️ Socket.IO instance not available for notifications");
         }
@@ -443,6 +444,165 @@ const studentBookingResolver = {
         throw error;
       }
     },
+    updateSlotStatus: async (_, { input }) => {
+      try {
+        const { bookingId, slotId, status } = input;
+
+        // Validate status
+        const validStatuses = [
+          "available",
+          "booked",
+          "completed",
+          "refund",
+          "cancelled",
+          "missed",
+        ];
+        if (!validStatuses.includes(status)) {
+          throw new Error(
+            `Invalid status. Must be one of: ${validStatuses.join(", ")}`
+          );
+        }
+
+        // Find and populate the booking
+        const booking = await studentBookingModel
+          .findById(bookingId)
+          .populate({
+            path: "studentId",
+            model: "User",
+            select:
+              "_id firstName lastName email phone profileImage homeAddress location zipCode",
+          })
+          .populate({
+            path: "instructorId",
+            model: "Instructor",
+            select:
+              "_id firstName lastName email phone profileImage carName transmissionType experience location",
+          });
+
+        if (!booking) {
+          throw new Error("Booking not found");
+        }
+
+        // Find the slot index
+        const slotIndex = booking.slots.findIndex(
+          (slot) => slot._id.toString() === slotId
+        );
+
+        if (slotIndex === -1) {
+          throw new Error("Slot not found in this booking");
+        }
+
+        // Store old status for comparison
+        const oldStatus = booking.slots[slotIndex].status;
+
+        // Update the specific slot
+        booking.slots[slotIndex].status = status;
+
+        // Set booked flag based on status
+        booking.slots[slotIndex].booked =
+          status === "booked" || status === "completed";
+
+        // Set cancellation date if cancelling
+        if (status === "cancelled" && oldStatus !== "cancelled") {
+          booking.slots[slotIndex].cancellationDate = new Date().toISOString();
+        }
+
+        // Update booking-level status based on all slots
+        const statusCounts = booking.slots.reduce((acc, slot) => {
+          acc[slot.status] = (acc[slot.status] || 0) + 1;
+          return acc;
+        }, {});
+
+        const totalSlots = booking.slots.length;
+
+        // Determine overall booking status
+        if (statusCounts.cancelled === totalSlots) {
+          booking.status = "cancelled";
+          booking.cancellationDate = new Date();
+        } else if (statusCounts.completed === totalSlots) {
+          booking.status = "completed";
+        } else if (statusCounts.refund === totalSlots) {
+          booking.status = "refund";
+        } else if (statusCounts.cancelled > 0) {
+          booking.status = "semi_cancelled";
+        } else if (statusCounts.completed > 0 && statusCounts.booked > 0) {
+          booking.status = "confirmed"; // Some completed, some pending
+        } else {
+          booking.status = "confirmed";
+        }
+
+        booking.updatedAt = new Date();
+        await booking.save();
+
+        // Update instructor availability if status changed to available or cancelled
+        if (status === "cancelled" || status === "available") {
+          const slot = booking.slots[slotIndex];
+          const availability = await teacherAvailabilityModel.findOne({
+            teacherId: booking.instructorId._id,
+            date: new Date(slot.date),
+          });
+
+          if (availability) {
+            // Remove from booked slots
+            availability.slots = availability.slots.filter(
+              (s) =>
+                !(
+                  s.date === slot.date &&
+                  s.startTime === slot.startTime &&
+                  s.endTime === slot.endTime
+                )
+            );
+
+            // Update available slots
+            const availableSlot = availability.availableSlots.find(
+              (s) =>
+                s.date === slot.date &&
+                s.startTime === slot.startTime &&
+                s.endTime === slot.endTime
+            );
+
+            if (availableSlot) {
+              availableSlot.booked = false;
+              availableSlot.status = "available";
+            }
+
+            // Update availability status
+            const allBooked =
+              availability.availableSlots.length > 0 &&
+              availability.availableSlots.every((s) => s.booked === true);
+
+            availability.status = allBooked ? "booked" : "available";
+            await availability.save();
+          }
+        }
+
+        // Send email notifications if status changed
+        if (oldStatus !== status) {
+          try {
+            let emailType = "booking_status_updated";
+            if (status === "cancelled") {
+              emailType = "booking_cancelled";
+            } else if (status === "completed") {
+              emailType = "booking_completed";
+            }
+
+            await notifyBookingParties(booking, emailType);
+            console.log(`Slot status update emails sent: ${emailType}`);
+          } catch (emailError) {
+            console.error(
+              "Failed to send slot status update emails:",
+              emailError
+            );
+          }
+        }
+
+        return booking;
+      } catch (error) {
+        console.error("Error updating slot status:", error);
+        throw new Error(`Failed to update slot status: ${error.message}`);
+      }
+    },
+
     markBookingsAsViewed: async (_, __, { user }) => {
       try {
         if (!user || user.role !== "Admin") {

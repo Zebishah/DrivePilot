@@ -21,7 +21,10 @@ const studentTypeDefs = gql`
   enum status {
     available
     booked
+    completed
+    refund
     cancelled
+    missed
   }
   type Slot {
     date: String!

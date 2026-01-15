@@ -27,24 +27,24 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
         backgroundColor: isDisabled
           ? "#f1f5f9"
           : isSelected
-            ? "#5FC2D333"
-            : "#f8fafc",
+          ? "#5FC2D333"
+          : "#f8fafc",
         border: isDisabled
           ? "1px solid #cbd5e1"
           : isSelected
-            ? "2px solid #5FC2D3"
-            : "1px solid #e2e8f0",
+          ? "2px solid #5FC2D3"
+          : "1px solid #e2e8f0",
         boxShadow: isDisabled
           ? "none"
           : isSelected
-            ? "0px 4px 20px rgba(95, 194, 211, 0.3)"
-            : "0px 2px 8px rgba(0, 0, 0, 0.1)",
+          ? "0px 4px 20px rgba(95, 194, 211, 0.3)"
+          : "0px 2px 8px rgba(0, 0, 0, 0.1)",
         cursor: isDisabled ? "not-allowed" : "pointer",
         transform: isDisabled
           ? "scale(1)"
           : isSelected
-            ? "scale(1.02)"
-            : "scale(1)",
+          ? "scale(1.02)"
+          : "scale(1)",
         transition: "all 0.2s ease-in-out",
         opacity: isDisabled ? 0.6 : 1,
         "&:hover": {
@@ -96,8 +96,8 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                  ? "#5FC2D3"
-                  : "#64748b",
+                ? "#5FC2D3"
+                : "#64748b",
               fontSize: "16px",
             }}
           />
@@ -109,8 +109,8 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                  ? "#5FC2D3"
-                  : "#334155",
+                ? "#5FC2D3"
+                : "#334155",
             }}
           >
             {slot.startTime} - {slot.endTime}
@@ -130,8 +130,8 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                  ? "#5FC2D3"
-                  : "#64748b",
+                ? "#5FC2D3"
+                : "#64748b",
               fontSize: "16px",
             }}
           />
@@ -143,8 +143,8 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                  ? "#5FC2D3"
-                  : "#64748b",
+                ? "#5FC2D3"
+                : "#64748b",
             }}
           >
             1 hr lesson

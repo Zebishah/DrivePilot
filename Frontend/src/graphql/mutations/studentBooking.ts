@@ -26,6 +26,41 @@ export const CREATE_BOOKING = gql`
   }
 `;
 
+export const UPDATE_SLOT_STATUS = gql`
+  mutation UpdateSlotStatus($input: UpdateSlotStatusInput!) {
+    updateSlotStatus(input: $input) {
+      _id
+      status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        booked
+      }
+      studentId {
+        _id
+        firstName
+        lastName
+        email
+        profileImage
+      }
+      instructorId {
+        _id
+        firstName
+        lastName
+        email
+        profileImage
+      }
+      totalAmount
+      paymentMethod {
+        type
+        cardNumber
+      }
+    }
+  }
+`;
 export const GET_STUDENT_BOOKINGS = gql`
   query GetStudentBookings {
     getStudentBookings {

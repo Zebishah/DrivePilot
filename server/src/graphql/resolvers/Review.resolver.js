@@ -49,7 +49,7 @@ const reviewResolver = {
             slotStatus: slot.status,
             isCompleted,
             isReviewed,
-            slotId: slot.id,
+            slotId: slot._id,
             slotDetails: {
               date: slot.date,
               startTime: slot.startTime,

@@ -196,7 +196,9 @@ const Availability: React.FC<AvailabilityProps> = ({
           formattedDate: dayjs(day.date).format("MMMM D, YYYY"),
           availableSlots: slots,
           availableCount,
-          timeRange: `${earliestStart?.format("HH:mm")} - ${latestEnd?.format("HH:mm")}`,
+          timeRange: `${earliestStart?.format("HH:mm")} - ${latestEnd?.format(
+            "HH:mm"
+          )}`,
           totalDuration,
         };
       });
@@ -234,7 +236,9 @@ const Availability: React.FC<AvailabilityProps> = ({
           mb: 2,
         }}
       >
-        {`Selected package: ${selectedPackage.lessons} lessons before ${dayjs(Number(selectedPackage.endDate)).format("MMM D, YYYY")}`}
+        {`Selected package: ${selectedPackage.lessons} lessons before ${dayjs(
+          Number(selectedPackage.endDate)
+        ).format("MMM D, YYYY")}`}
       </Typography>
     );
   };
@@ -614,7 +618,9 @@ const Availability: React.FC<AvailabilityProps> = ({
                     }}
                   >
                     {selectedDate
-                      ? `No availability for ${selectedDate.format("MMMM D, YYYY")}`
+                      ? `No availability for ${selectedDate.format(
+                          "MMMM D, YYYY"
+                        )}`
                       : "No upcoming availability"}
                   </Typography>
                 </Box>

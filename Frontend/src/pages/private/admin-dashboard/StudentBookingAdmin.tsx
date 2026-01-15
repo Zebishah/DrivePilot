@@ -76,7 +76,9 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
       >
         Choose one
         <ChevronDown
-          className={`ml-1 h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`ml-1 h-3 w-3 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
         />
       </button>
 
@@ -241,10 +243,10 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                             slot.status === "confirmed"
                               ? "bg-green-100 text-green-800"
                               : slot.status === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : slot.status === "cancelled"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : slot.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {slot.status}
@@ -372,7 +374,9 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                   <p className="text-sm text-gray-600">Credit card</p>
                   <p className="text-xs text-gray-500">
                     {booking.paymentMethod.cardNumber
-                      ? `**** **** **** ${booking.paymentMethod.cardNumber.slice(-4)}`
+                      ? `**** **** **** ${booking.paymentMethod.cardNumber.slice(
+                          -4
+                        )}`
                       : "**** **** **** 0505"}
                   </p>
                 </div>
@@ -663,8 +667,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                           slot.status === "cancelled"
                             ? "bg-red-100 text-red-800"
                             : slot.status === "Refund"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {slot.status === "cancelled" ? "Cancel" : slot.status}

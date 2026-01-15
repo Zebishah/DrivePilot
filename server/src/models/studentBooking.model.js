@@ -43,7 +43,14 @@ const studentBookingSchema = new mongoose.Schema(
         },
         status: {
           type: String,
-          enum: ["available", "booked", "cancelled", "refund"],
+          enum: [
+            "available",
+            "booked",
+            "cancelled",
+            "refund",
+            "missed",
+            "completed",
+          ],
           default: "available",
         },
       },

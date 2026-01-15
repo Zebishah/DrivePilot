@@ -3,27 +3,27 @@ const { Schema } = mongoose;
 
 const slotSchema = new Schema(
   {
-    date: {
-      type: String,
-      required: true,
-    },
-    startTime: {
-      type: String,
-      required: true,
-    },
-    endTime: {
-      type: String,
-      required: true,
-    },
+    date: { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
     status: {
       type: String,
-      enum: ["available", "booked", "cancelled"],
+      enum: [
+        "available",
+        "booked",
+        "completed",
+        "refund",
+        "cancelled",
+        "missed",
+      ],
       default: "available",
     },
+    booked: { type: Boolean, default: false },
+    review: { type: Boolean, default: false },
+    cancellationDate: { type: String }, // if you use this in UI
   },
-  { _id: false }
+  { _id: true } // IMPORTANT
 );
-
 const paymentMethodSchema = new Schema(
   {
     type: {

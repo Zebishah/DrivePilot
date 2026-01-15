@@ -123,7 +123,7 @@ const StudentFeedback: React.FC = () => {
                 {completedBookings.flatMap((booking, index) =>
                   booking.slots.map((slot, i) => (
                     <tr
-                      key={`${slot.id}-${i}`}
+                      key={`${slot._id}-${i}`}
                       className="border-b border-gray-100"
                     >
                       <td className="py-4 px-2">
@@ -171,7 +171,7 @@ const StudentFeedback: React.FC = () => {
                       </td>
                       <td className="py-4 px-2">
                         <Link
-                          to={`/teacher-dashboard/feedbackForm/${booking._id}/${slot.id}/${booking.studentId._id}`}
+                          to={`/teacher-dashboard/feedbackForm/${booking._id}/${slot._id}/${booking.studentId._id}`}
                           className="px-4 py-2 bg-[#5CC2D2] text-white rounded-md hover:bg-[#288d9c] transition-colors text-sm font-medium"
                         >
                           {slot.feedBackStatus === "pending"
@@ -234,7 +234,9 @@ const StudentFeedback: React.FC = () => {
                 {[...Array(5)].map((_, i) => (
                   <svg
                     key={i}
-                    className={`w-4 h-4 ${i < 3 ? "text-yellow-400" : "text-gray-300"}`}
+                    className={`w-4 h-4 ${
+                      i < 3 ? "text-yellow-400" : "text-gray-300"
+                    }`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >

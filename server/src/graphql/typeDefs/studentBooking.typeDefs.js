@@ -12,9 +12,25 @@ const studentBookingTypeDefs = gql`
   enum status {
     available
     booked
-    cancelled
+    completed
     refund
+    cancelled
+    missed
   }
+  enum SlotStatus {
+    available
+    booked
+    completed
+    refund
+    cancelled
+    missed
+  }
+  input UpdateSlotStatusInput {
+    bookingId: ID!
+    slotId: ID!
+    status: SlotStatus!
+  }
+
   enum feedBackStatusEnum {
     pending
     completed
@@ -173,6 +189,7 @@ const studentBookingTypeDefs = gql`
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
     markBookingsAsViewed: Boolean!
+    updateSlotStatus(input: UpdateSlotStatusInput!): StudentBooking!
   }
 `;
 

@@ -10,13 +10,11 @@ import {
   Stack,
   Pagination,
 } from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useState } from "react";
 import { Booking } from "../types/Student";
 import { Slot } from "../types/Bookings";
 import { useNavigate } from "react-router-dom";
-import { all } from "axios";
 
 interface BookingListProps {
   bookings: Booking[];
@@ -302,7 +300,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                               transform: "translateY(-1px) scale(1.01)",
                             },
                           }}
-                          onClick={() => onBookingClick(booking, slot.id, slot)}
+                          onClick={() =>
+                            onBookingClick(booking, slot._id, slot)
+                          }
                         >
                           <Box
                             sx={{
@@ -361,14 +361,14 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   slot.status === "booked"
                                     ? "rgba(0, 200, 83, 0.15)"
                                     : slot.status === "cancelled"
-                                      ? "rgba(211, 47, 47, 0.15)"
-                                      : "rgba(255, 152, 0, 0.15)",
+                                    ? "rgba(211, 47, 47, 0.15)"
+                                    : "rgba(255, 152, 0, 0.15)",
                                 color:
                                   slot.status === "booked"
                                     ? "rgb(0, 170, 70)"
                                     : slot.status === "cancelled"
-                                      ? "rgb(211, 47, 47)"
-                                      : "rgb(255, 152, 0)",
+                                    ? "rgb(211, 47, 47)"
+                                    : "rgb(255, 152, 0)",
                                 fontWeight: 600,
                                 fontSize: "0.75rem",
                                 letterSpacing: "0.5px",
@@ -376,8 +376,8 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   slot.status === "booked"
                                     ? "rgba(0, 200, 83, 0.25)"
                                     : slot.status === "cancelled"
-                                      ? "rgba(211, 47, 47, 0.25)"
-                                      : "rgba(255, 152, 0, 0.25)"
+                                    ? "rgba(211, 47, 47, 0.25)"
+                                    : "rgba(255, 152, 0, 0.25)"
                                 }`,
                                 transition:
                                   "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -390,10 +390,10 @@ export const BookingList: React.FC<BookingListProps> = ({
                               {tabValue === 0
                                 ? "UPCOMING"
                                 : tabValue === 3
-                                  ? "COMPLETED"
-                                  : slot.status === "booked"
-                                    ? "CONFIRMED"
-                                    : slot.status.toUpperCase()}
+                                ? "COMPLETED"
+                                : slot.status === "booked"
+                                ? "CONFIRMED"
+                                : slot.status.toUpperCase()}
                             </Typography>
                           </Box>
                           <Box
@@ -409,7 +409,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                               size="small"
                               startIcon={<VisibilityIcon />}
                               onClick={() =>
-                                onBookingClick(booking, slot.id, slot)
+                                onBookingClick(booking, slot._id, slot)
                               }
                               sx={{
                                 bgcolor: "rgba(95, 194, 211, 0.08)",
@@ -473,8 +473,8 @@ export const BookingList: React.FC<BookingListProps> = ({
               {tabValue === 0
                 ? ""
                 : tabValue === 1
-                  ? "Confirmed "
-                  : "Cancelled "}
+                ? "Confirmed "
+                : "Cancelled "}
               Slots Available
             </Typography>
             {showNewBookingButton && (

@@ -234,13 +234,13 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                     backgroundColor: slot.booked
                       ? "#f5f5f5"
                       : isSelected
-                        ? "#5FC2D3"
-                        : "#5FC2D333",
+                      ? "#5FC2D3"
+                      : "#5FC2D333",
                     border: isSelected
                       ? "2px solid #5FC2D3"
                       : slot.booked
-                        ? "1px solid #e0e0e0"
-                        : "1px solid #cce4f7",
+                      ? "1px solid #e0e0e0"
+                      : "1px solid #cce4f7",
                     boxShadow: isSelected
                       ? "0px 4px 12px rgba(95, 194, 211, 0.3)"
                       : 1,
@@ -291,8 +291,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                           color: slot.booked
                             ? "#9ca3af"
                             : isSelected
-                              ? "white"
-                              : "#25D422",
+                            ? "white"
+                            : "#25D422",
                         }}
                       />
                       <Typography
@@ -303,8 +303,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                           color: isSelected
                             ? "white"
                             : slot.booked
-                              ? "#9ca3af"
-                              : "inherit",
+                            ? "#9ca3af"
+                            : "inherit",
                         }}
                       >
                         {slot.startTime} - {slot.endTime}
@@ -317,8 +317,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                           color: isSelected
                             ? "white"
                             : slot.booked
-                              ? "#9ca3af"
-                              : "inherit",
+                            ? "#9ca3af"
+                            : "inherit",
                         }}
                       />
                       <Typography
@@ -329,8 +329,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                           color: isSelected
                             ? "white"
                             : slot.booked
-                              ? "#9ca3af"
-                              : "inherit",
+                            ? "#9ca3af"
+                            : "inherit",
                         }}
                         variant="body2"
                       >

@@ -5,6 +5,9 @@ const typeDefs = gql`
     available
     booked
     cancelled
+    missed
+    completed
+    refund
   }
 
   type TeacherSlot {

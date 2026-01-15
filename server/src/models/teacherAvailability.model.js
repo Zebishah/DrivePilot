@@ -8,7 +8,7 @@ const slotSchema = new mongoose.Schema({
   booked: { type: Boolean, default: false },
   status: {
     type: String,
-    enum: ["available", "booked", "cancelled"],
+    enum: ["available", "booked", "cancelled", "missed", "completed", "refund"],
     default: "available",
   },
 });
@@ -25,7 +25,14 @@ const availabilitySlotSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["available", "booked", "cancelled"],
+      enum: [
+        "available",
+        "booked",
+        "cancelled",
+        "missed",
+        "completed",
+        "refund",
+      ],
       default: "available",
     },
     availableSlots: {
