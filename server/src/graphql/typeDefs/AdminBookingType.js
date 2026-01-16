@@ -73,6 +73,7 @@ const AdminBookingTypeDefs = gql`
     refund
     completed
     missed
+    yet
   }
 
   enum BookingStatusAdmin {

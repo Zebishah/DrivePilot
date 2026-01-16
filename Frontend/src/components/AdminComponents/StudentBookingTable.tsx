@@ -43,15 +43,15 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
 
   // All possible status options
   const statusOptions = [
-    { value: "Refund", label: "Refund" },
-    { value: "Cancel", label: "Cancel" },
+    { value: "refund", label: "Refund" },
+    { value: "cancelled", label: "Cancel" },
   ];
 
   // Filter out "Cancel" option if already cancelled
   const filteredOptions =
     currentStatus?.toLowerCase() === "cancel" ||
     currentStatus?.toLowerCase() === "cancelled"
-      ? statusOptions.filter((option) => option.value !== "Cancel")
+      ? statusOptions.filter((option) => option.value !== "cancelled")
       : statusOptions;
 
   useEffect(() => {
@@ -350,15 +350,6 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
       year: "numeric",
     });
   };
-  function formatTo12Hour(time: string): string {
-    if (!time) return "";
-    const [hoursStr, minutesStr] = time.split(":");
-    let hours = parseInt(hoursStr, 10);
-    const minutes = minutesStr || "00";
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12 || 12; // convert 0 -> 12 for midnight
-    return `${hours}:${minutes} ${ampm}`;
-  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -684,9 +675,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     setSelectedBooking(booking);
     setSelectedSlotId(slotId);
 
-    if (newStatus === "Cancel") {
+    if (newStatus === "cancelled") {
       setShowCancelModal(true);
-    } else if (newStatus === "Refund") {
+    } else if (newStatus === "refund") {
       setPendingStatusChange(newStatus.toLowerCase());
       setShowRefundModal(true);
     } else {
@@ -870,7 +861,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {slot.status === "cancelled" ? "Cancel" : slot.status}
+                        {slot.status === "cancelled"
+                          ? "cancelled"
+                          : slot.status}
                       </span>
 
                       <StatusDropdown

@@ -32,6 +32,7 @@ const availabilitySlotSchema = new mongoose.Schema(
         "missed",
         "completed",
         "refund",
+        "yet",
       ],
       default: "available",
     },

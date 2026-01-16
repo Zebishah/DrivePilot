@@ -5,6 +5,8 @@ export enum BookingStatus {
   CANCELLED = "cancelled",
   SEMI_CANCELLED = "semi_cancelled",
   CONFIRMED = "confirmed",
+  MISSED = "missed",
+  yet = "yet",
 }
 
 export interface Slot {

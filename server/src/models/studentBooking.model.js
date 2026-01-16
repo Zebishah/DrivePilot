@@ -50,6 +50,7 @@ const studentBookingSchema = new mongoose.Schema(
             "refund",
             "missed",
             "completed",
+            "yet",
           ],
           default: "available",
         },

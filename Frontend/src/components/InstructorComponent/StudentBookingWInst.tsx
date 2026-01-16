@@ -61,6 +61,7 @@ const SLOT_STATUSES = [
   { value: "refund", label: "Refund", color: "bg-yellow-100 text-yellow-800" },
   { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
   { value: "missed", label: "Missed", color: "bg-orange-100 text-orange-800" },
+  { value: "yet", label: "Yet", color: "bg-purple-100 text-purple-800" },
 ];
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -208,21 +209,21 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
               width: position.width,
               zIndex: 9999,
             }}
-            className="rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5"
+            className="rounded-xl bg-white  shadow-xl ring-1 ring-black ring-opacity-5"
           >
-            <div className="py-1">
+            <div className="py-1 ">
               {SLOT_STATUSES.map((status) => (
                 <button
                   key={status.value}
                   onClick={() => handleStatusSelect(status.value)}
-                  className={`block w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 ${
+                  className={`group block w-full text-left px-4 py-2.5 text-sm transition-colors duration-150 ${
                     status.value === currentStatus
                       ? "bg-gray-100 font-medium text-gray-900"
-                      : "text-gray-700 hover:bg-gray-50"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                 >
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-opacity duration-150 ${status.color} group-hover:opacity-90`}
                   >
                     {status.label}
                   </span>

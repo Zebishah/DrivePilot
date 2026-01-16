@@ -1,14 +1,13 @@
 const mongoose = require("mongoose");
 
 const baseOptions = {
-  discriminatorKey: "role", // Keeps track of the user type
+  discriminatorKey: "role",
   collection: "users",
 };
 
 const baseSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true },
-
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -27,21 +26,21 @@ const baseSchema = new mongoose.Schema(
       default: "local",
     },
     providerId: String,
+
+    // Stripe Customer ID (for students making payments)
+    stripeCustomerId: { type: String },
+
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
-    resetToken: {
-      type: String,
-      default: null,
-    },
-    resetTokenExpiry: {
-      type: Date,
-      default: null,
-    },
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null },
   },
   baseOptions
 );
 
 const User = mongoose.model("User", baseSchema);
+
+// OTP Schema
 const otpSchema = new mongoose.Schema({
   email: { type: String, required: true },
   otp: { type: Number, required: true },
@@ -59,6 +58,8 @@ const otpSchema = new mongoose.Schema({
   expiresAt: { type: Date, required: true },
 });
 const Otp = mongoose.model("Otp", otpSchema);
+
+// Student Document Schema
 const DocumentSchema = new mongoose.Schema({
   documentType: { type: String, required: true },
   documentUrl: { type: String, required: true },
@@ -69,15 +70,14 @@ const DocumentSchema = new mongoose.Schema({
   },
   createdAt: { type: Date, default: Date.now },
 });
+
+// Instructor Document Schema
 const validDocumentTypes = [
-  // Required
   "Swiss Driving License (Front)",
   "Swiss Driving License (Back)",
   "National ID or Passport",
   "Federal Driving Instructor Certificate",
   "Swiss Criminal Record Extract",
-
-  // Optional
   "Driving Instructor Authorization",
   "Professional Passenger Transport Authorization",
   "Refresher Training Certificates",
@@ -103,26 +103,54 @@ const InstructorDocumentSchema = new mongoose.Schema({
     default: "pending",
   },
   createdAt: { type: Date, default: Date.now },
-  reSubmitted: { type: Date, default: null }, // Track re-submission date
+  reSubmitted: { type: Date, default: null },
 });
 
+// STUDENT SCHEMA
 const StudentSchema = new mongoose.Schema({
   homeAddress: String,
   location: String,
   zipCode: String,
-  documentType: {
-    type: String,
-    required: false, // Now optional since we have documents array
-  },
-  documentUrl: {
-    type: String,
-    required: false, // Now optional since we have documents array
-  },
-  documents: [DocumentSchema], // Add this line
+  documentType: { type: String, required: false },
+  documentUrl: { type: String, required: false },
+  documents: [DocumentSchema],
+
   paymentInfo: {
     isPaid: { type: Boolean, default: false },
     paymentDate: Date,
   },
+
+  // Stripe Payment Methods (Saved Cards/TWINT)
+  stripePaymentMethods: [
+    {
+      paymentMethodId: { type: String, required: true },
+      type: {
+        type: String,
+        enum: ["card", "twint"],
+        required: true,
+      },
+      isDefault: { type: Boolean, default: false },
+
+      // Card details (for display only - last 4 digits)
+      cardBrand: { type: String },
+      cardLast4: { type: String },
+      cardExpMonth: { type: Number },
+      cardExpYear: { type: Number },
+
+      // TWINT details
+      twintToken: { type: String },
+      twintRegisteredAt: { type: Date },
+
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
+
+  // Default payment method
+  defaultPaymentMethod: {
+    type: { type: String, enum: ["card", "twint"] },
+    paymentMethodId: { type: String },
+  },
+
   description: { type: String, required: false },
   lessonHoursLeft: { type: String, required: false },
   experience: { type: String, required: false },
@@ -133,6 +161,7 @@ const StudentSchema = new mongoose.Schema({
   languagePreference: { type: [String], required: false },
 });
 
+// INSTRUCTOR SCHEMA
 const InstructorSchema = new mongoose.Schema({
   address: { type: String, required: false },
   location: { type: String, required: false },
@@ -143,11 +172,53 @@ const InstructorSchema = new mongoose.Schema({
   phone: { type: String, required: false },
   fatherName: { type: String, required: false },
   profileImage: { type: String, required: false },
+
   verificationStatus: {
     type: String,
     enum: ["pending", "verified", "rejected"],
     default: "pending",
   },
+
+  // Stripe Connected Account (for receiving payouts)
+  stripeConnectedAccountId: { type: String },
+
+  // Stripe onboarding status
+  stripeOnboardingStatus: {
+    type: String,
+    enum: ["not_started", "in_progress", "completed"],
+    default: "not_started",
+  },
+
+  // Bank account verification status
+  bankAccountVerified: { type: Boolean, default: false },
+
+  // Payout settings
+  payoutSettings: {
+    schedule: {
+      type: String,
+      enum: ["manual", "automatic"],
+      default: "manual",
+    },
+    delayDays: { type: Number, default: 3 },
+  },
+
+  // Earnings tracking
+  earnings: {
+    totalEarned: { type: Number, default: 0 },
+    pendingPayout: { type: Number, default: 0 },
+    totalPaidOut: { type: Number, default: 0 },
+    lastPayoutDate: { type: Date },
+  },
+
+  // Commission rate (DSP takes this %, instructor gets rest)
+  commissionRate: { type: Number, default: 20 },
+
+  // Refund statistics
+  refundStats: {
+    totalRefundsReceived: { type: Number, default: 0 },
+    totalRefundAmount: { type: Number, default: 0 },
+  },
+
   dateOfBirth: { type: String, required: false },
   languagePreference: { type: [String], required: false },
   coordinates: {
@@ -174,11 +245,32 @@ const InstructorSchema = new mongoose.Schema({
   },
 });
 
+// ADMIN SCHEMA
 const AdminSchema = new mongoose.Schema({
   adminLevel: {
     type: String,
     enum: ["super", "regular"],
     default: "regular",
+  },
+
+  // Platform-wide commission settings
+  platformCommission: {
+    defaultRate: { type: Number, default: 20 },
+    canModifyRates: { type: Boolean, default: true },
+  },
+
+  // Refund management tracking
+  refundManagement: {
+    totalRefundsProcessed: { type: Number, default: 0 },
+    totalRefundAmount: { type: Number, default: 0 },
+    lastRefundProcessedAt: { type: Date },
+  },
+
+  // Commission tracking
+  commissionEarnings: {
+    totalCommissionEarned: { type: Number, default: 0 },
+    thisMonthCommission: { type: Number, default: 0 },
+    lastMonthCommission: { type: Number, default: 0 },
   },
 });
 

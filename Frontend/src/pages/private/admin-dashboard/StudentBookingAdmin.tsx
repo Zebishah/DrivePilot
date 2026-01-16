@@ -45,8 +45,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const statusOptions = [
-    { value: "Refund", label: "Refund" },
-    { value: "Cancel", label: "Cancel" },
+    { value: "refund", label: "Refund" },
+    { value: "cancelled", label: "Cancel" },
   ];
 
   useEffect(() => {
@@ -511,7 +511,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     setSelectedBooking(booking);
     setSelectedSlotId(slotId);
 
-    if (newStatus === "Cancel") {
+    if (newStatus === "cancelled") {
       setShowCancelModal(true);
     } else {
       setPendingStatusChange(newStatus.toLowerCase());
@@ -671,7 +671,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {slot.status === "cancelled" ? "Cancel" : slot.status}
+                        {slot.status === "cancelled"
+                          ? "cancelled"
+                          : slot.status}
                       </span>
 
                       <StatusDropdown

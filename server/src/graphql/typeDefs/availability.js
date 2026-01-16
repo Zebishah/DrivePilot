@@ -8,6 +8,7 @@ const typeDefs = gql`
     missed
     completed
     refund
+    yet
   }
 
   type TeacherSlot {

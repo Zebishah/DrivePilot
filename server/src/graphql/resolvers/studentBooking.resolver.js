@@ -456,6 +456,7 @@ const studentBookingResolver = {
           "refund",
           "cancelled",
           "missed",
+          "yet",
         ];
         if (!validStatuses.includes(status)) {
           throw new Error(
