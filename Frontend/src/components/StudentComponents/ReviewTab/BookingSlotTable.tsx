@@ -28,6 +28,7 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
   isRefetching,
   isFeedbackRating,
 }) => {
+  console.log("bookingSlots", bookingSlots);
   const navigate = useNavigate();
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -44,10 +45,45 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
     navigate("/student-dashboard/allBookingSlots");
   };
   const getStatusBadge = (slot: StudentBookingSlot) => {
-    if (slot.isCompleted) {
+    if (slot.slotStatus === "completed") {
       return (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
           Completed
+        </span>
+      );
+    }
+    if (slot.slotStatus === "cancelled") {
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+          Cancelled
+        </span>
+      );
+    }
+    if (slot.slotStatus === "refund") {
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+          Refunded
+        </span>
+      );
+    }
+    if (slot.slotStatus === "missed") {
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+          Missed
+        </span>
+      );
+    }
+    if (slot.slotStatus === "booked") {
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+          Booked
+        </span>
+      );
+    }
+    if (slot.slotStatus === "available") {
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+          Available
         </span>
       );
     }

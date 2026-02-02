@@ -456,7 +456,6 @@ const studentBookingResolver = {
           "refund",
           "cancelled",
           "missed",
-          "yet",
         ];
         if (!validStatuses.includes(status)) {
           throw new Error(
@@ -535,46 +534,67 @@ const studentBookingResolver = {
         booking.updatedAt = new Date();
         await booking.save();
 
-        // Update instructor availability if status changed to available or cancelled
-        if (status === "cancelled" || status === "available") {
-          const slot = booking.slots[slotIndex];
-          const availability = await teacherAvailabilityModel.findOne({
-            teacherId: booking.instructorId._id,
-            date: new Date(slot.date),
-          });
+        // Sync slot status to instructor availability (same as createBooking: both booking slots and availability slots stay in sync)
+        const slot = booking.slots[slotIndex];
+        const availability = await teacherAvailabilityModel.findOne({
+          teacherId: booking.instructorId._id,
+          date: new Date(slot.date),
+        });
 
-          if (availability) {
-            // Remove from booked slots
+        if (availability) {
+          const matchSlot = (s) =>
+            s.date === slot.date &&
+            s.startTime === slot.startTime &&
+            s.endTime === slot.endTime;
+
+          if (status === "cancelled" || status === "available") {
+            // Remove from booked slots and mark availableSlots as available again
             availability.slots = availability.slots.filter(
-              (s) =>
-                !(
-                  s.date === slot.date &&
-                  s.startTime === slot.startTime &&
-                  s.endTime === slot.endTime
-                )
+              (s) => !(s.id === slotId || matchSlot(s))
             );
 
-            // Update available slots
-            const availableSlot = availability.availableSlots.find(
-              (s) =>
-                s.date === slot.date &&
-                s.startTime === slot.startTime &&
-                s.endTime === slot.endTime
-            );
-
+            const availableSlot = availability.availableSlots.find(matchSlot);
             if (availableSlot) {
               availableSlot.booked = false;
               availableSlot.status = "available";
             }
+          } else {
+            // For booked | completed | missed | refund: update status in both availability.slots and availability.availableSlots.
+            // Booked and completed both stay in slots array (can't book them again); same as createBooking.
+            const bookedValue = status === "booked" || status === "completed";
 
-            // Update availability status
-            const allBooked =
-              availability.availableSlots.length > 0 &&
-              availability.availableSlots.every((s) => s.booked === true);
+            let bookedSlotEntry = availability.slots.find(
+              (s) => s.id === slotId || matchSlot(s)
+            );
+            if (bookedSlotEntry) {
+              bookedSlotEntry.status = status;
+              bookedSlotEntry.booked = bookedValue;
+            } else if (status === "booked" || status === "completed") {
+              // Ensure completed (and booked) also go into slots array like on createBooking
+              availability.slots.push({
+                id: slotId,
+                bookingId: booking._id.toString(),
+                date: slot.date,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                booked: bookedValue,
+                status,
+              });
+            }
 
-            availability.status = allBooked ? "booked" : "available";
-            await availability.save();
+            const availableSlot = availability.availableSlots.find(matchSlot);
+            if (availableSlot) {
+              availableSlot.status = status;
+              availableSlot.booked = bookedValue;
+            }
           }
+
+          // Recompute day-level status
+          const allBooked =
+            availability.availableSlots.length > 0 &&
+            availability.availableSlots.every((s) => s.booked === true);
+          availability.status = allBooked ? "booked" : "available";
+          await availability.save();
         }
 
         // Send email notifications if status changed

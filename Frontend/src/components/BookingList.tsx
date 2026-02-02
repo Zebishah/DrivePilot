@@ -73,32 +73,23 @@ export const BookingList: React.FC<BookingListProps> = ({
     const upcoming: Booking[] = [];
     const cancelled: Booking[] = [];
     const refund: Booking[] = [];
-    const history: Booking[] = [];
-
-    const now = new Date();
+    const completed: Booking[] = [];
 
     bookings.forEach((booking) => {
       const upcomingSlots: Slot[] = [];
       const cancelledSlots: Slot[] = [];
       const refundSlots: Slot[] = [];
-      const historySlots: Slot[] = [];
+      const completedSlots: Slot[] = [];
 
       booking.slots.forEach((slot) => {
-        const endTime = getSlotEndDateTime(slot);
-        const isPast = endTime.getTime() < now.getTime();
-
         if (slot.status === "cancelled") {
           cancelledSlots.push(slot);
         } else if (slot.status === "refund") {
           refundSlots.push(slot);
-        } else if (!isPast) {
-          upcomingSlots.push(slot); // future confirmed
-        } else if (
-          isPast &&
-          slot.status !== "cancelled" &&
-          slot.status !== "refund"
-        ) {
-          historySlots.push(slot); // completed lessons only
+        } else if (slot.status === "completed") {
+          completedSlots.push(slot);
+        } else if (slot.status === "booked" || slot.status === "confirmed") {
+          upcomingSlots.push(slot);
         }
       });
 
@@ -108,20 +99,21 @@ export const BookingList: React.FC<BookingListProps> = ({
         cancelled.push({ ...booking, slots: cancelledSlots });
       if (refundSlots.length > 0)
         refund.push({ ...booking, slots: refundSlots });
-      if (historySlots.length > 0)
-        history.push({ ...booking, slots: historySlots });
+      if (completedSlots.length > 0)
+        completed.push({ ...booking, slots: completedSlots });
     });
 
-    return { upcoming, cancelled, refund, history };
+    return { upcoming, cancelled, refund, completed };
   };
 
-  const { upcoming, cancelled, refund, history } = categorizeBookings(bookings);
+  const { upcoming, cancelled, refund, completed } =
+    categorizeBookings(bookings);
 
   const slotCounts = {
-    confirmed: upcoming.reduce((acc, b) => acc + b.slots.length, 0),
+    upcoming: upcoming.reduce((acc, b) => acc + b.slots.length, 0),
     cancelled: cancelled.reduce((acc, b) => acc + b.slots.length, 0),
     refund: refund.reduce((acc, b) => acc + b.slots.length, 0),
-    history: history.reduce((acc, b) => acc + b.slots.length, 0),
+    completed: completed.reduce((acc, b) => acc + b.slots.length, 0),
   };
 
   let filteredBookings: Booking[] = [];
@@ -136,7 +128,7 @@ export const BookingList: React.FC<BookingListProps> = ({
       filteredBookings = refund;
       break;
     case 3:
-      filteredBookings = history;
+      filteredBookings = completed;
       break;
     default:
       filteredBookings = upcoming;
@@ -178,10 +170,10 @@ export const BookingList: React.FC<BookingListProps> = ({
             },
           }}
         >
-          <Tab label={`Upcoming (${slotCounts.confirmed})`} />
+          <Tab label={`Upcoming (${slotCounts.upcoming})`} />
           <Tab label={`Cancelled (${slotCounts.cancelled})`} />
-          <Tab label={`refund (${slotCounts.refund})`} />
-          <Tab label={`History (${slotCounts.history})`} />
+          <Tab label={`Refund (${slotCounts.refund})`} />
+          <Tab label={`Completed (${slotCounts.completed})`} />
         </Tabs>
       </Box>
 

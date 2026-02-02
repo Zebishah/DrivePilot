@@ -25,7 +25,6 @@ const studentTypeDefs = gql`
     refund
     cancelled
     missed
-    yet
   }
   type Slot {
     date: String!

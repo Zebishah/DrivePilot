@@ -13,7 +13,7 @@ const reviewResolver = {
       // Find all bookings for the instructor with booked slots
       const allBookings = await StudentBooking.find({
         studentId: user?.id,
-        status: { $in: ["confirmed", "semi_cancelled"] },
+        status: { $in: ["confirmed", "semi_cancelled", "completed", "refund"] },
         "slots.booked": true, // Only get bookings with booked slots
       })
         .populate("instructorId", "_id firstName lastName profileImage")

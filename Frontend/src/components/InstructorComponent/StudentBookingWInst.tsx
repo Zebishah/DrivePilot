@@ -47,11 +47,11 @@ interface ConfirmationModalProps {
 }
 
 const SLOT_STATUSES = [
-  // {
-  //   value: "available",
-  //   label: "Available",
-  //   color: "bg-gray-100 text-gray-800",
-  // },
+  {
+    value: "available",
+    label: "Available",
+    color: "bg-gray-100 text-gray-800",
+  },
   { value: "booked", label: "Booked", color: "bg-green-100 text-green-800" },
   {
     value: "completed",

@@ -18,7 +18,6 @@ const instructorTypeDefs = gql`
     missed
     completed
     refund
-    yet
   }
 
   type InstructorAvailability {

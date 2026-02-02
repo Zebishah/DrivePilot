@@ -1,5 +1,5 @@
 // components/HourSlotModal.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -79,6 +79,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
         startTime: slot.startTime,
         endTime: slot.endTime,
         booked: slot.booked,
+        status: slot.status,
+        originalSlotId: originalSlot.id,
         duration: calculateDuration(slot.startTime, slot.endTime),
       }));
 
@@ -89,7 +91,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
     setSelectedHourSlots([]);
     onClose();
   };
-
+  console.log("originalSlot", originalSlot);
   return (
     <Dialog
       open={open}
@@ -219,44 +221,45 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
           {originalSlot.availableSlots.map((slot) => {
             const slotDateTime = dayjs(`${slot.date} ${slot.startTime}`);
             const isPast = slotDateTime.isBefore(dayjs());
+            const isCompleted = slot.status === "completed";
+            const isPassed = isPast && !slot.booked && !isCompleted;
+            const isDisabled = isPast || slot.booked || isCompleted;
             const isSelected = selectedHourSlots.includes(slot.id);
             const duration = calculateDuration(slot.startTime, slot.endTime);
 
             return (
               <Grid item xs={12} sm={6} md={4} key={slot.id}>
                 <Card
-                  onClick={() =>
-                    !isPast && !slot.booked && handleSlotClick(slot.id)
-                  }
+                  onClick={() => !isDisabled && handleSlotClick(slot.id)}
                   sx={{
                     position: "relative", // ✅ for absolute tag positioning
                     borderRadius: "10px",
-                    backgroundColor: slot.booked
-                      ? "#f5f5f5"
-                      : isSelected
-                      ? "#5FC2D3"
-                      : "#5FC2D333",
+                    backgroundColor:
+                      slot.booked || isCompleted || isPassed
+                        ? "#f5f5f5"
+                        : isSelected
+                        ? "#5FC2D3"
+                        : "#5FC2D333",
                     border: isSelected
                       ? "2px solid #5FC2D3"
-                      : slot.booked
+                      : slot.booked || isCompleted || isPassed
                       ? "1px solid #e0e0e0"
                       : "1px solid #cce4f7",
                     boxShadow: isSelected
                       ? "0px 4px 12px rgba(95, 194, 211, 0.3)"
                       : 1,
-                    cursor: slot.booked || isPast ? "not-allowed" : "pointer",
-                    opacity: slot.booked || isPast ? 0.6 : 1,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    opacity: isDisabled ? 0.6 : 1,
                     transition: "all 0.2s",
-                    "&:hover":
-                      !slot.booked && !isPast
-                        ? {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
-                          }
-                        : {},
+                    "&:hover": !isDisabled
+                      ? {
+                          transform: "translateY(-2px)",
+                          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+                        }
+                      : {},
                   }}
                 >
-                  {/* 🔹 "Already Booked" tag (top-right corner) */}
+                  {/* 🔹 Tag: Booked | Completed | Passed (top-right corner) */}
                   {slot.booked && (
                     <Box
                       sx={{
@@ -276,6 +279,44 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                       Booked
                     </Box>
                   )}
+                  {isCompleted && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        backgroundColor: "#16a34a",
+                        color: "white",
+                        px: 1,
+                        py: "2px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      Completed
+                    </Box>
+                  )}
+                  {isPassed && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        backgroundColor: "#64748b",
+                        color: "white",
+                        px: 1,
+                        py: "2px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      Passed
+                    </Box>
+                  )}
 
                   <CardContent>
                     <Box
@@ -288,7 +329,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                     >
                       <FaRegCheckCircle
                         style={{
-                          color: slot.booked
+                          color: isDisabled
                             ? "#9ca3af"
                             : isSelected
                             ? "white"
@@ -302,7 +343,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                           fontFamily: "Poppins, sans-serif",
                           color: isSelected
                             ? "white"
-                            : slot.booked
+                            : isDisabled
                             ? "#9ca3af"
                             : "inherit",
                         }}
@@ -316,7 +357,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                         style={{
                           color: isSelected
                             ? "white"
-                            : slot.booked
+                            : isDisabled
                             ? "#9ca3af"
                             : "inherit",
                         }}
@@ -328,7 +369,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                           fontSize: "14px",
                           color: isSelected
                             ? "white"
-                            : slot.booked
+                            : isDisabled
                             ? "#9ca3af"
                             : "inherit",
                         }}

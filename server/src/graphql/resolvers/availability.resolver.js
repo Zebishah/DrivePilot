@@ -18,19 +18,24 @@ const resolvers = {
           date: { $gte: startDate, $lte: endDate },
         }).sort({ date: 1 });
 
-        // ✅ Format response
+        // ✅ Format response: only include availableSlots whose status is available or cancelled (exclude booked, completed, refund)
         return availabilities.map((availability) => ({
           id: availability._id.toString(),
           date: availability.date.toISOString(),
           status: availability.status,
-          availableSlots: availability.availableSlots.map((slot) => ({
-            id: slot.id,
-            date: slot.date,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            status: slot.status,
-            booked: slot.booked,
-          })),
+          availableSlots: availability.availableSlots
+            .filter(
+              (slot) =>
+                slot.status === "available" || slot.status === "cancelled"
+            )
+            .map((slot) => ({
+              id: slot.id,
+              date: slot.date,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              status: slot.status,
+              booked: slot.booked,
+            })),
         }));
       } catch (error) {
         console.error("Error fetching teacher availability:", error);

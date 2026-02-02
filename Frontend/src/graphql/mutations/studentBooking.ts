@@ -4,7 +4,6 @@ export const CREATE_BOOKING = gql`
   mutation CreateBooking($input: StudentBookingInput!) {
     createBooking(input: $input) {
       _id
-
       slots {
         id
         date
