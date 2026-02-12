@@ -27,7 +27,8 @@ export interface BookingSlot {
   endTime: string;
   booked: boolean;
   review: boolean;
-  status: "available" | "booked" | "cancelled" | "refund";
+  status: "available" | "booked" | "cancelled" | "refund" | "completed" | "missed" | "yet";
+  cancellationDate?: string;
 }
 
 export interface PaymentMethod {
@@ -60,12 +61,13 @@ export interface UpdateBookingStatusInput {
   bookingId: string;
   slotId: string;
   status:
-    | "pending"
-    | "confirmed"
-    | "cancelled"
-    | "refund"
+    | "available"
+    | "booked"
     | "completed"
-    | "semi_cancelled";
+    | "refund"
+    | "cancelled"
+    | "missed"
+    | "yet";
 }
 
 export interface CancelBookingInput {

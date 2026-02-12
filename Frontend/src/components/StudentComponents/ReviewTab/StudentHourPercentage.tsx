@@ -13,13 +13,13 @@ interface StudentHoursProgressCardProps {
 
 const CircularProgress: React.FC<{
   value: number;
-  max: number;
+  max?: number;
   color: string;
   label: string;
   sublabel: string;
   displayValue?: number;
   tooltip: string;
-}> = ({ value, max, color, label, sublabel, displayValue, tooltip }) => {
+}> = ({ value, color, label, sublabel, displayValue, tooltip }) => {
   const percentage = value;
   const circumference = 2 * Math.PI * 60;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -72,56 +72,36 @@ const StudentHoursProgressCard: React.FC<StudentHoursProgressCardProps> = ({
   hoursProgress,
   bookingSlots,
 }) => {
-  console.log("bookingSlots in StudentHoursProgressCard:", bookingSlots);
-  const { completedHours, remainingHours, totalRequiredHours, lastLessonDate } =
-    hoursProgress;
+  const { completedHours, remainingHours, totalRequiredHours } = hoursProgress;
+
+  // Time since last completed lesson: use only slots that are completed (backend isCompleted = status completed OR slot end passed)
   function daysSinceLastCompletedLesson(slots: StudentBookingSlot[]) {
     if (!slots || slots.length === 0) return null;
 
-    const today = new Date();
-    const todayMidnight = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-
-    // Get lessons whose date has already passed or are marked completed
-    const completedSlots = slots.filter((s) => {
-      const slotDateStr = s.slotDetails?.date;
-      if (!slotDateStr) return false;
-
-      const [year, month, day] = slotDateStr.split("-").map(Number);
-      const slotDate = new Date(year, month - 1, day);
-      const slotMidnight = new Date(
-        slotDate.getFullYear(),
-        slotDate.getMonth(),
-        slotDate.getDate()
-      );
-
-      // Consider it completed if either it's marked completed OR the date is in the past
-      return s.isCompleted || slotMidnight < todayMidnight;
-    });
-
+    const completedSlots = slots.filter((s) => s.isCompleted);
     if (completedSlots.length === 0) return null;
 
-    // Extract all past/completed lesson dates
     const pastDates = completedSlots
       .map((s) => s.slotDetails?.date)
       .filter((date): date is string => !!date)
       .sort()
-      .reverse(); // latest first
+      .reverse();
 
     const lastLessonDateStr = pastDates[0];
-    console.log("lastLessonDateStr:", lastLessonDateStr);
     const [year, month, day] = lastLessonDateStr.split("-").map(Number);
     const lastLessonDate = new Date(year, month - 1, day);
     const lastLessonMidnight = new Date(
       lastLessonDate.getFullYear(),
       lastLessonDate.getMonth(),
-      lastLessonDate.getDate()
+      lastLessonDate.getDate(),
     );
 
-    // Calculate difference in days
+    const today = new Date();
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
     const diffTime = todayMidnight.getTime() - lastLessonMidnight.getTime();
     let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 

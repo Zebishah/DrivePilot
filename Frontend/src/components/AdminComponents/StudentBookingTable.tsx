@@ -25,6 +25,16 @@ interface BookingsTableProps {
   className?: string;
 }
 
+// Status options (same as instructor: available, booked, completed, refund, cancelled, missed)
+const SLOT_STATUS_OPTIONS = [
+  { value: "available", label: "Available" },
+  { value: "booked", label: "Booked" },
+  { value: "completed", label: "Completed" },
+  { value: "refund", label: "Refund" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "missed", label: "Missed" },
+];
+
 // Status Dropdown Component
 interface StatusDropdownProps {
   currentStatus: string;
@@ -40,19 +50,6 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   onToggle,
 }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // All possible status options
-  const statusOptions = [
-    { value: "refund", label: "Refund" },
-    { value: "cancelled", label: "Cancel" },
-  ];
-
-  // Filter out "Cancel" option if already cancelled
-  const filteredOptions =
-    currentStatus?.toLowerCase() === "cancel" ||
-    currentStatus?.toLowerCase() === "cancelled"
-      ? statusOptions.filter((option) => option.value !== "cancelled")
-      : statusOptions;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -79,7 +76,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
         onClick={onToggle}
         className="inline-flex items-center px-2 py-1 text-xs border border-gray-200 rounded-full bg-white hover:bg-gray-50"
       >
-        status
+        Change status
         <ChevronDown
           className={`ml-1 h-3 w-3 transition-transform ${
             isOpen ? "rotate-180" : ""
@@ -88,13 +85,15 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 rounded-md mt-1 w-32 bg-white border border-gray-200 shadow-lg z-50">
+        <div className="absolute right-0 rounded-md mt-1 w-36 bg-white border border-gray-200 shadow-lg z-50">
           <div className="py-1">
-            {filteredOptions.map((option) => (
+            {SLOT_STATUS_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => onStatusChange(option.value)}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                  option.value === currentStatus ? "bg-gray-50 font-medium" : ""
+                }`}
               >
                 {option.label}
               </button>
@@ -248,10 +247,14 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                             slot.status === "booked"
                               ? "bg-green-100 text-green-800"
                               : slot.status === "refund"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : slot.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : slot.status === "cancelled"
+                                  ? "bg-red-100 text-red-800"
+                                  : slot.status === "completed"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : slot.status === "missed"
+                                      ? "bg-orange-100 text-orange-800"
+                                      : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {slot.status}
@@ -389,7 +392,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                   <p className="text-xs text-gray-500">
                     {booking.paymentMethod?.cardNumber
                       ? `**** **** **** ${booking.paymentMethod.cardNumber.slice(
-                          -4
+                          -4,
                         )}`
                       : "**** **** **** 0505"}
                   </p>
@@ -431,7 +434,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                   <span className="text-gray-900">
                     {formatDate(
                       booking.slots[booking.slots.length - 1]?.date ||
-                        selectedSlot.date
+                        selectedSlot.date,
                     )}
                     , {selectedSlot.endTime}
                   </span>
@@ -604,12 +607,84 @@ const RefundConfirmationModal: React.FC<RefundConfirmationModalProps> = ({
     </div>
   );
 };
+
+// Generic confirm status change modal (for any slot status: completed, missed, cancelled, etc.)
+interface StatusChangeConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  statusLabel: string;
+  isLoading?: boolean;
+}
+
+const StatusChangeConfirmModal: React.FC<StatusChangeConfirmModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  statusLabel,
+  isLoading = false,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div
+          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
+          onClick={!isLoading ? onClose : undefined}
+        />
+        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle relative">
+          {isLoading && <LoadingOverlay message="Updating status..." />}
+          <div className="bg-white px-6 pt-6 pb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                Confirm status change
+              </h3>
+              <button
+                onClick={onClose}
+                disabled={isLoading}
+                className="text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              Are you sure you want to change the slot status to{" "}
+              <span className="font-semibold text-gray-900">{statusLabel}</span>
+              ? This will update the booking and notify relevant parties.
+            </p>
+          </div>
+          <div className="bg-gray-50 px-6 py-4 flex justify-center space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isLoading}
+              className="px-6 py-2 text-sm font-medium text-white bg-[#5FC2D3] border border-transparent rounded-md hover:bg-[#3c8e9c] disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {isLoading && <LoadingSpinner size="sm" />}
+              <span>{isLoading ? "Updating..." : "Confirm"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main Component
 const StudentBookingTable: React.FC<BookingsTableProps> = ({
   className = "",
 }) => {
   const [selectedBooking, setSelectedBooking] = useState<StudentBooking | null>(
-    null
+    null,
   );
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -617,7 +692,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
-    null
+    null,
   );
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   // Add these loading states
@@ -640,8 +715,11 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       setActiveDropdown(null);
     },
     onError: (error) => {
-      toast.error("Error updating booking status");
-      console.error("Error updating booking status:", error);
+      const message =
+        error.graphQLErrors?.[0]?.message ||
+        error.message ||
+        "Error updating booking status";
+      toast.error(message);
       setShowRefundModal(false);
       setShowConfirmModal(false);
       setIsProcessingRefund(false); // Reset loading state
@@ -669,36 +747,35 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   const handleStatusChange = (
     booking: StudentBooking,
     slotId: string,
-    newStatus: string
+    newStatus: string,
   ) => {
-    console.log("Selected Booking:", booking);
     setSelectedBooking(booking);
     setSelectedSlotId(slotId);
-
-    if (newStatus === "cancelled") {
-      setShowCancelModal(true);
-    } else if (newStatus === "refund") {
-      setPendingStatusChange(newStatus.toLowerCase());
-      setShowRefundModal(true);
-    } else {
-      setPendingStatusChange(newStatus.toLowerCase());
-      setShowConfirmModal(true);
-    }
+    setPendingStatusChange(newStatus);
+    setShowConfirmModal(true);
     setActiveDropdown(null);
   };
 
   const confirmStatusChange = () => {
     if (!selectedBooking || !selectedSlotId || !pendingStatusChange) return;
 
-    setIsProcessingRefund(true); // Set loading state
+    setIsProcessingRefund(true);
 
     const input: UpdateBookingStatusInput = {
       bookingId: selectedBooking._id,
       slotId: selectedSlotId,
-      status: pendingStatusChange as any,
+      status: pendingStatusChange as UpdateBookingStatusInput["status"],
     };
 
     updateBookingStatus({ variables: { input } });
+  };
+
+  const getStatusChangeLabel = () => {
+    if (!pendingStatusChange) return "";
+    const option = SLOT_STATUS_OPTIONS.find(
+      (o) => o.value === pendingStatusChange,
+    );
+    return option?.label ?? pendingStatusChange;
   };
 
   const handleCancelBooking = () => {
@@ -748,8 +825,11 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   }
 
   const bookings: StudentBooking[] = data?.getAllStudentBookings || [];
-  const formatCancellationDateTime = (timestamp: string | number) => {
-    if (!timestamp) return "-";
+  const formatCancellationDateTime = (
+    timestamp: string | number | undefined,
+  ) => {
+    if (timestamp === undefined || timestamp === null || timestamp === "")
+      return "-";
 
     const date = new Date(Number(timestamp));
 
@@ -804,7 +884,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {bookings.map((booking) =>
-              booking.slots.map((slot, index) => (
+              booking.slots.map((slot) => (
                 <tr
                   key={`${booking._id}-${slot._id}`}
                   className="hover:bg-gray-50 transition-colors duration-150"
@@ -857,13 +937,19 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                           slot.status === "cancelled"
                             ? "bg-red-100 text-red-800"
                             : slot.status === "refund"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : slot.status === "completed"
+                                ? "bg-blue-100 text-blue-800"
+                                : slot.status === "booked"
+                                  ? "bg-green-100 text-green-800"
+                                  : slot.status === "missed"
+                                    ? "bg-orange-100 text-orange-800"
+                                    : slot.status === "available"
+                                      ? "bg-gray-100 text-gray-800"
+                                      : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {slot.status === "cancelled"
-                          ? "cancelled"
-                          : slot.status}
+                        {slot.status}
                       </span>
 
                       <StatusDropdown
@@ -875,7 +961,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                         onToggle={() => {
                           const dropdownId = `${booking._id}-${slot._id}`;
                           setActiveDropdown(
-                            activeDropdown === dropdownId ? null : dropdownId
+                            activeDropdown === dropdownId ? null : dropdownId,
                           );
                         }}
                       />
@@ -894,7 +980,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                     </button>
                   </td>
                 </tr>
-              ))
+              )),
             )}
           </tbody>
         </table>
@@ -942,7 +1028,6 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
         isOpen={showRefundModal}
         onClose={() => {
           if (!isProcessingRefund) {
-            // Prevent closing while loading
             setShowRefundModal(false);
             setSelectedBooking(null);
             setSelectedSlotId(null);
@@ -952,7 +1037,22 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
         onConfirm={confirmStatusChange}
         booking={selectedBooking}
         slotId={selectedSlotId}
-        isLoading={isProcessingRefund} // Pass loading state
+        isLoading={isProcessingRefund}
+      />
+
+      <StatusChangeConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          if (!isProcessingRefund) {
+            setShowConfirmModal(false);
+            setSelectedBooking(null);
+            setSelectedSlotId(null);
+            setPendingStatusChange(null);
+          }
+        }}
+        onConfirm={confirmStatusChange}
+        statusLabel={getStatusChangeLabel()}
+        isLoading={isProcessingRefund}
       />
     </div>
   );

@@ -9,7 +9,7 @@ const StudentFeedback: React.FC = () => {
     GET_COMPLETED_STUDENT_BOOKINGS,
     {
       fetchPolicy: "cache-and-network",
-    }
+    },
   );
 
   // Update current time every minute for real-time checking
@@ -180,7 +180,7 @@ const StudentFeedback: React.FC = () => {
                         </Link>
                       </td>
                     </tr>
-                  ))
+                  )),
                 )}
               </tbody>
             </table>

@@ -93,7 +93,7 @@ const AdminBookingTypeDefs = gql`
   input UpdateBookingStatusInputAdmin {
     bookingId: ID!
     slotId: ID!
-    status: BookingStatusAdmin!
+    status: SlotStatusAdmin!
   }
 
   input CancelBookingAdminInputAdmin {

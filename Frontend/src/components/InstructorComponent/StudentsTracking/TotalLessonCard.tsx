@@ -1,5 +1,5 @@
 import React from "react";
-import { Booking } from "../../../types/Student";
+import { Booking, Slot } from "../../../types/Student";
 
 interface TotalLessonsCardProps {
   completedBookings: Booking[];
@@ -12,6 +12,30 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
   uncompletedBookings,
   formatDuration,
 }) => {
+  // One row per slot (completed + in progress), same as Daily Progress
+  const slotRows: { booking: Booking; slot: Slot; isCompleted: boolean }[] = [];
+  for (const b of completedBookings) {
+    for (const slot of b.slots || []) {
+      slotRows.push({ booking: b, slot, isCompleted: true });
+    }
+  }
+  for (const b of uncompletedBookings) {
+    for (const slot of b.slots || []) {
+      slotRows.push({ booking: b, slot, isCompleted: false });
+    }
+  }
+  // Sort by date then start time
+  slotRows.sort((a, b) => {
+    const d = `${a.slot.date}T${a.slot.startTime}`.localeCompare(`${b.slot.date}T${b.slot.startTime}`);
+    return d !== 0 ? d : 0;
+  });
+
+  const slotMinutes = (slot: Slot) => {
+    const start = new Date(`${slot.date}T${slot.startTime}:00`);
+    const end = new Date(`${slot.date}T${slot.endTime}:00`);
+    return (end.getTime() - start.getTime()) / (1000 * 60);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 ">
       <div className="flex items-center justify-between mb-4">
@@ -20,26 +44,17 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
           Edit Hours
         </button>
       </div>
-      {completedBookings.length === 0 && uncompletedBookings.length === 0 && (
+      {slotRows.length === 0 && (
         <div className="text-center h-[80%] flex items-center justify-center">
           <h1>No Bookings Found</h1>
         </div>
       )}
       <div className="space-y-3 h-[85%] overflow-y-auto">
-        {[...completedBookings, ...uncompletedBookings].map((booking) => {
-          const totalMinutes = booking.slots.reduce((acc, slot) => {
-            const start = new Date(`${slot.date}T${slot.startTime}:00`);
-            const end = new Date(`${slot.date}T${slot.endTime}:00`);
-            return acc + (end.getTime() - start.getTime()) / (1000 * 60);
-          }, 0);
-
-          const isCompleted = completedBookings.some(
-            (cb) => cb._id === booking._id
-          );
-
+        {slotRows.map(({ booking, slot, isCompleted }) => {
+          const minutes = slotMinutes(slot);
           return (
             <div
-              key={booking._id}
+              key={`${booking._id}-${slot._id || slot.date}-${slot.startTime}`}
               className={`flex items-center justify-between p-3 rounded-lg ${
                 isCompleted ? "bg-blue-50" : "bg-gray-50"
               }`}
@@ -56,7 +71,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
                 </div>
                 <span className="text-sm font-medium text-gray-900">
                   Lesson {booking._id.charAt(booking._id.length - 1)} (
-                  {formatDuration(totalMinutes)})
+                  {formatDuration(minutes)})
                 </span>
               </div>
               <div className="text-right">
@@ -64,7 +79,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
                   {isCompleted ? "Completed" : "Remaining Time"}
                 </div>
                 <div className="text-xs text-gray-900">
-                  {isCompleted ? "Done" : `${formatDuration(totalMinutes)}`}
+                  {isCompleted ? "Done" : formatDuration(minutes)}
                 </div>
               </div>
             </div>

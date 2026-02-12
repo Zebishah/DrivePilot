@@ -178,7 +178,7 @@ function Select({ value, onValueChange, children }: SelectProps) {
                 {
                   onClick: (e: React.MouseEvent) =>
                     handleItemSelect(child.props.value, e),
-                }
+                },
               );
             }
             return child;
@@ -263,6 +263,7 @@ interface StatCardProps {
   icon: ReactNode;
   color: string;
   isPercentage?: boolean;
+  subtitle?: string;
 }
 
 function StatCard({
@@ -271,6 +272,7 @@ function StatCard({
   icon,
   color,
   isPercentage = false,
+  subtitle,
 }: StatCardProps) {
   return (
     <Card className={`${color} border-0`}>
@@ -281,6 +283,9 @@ function StatCard({
             <p className="text-3xl font-bold text-white">
               {isPercentage ? `${value.toFixed(1)}%` : value}
             </p>
+            {subtitle !== undefined && (
+              <p className="text-xs text-white/70 mt-1">{subtitle}</p>
+            )}
           </div>
           <div className="text-white/80">{icon}</div>
         </div>
@@ -347,7 +352,7 @@ export function AnalyticsDashboard() {
     setSelectedInstructors((prev) =>
       prev.includes(instructorId)
         ? prev.filter((id) => id !== instructorId)
-        : [...prev, instructorId]
+        : [...prev, instructorId],
     );
   };
 
@@ -357,11 +362,9 @@ export function AnalyticsDashboard() {
   // Calculate collective totals from the conversion rates data
   const totalVisitors =
     graphData?.conversionRates.reduce((sum, d) => sum + d.visitors, 0) || 0;
-  console.log("grpahdata.conversation", graphData?.conversionRates);
   const totalRegistrations =
     graphData?.conversionRates.reduce((sum, d) => sum + d.registrations, 0) ||
     0;
-  console.log("total", totalRegistrations);
 
   if (analyticsLoading) {
     return (
@@ -536,7 +539,7 @@ export function AnalyticsDashboard() {
                               type="checkbox"
                               id={instructor._id}
                               checked={selectedInstructors.includes(
-                                instructor._id
+                                instructor._id,
                               )}
                               onChange={() => toggleInstructor(instructor._id)}
                               className="rounded border-gray-300"
@@ -630,6 +633,7 @@ export function AnalyticsDashboard() {
           icon={<TrendingUp className="h-8 w-8" />}
           color="bg-gradient-to-r from-blue-400 to-blue-500"
           isPercentage
+          subtitle={`${stats?.lessonAttendance ?? 0} lessons attended`}
         />
       </div>
 
@@ -670,7 +674,7 @@ export function AnalyticsDashboard() {
                   name: "Instructor(Active)",
                   data:
                     graphData?.activeUsers.map((d) =>
-                      Math.round(d.instructors)
+                      Math.round(d.instructors),
                     ) || [],
                 },
               ]}
@@ -708,7 +712,7 @@ export function AnalyticsDashboard() {
                   name: "Revenue per Instructor",
                   data:
                     graphData?.averageRevenuePerInstructor.map((d) =>
-                      Math.round(d.averageRevenue)
+                      Math.round(d.averageRevenue),
                     ) || [],
                 },
               ]}
@@ -745,7 +749,7 @@ export function AnalyticsDashboard() {
                   name: "Bookings",
                   data:
                     graphData?.bookingsPerInstructor.map((d) =>
-                      Math.round(d.averageBookings)
+                      Math.round(d.averageBookings),
                     ) || [],
                 },
               ]}
@@ -782,9 +786,7 @@ export function AnalyticsDashboard() {
                   </div>
                   <div className="text-sm text-gray-500">Last Week</div>
                 </div>
-                <div className="text-green-600 text-sm font-medium">
-                  ↗ 163%
-                </div>
+                <div className="text-green-600 text-sm font-medium">↗ 163%</div>
               </div>
             </div>
             <Chart
@@ -802,7 +804,7 @@ export function AnalyticsDashboard() {
                   name: "Total Earnings",
                   data:
                     graphData?.totalEarnings.map((d) =>
-                      Math.round(d.totalEarnings)
+                      Math.round(d.totalEarnings),
                     ) || [],
                 },
               ]}

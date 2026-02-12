@@ -29,12 +29,16 @@ const reviewResolver = {
 
       for (const booking of allBookings) {
         const bookedSlots = booking.slots.filter(
-          (slot) => slot.booked === true
+          (slot) =>
+            slot.booked &&
+            slot.status !== "cancelled" &&
+            slot.status !== "refund",
         );
 
         for (const slot of bookedSlots) {
           const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
-          const isCompleted = slotEndDateTime <= now;
+          const isCompleted =
+            slot.status === "completed" || slotEndDateTime <= now;
 
           const isReviewed = slot.review === true;
 
@@ -64,7 +68,7 @@ const reviewResolver = {
 
       // Sort by date (most recent first)
       allSlots.sort(
-        (a, b) => new Date(b.dateOfBooking) - new Date(a.dateOfBooking)
+        (a, b) => new Date(b.dateOfBooking) - new Date(a.dateOfBooking),
       );
 
       return allSlots;
@@ -80,7 +84,7 @@ const reviewResolver = {
         .sort({ createdAt: -1 });
 
       console.log(
-        `Fetched ${reviews.length} reviews for instructor ${instructorId}`
+        `Fetched ${reviews.length} reviews for instructor ${instructorId}`,
       );
       return reviews;
     },
@@ -96,6 +100,16 @@ const reviewResolver = {
 
         const now = new Date();
 
+        // Active slot = booked, not cancelled, not refund (same logic as elsewhere)
+        const isActiveSlot = (slot) =>
+          slot.booked &&
+          slot.status !== "cancelled" &&
+          slot.status !== "refund";
+        const isSlotCompletedFn = (slot) => {
+          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+          return slot.status === "completed" || slotEnd <= now;
+        };
+
         let totalBookedSlots = 0;
         let completedSlots = 0;
         let pendingSlots = 0;
@@ -104,29 +118,21 @@ const reviewResolver = {
         let pendingBookings = 0;
 
         for (const booking of allBookings) {
-          let bookingBookedSlots = 0;
-          let bookingCompletedSlots = 0;
           let bookingHasCompleted = false;
           let allSlotsCompleted = true;
 
           for (const slot of booking.slots) {
-            if (slot.booked) {
-              totalBookedSlots++;
-              bookingBookedSlots++;
+            if (!isActiveSlot(slot)) continue;
 
-              const slotEndDateTime = new Date(
-                `${slot.date}T${slot.endTime}:00`
-              );
-              const isSlotCompleted = slotEndDateTime <= now;
+            totalBookedSlots++;
+            const isSlotCompleted = isSlotCompletedFn(slot);
 
-              if (isSlotCompleted) {
-                completedSlots++;
-                bookingCompletedSlots++;
-                bookingHasCompleted = true;
-              } else {
-                pendingSlots++;
-                allSlotsCompleted = false;
-              }
+            if (isSlotCompleted) {
+              completedSlots++;
+              bookingHasCompleted = true;
+            } else {
+              pendingSlots++;
+              allSlotsCompleted = false;
             }
           }
 
@@ -157,16 +163,11 @@ const reviewResolver = {
         // ✅ Always keep result non-negative
         if (remainingHours < 0) remainingHours = Math.abs(remainingHours);
 
-        // ✅ Completed hours are *based on slots that have ended in the past*
-
+        // Completed hours = active slots that are completed (status or time)
         let completedHours = 0;
-
         for (const booking of allBookings) {
           for (const slot of booking.slots) {
-            if (slot.booked) {
-              const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-              if (slotEnd <= now) completedHours++;
-            }
+            if (isActiveSlot(slot) && isSlotCompletedFn(slot)) completedHours++;
           }
         }
 

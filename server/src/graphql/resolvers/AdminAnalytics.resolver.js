@@ -74,7 +74,7 @@ const adminAnalyticsResolvers = {
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
       });
 
-      // Total lessons booked: Count of booked slots in range
+      // Total lessons booked: active slots in range (booked, not cancelled/refund)
       const bookedLessonsAgg = await studentBookingModel.aggregate([
         { $match: matchInstructor },
         { $unwind: "$slots" },
@@ -82,12 +82,13 @@ const adminAnalyticsResolvers = {
           $match: {
             "slots.date": { $gte: fromStr, $lte: toStr },
             "slots.booked": true,
-            "slots.status": "booked",
+            "slots.status": { $nin: ["cancelled", "refund"] },
           },
         },
         { $count: "count" },
       ]);
       const totalLessonsBooked = bookedLessonsAgg[0]?.count || 0;
+
       // Reviews given: Completed reviews in range
       const reviewsGiven = await Review.countDocuments({
         ...matchInstructor,
@@ -95,9 +96,8 @@ const adminAnalyticsResolvers = {
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
       });
 
-      // Lesson attendance: Booked slots in range where date < now
-      const nowStr = now.format("YYYY-MM-DDTHH:mm");
-
+      // Attended lessons: active slots in range where status === "completed" OR slot end time has passed
+      const nowDate = now.toDate();
       const attendedLessonsAgg = await studentBookingModel.aggregate([
         { $match: matchInstructor },
         { $unwind: "$slots" },
@@ -105,21 +105,22 @@ const adminAnalyticsResolvers = {
           $addFields: {
             slotEndDateTime: {
               $dateFromString: {
-                dateString: { $concat: ["$slots.date", "T", "$slots.endTime"] },
+                dateString: {
+                  $concat: ["$slots.date", "T", "$slots.endTime"],
+                },
               },
             },
           },
         },
         {
           $match: {
+            "slots.date": { $gte: fromStr, $lte: toStr },
             "slots.booked": true,
-            "slots.status": "booked",
-            slotEndDateTime: {
-              $gte: fromDateObj,
-              $lte: toDateObj,
-              // ✅ only count if it has already passed
-              $lt: now.toDate(),
-            },
+            "slots.status": { $nin: ["cancelled", "refund"] },
+            $or: [
+              { "slots.status": "completed" },
+              { slotEndDateTime: { $lte: nowDate } },
+            ],
           },
         },
         { $count: "count" },
@@ -139,7 +140,7 @@ const adminAnalyticsResolvers = {
         totalRegistrations,
         totalLessonsBooked,
         reviewsGiven,
-        attendedLessons, // Add this to show attended lessons count
+        lessonAttendance: attendedLessons,
         attendanceRate: Math.round(attendanceRate), // Round to 1 decimal place
       };
 
@@ -161,8 +162,15 @@ const adminAnalyticsResolvers = {
         .populate("instructorId");
 
       const slots = allBookings.flatMap((b) => {
-        const numSlots = b.slots.length;
-        const pricePerSlot = numSlots > 0 ? (b.finalAmount || 0) / numSlots : 0;
+        const activeSlotsInBooking = b.slots.filter(
+          (s) =>
+            s.booked &&
+            s.status !== "cancelled" &&
+            s.status !== "refund"
+        );
+        const numActive = activeSlotsInBooking.length;
+        const pricePerSlot =
+          numActive > 0 ? (b.finalAmount || 0) / numActive : 0;
 
         return b.slots
           .filter((s) => {
@@ -172,7 +180,8 @@ const adminAnalyticsResolvers = {
               slotDateStr >= fromStr &&
               slotDateStr <= toStr &&
               s.booked &&
-              s.status === "booked"
+              s.status !== "cancelled" &&
+              s.status !== "refund"
             );
           })
           .map((s) => ({
@@ -180,6 +189,7 @@ const adminAnalyticsResolvers = {
             studentId: b.studentId,
             instructorId: b.instructorId,
             slotDate: dayjs(s.date),
+            slotEnd: dayjs(`${s.date}T${s.endTime}`),
             pricePerSlot,
           }));
       });
@@ -225,10 +235,10 @@ const adminAnalyticsResolvers = {
           );
         });
         const studentsSet = new Set(
-          bucketSlots.map((s) => s.studentId?._id.toString())
+          bucketSlots.map((s) => s.studentId?._id.toString()),
         );
         const instructorsSet = new Set(
-          bucketSlots.map((s) => s.instructorId?._id.toString())
+          bucketSlots.map((s) => s.instructorId?._id.toString()),
         );
         activeUsers.push({
           time: current.format(timeFormat),
@@ -247,13 +257,15 @@ const adminAnalyticsResolvers = {
           averageBookings,
         });
 
-        // Revenue and Earnings (only for delivered/passed slots)
-        const deliveredBucketSlots = bucketSlots.filter((s) =>
-          s.slotDate.isBefore(now)
+        // Revenue and Earnings (delivered = status completed or slot end has passed)
+        const deliveredBucketSlots = bucketSlots.filter(
+          (s) =>
+            s.status === "completed" ||
+            (s.slotEnd && !s.slotEnd.isAfter(now)),
         );
         const totalRevenue = deliveredBucketSlots.reduce(
           (sum, s) => sum + s.pricePerSlot,
-          0
+          0,
         );
         totalEarnings.push({
           time: current.format(timeFormat),
@@ -268,11 +280,11 @@ const adminAnalyticsResolvers = {
 
         // Conversion Rates
         const bucketRegistrations = allUsers.filter(
-          (u) => u.createdAt >= bucketStartDate && u.createdAt <= bucketEndDate
+          (u) => u.createdAt >= bucketStartDate && u.createdAt <= bucketEndDate,
         ).length;
         const bucketVisitors = allVisitors.filter(
           (v) =>
-            v.firstVisit >= bucketStartDate && v.firstVisit <= bucketEndDate
+            v.firstVisit >= bucketStartDate && v.firstVisit <= bucketEndDate,
         ).length;
         const rate =
           bucketVisitors > 0 ? (bucketRegistrations / bucketVisitors) * 100 : 0;

@@ -19,11 +19,20 @@ const studentDashboardResolver = {
       let cancelled = 0;
       let semiCancelled = 0;
       let currentBookings = 0;
+      let upcomingLessonHours = 0; // hours of booked, not-yet-completed slots
       const instructorSet = new Set();
       const now = new Date();
+
       for (const booking of bookings) {
         for (const slot of booking.slots) {
-          if (slot.status !== "cancelled") totalLessons++; // Count all slots
+          const active =
+            slot.booked &&
+            slot.status !== "cancelled" &&
+            slot.status !== "refund";
+          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+          const isCompleted = slot.status === "completed" || slotEnd <= now;
+
+          if (slot.status !== "cancelled") totalLessons++;
 
           if (slot.booked) bookedLessons++;
 
@@ -31,30 +40,37 @@ const studentDashboardResolver = {
 
           if (slot.status === "semi_cancelled") semiCancelled++;
 
-          if (slot.booked && slot.status === "booked") {
-            const now = new Date();
-
-            // Combine slot date + end time into one Date object (local time)
-            const slotEnd = new Date(`${slot.date}T${slot.endTime}`);
-
-            // Count as current booking only if the end time is in the future
-            if (slotEnd > now) {
-              currentBookings++;
-            }
+          // Current/upcoming = active and not yet completed
+          if (active && !isCompleted) {
+            currentBookings++;
+            const durationMinutes =
+              (slotEnd - new Date(`${slot.date}T${slot.startTime}:00`)) /
+              (1000 * 60);
+            upcomingLessonHours += durationMinutes / 60;
           }
         }
 
         instructorSet.add(booking.instructorId.toString());
       }
 
+      // Use lessonHoursLeft from student when it has a value; otherwise compute from slots
+      const lessonHoursLeft = student?.lessonHoursLeft;
+      const hasLessonHoursLeft =
+        lessonHoursLeft != null && String(lessonHoursLeft).trim() !== "";
+      const remainingHours = hasLessonHoursLeft
+        ? String(lessonHoursLeft)
+        : upcomingLessonHours > 0
+          ? String(Math.round(upcomingLessonHours * 10) / 10)
+          : "0";
+
       return {
         totalLessons,
         bookedLessons,
         cancelledLessons: cancelled,
         semiCancelledLessons: semiCancelled,
-        currentBookings, // ✅ Accurate now
+        currentBookings,
         totalInstructors: instructorSet.size,
-        remainingHours: student?.lessonHoursLeft || 0,
+        remainingHours,
       };
     },
 
@@ -76,12 +92,17 @@ const studentDashboardResolver = {
 
       for (const booking of bookings) {
         for (const slot of booking.slots) {
-          if (!slot.booked) continue;
+          if (
+            !slot.booked ||
+            slot.status === "cancelled" ||
+            slot.status === "refund"
+          )
+            continue;
 
           const slotDate = new Date(slot.date);
           const isThisWeek = slotDate >= startOfWeek && slotDate < endOfWeek;
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          const isCompleted = slotEnd <= now;
+          const isCompleted = slot.status === "completed" || slotEnd <= now;
 
           allLessons.push({
             lessonId: booking._id,

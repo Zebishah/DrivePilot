@@ -35,7 +35,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   const navigate = useNavigate();
   const handlePageChange = (
     event: React.ChangeEvent<unknown>,
-    value: number
+    value: number,
   ) => {
     setPage(value);
   };
@@ -70,6 +70,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   const getSlotEndDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.endTime}`);
   const categorizeBookings = (bookings: Booking[]) => {
+    const now = new Date();
     const upcoming: Booking[] = [];
     const cancelled: Booking[] = [];
     const refund: Booking[] = [];
@@ -86,10 +87,18 @@ export const BookingList: React.FC<BookingListProps> = ({
           cancelledSlots.push(slot);
         } else if (slot.status === "refund") {
           refundSlots.push(slot);
-        } else if (slot.status === "completed") {
+        } else if (
+          slot.status === "completed" ||
+          getSlotEndDateTime(slot) <= now
+        ) {
           completedSlots.push(slot);
-        } else if (slot.status === "booked" || slot.status === "confirmed") {
+        } else if (
+          (slot.status === "booked" || slot.status === "confirmed") &&
+          getSlotEndDateTime(slot) > now
+        ) {
           upcomingSlots.push(slot);
+        } else {
+          completedSlots.push(slot);
         }
       });
 
@@ -137,17 +146,17 @@ export const BookingList: React.FC<BookingListProps> = ({
   // Sort newest first
   const sortedBookings = filteredBookings.sort((a, b) => {
     const aLatest = Math.max(
-      ...a.slots.map((s) => getSlotEndDateTime(s).getTime())
+      ...a.slots.map((s) => getSlotEndDateTime(s).getTime()),
     );
     const bLatest = Math.max(
-      ...b.slots.map((s) => getSlotEndDateTime(s).getTime())
+      ...b.slots.map((s) => getSlotEndDateTime(s).getTime()),
     );
     return bLatest - aLatest;
   });
 
   const currentBookings = sortedBookings.slice(
     (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
+    page * ITEMS_PER_PAGE,
   );
   return (
     <Card sx={{ mb: 3, mt: 2 }}>
@@ -216,7 +225,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                       startIcon={<VisibilityIcon />}
                       onClick={() => {
                         navigate(
-                          `/student-dashboard/search/instructors/${booking.instructorId._id}`
+                          `/student-dashboard/search/instructors/${booking.instructorId._id}`,
                         );
                       }}
                       sx={{
@@ -353,14 +362,14 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   slot.status === "booked"
                                     ? "rgba(0, 200, 83, 0.15)"
                                     : slot.status === "cancelled"
-                                    ? "rgba(211, 47, 47, 0.15)"
-                                    : "rgba(255, 152, 0, 0.15)",
+                                      ? "rgba(211, 47, 47, 0.15)"
+                                      : "rgba(255, 152, 0, 0.15)",
                                 color:
                                   slot.status === "booked"
                                     ? "rgb(0, 170, 70)"
                                     : slot.status === "cancelled"
-                                    ? "rgb(211, 47, 47)"
-                                    : "rgb(255, 152, 0)",
+                                      ? "rgb(211, 47, 47)"
+                                      : "rgb(255, 152, 0)",
                                 fontWeight: 600,
                                 fontSize: "0.75rem",
                                 letterSpacing: "0.5px",
@@ -368,8 +377,8 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   slot.status === "booked"
                                     ? "rgba(0, 200, 83, 0.25)"
                                     : slot.status === "cancelled"
-                                    ? "rgba(211, 47, 47, 0.25)"
-                                    : "rgba(255, 152, 0, 0.25)"
+                                      ? "rgba(211, 47, 47, 0.25)"
+                                      : "rgba(255, 152, 0, 0.25)"
                                 }`,
                                 transition:
                                   "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -382,10 +391,10 @@ export const BookingList: React.FC<BookingListProps> = ({
                               {tabValue === 0
                                 ? "UPCOMING"
                                 : tabValue === 3
-                                ? "COMPLETED"
-                                : slot.status === "booked"
-                                ? "CONFIRMED"
-                                : slot.status.toUpperCase()}
+                                  ? "COMPLETED"
+                                  : slot.status === "booked"
+                                    ? "CONFIRMED"
+                                    : slot.status.toUpperCase()}
                             </Typography>
                           </Box>
                           <Box
@@ -465,8 +474,8 @@ export const BookingList: React.FC<BookingListProps> = ({
               {tabValue === 0
                 ? ""
                 : tabValue === 1
-                ? "Confirmed "
-                : "Cancelled "}
+                  ? "Confirmed "
+                  : "Cancelled "}
               Slots Available
             </Typography>
             {showNewBookingButton && (

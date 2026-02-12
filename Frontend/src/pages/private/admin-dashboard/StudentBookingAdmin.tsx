@@ -243,10 +243,10 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                             slot.status === "confirmed"
                               ? "bg-green-100 text-green-800"
                               : slot.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : slot.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : slot.status === "cancelled"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {slot.status}
@@ -375,7 +375,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                   <p className="text-xs text-gray-500">
                     {booking.paymentMethod.cardNumber
                       ? `**** **** **** ${booking.paymentMethod.cardNumber.slice(
-                          -4
+                          -4,
                         )}`
                       : "**** **** **** 0505"}
                   </p>
@@ -416,7 +416,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                   <span className="text-gray-900">
                     {formatDate(
                       booking.slots[booking.slots.length - 1]?.date ||
-                        selectedSlot.date
+                        selectedSlot.date,
                     )}
                   </span>
                 </div>
@@ -461,14 +461,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   className = "",
 }) => {
   const [selectedBooking, setSelectedBooking] = useState<StudentBooking | null>(
-    null
+    null,
   );
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
-    null
+    null,
   );
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -506,7 +506,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   const handleStatusChange = (
     booking: StudentBooking,
     slotId: string,
-    newStatus: string
+    newStatus: string,
   ) => {
     setSelectedBooking(booking);
     setSelectedSlotId(slotId);
@@ -578,7 +578,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
 
   const bookings = (data?.getAllStudentBookings || [])
     .flatMap((b: StudentBooking) =>
-      b.slots.map((s) => ({ booking: b, slot: s }))
+      b.slots.map((s) => ({ booking: b, slot: s })),
     )
     .sort((a, b) => {
       const aTime = new Date(`${a.slot.date}T${a.slot.startTime}`).getTime();
@@ -667,8 +667,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                           slot.status === "cancelled"
                             ? "bg-red-100 text-red-800"
                             : slot.status === "Refund"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {slot.status === "cancelled"
@@ -685,7 +685,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                         onToggle={() => {
                           const dropdownId = `${booking._id}-${slot._id}`;
                           setActiveDropdown(
-                            activeDropdown === dropdownId ? null : dropdownId
+                            activeDropdown === dropdownId ? null : dropdownId,
                           );
                         }}
                       />
@@ -708,7 +708,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                     </button>
                   </td>
                 </tr>
-              ))
+              )),
             )}
           </tbody>
         </table>

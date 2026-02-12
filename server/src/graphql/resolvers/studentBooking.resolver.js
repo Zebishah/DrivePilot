@@ -34,7 +34,7 @@ const studentBookingResolver = {
       const allBookings = await StudentBooking.find({ studentId: user.id })
         .populate(
           "instructorId",
-          "_id firstName lastName email description profileImage"
+          "_id firstName lastName email description profileImage",
         )
         .sort({ createdAt: -1 });
 
@@ -112,7 +112,7 @@ const studentBookingResolver = {
 
       const allBookings = await StudentBooking.find({
         instructorId: user?.id,
-        status: { $in: ["confirmed", "semi_cancelled"] },
+        status: { $in: ["confirmed", "semi_cancelled", "completed"] },
       })
         .populate("instructorId", "_id firstName lastName email profileImage")
         .populate("studentId", "_id firstName lastName email profileImage");
@@ -122,14 +122,16 @@ const studentBookingResolver = {
       for (const booking of allBookings) {
         if (!booking.slots?.length) continue;
 
-        // ✅ gather all slots for this booking that are completed
+        // ✅ gather all slots that are completed (time passed or instructor marked completed), and were booked (exclude cancelled/refund)
         const completedSlots = booking.slots.filter((slot) => {
+          if (
+            !slot.booked ||
+            slot.status === "cancelled" ||
+            slot.status === "refund"
+          )
+            return false;
           const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
-          return (
-            slotEndDateTime <= now &&
-            slot.status !== "cancelled" &&
-            slot.status !== "refund"
-          );
+          return slot.status === "completed" || slotEndDateTime <= now;
         });
 
         if (completedSlots.length) {
@@ -141,19 +143,19 @@ const studentBookingResolver = {
         }
       }
 
-      // Sort by latest slot end time (descending)
+      // Sort by latest slot end time in each booking (descending)
       completedLessons.sort((a, b) => {
-        const aEnd = new Date(
-          `${a.slots[a.slots.length - 1].date}T${
-            a.slots[a.slots.length - 1].endTime
-          }:00`
+        const aLatest = Math.max(
+          ...a.slots.map((s) =>
+            new Date(`${s.date}T${s.endTime}:00`).getTime(),
+          ),
         );
-        const bEnd = new Date(
-          `${b.slots[b.slots.length - 1].date}T${
-            b.slots[b.slots.length - 1].endTime
-          }:00`
+        const bLatest = Math.max(
+          ...b.slots.map((s) =>
+            new Date(`${s.date}T${s.endTime}:00`).getTime(),
+          ),
         );
-        return bEnd - aEnd;
+        return bLatest - aLatest;
       });
 
       return completedLessons;
@@ -174,7 +176,7 @@ const studentBookingResolver = {
       const allBookings = await StudentBooking.find({
         studentId,
         instructorId: user.id,
-        status: { $in: ["confirmed", "semi_cancelled"] },
+        status: { $in: ["confirmed", "semi_cancelled", "completed"] },
       })
         .populate("instructorId", "_id firstName lastName email profileImage")
         .populate("studentId", "_id firstName lastName email profileImage") // Add this line
@@ -192,45 +194,55 @@ const studentBookingResolver = {
       for (const booking of allBookings) {
         if (!booking.slots || booking.slots.length === 0) continue;
 
-        // Calculate total duration per booking
-        for (const slot of booking.slots) {
-          totalLessonCount += 1;
-          const start = new Date(`${slot.date}T${slot.startTime}:00`);
-          const end = new Date(`${slot.date}T${slot.endTime}:00`);
-          const duration = (end - start) / (1000 * 60); // minutes
-          totalDurationMinutes += duration;
-
-          // Track for graph
-          const count = graphMap.get(slot.date) || 0;
-          graphMap.set(slot.date, count + 1);
-        }
-
-        // Check if completed
-        const latestSlot = booking.slots.reduce((latest, curr) => {
-          const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
-          const currentEnd = new Date(`${curr.date}T${curr.endTime}:00`);
-          return currentEnd > latestEnd ? curr : latest;
-        });
-
-        const lastEndTime = new Date(
-          `${latestSlot.date}T${latestSlot.endTime}:00`
-        );
-        console.log("Last end time:", lastEndTime, "Now:", now);
-        const isCompleted = lastEndTime <= now;
-
-        const finalBooking = {
+        const finalBookingBase = {
           ...booking,
-          profileImage: student.profileImage || "", // Changed from bookerProfileImage
+          profileImage: student.profileImage || "",
           instructorId: {
             ...booking.instructorId,
             profileImage: booking.instructorId?.profileImage || "",
           },
         };
 
-        if (isCompleted) {
-          completedBookings.push(finalBooking);
-        } else {
-          uncompletedBookings.push(finalBooking);
+        // Active slots: booked, not cancelled, not refund
+        const activeSlots = booking.slots.filter(
+          (slot) =>
+            slot.booked &&
+            slot.status !== "cancelled" &&
+            slot.status !== "refund",
+        );
+
+        // Completed slot = status === "completed" OR slot end time has passed
+        const completedSlots = activeSlots.filter((slot) => {
+          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+          return slot.status === "completed" || slotEnd <= now;
+        });
+        const inProgressSlots = activeSlots.filter((slot) => {
+          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+          return slot.status !== "completed" && slotEnd > now;
+        });
+
+        // Stats and graph: count only active slots
+        for (const slot of activeSlots) {
+          totalLessonCount += 1;
+          const start = new Date(`${slot.date}T${slot.startTime}:00`);
+          const end = new Date(`${slot.date}T${slot.endTime}:00`);
+          const duration = (end - start) / (1000 * 60);
+          totalDurationMinutes += duration;
+          const count = graphMap.get(slot.date) || 0;
+          graphMap.set(slot.date, count + 1);
+        }
+
+        if (completedSlots.length > 0) {
+          completedBookings.push({
+            ...finalBookingBase,
+            slots: completedSlots,
+          });
+        }
+        if (inProgressSlots.length > 0) {
+          uncompletedBookings.push({
+            ...finalBookingBase,
+            slots: inProgressSlots,
+          });
         }
       }
 
@@ -238,7 +250,7 @@ const studentBookingResolver = {
         ([date, lessonsBooked]) => ({
           date,
           lessonsBooked,
-        })
+        }),
       );
 
       return {
@@ -305,13 +317,13 @@ const studentBookingResolver = {
                   (newSlot.endTime > existingSlot.startTime &&
                     newSlot.endTime <= existingSlot.endTime) ||
                   (newSlot.startTime <= existingSlot.startTime &&
-                    newSlot.endTime >= existingSlot.endTime))
-            )
+                    newSlot.endTime >= existingSlot.endTime)),
+            ),
           );
 
           if (conflictingBooking) {
             throw new UserInputError(
-              `You already have a booking with this instructor on ${newSlot.date} between ${newSlot.startTime} and ${newSlot.endTime}`
+              `You already have a booking with this instructor on ${newSlot.date} between ${newSlot.startTime} and ${newSlot.endTime}`,
             );
           }
         }
@@ -359,7 +371,7 @@ const studentBookingResolver = {
                   (s) =>
                     s.date === slot.date &&
                     s.startTime === slot.startTime &&
-                    s.endTime === slot.endTime
+                    s.endTime === slot.endTime,
                 );
 
                 if (!savedSlot) continue;
@@ -380,7 +392,7 @@ const studentBookingResolver = {
                   (s) =>
                     s.date === slot.date &&
                     s.startTime === slot.startTime &&
-                    s.endTime === slot.endTime
+                    s.endTime === slot.endTime,
                 );
 
                 if (availableSlot) {
@@ -405,18 +417,18 @@ const studentBookingResolver = {
 
                 await availability.save();
               }
-            }
-          )
+            },
+          ),
         );
         // 4. Optional: populate instructor
         const savedBooking = await StudentBooking.findById(booking._id)
           .populate(
             "instructorId",
-            "_id firstName lastName email phone description profileImage address"
+            "_id firstName lastName email phone description profileImage address",
           )
           .populate(
             "studentId",
-            "_id firstName lastName email phone profileImage homeAddress"
+            "_id firstName lastName email phone profileImage homeAddress",
           );
 
         const bookingData = JSON.parse(JSON.stringify(savedBooking));
@@ -459,7 +471,7 @@ const studentBookingResolver = {
         ];
         if (!validStatuses.includes(status)) {
           throw new Error(
-            `Invalid status. Must be one of: ${validStatuses.join(", ")}`
+            `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
           );
         }
 
@@ -485,11 +497,23 @@ const studentBookingResolver = {
 
         // Find the slot index
         const slotIndex = booking.slots.findIndex(
-          (slot) => slot._id.toString() === slotId
+          (slot) => slot._id.toString() === slotId,
         );
 
         if (slotIndex === -1) {
           throw new Error("Slot not found in this booking");
+        }
+
+        // Block marking as completed before the slot end time
+        if (status === "completed") {
+          const slot = booking.slots[slotIndex];
+          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+          const now = new Date();
+          if (slotEnd > now) {
+            throw new Error(
+              "Cannot mark this slot as completed before its end time.",
+            );
+          }
         }
 
         // Store old status for comparison
@@ -550,7 +574,7 @@ const studentBookingResolver = {
           if (status === "cancelled" || status === "available") {
             // Remove from booked slots and mark availableSlots as available again
             availability.slots = availability.slots.filter(
-              (s) => !(s.id === slotId || matchSlot(s))
+              (s) => !(s.id === slotId || matchSlot(s)),
             );
 
             const availableSlot = availability.availableSlots.find(matchSlot);
@@ -564,7 +588,7 @@ const studentBookingResolver = {
             const bookedValue = status === "booked" || status === "completed";
 
             let bookedSlotEntry = availability.slots.find(
-              (s) => s.id === slotId || matchSlot(s)
+              (s) => s.id === slotId || matchSlot(s),
             );
             if (bookedSlotEntry) {
               bookedSlotEntry.status = status;
@@ -612,7 +636,7 @@ const studentBookingResolver = {
           } catch (emailError) {
             console.error(
               "Failed to send slot status update emails:",
-              emailError
+              emailError,
             );
           }
         }
@@ -670,7 +694,7 @@ const studentBookingResolver = {
         } catch (emailError) {
           console.error(
             "Failed to send booking status update emails:",
-            emailError
+            emailError,
           );
         }
       }
@@ -699,7 +723,7 @@ const studentBookingResolver = {
           booking.instructorId._id.toString() !== uid
         ) {
           throw new AuthenticationError(
-            "Not authorized to cancel this booking"
+            "Not authorized to cancel this booking",
           );
         }
 
@@ -718,7 +742,7 @@ const studentBookingResolver = {
 
         // 4. Check if all slots are cancelled to determine booking status
         const allSlotsCancelled = booking.slots.every(
-          (s) => s.status === "cancelled"
+          (s) => s.status === "cancelled",
         );
 
         const oldStatus = booking.status;
@@ -742,7 +766,7 @@ const studentBookingResolver = {
         if (teacherAvailability) {
           // 1️⃣ Remove from booked slots
           teacherAvailability.slots = teacherAvailability.slots.filter(
-            (s) => s.id !== slotId
+            (s) => s.id !== slotId,
           );
 
           // 2️⃣ Add or mark slot as available again
@@ -750,7 +774,7 @@ const studentBookingResolver = {
             (s) =>
               s.date === slot.date &&
               s.startTime === slot.startTime &&
-              s.endTime === slot.endTime
+              s.endTime === slot.endTime,
           );
 
           if (existingAvailable) {
@@ -769,7 +793,7 @@ const studentBookingResolver = {
 
           // 3️⃣ Update overall status
           const hasAvailable = teacherAvailability.availableSlots.some(
-            (s) => s.booked === false
+            (s) => s.booked === false,
           );
           teacherAvailability.status = hasAvailable ? "available" : "booked";
 
@@ -784,7 +808,7 @@ const studentBookingResolver = {
         } catch (emailError) {
           console.error(
             "Failed to send booking cancellation emails:",
-            emailError
+            emailError,
           );
         }
 

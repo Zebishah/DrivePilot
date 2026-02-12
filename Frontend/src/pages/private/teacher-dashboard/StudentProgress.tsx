@@ -37,8 +37,6 @@ const StudentDashboard: React.FC = () => {
 
   const { studentInfo, lessonStats, completedBookings, uncompletedBookings } =
     data.getStudentDashboardDetails;
-  console.log("Completed Bookings in Dashboard:", completedBookings);
-  console.log("Uncompleted Bookings in Dashboard:", uncompletedBookings);
   return (
     <div className="min-h-screen bg-gray-50 py-2 px-8">
       <BackButton variant="outline" label="Back" />

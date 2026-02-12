@@ -24,7 +24,7 @@ import { Link } from "react-router-dom";
 
 export default function StudentOverview() {
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
-    null
+    null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
@@ -76,7 +76,7 @@ export default function StudentOverview() {
   // Filter lessons for this week
   const thisWeeksLessons =
     lessonsData?.getStudentLesson?.filter((lesson: SlotLesson) =>
-      isThisWeek(lesson.date)
+      isThisWeek(lesson.date),
     ) || [];
 
   // Get all lessons (you can limit this as needed)
@@ -96,14 +96,13 @@ export default function StudentOverview() {
     setSelectedFeedback(null);
   };
 
-  // Calculate remaining hours percentage for circular progress
+  // Circular progress: remaining hours as % of scale (max 50hrs = 100% fill)
   const getRemainingHoursPercentage = () => {
-    if (!statsData?.getStudentDashboardStats?.remainingHours) return 0;
-    const remaining = parseInt(
-      statsData.getStudentDashboardStats.remainingHours
-    );
-    const total = 10; // Assuming total hours, adjust as needed
-    return (remaining / total) * 100;
+    const raw = statsData?.getStudentDashboardStats?.remainingHours;
+    if (raw == null || raw === "") return 0;
+    const remaining = parseFloat(String(raw)) || 0;
+    const maxHours = 50; // 40hrs = 80%, 50hrs = 100%
+    return Math.min(100, (remaining / maxHours) * 100);
   };
 
   // Error handling
@@ -367,7 +366,7 @@ export default function StudentOverview() {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
-                        }
+                        },
                       )}{" "}
                       {new Date(Number(feedback.createdAt)).toLocaleTimeString(
                         "en-US",
@@ -375,7 +374,7 @@ export default function StudentOverview() {
                           hour: "numeric",
                           minute: "2-digit",
                           hour12: true,
-                        }
+                        },
                       )}
                     </p>
                     {/* <p className="text-xs text-gray-500 mt-1 truncate"> 
