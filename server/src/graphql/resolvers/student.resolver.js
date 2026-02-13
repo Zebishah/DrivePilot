@@ -24,7 +24,7 @@ const studentResolver = {
             (key.toLowerCase().includes("image") ||
               key.toLowerCase().includes("photo") ||
               key.toLowerCase().includes("avatar") ||
-              key.toLowerCase().includes("picture"))
+              key.toLowerCase().includes("picture")),
         );
 
         if (!student) {
@@ -55,7 +55,7 @@ const studentResolver = {
     },
     getStudentLessonHours: async (_, { studentId }) => {
       const student = await Student.findById(studentId).select(
-        "firstName lastName lessonHoursLeft"
+        "firstName lastName lessonHoursLeft",
       );
 
       if (!student) {
@@ -131,7 +131,7 @@ const studentResolver = {
         lessons.sort(
           (a, b) =>
             new Date(b.bookingDate.split("-").reverse().join("-")) -
-            new Date(a.bookingDate.split("-").reverse().join("-"))
+            new Date(a.bookingDate.split("-").reverse().join("-")),
         );
 
         return lessons;
@@ -158,7 +158,7 @@ const studentResolver = {
         })
           .populate(
             "instructorId",
-            "_id firstName lastName email description profileImage"
+            "_id firstName lastName email description profileImage",
           )
           .populate("studentId", "_id firstName lastName email profileImage")
           .sort({ createdAt: -1 });
@@ -177,13 +177,13 @@ const studentResolver = {
           const lastSlot = booking.slots.reduce((latest, current) => {
             const latestEnd = new Date(`${latest.date}T${latest.endTime}:00`);
             const currentEnd = new Date(
-              `${current.date}T${current.endTime}:00`
+              `${current.date}T${current.endTime}:00`,
             );
             return currentEnd > latestEnd ? current : latest;
           });
 
           const lastEndDateTime = new Date(
-            `${lastSlot.date}T${lastSlot.endTime}:00`
+            `${lastSlot.date}T${lastSlot.endTime}:00`,
           );
 
           if (lastEndDateTime <= now) {
@@ -285,7 +285,7 @@ const studentResolver = {
       try {
         const confirmedBookings = await StudentBooking.find({
           instructorId: user?.id,
-          status: { $in: ["confirmed", "semi_cancelled"] },
+          status: { $in: ["confirmed", "semi_cancelled", "completed"] },
         }).select("studentId");
 
         const studentIdsWithConfirmedBookings = [
@@ -322,11 +322,11 @@ const studentResolver = {
             const bookings = await StudentBooking.find({
               studentId: student._id,
               instructorId: user?.id,
-              status: { $in: ["confirmed", "semi_cancelled"] },
+              status: { $in: ["confirmed", "semi_cancelled", "completed"] },
             })
               .populate(
                 "instructorId",
-                "_id firstName lastName email profileImage"
+                "_id firstName lastName email profileImage",
               )
               .lean();
 
@@ -386,11 +386,11 @@ const studentResolver = {
                 totalLessons: totalLessonCount,
                 totalLessonDurationInMinutes: totalDurationMinutes,
                 remainingLessonDurationInMinutes: Math.round(
-                  remainingDurationMinutes
+                  remainingDurationMinutes,
                 ),
               },
             };
-          })
+          }),
         );
 
         // Apply sorting
@@ -398,31 +398,31 @@ const studentResolver = {
           switch (filter.sortBy) {
             case "RECENT_TO_OLDEST":
               enrichedStudents.sort(
-                (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+                (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
               );
               break;
             case "OLDEST_TO_RECENT":
               enrichedStudents.sort(
-                (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+                (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
               );
               break;
             case "A_TO_Z_ORDER":
               enrichedStudents.sort((a, b) =>
                 `${a.firstName} ${a.lastName}`.localeCompare(
-                  `${b.firstName} ${b.lastName}`
-                )
+                  `${b.firstName} ${b.lastName}`,
+                ),
               );
               break;
             case "Z_TO_A_ORDER":
               enrichedStudents.sort((a, b) =>
                 `${b.firstName} ${b.lastName}`.localeCompare(
-                  `${a.firstName} ${a.lastName}`
-                )
+                  `${a.firstName} ${a.lastName}`,
+                ),
               );
               break;
             case "REMAINING_HOURS":
               enrichedStudents.sort(
-                (a, b) => (b.remainingHours || 0) - (a.remainingHours || 0)
+                (a, b) => (b.remainingHours || 0) - (a.remainingHours || 0),
               );
               break;
             default:
@@ -452,7 +452,7 @@ const studentResolver = {
             }
             return acc;
           },
-          {}
+          {},
         );
 
         // Handle special case for languagePreference to ensure it's always an array
@@ -493,7 +493,7 @@ const studentResolver = {
             }
             return acc;
           },
-          {}
+          {},
         );
 
         // First check if the instructor exists
@@ -506,7 +506,7 @@ const studentResolver = {
         const instructor = await Student.findByIdAndUpdate(
           user.id,
           { $set: filteredInput },
-          { new: true, runValidators: true }
+          { new: true, runValidators: true },
         );
 
         if (!instructor) {
@@ -533,7 +533,7 @@ const studentResolver = {
       } catch (error) {
         if (error.name === "ValidationError") {
           const validationErrors = Object.values(error.errors).map(
-            (err) => err.message
+            (err) => err.message,
           );
           throw new Error(`Validation error: ${validationErrors.join(", ")}`);
         }
@@ -544,7 +544,7 @@ const studentResolver = {
           throw new Error(
             `Validation error: ${error.errors
               .map((err) => err.message)
-              .join(", ")}`
+              .join(", ")}`,
           );
         }
         throw new Error(`Error updating student profile: ${error.message}`);

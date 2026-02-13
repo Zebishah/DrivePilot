@@ -45,7 +45,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
 
   // Debug log
   console.log(
-    `Student ${student.id} - isSelected: ${isSelected}, showCheckbox: ${showCheckbox}`
+    `Student ${student.id} - isSelected: ${isSelected}, showCheckbox: ${showCheckbox}`,
   );
 
   return (
@@ -93,7 +93,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
               (student?.address ?? "")?.length > 25
                 ? (((student?.location ?? "") || student?.address) ?? "").slice(
                     0,
-                    25
+                    25,
                   ) + "..."
                 : student?.location || student.address}
             </p>
