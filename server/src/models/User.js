@@ -26,21 +26,17 @@ const baseSchema = new mongoose.Schema(
       default: "local",
     },
     providerId: String,
-
-    // Stripe Customer ID (for students making payments)
     stripeCustomerId: { type: String },
-
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     resetToken: { type: String, default: null },
     resetTokenExpiry: { type: Date, default: null },
   },
-  baseOptions
+  baseOptions,
 );
 
 const User = mongoose.model("User", baseSchema);
 
-// OTP Schema
 const otpSchema = new mongoose.Schema({
   email: { type: String, required: true },
   otp: { type: Number, required: true },
@@ -119,8 +115,6 @@ const StudentSchema = new mongoose.Schema({
     isPaid: { type: Boolean, default: false },
     paymentDate: Date,
   },
-
-  // Stripe Payment Methods (Saved Cards/TWINT)
   stripePaymentMethods: [
     {
       paymentMethodId: { type: String, required: true },
@@ -130,27 +124,19 @@ const StudentSchema = new mongoose.Schema({
         required: true,
       },
       isDefault: { type: Boolean, default: false },
-
-      // Card details (for display only - last 4 digits)
       cardBrand: { type: String },
       cardLast4: { type: String },
       cardExpMonth: { type: Number },
       cardExpYear: { type: Number },
-
-      // TWINT details
       twintToken: { type: String },
       twintRegisteredAt: { type: Date },
-
       createdAt: { type: Date, default: Date.now },
     },
   ],
-
-  // Default payment method
   defaultPaymentMethod: {
     type: { type: String, enum: ["card", "twint"] },
     paymentMethodId: { type: String },
   },
-
   description: { type: String, required: false },
   lessonHoursLeft: { type: String, required: false },
   experience: { type: String, required: false },
@@ -180,45 +166,117 @@ const InstructorSchema = new mongoose.Schema({
   },
 
   // Stripe Connected Account (for receiving payouts)
-  stripeConnectedAccountId: { type: String },
+  stripeFinancialStatus: {
+    hasDisputes: { type: Boolean, default: false },
+    currentlyDueRequirements: { type: Boolean, default: false },
+    payoutsBlocked: { type: Boolean, default: false },
+    lastWebhookSync: Date,
+  },
 
-  // Stripe onboarding status
-  stripeOnboardingStatus: {
+  stripeAccount: {
+    accountId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+
+    accountType: {
+      type: String,
+      enum: ["express"],
+      default: "express",
+    },
+
+    country: {
+      type: String,
+      default: "CH",
+    },
+
+    currency: {
+      type: String,
+      default: "chf",
+    },
+
+    chargesEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    payoutsEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    accountCreatedAt: Date, // when stripe account was created
+    accountUpdatedAt: Date, // last time stripe account changed
+
+    // defaultCurrency: {
+    //   type: String,
+    //   default: "chf",
+    // },
+
+    isRestricted: {
+      type: Boolean,
+      default: false,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    detailsSubmitted: {
+      type: Boolean,
+      default: false,
+    },
+
+    onboardingCompletedAt: Date,
+
+    requirements: {
+      currentlyDue: [String],
+      eventuallyDue: [String],
+      pastDue: [String],
+      disabledReason: String,
+    },
+
+    capabilities: {
+      cardPayments: String,
+      transfers: String,
+    },
+
+    lastSyncedAt: Date,
+  },
+
+  onboardingStatus: {
     type: String,
-    enum: ["not_started", "in_progress", "completed"],
+    enum: [
+      "not_started",
+      "account_created",
+      "link_generated",
+      "submitted",
+      "verified",
+      "restricted",
+      "disabled",
+      "rejected",
+    ],
     default: "not_started",
   },
-
-  // Bank account verification status
-  bankAccountVerified: { type: Boolean, default: false },
-
-  // Payout settings
-  payoutSettings: {
-    schedule: {
-      type: String,
-      enum: ["manual", "automatic"],
-      default: "manual",
+  commission: {
+    rate: {
+      type: Number,
+      default: 20, // percent
     },
-    delayDays: { type: Number, default: 3 },
+
+    type: {
+      type: String,
+      enum: ["percentage", "fixed"],
+      default: "percentage",
+    },
+
+    fixedAmount: {
+      type: Number,
+      default: 0, // only used if type = fixed
+    },
+
+    lastModifiedAt: Date,
   },
-
-  // Earnings tracking
-  earnings: {
-    totalEarned: { type: Number, default: 0 },
-    pendingPayout: { type: Number, default: 0 },
-    totalPaidOut: { type: Number, default: 0 },
-    lastPayoutDate: { type: Date },
-  },
-
-  // Commission rate (DSP takes this %, instructor gets rest)
-  commissionRate: { type: Number, default: 20 },
-
-  // Refund statistics
-  refundStats: {
-    totalRefundsReceived: { type: Number, default: 0 },
-    totalRefundAmount: { type: Number, default: 0 },
-  },
-
   dateOfBirth: { type: String, required: false },
   languagePreference: { type: [String], required: false },
   coordinates: {
