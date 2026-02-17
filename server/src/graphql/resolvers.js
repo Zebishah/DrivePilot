@@ -1311,8 +1311,7 @@ instead.`);
       } catch (err) {
         console.error("createStripeAccount error:", err);
         const isConnectNotEnabled =
-          err.message &&
-          err.message.includes("signed up for Connect");
+          err.message && err.message.includes("signed up for Connect");
         throw new UserInputError(
           isConnectNotEnabled
             ? "Payment setup is still being configured. Please try again in a few minutes or contact support."

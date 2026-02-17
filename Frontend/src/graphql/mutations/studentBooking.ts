@@ -3,22 +3,61 @@ import { gql } from "@apollo/client";
 export const CREATE_BOOKING = gql`
   mutation CreateBooking($input: StudentBookingInput!) {
     createBooking(input: $input) {
+      booking {
+        _id
+        slots {
+          id
+          _id
+          date
+          startTime
+          endTime
+          booked
+          status
+          paymentStatus
+          chargeAmount
+          payoutStatus
+          refundAmount
+          refundedAt
+        }
+        totalAmount
+        finalAmount
+        paymentMethod {
+          type
+          cardNumber
+          paymentMethodId
+          cardLast4
+          cardBrand
+        }
+        stripePaymentIntentId
+        status
+        createdAt
+        updatedAt
+      }
+      requiresAction
+      clientSecret
+      paymentIntentId
+    }
+  }
+`;
+
+export const COMPLETE_BOOKING_AFTER_PAYMENT = gql`
+  mutation CompleteBookingAfterPayment(
+    $paymentIntentId: ID!
+    $input: StudentBookingInput!
+  ) {
+    completeBookingAfterPayment(paymentIntentId: $paymentIntentId, input: $input) {
       _id
+      status
       slots {
-        id
+        _id
         date
         startTime
         endTime
-        booked
         status
+        paymentStatus
       }
       totalAmount
       finalAmount
-      paymentMethod {
-        type
-        cardNumber
-      }
-      status
       createdAt
       updatedAt
     }
@@ -78,16 +117,26 @@ export const GET_STUDENT_BOOKINGS = gql`
       }
       slots {
         id
+        _id
         date
         startTime
         endTime
         booked
         status
+        paymentStatus
+        chargeAmount
+        payoutStatus
+        refundAmount
+        refundedAt
       }
       paymentMethod {
         type
         cardNumber
+        paymentMethodId
+        cardLast4
+        cardBrand
       }
+      stripePaymentIntentId
       teacherTariff {
         lessonFee
         finalPricePerLesson
@@ -178,6 +227,36 @@ export const CANCEL_BOOKING = gql`
     cancelBookingSlot(bookingId: $bookingId, slotId: $slotId) {
       _id
       status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        paymentStatus
+        refundAmount
+        refundedAt
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const REQUEST_REFUND = gql`
+  mutation RequestRefund($bookingId: ID!, $slotId: ID!) {
+    requestRefund(bookingId: $bookingId, slotId: $slotId) {
+      _id
+      status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        paymentStatus
+        refundAmount
+        refundedAt
+      }
       updatedAt
     }
   }

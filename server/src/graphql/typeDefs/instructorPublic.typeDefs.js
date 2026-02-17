@@ -69,6 +69,7 @@ const instructorTypeDefs = gql`
     transmissionType: String
     gender: String
     availability: [InstructorAvailability!]
+    isPaymentReady: Boolean!
   }
 
   type InstructorPaginationResult {

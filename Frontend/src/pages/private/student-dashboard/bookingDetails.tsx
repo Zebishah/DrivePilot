@@ -19,10 +19,14 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 import { useMutation } from "@apollo/client";
 import {
   CANCEL_BOOKING,
   CREATE_BOOKING,
+  COMPLETE_BOOKING_AFTER_PAYMENT,
+  REQUEST_REFUND,
 } from "../../../graphql/mutations/studentBooking";
 import toast from "react-hot-toast";
 import advancedFormat from "dayjs/plugin/advancedFormat";
@@ -33,6 +37,12 @@ import {
   getSlotDurationInHours,
   getSlotDurations,
 } from "../../../components/StudentComponents/GetSlotDurationInHours";
+import { StripeCardForm } from "../../../components/StudentComponents/StripeCardForm";
+
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
+const stripePromise = stripePublishableKey
+  ? loadStripe(stripePublishableKey)
+  : null;
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -66,19 +76,23 @@ const BookingDetails: React.FC = () => {
   const isCancelled = status === "cancelled";
 
   const [createBooking] = useMutation(CREATE_BOOKING, {
-    onCompleted: () => {
-      handleCloseDialog();
-      navigate("/student-dashboard/book");
-      toast.success("Booking created successfully!");
-    },
-    onError: (error) => {
-      console.error("Booking creation failed:", error);
-      toast.error(
-        error.message || "Failed to create booking. Please try again."
-      );
-      setError(error.message || "Failed to create booking. Please try again.");
+    onError: (err) => {
+      console.error("Booking creation failed:", err);
+      toast.error(err.message || "Failed to create booking. Please try again.");
+      setError(err.message || "Failed to create booking. Please try again.");
     },
   });
+  const [completeBookingAfterPayment] = useMutation(
+    COMPLETE_BOOKING_AFTER_PAYMENT,
+    {
+      onError: (err) => {
+        toast.error(
+          err.message || "Failed to complete booking after payment."
+        );
+        setError(err.message || "");
+      },
+    }
+  );
   // Calculate total amount based on number of lessons and lesson fee
   const lessonFee = bookedLessonFee;
   const lessonDiscount = bookedLessonDiscount;
@@ -111,48 +125,95 @@ const BookingDetails: React.FC = () => {
   };
   const [confirmLoading, setConfirmLoading] = useState(false);
 
-  const handleConfirmBooking = async () => {
+  const resolveInstructorId = (): string => {
+    if (typeof instructorId === "string" && instructorId) return instructorId;
+    if (instructorData && typeof instructorData === "object") {
+      const id = (instructorData as { id?: string; _id?: string }).id ?? (instructorData as { _id?: string })._id;
+      if (id) return String(id);
+    }
+    if (typeof instructorData === "string") return instructorData;
+    return "";
+  };
+
+  const handleConfirmBookingWithPaymentMethod = async (
+    paymentMethodId: string,
+    cardLast4?: string,
+    cardBrand?: string
+  ) => {
     try {
       setConfirmLoading(true);
+      setError(null);
       if (!selectedAvailability || selectedAvailability.length === 0) {
         throw new Error("No availability slots selected");
       }
-
-      if (!instructorData) {
+      const resolvedInstructorId = resolveInstructorId();
+      if (!resolvedInstructorId) {
         throw new Error("Invalid instructor information");
       }
 
-      if (!paymentMethod?.type) {
-        throw new Error("Payment method is required");
-      }
-
       const mutationInput = {
-        instructorId: instructorData,
-        slots: selectedAvailability.map((slot: any) => ({
+        instructorId: resolvedInstructorId,
+        slots: selectedAvailability.map((slot: { date: string; startTime: string; endTime: string }) => ({
           date: slot.date,
           startTime: slot.startTime,
           endTime: slot.endTime,
-          status: "booked", // Assuming booked status for all selected slots
+          status: "booked",
         })),
-
         totalAmount: parseFloat(totalAmount.toFixed(2)),
         finalAmount: parseFloat(finalAmount),
         paymentMethod: {
-          type: paymentMethod.type.toLowerCase(),
-          cardNumber: paymentMethod.cardNumber || "",
+          type: "card",
+          cardNumber: cardLast4 ? `**** **** **** ${cardLast4}` : "",
+          paymentMethodId,
+          cardLast4: cardLast4 || undefined,
+          cardBrand: cardBrand || undefined,
         },
       };
 
-      await createBooking({
-        variables: {
-          input: mutationInput,
-        },
+      const result = await createBooking({
+        variables: { input: mutationInput },
       });
-      navigate("/student-dashboard/search");
-    } catch (error: any) {
-      console.error("Error creating booking:", error);
-      setError(error.message || "Failed to create booking. Please try again.");
-      toast.error("Failed to create booking. Please try again.");
+
+      const payload = result.data?.createBooking;
+      if (!payload) return;
+
+      if (payload.booking) {
+        handleCloseDialog();
+        navigate("/student-dashboard/book");
+        toast.success("Booking created successfully!");
+        return;
+      }
+
+      if (payload.requiresAction && payload.clientSecret && payload.paymentIntentId && stripePromise) {
+        const stripe = await stripePromise;
+        if (!stripe) {
+          setError("Payment security check could not be loaded.");
+          return;
+        }
+        const { error: actionError } = await stripe.handleCardAction(
+          payload.clientSecret
+        );
+        if (actionError) {
+          setError(actionError.message || "Authentication failed.");
+          toast.error(actionError.message || "Authentication failed.");
+          return;
+        }
+        await completeBookingAfterPayment({
+          variables: {
+            paymentIntentId: payload.paymentIntentId,
+            input: mutationInput,
+          },
+        });
+        handleCloseDialog();
+        navigate("/student-dashboard/book");
+        toast.success("Booking created successfully!");
+      } else {
+        setError("Unexpected payment response. Please try again.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create booking. Please try again.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setConfirmLoading(false);
     }
@@ -197,6 +258,27 @@ const BookingDetails: React.FC = () => {
   const [cancelError, setCancelError] = useState("");
   const [isTooLate, setIsTooLate] = useState(false);
   const [cancelBooking] = useMutation(CANCEL_BOOKING);
+  const [requestRefund, { loading: refundLoading }] = useMutation(
+    REQUEST_REFUND,
+    {
+      onCompleted: () => {
+        setRefundDialogOpen(false);
+        toast.success("Refund requested. It will be credited to your original payment method.");
+        navigate("/student-dashboard/book");
+      },
+      onError: (err) => {
+        toast.error(err.message || "Failed to request refund");
+      },
+    }
+  );
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const handleOpenRefund = () => setRefundDialogOpen(true);
+  const handleCloseRefund = () => setRefundDialogOpen(false);
+  const handleConfirmRefund = () => {
+    if (bookingId && slotId) {
+      requestRefund({ variables: { bookingId, slotId } });
+    }
+  };
   const handleOpenCancel = () => {
     if (isCurrentBooking) {
       navigate(`/student-dashboard/search/instructors/${instructorId}`);
@@ -222,16 +304,17 @@ const BookingDetails: React.FC = () => {
   const handleCancelBooking = async () => {
     try {
       setCancelLoading(true);
+      setCancelError("");
       await cancelBooking({
         variables: { bookingId: bookingId, slotId: slotId },
       });
-      toast.success("Booking cancelled successfully");
+      toast.success("Booking cancelled successfully. You can request a refund for this lesson if you had paid.");
       navigate(`/student-dashboard/book`);
-
       handleCloseCancel();
-      // optionally refetch queries or update cache here
-    } catch (err) {
-      toast.error(err.message || "Failed to cancel booking");
+    } catch (err: any) {
+      const msg = err?.message || err?.graphQLErrors?.[0]?.message || "Failed to cancel booking";
+      setCancelError(msg);
+      toast.error(msg);
     } finally {
       setCancelLoading(false);
     }
@@ -307,7 +390,7 @@ const BookingDetails: React.FC = () => {
           )} */}
           <Box>
             <Tooltip
-              title={isLessonPast ? "You can’t reschedule past bookings." : ""}
+              title={isLessonPast ? "You can't reschedule past bookings." : ""}
               arrow
             >
               <span>
@@ -334,7 +417,7 @@ const BookingDetails: React.FC = () => {
 
             {!isCancelled && (
               <Tooltip
-                title={isLessonPast ? "You can’t cancel past bookings." : ""}
+                title={isLessonPast ? "You can't cancel past bookings." : ""}
                 arrow
               >
                 <span>
@@ -546,7 +629,7 @@ const BookingDetails: React.FC = () => {
           </Typography>
           <Typography variant="body2" color="error" sx={{ mt: 2 }}>
             <strong>Attention:</strong>
-            {""} This doesn’t apply to your current case, but just so you know —
+            {""} This doesn't apply to your current case, but just so you know —
             cancellations made less than 48 hours before a lesson are
             non-refundable, except in exceptional circumstances (e.g. medical
             emergencies).
@@ -554,34 +637,55 @@ const BookingDetails: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end", mt: 3, gap: 1 }}>
         {isCurrentBooking ? (
-          <Button
-            variant="contained"
-            onClick={handleConfirmBooking}
-            disabled={confirmLoading || !initialPriceShown}
-            sx={{
-              width: "200px",
-              bgcolor: "#5ec2d2",
-              "&:hover": {
-                bgcolor: "rgba(65, 135, 147);",
-              },
-            }}
-          >
-            {confirmLoading ? (
-              <CircularProgress size={20} />
-            ) : (
-              "Confirm Booking"
-            )}
-          </Button>
+          <>
+            <Typography variant="body2" color="text.secondary">
+              Next: enter card details to pay CHF {finalAmount.toFixed(2)} securely.
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleConfirm}
+              disabled={confirmLoading || !initialPriceShown}
+              sx={{
+                width: "200px",
+                bgcolor: "#5ec2d2",
+                "&:hover": {
+                  bgcolor: "rgba(65, 135, 147);",
+                },
+              }}
+            >
+              {confirmLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                "Confirm Booking"
+              )}
+            </Button>
+          </>
         ) : (
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={() => navigate("/student-dashboard/book")}
-          >
-            Back to Bookings
-          </Button>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            {status === "cancelled" && bookingId && slotId && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleOpenRefund}
+                disabled={refundLoading}
+              >
+                {refundLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  "Request refund"
+                )}
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => navigate("/student-dashboard/book")}
+            >
+              Back to Bookings
+            </Button>
+          </Box>
         )}
       </Box>
 
@@ -615,86 +719,23 @@ const BookingDetails: React.FC = () => {
               Confirm Lesson Booking
             </Typography>
 
-            <Typography variant="h5" align="center" gutterBottom>
-              Congratulations!
-            </Typography>
-
             <Typography align="center" gutterBottom>
-              You have Booked {selectedAvailability?.length || 0} lesson
-              {selectedAvailability?.length > 1 ? "s" : ""}
+              {selectedAvailability?.length || 0} lesson
+              {selectedAvailability?.length > 1 ? "s" : ""} — CHF{" "}
+              {finalAmount.toFixed(2)} (after discount)
             </Typography>
 
-            <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Details
-              </Typography>
-
-              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
-                <Box>
-                  <Typography variant="body1">
-                    {paymentMethod?.type || "Credit card"}
-                    <Typography variant="caption" color="textSecondary">
-                      (Debug - type: {JSON.stringify(paymentMethod?.type)})
-                    </Typography>
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {paymentMethod?.cardNumber || "5105 **** **** 0505"}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Typography variant="body1" gutterBottom>
-                <strong>Lesson Number:</strong>{" "}
-                {selectedAvailability?.length || 0}
-              </Typography>
-              {/* <Typography variant="body1" gutterBottom>
-                <strong>Duration:</strong>{" "}
-                {getSlotDurations(selectedAvailability)?.totalDuration} Hours
-              </Typography> */}
-              <Typography variant="body1" gutterBottom>
-                <strong>Total Amount:</strong> CHF {totalAmount}
-              </Typography>
-              <p className="flex items-center gap-2">
-                <Typography variant="body1" gutterBottom>
-                  <strong>After Discount:</strong>
-                </Typography>
-                {totalAmount
-                  ? (() => {
-                      return (
-                        <>
-                          <span
-                            className={`${lessonDiscount > 0 ? "line-through" : ""} -mt-1.5 text-gray-800`}
-                          >
-                            CHF {totalAmount}
-                          </span>
-
-                          <span className=" -mt-1.5 text-green-600 font-semibold">
-                            CHF {finalAmount}
-                          </span>
-                        </>
-                      );
-                    })()
-                  : "N/A"}
-              </p>
-
-              <Typography variant="body1" gutterBottom>
-                {lessonDiscount > 0 && (
-                  <>
-                    <strong>Discount:</strong> {lessonDiscount}%
-                  </>
-                )}
-              </Typography>
-              <Typography variant="body1" gutterBottom>
+            <Box sx={{ bgcolor: "#f5f5f5", p: 2, borderRadius: 1, mt: 2, mb: 2 }}>
+              <Typography variant="body2" gutterBottom>
                 <strong>Start:</strong>{" "}
                 {selectedAvailability?.[0]
                   ? formatLessonDateTime(
                       selectedAvailability[0].date,
                       selectedAvailability[0].startTime
                     )
-                  : "Not selected"}
+                  : "—"}
               </Typography>
-              <Typography variant="body1" gutterBottom>
+              <Typography variant="body2">
                 <strong>End:</strong>{" "}
                 {selectedAvailability?.length
                   ? formatLessonDateTime(
@@ -703,33 +744,41 @@ const BookingDetails: React.FC = () => {
                       selectedAvailability[selectedAvailability.length - 1]
                         .endTime
                     )
-                  : "Not selected"}
-              </Typography>
-
-              <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                <strong>Attention:</strong>
-                {""}This doesn’t apply to your current case, but just so you
-                know — cancellations made less than 48 hours before a lesson are
-                non-refundable, except in exceptional circumstances (e.g.
-                medical emergencies).
+                  : "—"}
               </Typography>
             </Box>
+
+            {stripePromise ? (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Enter your card below. You will be charged CHF {finalAmount.toFixed(2)} when you click Pay.
+                </Typography>
+                <Elements stripe={stripePromise}>
+                  <StripeCardForm
+                    amount={finalAmount}
+                    onSuccess={handleConfirmBookingWithPaymentMethod}
+                    onError={(msg) => setError(msg)}
+                    disabled={confirmLoading}
+                  />
+                </Elements>
+              </>
+            ) : (
+              <Alert severity="warning">
+                Payment is not configured (missing VITE_STRIPE_PUBLISHABLE_KEY).
+                Add it in Frontend .env to accept card payments, then restart the dev server.
+              </Alert>
+            )}
           </DialogContent>
           <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
-            <Button
-              variant="contained"
-              onClick={handleConfirmBooking}
-              disabled={!!error || confirmLoading}
-              sx={{
-                width: "200px",
-                bgcolor: "#5ec2d2",
-                "&:hover": {
-                  bgcolor: "rgba(65, 135, 147);",
-                },
-              }}
-            >
-              {confirmLoading ? <CircularProgress size={20} /> : "Confirm"}
-            </Button>
+            {!stripePromise && (
+              <Button
+                variant="contained"
+                disabled
+                sx={{ width: "200px", bgcolor: "#ccc" }}
+              >
+                Configure Stripe to pay
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
       )}
@@ -896,6 +945,50 @@ const BookingDetails: React.FC = () => {
               <Button onClick={handleCloseCancel}>Close</Button>
             </>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Refund request dialog */}
+      <Dialog
+        open={refundDialogOpen}
+        onClose={handleCloseRefund}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Request refund
+          <IconButton
+            onClick={handleCloseRefund}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            You are requesting a full refund for this cancelled lesson.
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            The refund will be credited to your original payment method
+            {paymentMethod?.cardLast4
+              ? ` (card ending ****${paymentMethod.cardLast4})`
+              : ""}
+            . It may take a few business days to appear.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
+          <Button onClick={handleCloseRefund}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmRefund}
+            disabled={refundLoading}
+          >
+            {refundLoading ? (
+              <CircularProgress size={20} />
+            ) : (
+              "Confirm refund"
+            )}
+          </Button>
         </DialogActions>
       </Dialog>
 

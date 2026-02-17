@@ -13,6 +13,13 @@ const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
+const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
+const {
+  getCommissionSplit,
+  createPaymentIntentForBooking,
+  createRefund,
+  CENTIMES_PER_UNIT,
+} = require("../../services/stripeService");
 const studentBookingResolver = {
   Query: {
     // getStudentBookings: async (_, __, { user }) => {
@@ -296,18 +303,87 @@ const studentBookingResolver = {
         if (!instructor) {
           throw new UserInputError("Instructor not found");
         }
-        if (!instructor.isActive) {
+        // Ensure instructor is fully Stripe-onboarded and payment ready
+        if (!isInstructorPaymentReady(instructor)) {
           throw new UserInputError(
-            "This instructor has not completed payment setup and cannot accept bookings yet.",
+            "This instructor is not available for paid bookings yet. Please choose another instructor.",
           );
         }
 
-        const enrichedSlots = validatedInput.slots.map((slot) => ({
-          ...slot,
-          booked: true,
-          status: "booked",
-          review: false,
-        }));
+        const isCardPayment =
+          validatedInput.paymentMethod?.type === "card" &&
+          validatedInput.paymentMethod?.paymentMethodId;
+
+        let stripePaymentIntentId = null;
+        const numSlots = validatedInput.slots.length;
+        const finalAmount = Number(validatedInput.finalAmount);
+        const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
+
+        if (isCardPayment) {
+          const instructorAccountId = instructor.stripeAccount?.accountId;
+          if (!instructorAccountId) {
+            throw new UserInputError(
+              "Instructor payment account is not set up. Please try another instructor.",
+            );
+          }
+          const { dspCommission, instructorAmount } = getCommissionSplit(
+            finalAmount,
+            instructor,
+          );
+          const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
+          const instructorShareCentimes = Math.round(
+            Number(instructorAmount) * CENTIMES_PER_UNIT,
+          );
+          const paymentResult = await createPaymentIntentForBooking({
+            amountCentimes,
+            paymentMethodId: validatedInput.paymentMethod.paymentMethodId,
+            metadata: {
+              studentId: String(user.id),
+              instructorId: String(instructorId),
+            },
+            confirm: true,
+            transferData: {
+              destinationAccountId: instructorAccountId,
+              amountCentimes: instructorShareCentimes,
+            },
+          });
+          if (paymentResult.requiresAction) {
+            return {
+              booking: null,
+              requiresAction: true,
+              clientSecret: paymentResult.clientSecret,
+              paymentIntentId: paymentResult.paymentIntentId,
+            };
+          }
+          if (paymentResult.status !== "succeeded") {
+            throw new UserInputError(
+              "Payment could not be completed. Please try again.",
+            );
+          }
+          stripePaymentIntentId = paymentResult.paymentIntentId;
+        }
+
+        const enrichedSlots = validatedInput.slots.map((slot) => {
+          const base = {
+            ...slot,
+            booked: true,
+            status: "booked",
+            review: false,
+          };
+          if (isCardPayment && stripePaymentIntentId) {
+            const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
+              getCommissionSplit(perSlotAmount, instructor);
+            base.paymentStatus = "paid";
+            base.chargeAmount = perSlotAmount;
+            base.dspCommission = slotDsp;
+            base.instructorAmount = slotInstructor;
+            base.payoutStatus = "completed";
+          } else {
+            base.paymentStatus = "pending_payment";
+            base.payoutStatus = "not_applicable";
+          }
+          return base;
+        });
 
         // 1. Check for overlapping bookings WITH THE SAME INSTRUCTOR
         const existingBookings = await StudentBooking.find({
@@ -338,12 +414,22 @@ const studentBookingResolver = {
           }
         }
 
-        const booking = new StudentBooking({
+        const bookingPayload = {
           ...validatedInput,
           slots: enrichedSlots,
           status: "confirmed",
-        });
-
+        };
+        if (stripePaymentIntentId) {
+          bookingPayload.stripePaymentIntentId = stripePaymentIntentId;
+          if (validatedInput.paymentMethod?.paymentMethodId)
+            bookingPayload.paymentMethod = {
+              ...validatedInput.paymentMethod,
+              paymentMethodId: validatedInput.paymentMethod.paymentMethodId,
+              cardLast4: validatedInput.paymentMethod.cardLast4 || undefined,
+              cardBrand: validatedInput.paymentMethod.cardBrand || undefined,
+            };
+        }
+        const booking = new StudentBooking(bookingPayload);
         await booking.save();
 
         // 3. Update availability and push booked sub-slots
@@ -457,7 +543,7 @@ const studentBookingResolver = {
         } else {
           console.warn("⚠️ Socket.IO instance not available for notifications");
         }
-        return savedBooking;
+        return { booking: savedBooking };
       } catch (error) {
         console.error("Booking creation error:", error);
         if (error.errors) {
@@ -466,6 +552,166 @@ const studentBookingResolver = {
         throw error;
       }
     },
+
+    completeBookingAfterPayment: async (
+      _,
+      { paymentIntentId, input },
+      { user },
+    ) => {
+      validateUser(user);
+      const { retrievePaymentIntent } = require("../../services/stripeService");
+      const pi = await retrievePaymentIntent(paymentIntentId);
+      if (!pi || pi.status !== "succeeded") {
+        throw new UserInputError(
+          "Payment was not completed. Please try again.",
+        );
+      }
+      if (String(pi.metadata?.studentId) !== String(user.id)) {
+        throw new UserInputError("Payment does not match this user.");
+      }
+      const validatedInput = studentBookingSchema.parse({
+        ...input,
+        studentId: user.id,
+      });
+      const { instructorId } = validatedInput;
+      const instructor = await Instructor.findById(instructorId).lean();
+      if (!instructor) throw new UserInputError("Instructor not found");
+      if (!isInstructorPaymentReady(instructor)) {
+        throw new UserInputError(
+          "This instructor is not available for paid bookings yet.",
+        );
+      }
+      const numSlots = validatedInput.slots.length;
+      const finalAmount = Number(validatedInput.finalAmount);
+      const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
+      const enrichedSlots = validatedInput.slots.map((slot) => {
+        const { dspCommission, instructorAmount } = getCommissionSplit(
+          perSlotAmount,
+          instructor,
+        );
+        return {
+          ...slot,
+          booked: true,
+          status: "booked",
+          review: false,
+          paymentStatus: "paid",
+          chargeAmount: perSlotAmount,
+          dspCommission,
+          instructorAmount,
+          payoutStatus: "not_applicable",
+        };
+      });
+      const existingBookings = await StudentBooking.find({
+        studentId: user.id,
+        instructorId,
+        status: { $ne: "cancelled" },
+      });
+      for (const newSlot of enrichedSlots) {
+        const conflictingBooking = existingBookings.find((booking) =>
+          booking.slots.some(
+            (existingSlot) =>
+              existingSlot.date === newSlot.date &&
+              existingSlot.booked &&
+              ((newSlot.startTime >= existingSlot.startTime &&
+                newSlot.startTime < existingSlot.endTime) ||
+                (newSlot.endTime > existingSlot.startTime &&
+                  newSlot.endTime <= existingSlot.endTime) ||
+                (newSlot.startTime <= existingSlot.startTime &&
+                  newSlot.endTime >= existingSlot.endTime)),
+          ),
+        );
+        if (conflictingBooking) {
+          throw new UserInputError(
+            `You already have a booking with this instructor on ${newSlot.date}.`,
+          );
+        }
+      }
+      const bookingPayload = {
+        ...validatedInput,
+        slots: enrichedSlots,
+        status: "confirmed",
+        stripePaymentIntentId: paymentIntentId,
+        paymentMethod: validatedInput.paymentMethod
+          ? {
+              ...validatedInput.paymentMethod,
+              paymentMethodId: validatedInput.paymentMethod.paymentMethodId,
+              cardLast4: validatedInput.paymentMethod.cardLast4,
+              cardBrand: validatedInput.paymentMethod.cardBrand,
+            }
+          : validatedInput.paymentMethod,
+      };
+      const booking = new StudentBooking(bookingPayload);
+      await booking.save();
+      const slotsByAvailability = {};
+      for (const slot of booking.slots) {
+        const availability = await teacherAvailabilityModel.findOne({
+          teacherId: instructorId,
+          date: new Date(slot.date),
+        });
+        if (!availability) continue;
+        const key = availability._id.toString();
+        if (!slotsByAvailability[key])
+          slotsByAvailability[key] = { availability, slotsToAdd: [] };
+        slotsByAvailability[key].slotsToAdd.push(slot);
+      }
+      await Promise.all(
+        Object.values(slotsByAvailability).map(
+          async ({ availability, slotsToAdd }) => {
+            let hasChanges = false;
+            for (const slot of slotsToAdd) {
+              availability.slots = availability.slots || [];
+              availability.slots.push({
+                id: slot._id.toString(),
+                bookingId: booking._id.toString(),
+                date: slot.date,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                booked: true,
+                status: "booked",
+              });
+              const availableSlot = (availability.availableSlots || []).find(
+                (s) =>
+                  s.date === slot.date &&
+                  s.startTime === slot.startTime &&
+                  s.endTime === slot.endTime,
+              );
+              if (availableSlot) {
+                availableSlot.booked = true;
+                availableSlot.status = "booked";
+              }
+              hasChanges = true;
+            }
+            if (hasChanges) {
+              availability.status = (availability.availableSlots || []).every(
+                (s) => s.booked,
+              )
+                ? "booked"
+                : "available";
+              await availability.save();
+            }
+          },
+        ),
+      );
+      const savedBooking = await StudentBooking.findById(booking._id)
+        .populate(
+          "instructorId",
+          "_id firstName lastName email phone description profileImage address",
+        )
+        .populate(
+          "studentId",
+          "_id firstName lastName email phone profileImage homeAddress",
+        );
+      const bookingData = JSON.parse(JSON.stringify(savedBooking));
+      try {
+        await notifyBookingParties(bookingData, "booking_created");
+      } catch (emailError) {
+        console.error("Failed to send booking creation emails:", emailError);
+      }
+      const io = getIOInstance();
+      if (io && io.notifyNewBooking) io.notifyNewBooking(bookingData);
+      return savedBooking;
+    },
+
     updateSlotStatus: async (_, { input }) => {
       try {
         const { bookingId, slotId, status } = input;
@@ -539,6 +785,21 @@ const studentBookingResolver = {
         // Set cancellation date if cancelling
         if (status === "cancelled" && oldStatus !== "cancelled") {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
+        }
+
+        // When marking completed: set completion and payout-eligible (3 days) for paid slots
+        if (status === "completed") {
+          const now = new Date();
+          booking.slots[slotIndex].completionMarkedAt = now;
+          const payoutEligibleAt = new Date(now);
+          payoutEligibleAt.setDate(payoutEligibleAt.getDate() + 3);
+          booking.slots[slotIndex].payoutEligibleAt = payoutEligibleAt;
+          if (
+            booking.slots[slotIndex].paymentStatus === "paid" &&
+            booking.slots[slotIndex].instructorAmount != null
+          ) {
+            booking.slots[slotIndex].payoutStatus = "pending";
+          }
         }
 
         // Update booking-level status based on all slots
@@ -745,6 +1006,17 @@ const studentBookingResolver = {
           throw new UserInputError("Slot is already cancelled");
         }
 
+        // Cancel only before the booking date (slot date)
+        const slotDate = new Date(slot.date);
+        slotDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (slotDate < today) {
+          throw new UserInputError(
+            "Cancellation is only allowed before the booking date.",
+          );
+        }
+
         // 3. Mark the slot as cancelled in the booking
         slot.status = "cancelled";
         slot.booked = false;
@@ -829,6 +1101,84 @@ const studentBookingResolver = {
       } finally {
         session.endSession();
       }
+    },
+
+    requestRefund: async (_, { bookingId, slotId }, { user }) => {
+      validateUser(user);
+
+      const booking = await StudentBooking.findById(bookingId)
+        .populate("instructorId", "_id firstName lastName email phone")
+        .populate("studentId", "_id firstName lastName email phone");
+
+      if (!booking) throw new UserInputError("Booking not found");
+      if (booking.studentId._id.toString() !== user.id.toString()) {
+        throw new AuthenticationError(
+          "Only the student of this booking can request a refund.",
+        );
+      }
+
+      const slot = booking.slots.id(slotId);
+      if (!slot) throw new UserInputError("Slot not found");
+
+      if (slot.status !== "cancelled") {
+        throw new UserInputError(
+          "Refund can only be requested for a cancelled slot.",
+        );
+      }
+      if (slot.paymentStatus !== "paid") {
+        throw new UserInputError(
+          "This slot was not paid via card; no refund applies.",
+        );
+      }
+      if (slot.payoutStatus === "completed") {
+        throw new UserInputError(
+          "Refund is not available because the instructor has already been paid for this lesson.",
+        );
+      }
+      if (slot.refundedAt) {
+        throw new UserInputError("This slot has already been refunded.");
+      }
+
+      if (!booking.stripePaymentIntentId || slot.chargeAmount == null) {
+        throw new UserInputError("Payment information missing for refund.");
+      }
+
+      const amountCentimes = Math.round(
+        Number(slot.chargeAmount) * CENTIMES_PER_UNIT,
+      );
+      await createRefund({
+        paymentIntentId: booking.stripePaymentIntentId,
+        amountCentimes,
+        reason: "requested_by_customer",
+      });
+
+      slot.status = "refund";
+      slot.paymentStatus = "refunded";
+      slot.refundAmount = slot.chargeAmount;
+      slot.refundedAt = new Date();
+      booking.updatedAt = new Date();
+      await booking.save();
+
+      // Sync refund status to instructor availability
+      const availability = await teacherAvailabilityModel.findOne({
+        teacherId: booking.instructorId._id,
+        date: new Date(slot.date),
+      });
+      if (availability) {
+        const matchSlot = (s) =>
+          s.date === slot.date &&
+          s.startTime === slot.startTime &&
+          s.endTime === slot.endTime;
+        const bookedEntry = availability.slots.find(
+          (s) => s.id === slotId || matchSlot(s),
+        );
+        if (bookedEntry) bookedEntry.status = "refund";
+        const availableSlot = availability.availableSlots.find(matchSlot);
+        if (availableSlot) availableSlot.status = "refund";
+        await availability.save();
+      }
+
+      return booking;
     },
   },
 };

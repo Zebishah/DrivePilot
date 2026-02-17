@@ -1,6 +1,7 @@
 const { default: mongoose } = require("mongoose");
 const TeacherAvailability = require("../../models/teacherAvailability.model");
 const { startOfMonth, endOfMonth } = require("date-fns");
+const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 
 const resolvers = {
   Query: {
@@ -26,7 +27,7 @@ const resolvers = {
           availableSlots: availability.availableSlots
             .filter(
               (slot) =>
-                slot.status === "available" || slot.status === "cancelled"
+                slot.status === "available" || slot.status === "cancelled",
             )
             .map((slot) => ({
               id: slot.id,
@@ -48,6 +49,19 @@ const resolvers = {
     addAvailabilitySlot: async (_, { input }, { user }) => {
       if (!user) throw new Error("Not authenticated");
 
+      // Do not allow instructors to add availability until payments are fully ready
+      if (user.role !== "Instructor") {
+        throw new Error("Only instructors can manage availability");
+      }
+
+      const InstructorModel = require("../../models/User").Instructor;
+      const instructor = await InstructorModel.findById(user.id).lean();
+      if (!instructor || !isInstructorPaymentReady(instructor)) {
+        throw new Error(
+          "You need to complete Stripe onboarding before you can publish availability slots.",
+        );
+      }
+
       const newDate = new Date(input.date);
       const newStart = input.startTime;
       const newEnd = input.endTime;
@@ -63,11 +77,11 @@ const resolvers = {
         // 2️⃣ Check for overlapping slots
         if (availability) {
           const overlap = availability.availableSlots.some(
-            (slot) => newStart < slot.endTime && newEnd > slot.startTime // overlap condition
+            (slot) => newStart < slot.endTime && newEnd > slot.startTime, // overlap condition
           );
           if (overlap) {
             throw new Error(
-              "This time slot overlaps with an existing availability for the same teacher."
+              "This time slot overlaps with an existing availability for the same teacher.",
             );
           }
         }
@@ -138,7 +152,7 @@ const resolvers = {
           },
           {
             $pull: { availableSlots: { id } }, // remove that specific slot
-          }
+          },
         );
 
         // result.modifiedCount > 0 means the slot was deleted

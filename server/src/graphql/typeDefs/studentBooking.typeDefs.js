@@ -37,17 +37,26 @@ const studentBookingTypeDefs = gql`
   }
   type Slot {
     id: ID
+    _id: ID
     date: String!
     startTime: String!
     endTime: String!
     booked: Boolean
     status: status
     review: Boolean
+    paymentStatus: String
+    chargeAmount: Float
+    payoutStatus: String
+    refundAmount: Float
+    refundedAt: String
   }
 
   type PaymentMethod {
     type: String!
     cardNumber: String
+    paymentMethodId: String
+    cardLast4: String
+    cardBrand: String
   }
 
   type UserBooking {
@@ -74,10 +83,11 @@ const studentBookingTypeDefs = gql`
     finalAmount: Float!
     paymentMethod: PaymentMethod!
     status: BookingStatus!
+    stripePaymentIntentId: String
     profileImage: String
     createdAt: String!
     updatedAt: String!
-    teacherTariff: TeacherTariffInfo # ✅ New field
+    teacherTariff: TeacherTariffInfo
   }
 
   input SlotInput {
@@ -92,6 +102,9 @@ const studentBookingTypeDefs = gql`
   input PaymentMethodInput {
     type: String!
     cardNumber: String
+    paymentMethodId: String
+    cardLast4: String
+    cardBrand: String
   }
 
   input StudentBookingInput {
@@ -152,6 +165,11 @@ const studentBookingTypeDefs = gql`
     feedBackStatus: feedBackStatusEnum
     status: status
     review: Boolean
+    paymentStatus: String
+    chargeAmount: Float
+    payoutStatus: String
+    refundAmount: Float
+    refundedAt: String
   }
 
   type PaymentInfo {
@@ -184,10 +202,22 @@ const studentBookingTypeDefs = gql`
     getUnseenBookingsCount: Int!
   }
 
+  type CreateBookingPayload {
+    booking: StudentBooking
+    requiresAction: Boolean
+    clientSecret: String
+    paymentIntentId: String
+  }
+
   type Mutation {
-    createBooking(input: StudentBookingInput!): StudentBooking!
+    createBooking(input: StudentBookingInput!): CreateBookingPayload!
+    completeBookingAfterPayment(
+      paymentIntentId: ID!
+      input: StudentBookingInput!
+    ): StudentBooking!
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
+    requestRefund(bookingId: ID!, slotId: ID!): StudentBooking!
     markBookingsAsViewed: Boolean!
     updateSlotStatus(input: UpdateSlotStatusInput!): StudentBooking!
   }

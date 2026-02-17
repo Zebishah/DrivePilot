@@ -36,7 +36,7 @@ const studentBookingSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
-        cancellationDate: { type: Date }, // 👈 slot-level cancellation
+        cancellationDate: { type: Date },
         review: {
           type: Boolean,
           default: false,
@@ -54,6 +54,28 @@ const studentBookingSchema = new mongoose.Schema(
           ],
           default: "available",
         },
+        // --- Payment (per-slot for instant pay; T-48 will use later) ---
+        paymentStatus: {
+          type: String,
+          enum: ["pending_payment", "paid", "refunded"],
+          default: "pending_payment",
+        },
+        chargeAmount: { type: Number },
+        dspCommission: { type: Number },
+        instructorAmount: { type: Number },
+        // --- Payout (3 days after completed) ---
+        payoutStatus: {
+          type: String,
+          enum: ["not_applicable", "pending", "completed"],
+          default: "not_applicable",
+        },
+        completionMarkedAt: { type: Date },
+        payoutEligibleAt: { type: Date },
+        payoutId: { type: String },
+        payoutDate: { type: Date },
+        // --- Refund ---
+        refundAmount: { type: Number },
+        refundedAt: { type: Date },
       },
     ],
     totalAmount: {
@@ -73,7 +95,11 @@ const studentBookingSchema = new mongoose.Schema(
         type: String,
         required: false,
       },
+      paymentMethodId: { type: String },
+      cardLast4: { type: String },
+      cardBrand: { type: String },
     },
+    stripePaymentIntentId: { type: String },
     cancellationDate: { type: Date },
     status: {
       type: String,
@@ -92,7 +118,7 @@ const studentBookingSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("StudentBooking", studentBookingSchema);

@@ -14,6 +14,9 @@ const slotSchema = z.object({
 const paymentMethodSchema = z.object({
   type: z.enum(["card", "cash"]),
   cardNumber: z.string().optional(),
+  paymentMethodId: z.string().optional(),
+  cardLast4: z.string().optional(),
+  cardBrand: z.string().optional(),
 });
 
 const studentBookingSchema = z.object({

@@ -1,7 +1,7 @@
 "use client";
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Box, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { Box, CssBaseline, ThemeProvider, createTheme, Alert } from "@mui/material";
 import {
   LayoutGrid,
   MessageSquare,
@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 import { FaUserGraduate } from "react-icons/fa6";
 import { useQuery } from "@apollo/client";
 import { GET_ALL_STUDENTS } from "../graphql/Queries/StudentQueries";
+import { GET_TEACHER_PROFILE } from "../graphql/mutations/profile";
 import { ConversationType, MessageType } from "../types/chatTypes";
 import { getSocket, initSocket } from "../utils/socket";
 import { useDispatch, useSelector } from "react-redux";
@@ -112,6 +113,21 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     skip: !user?.id,
     fetchPolicy: "network-only",
   });
+
+  const { data: teacherProfileData } = useQuery(GET_TEACHER_PROFILE, {
+    skip: user?.role !== "Instructor",
+    fetchPolicy: "cache-first",
+  });
+
+  const onboardingStatus =
+    teacherProfileData?.teacherProfile?.onboardingStatus ?? null;
+  const stripeIsActive = teacherProfileData?.teacherProfile?.isActive ?? false;
+
+  const isPaymentReady =
+    user?.role === "Instructor" &&
+    user?.isProfileComplete &&
+    stripeIsActive &&
+    onboardingStatus === "verified";
 
   // Create or update conversations from students
   useEffect(() => {
@@ -293,6 +309,17 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
             handleDrawerToggle={handleDrawerToggle}
             menuItems={menuItems}
           />
+          {user?.role === "Instructor" &&
+            user?.isProfileComplete &&
+            !isPaymentReady && (
+              <Box sx={{ px: 2, pt: 1 }}>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  Stripe payment setup is not fully completed yet. You won&apos;t
+                  receive student payments until onboarding is finished. Go to
+                  <strong> Settings → Payment Management</strong> to complete it.
+                </Alert>
+              </Box>
+            )}
           {children}
         </Box>
       </Box>

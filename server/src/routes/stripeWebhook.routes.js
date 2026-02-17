@@ -9,6 +9,7 @@ const {
   accountToStripeSnapshot,
 } = require("../services/stripeService");
 const { Instructor } = require("../models/User");
+const StudentBooking = require("../models/studentBooking.model");
 
 const router = express.Router();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -129,6 +130,24 @@ router.post("/", async (req, res) => {
     processedEvents.clear();
   }
   processedEvents.add(event.id);
+
+  // Platform payment events (no Connect accountId)
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data?.object;
+    if (pi?.id) {
+      try {
+        const existing = await StudentBooking.findOne({
+          stripePaymentIntentId: pi.id,
+        }).lean();
+        if (existing) {
+          // Already saved by createBooking; nothing to do
+        }
+      } catch (e) {
+        console.error("payment_intent.succeeded handler:", e.message);
+      }
+    }
+    return res.status(200).send("OK");
+  }
 
   const accountId = getAccountIdFromEvent(event);
   if (!accountId) return res.status(200).send("OK");

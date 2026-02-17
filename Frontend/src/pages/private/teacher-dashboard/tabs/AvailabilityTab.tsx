@@ -15,6 +15,7 @@ import {
   Divider,
   InputLabel,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -35,6 +36,7 @@ import {
   ADD_AVAILABILITY_SLOT,
   DELETE_AVAILABILITY_SLOT,
 } from "../../../../graphql/mutations/availability";
+import { GET_TEACHER_PROFILE } from "../../../../graphql/mutations/profile";
 import { toast } from "react-hot-toast";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -116,6 +118,16 @@ export const AvailabilityTab: React.FC = () => {
 
   const today = startOfDay(new Date());
 
+  // Fetch Stripe/payment status so we can gate availability creation
+  const { data: profileData } = useQuery(GET_TEACHER_PROFILE, {
+    fetchPolicy: "cache-first",
+  });
+  const onboardingStatus =
+    profileData?.teacherProfile?.onboardingStatus ?? null;
+  const stripeIsActive = profileData?.teacherProfile?.isActive ?? false;
+  const isPaymentReady =
+    stripeIsActive && onboardingStatus === "verified";
+
   const { data, loading, refetch } = useQuery(GET_TEACHER_AVAILABILITY, {
     variables: { month: format(selectedDate || new Date(), "yyyy-MM-dd") },
     fetchPolicy: "network-only", // Don't use cache
@@ -164,11 +176,23 @@ export const AvailabilityTab: React.FC = () => {
   };
 
   const handleCalendarDateClick = (date: Date | null) => {
+    if (!isPaymentReady) {
+      toast.error(
+        "Complete Stripe payment setup before adding availability slots."
+      );
+      return;
+    }
     handleDateChange(date);
     setIsAddSlotOpen(true);
   };
 
   const handleAddButtonClick = () => {
+    if (!isPaymentReady) {
+      toast.error(
+        "Complete Stripe payment setup before adding availability slots."
+      );
+      return;
+    }
     setSelectedDate(null);
     setStartTime(null);
     setEndTime(null);
@@ -339,6 +363,14 @@ export const AvailabilityTab: React.FC = () => {
               >
                 Calendar
               </Typography>
+              {!isPaymentReady && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  You need to complete Stripe onboarding and have payments
+                  enabled before you can publish new availability. Go to
+                  <strong> Settings → Payment Management</strong> to finish
+                  setup.
+                </Alert>
+              )}
               <Divider sx={{ mb: 2 }} />
               <Box
                 sx={{

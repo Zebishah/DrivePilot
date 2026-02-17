@@ -11,9 +11,21 @@ const authRoutes = require("./routes/auth.routes");
 const cors = require("cors");
 const http = require("http");
 const { initSocket, setIOInstance } = require("./socket");
+const { runInstructorPayoutJob } = require("./jobs/payoutJob");
 
 // ✅ Connect to MongoDB
 connectDB();
+
+// Run instructor payout job every 6 hours (for slots with payoutEligibleAt passed)
+const PAYOUT_JOB_INTERVAL_MS = 6 * 60 * 60 * 1000;
+setInterval(() => {
+  runInstructorPayoutJob().catch((err) =>
+    console.error("[PayoutJob] Error:", err),
+  );
+}, PAYOUT_JOB_INTERVAL_MS);
+runInstructorPayoutJob().catch((err) =>
+  console.error("[PayoutJob] Initial run error:", err),
+);
 
 // ✅ Initialize Express app and HTTP server
 const app = express();

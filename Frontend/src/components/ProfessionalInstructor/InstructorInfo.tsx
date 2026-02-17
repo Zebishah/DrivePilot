@@ -489,7 +489,9 @@ const InstructorsInfo: React.FC = () => {
                     instructor.verificationStatus !== "rejected" &&
                     instructor.verificationStatus !== "pending"
                 )
-                .map((instructor) => (
+                .map((instructor) => {
+                  const paymentReady = instructor.isPaymentReady;
+                  return (
                   <div
                     key={instructor._id}
                     className="pl-4 drop-shadow-md mt-4 bg-white pt-2 rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative "
@@ -628,23 +630,37 @@ const InstructorsInfo: React.FC = () => {
                           </p>
                         )}
                       </div>
-                      <Button
-                        variant="contained"
-                        className="w-full"
-                        style={{
-                          backgroundColor: "#5FC2D3",
-                          borderRadius: "10px",
-                          marginTop: "2rem",
-                          textTransform: "none",
-                          color: "black",
-                        }}
-                        onClick={() => handleViewDetails(instructor._id)}
+                      <Tooltip
+                        title={
+                          paymentReady
+                            ? ""
+                            : "This instructor is not ready for paid bookings yet."
+                        }
                       >
-                        Book Now
-                      </Button>
+                        <span>
+                          <Button
+                            variant="contained"
+                            className="w-full"
+                            style={{
+                              backgroundColor: paymentReady
+                                ? "#5FC2D3"
+                                : "#e0e0e0",
+                              borderRadius: "10px",
+                              marginTop: "2rem",
+                              textTransform: "none",
+                              color: paymentReady ? "black" : "#888",
+                            }}
+                            disabled={!paymentReady}
+                            onClick={() => handleViewDetails(instructor._id)}
+                          >
+                            {paymentReady ? "Book Now" : "Not Available Yet"}
+                          </Button>
+                        </span>
+                      </Tooltip>
                     </div>
                   </div>
-                ))}
+                );
+              })}
 
               {/* {hasMore && (
               <div className="text-center mt-4">

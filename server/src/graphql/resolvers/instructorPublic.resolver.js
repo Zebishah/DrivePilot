@@ -2,6 +2,7 @@
 const { default: mongoose } = require("mongoose");
 const teacherTariffModel = require("../../models/teacherTariff.model");
 const User = require("../../models/User");
+const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 
 const { calculateDistance } = require("../../utils/geoUtils");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
@@ -233,6 +234,8 @@ const instructorResolver = {
               averageRating: 0,
             };
 
+            const isPaymentReadyFlag = isInstructorPaymentReady(instructor);
+
             return {
               _id: instructorId,
               firstName: instructor.firstName,
@@ -252,6 +255,7 @@ const instructorResolver = {
               distance: instructor.distance,
               totalReviews: reviewData.averageRating,
               reviewsCount: reviewData.totalReviews,
+              isPaymentReady: isPaymentReadyFlag,
               details: {
                 degree: instructor.experience,
                 car: instructor.carName,
@@ -520,10 +524,13 @@ const instructorResolver = {
           averageRating: 0,
         };
 
+        const isPaymentReadyFlag = isInstructorPaymentReady(instructor);
+
         return {
           instructor: {
             ...instructor,
             id: instructor._id.toString(),
+            isPaymentReady: isPaymentReadyFlag,
             coordinates: instructor.coordinates || null,
           },
           averageRating: Math.round(averageRating * 10) / 10,
