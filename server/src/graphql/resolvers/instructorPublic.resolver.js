@@ -16,10 +16,11 @@ const instructorResolver = {
       { filter = {}, offset = 0, limit = 10 },
     ) => {
       try {
-        // Build the base query (excluding geographic filters AND availability dates)
+        // Build the base query: only instructors with complete profile and Stripe verified (active)
         let baseQuery = {
           role: "Instructor",
           isProfileComplete: true,
+          isActive: true,
           coordinates: { $exists: true },
         };
 

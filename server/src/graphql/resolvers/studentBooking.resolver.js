@@ -7,7 +7,7 @@ const {
 const { validateUser } = require("../../utils/auth");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { default: mongoose } = require("mongoose");
-const { User } = require("../../models/User");
+const { User, Instructor } = require("../../models/User");
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
@@ -291,6 +291,16 @@ const studentBookingResolver = {
         });
 
         const { instructorId } = validatedInput;
+
+        const instructor = await Instructor.findById(instructorId).lean();
+        if (!instructor) {
+          throw new UserInputError("Instructor not found");
+        }
+        if (!instructor.isActive) {
+          throw new UserInputError(
+            "This instructor has not completed payment setup and cannot accept bookings yet.",
+          );
+        }
 
         const enrichedSlots = validatedInput.slots.map((slot) => ({
           ...slot,

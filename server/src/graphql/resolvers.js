@@ -11,6 +11,7 @@ const TeacherTariff = require("../models/teacherTariff.model");
 const {
   AuthenticationError,
   UserInputError,
+  ForbiddenError,
 } = require("apollo-server-express");
 const s3 = require("../config/awsConfig");
 const { sendTemplateEmail } = require("../services/emailService");
@@ -27,6 +28,12 @@ const {
 } = require("../utils/SendOtpEmail");
 const studentBookingModel = require("../models/studentBooking.model");
 const { Review } = require("../models/Reviews");
+const {
+  createExpressAccount,
+  createAccountLink,
+  retrieveAccount,
+  accountToStripeSnapshot,
+} = require("../services/stripeService");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -37,7 +44,7 @@ const createToken = (user) => {
       role: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "1d" }
+    { expiresIn: "1d" },
   );
 };
 
@@ -84,12 +91,14 @@ const resolvers = {
         // Calculate average rating
         const totalRating = reviews.reduce(
           (sum, review) => sum + (review.reviewRating || 0),
-          0
+          0,
         );
         const reviewsCount = reviews.length;
         const averageRating =
           reviews.length > 0 ? totalRating / reviews.length : null;
 
+        const sa = instructor.stripeAccount || {};
+        const sfs = instructor.stripeFinancialStatus || {};
         return {
           id: instructor.id,
           firstName: instructor.firstName,
@@ -105,8 +114,31 @@ const resolvers = {
           documents: instructor.documents,
           dateOfBirth: instructor.dateOfBirth,
           languagePreference: instructor.languagePreference,
-          reviewRating: averageRating, // 🔥 Include average review rating
+          reviewRating: averageRating,
           reviewsCount: reviewsCount,
+          onboardingStatus: instructor.onboardingStatus ?? null,
+          isActive: instructor.isActive ?? false,
+          stripeAccount: sa.accountId
+            ? {
+                accountId: sa.accountId,
+                chargesEnabled: !!sa.chargesEnabled,
+                payoutsEnabled: !!sa.payoutsEnabled,
+                detailsSubmitted: !!sa.detailsSubmitted,
+                lastSyncedAt: sa.lastSyncedAt
+                  ? new Date(sa.lastSyncedAt).toISOString()
+                  : null,
+              }
+            : null,
+          stripeFinancialStatus: sa.accountId
+            ? {
+                hasDisputes: !!sfs.hasDisputes,
+                payoutsBlocked: !!sfs.payoutsBlocked,
+                currentlyDueRequirements: !!sfs.currentlyDueRequirements,
+                lastWebhookSync: sfs.lastWebhookSync
+                  ? new Date(sfs.lastWebhookSync).toISOString()
+                  : null,
+              }
+            : null,
         };
       } catch (error) {
         console.error("Error in teacherProfile:", error);
@@ -186,13 +218,13 @@ const resolvers = {
 
             // Calculate student count
             const studentIds = new Set(
-              bookings.map((b) => b.studentId.toString())
+              bookings.map((b) => b.studentId.toString()),
             );
 
             // Calculate average review rating
             const totalRatings = reviews.reduce(
               (sum, r) => sum + (r.reviewRating || 0),
-              0
+              0,
             );
             const reviewRating = reviews.length
               ? (totalRatings / reviews.length).toFixed(1)
@@ -230,7 +262,7 @@ const resolvers = {
               reviewRating, // ⬅️ Average rating here
               reviewsCount,
             };
-          })
+          }),
         );
 
         return enrichedInstructors;
@@ -309,7 +341,7 @@ const resolvers = {
                 status: doc.status,
               })),
             };
-          })
+          }),
         );
 
         return enrichedStudents;
@@ -394,7 +426,7 @@ instead.`);
       const updatedInstructor = await Instructor.findByIdAndUpdate(
         id,
         { verificationStatus: status },
-        { new: true }
+        { new: true },
       );
 
       if (!updatedInstructor) {
@@ -403,7 +435,7 @@ instead.`);
       await sendOtpEmail(
         updatedInstructor.email,
         status,
-        "instructor_Verification"
+        "instructor_Verification",
       );
       return updatedInstructor;
     },
@@ -442,7 +474,7 @@ instead.`);
         for (const doc of documents) {
           if (!validDocumentTypes.includes(doc.documentType)) {
             throw new UserInputError(
-              `Invalid document type: ${doc.documentType}`
+              `Invalid document type: ${doc.documentType}`,
             );
           }
         }
@@ -464,17 +496,17 @@ instead.`);
             if (multipleUploadAllowed.includes(documentType)) {
               // For multiple upload types, check if ALL documents of this type are accepted
               const documentsOfThisType = existingDocuments.filter(
-                (doc) => doc.documentType === documentType
+                (doc) => doc.documentType === documentType,
               );
 
               // If there are documents of this type and ALL of them are accepted, don't allow more uploads
               if (documentsOfThisType.length > 0) {
                 const allAccepted = documentsOfThisType.every(
-                  (doc) => doc.status === "accepted"
+                  (doc) => doc.status === "accepted",
                 );
                 if (allAccepted) {
                   throw new UserInputError(
-                    `Cannot upload more documents of type ${documentType} as all existing documents are already accepted`
+                    `Cannot upload more documents of type ${documentType} as all existing documents are already accepted`,
                   );
                 }
               }
@@ -482,12 +514,13 @@ instead.`);
               // For single upload types, check if there's already an accepted document
               const acceptedDoc = existingDocuments.find(
                 (doc) =>
-                  doc.documentType === documentType && doc.status === "accepted"
+                  doc.documentType === documentType &&
+                  doc.status === "accepted",
               );
 
               if (acceptedDoc) {
                 throw new UserInputError(
-                  `Cannot update document ${documentType} as it is already accepted`
+                  `Cannot update document ${documentType} as it is already accepted`,
                 );
               }
             }
@@ -505,12 +538,12 @@ instead.`);
             const acceptedDoc = existingDocuments.find(
               (doc) =>
                 doc.documentType === newDoc.documentType &&
-                doc.status === "accepted"
+                doc.status === "accepted",
             );
 
             if (acceptedDoc) {
               throw new UserInputError(
-                `Cannot update ${newDoc.documentType} as it is already accepted`
+                `Cannot update ${newDoc.documentType} as it is already accepted`,
               );
             }
           }
@@ -535,10 +568,10 @@ instead.`);
             // For single upload types, replace existing documents
             // Remove existing documents of the same type
             const filteredDocuments = updatedDocuments.filter(
-              (doc) => doc.documentType !== documentType
+              (doc) => doc.documentType !== documentType,
             );
             const previousDoc = updatedDocuments.find(
-              (doc) => doc.documentType === documentType
+              (doc) => doc.documentType === documentType,
             );
             // Add the new document
             filteredDocuments.push({
@@ -561,7 +594,7 @@ instead.`);
           {
             documents: updatedDocuments,
           },
-          { new: true }
+          { new: true },
         );
 
         return {
@@ -600,7 +633,7 @@ instead.`);
 
         // Find the document and update its status
         const document = instructor.documents.find(
-          (doc) => doc._id.toString() === documentId
+          (doc) => doc._id.toString() === documentId,
         );
 
         if (!document) {
@@ -654,7 +687,7 @@ instead.`);
                 lastName: instructor.lastName,
                 email: instructor.email,
               },
-              "document_status_updated"
+              "document_status_updated",
             );
             return {
               _id: document._id,
@@ -665,7 +698,7 @@ instead.`);
           } catch (emailError) {
             console.error(
               "Failed to send document status update email:",
-              emailError
+              emailError,
             );
             // Don't throw the error - we still want to return the updated document
             // even if email sending fails
@@ -685,7 +718,7 @@ instead.`);
     updateDocumentStatusStudent: async (
       parent,
       { studentId, documentType, status },
-      context
+      context,
     ) => {
       try {
         // Find the student and update the specific document status
@@ -699,7 +732,7 @@ instead.`);
               "documents.$.status": status,
             },
           },
-          { new: true }
+          { new: true },
         );
 
         if (!updatedStudent) {
@@ -796,7 +829,7 @@ instead.`);
         };
       } catch (error) {
         throw new UserInputError(
-          "Failed to resend OTP. Please try again later."
+          "Failed to resend OTP. Please try again later.",
         );
       }
     },
@@ -954,13 +987,13 @@ instead.`);
         const updatedStudent = await Student.findByIdAndUpdate(
           user.id,
           updateData,
-          { new: true }
+          { new: true },
         );
 
         await sendOtpEmail(
           user.email,
           existingStudent.firstName,
-          "welcome_email_Student"
+          "welcome_email_Student",
         );
 
         return updatedStudent;
@@ -1002,16 +1035,16 @@ instead.`);
 
         // Check that all required document types are present
         const providedDocumentTypes = input.documents.map(
-          (doc) => doc.documentType
+          (doc) => doc.documentType,
         );
 
         const missingDocuments = requiredDocumentTypes.filter(
-          (type) => !providedDocumentTypes.includes(type)
+          (type) => !providedDocumentTypes.includes(type),
         );
 
         if (missingDocuments.length > 0) {
           throw new UserInputError(
-            `Missing required documents: ${missingDocuments.join(", ")}`
+            `Missing required documents: ${missingDocuments.join(", ")}`,
           );
         }
 
@@ -1020,8 +1053,10 @@ instead.`);
           {
             ...input,
             isProfileComplete: true,
+            onboardingStatus: "not_started",
+            isActive: false,
           },
-          { new: true }
+          { new: true },
         );
 
         // Delete existing unused email verification OTPs
@@ -1029,7 +1064,7 @@ instead.`);
         await sendOtpEmail(
           user.email,
           existingInstructor.firstName,
-          "welcome_email_Instructor"
+          "welcome_email_Instructor",
         );
 
         return updatedInstructor;
@@ -1201,7 +1236,7 @@ instead.`);
         // Check current password
         const isValid = await bcrypt.compare(
           currentPassword,
-          userRecord.password
+          userRecord.password,
         );
         if (!isValid) {
           throw new UserInputError("Current password is incorrect");
@@ -1226,6 +1261,148 @@ instead.`);
           });
         }
         throw error;
+      }
+    },
+
+    createStripeAccount: async (_, __, { user }) => {
+      if (!user) throw new AuthenticationError("Not authenticated");
+      if (user.role !== "Instructor") {
+        throw new ForbiddenError(
+          "Only instructors can create a Stripe account",
+        );
+      }
+      const instructor = await Instructor.findById(user.id);
+      if (!instructor) throw new UserInputError("Instructor not found");
+      if (!instructor.isProfileComplete) {
+        throw new UserInputError(
+          "Complete your profile before setting up payments",
+        );
+      }
+      try {
+        const accountId = instructor.stripeAccount?.accountId;
+        if (accountId) {
+          const { url } = await createAccountLink(accountId);
+          await Instructor.findByIdAndUpdate(user.id, {
+            onboardingStatus: "link_generated",
+          });
+          return {
+            success: true,
+            message: "Onboarding link generated",
+            onboardingUrl: url,
+            onboardingStatus: "link_generated",
+          };
+        }
+        const account = await createExpressAccount(instructor.email);
+        await Instructor.findByIdAndUpdate(user.id, {
+          "stripeAccount.accountId": account.id,
+          "stripeAccount.accountCreatedAt": new Date(),
+          onboardingStatus: "account_created",
+        });
+        const { url } = await createAccountLink(account.id);
+        await Instructor.findByIdAndUpdate(user.id, {
+          onboardingStatus: "link_generated",
+        });
+        return {
+          success: true,
+          message: "Stripe account created",
+          onboardingUrl: url,
+          onboardingStatus: "link_generated",
+        };
+      } catch (err) {
+        console.error("createStripeAccount error:", err);
+        const isConnectNotEnabled =
+          err.message &&
+          err.message.includes("signed up for Connect");
+        throw new UserInputError(
+          isConnectNotEnabled
+            ? "Payment setup is still being configured. Please try again in a few minutes or contact support."
+            : err.message || "Failed to create Stripe account",
+        );
+      }
+    },
+
+    verifyStripeOnboarding: async (_, __, { user }) => {
+      if (!user) throw new AuthenticationError("Not authenticated");
+      if (user.role !== "Instructor") {
+        throw new ForbiddenError(
+          "Only instructors can verify Stripe onboarding",
+        );
+      }
+      const instructor = await Instructor.findById(user.id);
+      if (!instructor) throw new UserInputError("Instructor not found");
+      const accountId = instructor.stripeAccount?.accountId;
+      if (!accountId) {
+        return {
+          success: false,
+          message: "No Stripe account linked",
+          onboardingStatus: "not_started",
+          chargesEnabled: false,
+          payoutsEnabled: false,
+        };
+      }
+      try {
+        const account = await retrieveAccount(accountId);
+        const { stripeAccountUpdate, onboardingStatus, isActive } =
+          accountToStripeSnapshot(account);
+        await Instructor.findByIdAndUpdate(
+          user.id,
+          {
+            $set: {
+              ...stripeAccountUpdate,
+              onboardingStatus,
+              isActive,
+              "stripeFinancialStatus.lastWebhookSync": new Date(),
+            },
+          },
+          { new: true },
+        );
+        return {
+          success: true,
+          message: "Status updated",
+          onboardingStatus,
+          chargesEnabled: account.charges_enabled,
+          payoutsEnabled: account.payouts_enabled,
+        };
+      } catch (err) {
+        console.error("verifyStripeOnboarding error:", err);
+        throw new UserInputError(
+          err.message || "Failed to verify Stripe onboarding",
+        );
+      }
+    },
+
+    regenerateStripeLink: async (_, __, { user }) => {
+      if (!user) throw new AuthenticationError("Not authenticated");
+      if (user.role !== "Instructor") {
+        throw new ForbiddenError("Only instructors can regenerate Stripe link");
+      }
+      const instructor = await Instructor.findById(user.id);
+      if (!instructor) throw new UserInputError("Instructor not found");
+      const accountId = instructor.stripeAccount?.accountId;
+      if (!accountId) {
+        throw new UserInputError(
+          "No Stripe account found. Use Connect with Stripe first.",
+        );
+      }
+      if (instructor.stripeAccount?.detailsSubmitted) {
+        return {
+          success: true,
+          message: "Account already submitted; use Verify to refresh status",
+          onboardingUrl: null,
+        };
+      }
+      try {
+        const { url } = await createAccountLink(accountId);
+        return {
+          success: true,
+          message: "New onboarding link generated",
+          onboardingUrl: url,
+        };
+      } catch (err) {
+        console.error("regenerateStripeLink error:", err);
+        throw new UserInputError(
+          err.message || "Failed to regenerate Stripe link",
+        );
       }
     },
   },

@@ -176,6 +176,19 @@ const typeDefs = gql`
     adminLevel: String! # Either "super" or "regular"
   }
 
+  type StripeAccountSnapshot {
+    accountId: String
+    chargesEnabled: Boolean!
+    payoutsEnabled: Boolean!
+    detailsSubmitted: Boolean!
+    lastSyncedAt: String
+  }
+  type StripeFinancialStatusSnapshot {
+    hasDisputes: Boolean!
+    payoutsBlocked: Boolean!
+    currentlyDueRequirements: Boolean!
+    lastWebhookSync: String
+  }
   type InstructorProfile {
     id: ID!
     firstName: String!
@@ -193,6 +206,10 @@ const typeDefs = gql`
     languagePreference: [String] # Changed from String to [String]
     reviewRating: Float
     reviewsCount: Int
+    onboardingStatus: String
+    isActive: Boolean
+    stripeAccount: StripeAccountSnapshot
+    stripeFinancialStatus: StripeFinancialStatusSnapshot
   }
   type UserBase implements User {
     id: ID!
@@ -370,6 +387,24 @@ const typeDefs = gql`
     success: Boolean!
     message: String!
   }
+  type CreateStripeAccountPayload {
+    success: Boolean!
+    message: String
+    onboardingUrl: String
+    onboardingStatus: String
+  }
+  type VerifyStripeOnboardingPayload {
+    success: Boolean!
+    message: String
+    onboardingStatus: String
+    chargesEnabled: Boolean
+    payoutsEnabled: Boolean
+  }
+  type RegenerateStripeLinkPayload {
+    success: Boolean!
+    message: String
+    onboardingUrl: String
+  }
   enum DocumentStatus {
     pending
     accepted
@@ -420,6 +455,9 @@ const typeDefs = gql`
       currentPassword: String!
       newPassword: String!
     ): PasswordResetResponse!
+    createStripeAccount: CreateStripeAccountPayload!
+    verifyStripeOnboarding: VerifyStripeOnboardingPayload!
+    regenerateStripeLink: RegenerateStripeLinkPayload!
   }
 `;
 

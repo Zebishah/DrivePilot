@@ -41,7 +41,15 @@ app.use(
       }
     },
     credentials: true,
-  })
+  }),
+);
+
+// Stripe webhook needs raw body for signature verification (mount before any JSON body parser)
+const stripeWebhookRoutes = require("./routes/stripeWebhook.routes");
+app.use(
+  "/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhookRoutes,
 );
 
 // ✅ Init middleware and routes

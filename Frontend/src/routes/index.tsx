@@ -44,8 +44,6 @@ import StudentDashboard from "../pages/private/teacher-dashboard/StudentProgress
 import Dashboard from "../components/StudentComponents/ReviewTab/Dashboard";
 import ReviewForm from "../components/StudentComponents/ReviewTab/ReviewForm";
 import ReviewDisplay from "../components/StudentComponents/ReviewTab/ReviewDisplay";
-import ReviewFormPage from "../components/StudentComponents/ReviewTab/ReviewForm";
-import ReviewDisplayPage from "../components/StudentComponents/ReviewTab/ReviewDisplay";
 import AllBookingSlotsPage from "../components/StudentComponents/ReviewTab/AllBookingSlotPage";
 import { DocumentDetailsPage } from "../pages/private/admin-dashboard/DocumentsDetailPage";
 import InstructorDocumentsTable from "../components/AdminComponents/InstructorDocumentsTable";
@@ -54,7 +52,9 @@ import { StudentManagement } from "../pages/private/admin-dashboard/StudentManag
 import InstructorChatPage from "../pages/private/teacher-dashboard/chat";
 import StudentChatPage from "../pages/private/student-dashboard/chat";
 import { InstructorAnalyticsDashboard } from "../components/InstructorComponent/InstructorAnalytics/InstructorAnalyticsDashboard";
-
+import StripePaymentRefresh from "../pages/private/teacher-dashboard/StripePaymentRefresh";
+import StripePaymentComplete from "../pages/private/teacher-dashboard/StripePaymentComplete";
+import { Outlet } from "react-router-dom";
 import StudentBookingTable from "../components/AdminComponents/StudentBookingTable";
 import StudentBookingWInst from "../components/InstructorComponent/StudentBookingWInst";
 import FeedBackAndRating from "../components/StudentComponents/ReviewTab/OnlyReviewsTab";
@@ -122,6 +122,14 @@ const router = createBrowserRouter([
       { path: "review-display", element: <ReviewDisplay /> },
       { path: "allBookingSlots", element: <AllBookingSlotsPage /> },
       { path: "chat", element: <StudentChatPage /> },
+    ],
+  },
+  {
+    path: "/payment",
+    element: <Outlet />,
+    children: [
+      { path: "refresh", element: <StripePaymentRefresh /> },
+      { path: "complete", element: <StripePaymentComplete /> },
     ],
   },
   {

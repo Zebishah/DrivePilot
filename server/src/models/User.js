@@ -26,7 +26,6 @@ const baseSchema = new mongoose.Schema(
       default: "local",
     },
     providerId: String,
-    stripeCustomerId: { type: String },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     resetToken: { type: String, default: null },
@@ -258,6 +257,10 @@ const InstructorSchema = new mongoose.Schema({
     ],
     default: "not_started",
   },
+
+  /** True only when Stripe onboarding is verified (chargesEnabled && payoutsEnabled). Used to gate bookings and payouts. */
+  isActive: { type: Boolean, default: false },
+
   commission: {
     rate: {
       type: Number,

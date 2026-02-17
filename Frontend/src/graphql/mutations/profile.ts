@@ -25,6 +25,54 @@ export const GET_TEACHER_PROFILE = gql`
       reviewsCount
       dateOfBirth
       languagePreference
+      onboardingStatus
+      isActive
+      stripeAccount {
+        accountId
+        chargesEnabled
+        payoutsEnabled
+        detailsSubmitted
+        lastSyncedAt
+      }
+      stripeFinancialStatus {
+        hasDisputes
+        payoutsBlocked
+        currentlyDueRequirements
+        lastWebhookSync
+      }
+    }
+  }
+`;
+
+export const CREATE_STRIPE_ACCOUNT = gql`
+  mutation CreateStripeAccount {
+    createStripeAccount {
+      success
+      message
+      onboardingUrl
+      onboardingStatus
+    }
+  }
+`;
+
+export const VERIFY_STRIPE_ONBOARDING = gql`
+  mutation VerifyStripeOnboarding {
+    verifyStripeOnboarding {
+      success
+      message
+      onboardingStatus
+      chargesEnabled
+      payoutsEnabled
+    }
+  }
+`;
+
+export const REGENERATE_STRIPE_LINK = gql`
+  mutation RegenerateStripeLink {
+    regenerateStripeLink {
+      success
+      message
+      onboardingUrl
     }
   }
 `;
