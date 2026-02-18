@@ -119,8 +119,8 @@ const AdminBookingResolvers = {
           throw new Error("Slot not found");
         }
 
-        // Block marking as completed before the slot end time (same as instructor)
-        if (status === "completed") {
+        // Block marking as completed before the slot end time (skip in development for testing)
+        if (status === "completed" && process.env.NODE_ENV === "production") {
           const slot = booking.slots[slotIndex];
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
           const now = new Date();

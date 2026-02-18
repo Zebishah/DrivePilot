@@ -31,6 +31,7 @@ const { Review } = require("../models/Reviews");
 const {
   createExpressAccount,
   createAccountLink,
+  setManualPayoutSchedule,
   retrieveAccount,
   accountToStripeSnapshot,
 } = require("../services/stripeService");
@@ -1281,6 +1282,15 @@ instead.`);
       try {
         const accountId = instructor.stripeAccount?.accountId;
         if (accountId) {
+          // Ensure existing accounts use manual payouts so we control payout timing
+          try {
+            await setManualPayoutSchedule(accountId);
+          } catch (e) {
+            console.error(
+              "Failed to set manual payout schedule for existing account:",
+              e.message,
+            );
+          }
           const { url } = await createAccountLink(accountId);
           await Instructor.findByIdAndUpdate(user.id, {
             onboardingStatus: "link_generated",
@@ -1293,6 +1303,16 @@ instead.`);
           };
         }
         const account = await createExpressAccount(instructor.email);
+        // Configure new instructor accounts to use manual payouts so funds
+        // stay in Stripe balance until we explicitly create payouts.
+        try {
+          await setManualPayoutSchedule(account.id);
+        } catch (e) {
+          console.error(
+            "Failed to set manual payout schedule for new account:",
+            e.message,
+          );
+        }
         await Instructor.findByIdAndUpdate(user.id, {
           "stripeAccount.accountId": account.id,
           "stripeAccount.accountCreatedAt": new Date(),
@@ -1317,6 +1337,38 @@ instead.`);
             ? "Payment setup is still being configured. Please try again in a few minutes or contact support."
             : err.message || "Failed to create Stripe account",
         );
+      }
+    },
+
+    setInstructorPayoutToManual: async (_, { instructorId }, { user }) => {
+      if (!user) throw new AuthenticationError("Not authenticated");
+      if (user.role !== "Admin") {
+        throw new ForbiddenError(
+          "Only admins can set an instructor's payout schedule to manual",
+        );
+      }
+      const instructor = await Instructor.findById(instructorId);
+      if (!instructor) throw new UserInputError("Instructor not found");
+      const accountId = instructor.stripeAccount?.accountId;
+      if (!accountId) {
+        return {
+          success: false,
+          message: "This instructor has no Stripe connected account.",
+        };
+      }
+      try {
+        await setManualPayoutSchedule(accountId);
+        return {
+          success: true,
+          message:
+            "Payout schedule set to manual. The connected account balance should now be available for manual payouts.",
+        };
+      } catch (err) {
+        console.error("setInstructorPayoutToManual error:", err);
+        return {
+          success: false,
+          message: err.message || "Failed to set payout schedule to manual",
+        };
       }
     },
 

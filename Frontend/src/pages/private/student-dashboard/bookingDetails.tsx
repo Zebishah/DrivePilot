@@ -230,6 +230,7 @@ const BookingDetails: React.FC = () => {
     REQUEST_REFUND,
     {
       onCompleted: () => {
+        setRefundRequestedForSlot(true);
         setRefundDialogOpen(false);
         toast.success("Refund requested. It will be credited to your original payment method.");
         navigate("/student-dashboard/book");
@@ -240,9 +241,20 @@ const BookingDetails: React.FC = () => {
     }
   );
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundRequestedForSlot, setRefundRequestedForSlot] = useState(false);
+  const currentSlot =
+    slot ||
+    selectedAvailability?.find((s: { _id?: string }) => s._id === slotId);
+  const isSlotRefunded = Boolean(
+    refundRequestedForSlot ||
+      currentSlot?.status === "refund" ||
+      (currentSlot as { refundedAt?: string } | undefined)?.refundedAt ||
+      (currentSlot as { paymentStatus?: string } | undefined)?.paymentStatus === "refunded"
+  );
   const handleOpenRefund = () => setRefundDialogOpen(true);
   const handleCloseRefund = () => setRefundDialogOpen(false);
   const handleConfirmRefund = () => {
+    if (isSlotRefunded) return;
     if (bookingId && slotId) {
       requestRefund({ variables: { bookingId, slotId } });
     }
@@ -632,7 +644,7 @@ const BookingDetails: React.FC = () => {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-              {isCancelled && bookingId && slotId && (
+              {isCancelled && bookingId && slotId && !isSlotRefunded && (
                 <Button
                   variant="contained"
                   color="secondary"
@@ -646,6 +658,11 @@ const BookingDetails: React.FC = () => {
                   )}
                 </Button>
               )}
+              {isCancelled && bookingId && slotId && isSlotRefunded && (
+                <Typography variant="body2" color="text.secondary">
+                  This lesson has been refunded.
+                </Typography>
+              )}
               <Button
                 variant="outlined"
                 color="primary"
@@ -654,7 +671,7 @@ const BookingDetails: React.FC = () => {
                 Back to Bookings
               </Button>
             </Box>
-            {isCancelled && bookingId && slotId && (
+            {isCancelled && bookingId && slotId && !isSlotRefunded && (
               <Typography variant="caption" color="text.secondary">
                 Refund will be sent to the card you used to pay.
               </Typography>
@@ -947,7 +964,7 @@ const BookingDetails: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleConfirmRefund}
-            disabled={refundLoading}
+            disabled={refundLoading || isSlotRefunded}
           >
             {refundLoading ? (
               <CircularProgress size={20} />

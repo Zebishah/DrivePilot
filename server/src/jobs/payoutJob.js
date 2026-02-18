@@ -1,8 +1,3 @@
-/**
- * Payout job: transfer instructor share for slots that are completed,
- * payoutEligibleAt has passed, and payoutStatus is "pending".
- * Runs on an interval (e.g. every 6 hours) from server startup.
- */
 const StudentBooking = require("../models/studentBooking.model");
 const {
   createTransferToInstructor,

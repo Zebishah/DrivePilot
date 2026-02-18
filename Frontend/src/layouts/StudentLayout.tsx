@@ -12,6 +12,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -238,6 +239,11 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       text: "Profile Setting",
       icon: Settings,
       path: "/student-dashboard/settings",
+    },
+    {
+      text: "Payment history",
+      icon: CreditCard,
+      path: "/student-dashboard/payment-history",
     },
     {
       text: "Help & Support",

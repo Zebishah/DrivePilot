@@ -56,8 +56,10 @@ import StripePaymentRefresh from "../pages/private/teacher-dashboard/StripePayme
 import StripePaymentComplete from "../pages/private/teacher-dashboard/StripePaymentComplete";
 import { Outlet } from "react-router-dom";
 import StudentBookingTable from "../components/AdminComponents/StudentBookingTable";
+import AdminTransactionsPage from "../pages/private/admin-dashboard/AdminTransactionsPage";
 import StudentBookingWInst from "../components/InstructorComponent/StudentBookingWInst";
 import FeedBackAndRating from "../components/StudentComponents/ReviewTab/OnlyReviewsTab";
+import StudentPaymentHistoryPage from "../pages/private/student-dashboard/StudentPaymentHistoryPage";
 
 const router = createBrowserRouter([
   {
@@ -109,6 +111,7 @@ const router = createBrowserRouter([
         path: "book",
         element: <StudentBookings />,
       },
+      { path: "payment-history", element: <StudentPaymentHistoryPage /> },
       {
         path: "search",
         element: <SearchInstructor />,
@@ -178,6 +181,7 @@ const router = createBrowserRouter([
         path: "StudentManagement",
         element: <StudentManagement />,
       },
+      { path: "transactions", element: <AdminTransactionsPage /> },
       {
         path: "document-details/:instructorId/:documentType",
         element: <DocumentDetailsPage />,

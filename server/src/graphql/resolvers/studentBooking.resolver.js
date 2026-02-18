@@ -1,5 +1,8 @@
 const { studentBookingSchema } = require("../../schemas/studentBooking.schema");
 const StudentBooking = require("../../models/studentBooking.model");
+
+// Payout delay after lesson completed: 1 min for testing; for production use 3 * 24 * 60 * 60 * 1000 (3 days)
+const PAYOUT_DELAY_MS = 1 * 60 * 1000;
 const {
   AuthenticationError,
   UserInputError,
@@ -13,6 +16,7 @@ const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
+const { createTransaction } = require("../../services/transactionService");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 const {
   getCommissionSplit,
@@ -22,6 +26,7 @@ const {
   createRefund,
   getTransferIdFromPaymentIntent,
   createTransferReversal,
+  DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,
 } = require("../../services/stripeService");
 const studentBookingResolver = {
@@ -383,7 +388,7 @@ const studentBookingResolver = {
             base.chargeAmount = perSlotAmount;
             base.dspCommission = slotDsp;
             base.instructorAmount = slotInstructor;
-            base.payoutStatus = "completed";
+            base.payoutStatus = "not_applicable";
           } else {
             base.paymentStatus = "pending_payment";
             base.payoutStatus = "not_applicable";
@@ -437,6 +442,71 @@ const studentBookingResolver = {
         }
         const booking = new StudentBooking(bookingPayload);
         await booking.save();
+
+        // Log transactions for initial payment (student, instructor, platform) if card payment succeeded
+        if (isCardPayment && stripePaymentIntentId) {
+          const occurredAt = new Date();
+          // Student payment
+          await createTransaction({
+            type: "payment",
+            role: "student",
+            direction: "debit",
+            amount: finalAmount,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: booking._id,
+            studentId: user.id,
+            stripePaymentIntentId: stripePaymentIntentId,
+            description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
+            occurredAt,
+          });
+          // Platform gross receipt
+          await createTransaction({
+            type: "payment",
+            role: "platform",
+            direction: "credit",
+            amount: finalAmount,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: booking._id,
+            stripePaymentIntentId: stripePaymentIntentId,
+            description: "Platform gross receipt for booking",
+            occurredAt,
+          });
+          // Per-slot instructor share and platform commission
+          for (const slot of enrichedSlots) {
+            if (slot.instructorAmount != null) {
+              await createTransaction({
+                type: "payment",
+                role: "instructor",
+                direction: "credit",
+                amount: slot.instructorAmount,
+                currency: DEFAULT_CURRENCY.toUpperCase(),
+                status: "succeeded",
+                bookingId: booking._id,
+                instructorId: instructor._id,
+                studentId: user.id,
+                stripePaymentIntentId: stripePaymentIntentId,
+                description: "Instructor share for booked slot",
+                occurredAt,
+              });
+            }
+            if (slot.dspCommission != null) {
+              await createTransaction({
+                type: "payment",
+                role: "platform",
+                direction: "credit",
+                amount: slot.dspCommission,
+                currency: DEFAULT_CURRENCY.toUpperCase(),
+                status: "succeeded",
+                bookingId: booking._id,
+                studentId: user.id,
+                description: "Platform commission for booked slot",
+                occurredAt,
+              });
+            }
+          }
+        }
 
         // 3. Update availability and push booked sub-slots
         // Group slots by date and availability block
@@ -765,9 +835,68 @@ const studentBookingResolver = {
         slot.chargeAmount = perSlotAmount;
         slot.dspCommission = slotDsp;
         slot.instructorAmount = slotInstructor;
-        slot.payoutStatus = "completed";
+        slot.payoutStatus = "not_applicable";
       }
       await booking.save();
+      // Log transactions for checkout-based payment
+      const occurredAt = new Date();
+      await createTransaction({
+        type: "payment",
+        role: "student",
+        direction: "debit",
+        amount: finalAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: booking._id,
+        studentId: user.id,
+        stripePaymentIntentId: piId,
+        description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
+        occurredAt,
+      });
+      await createTransaction({
+        type: "payment",
+        role: "platform",
+        direction: "credit",
+        amount: finalAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: booking._id,
+        stripePaymentIntentId: piId,
+        description: "Platform gross receipt for booking",
+        occurredAt,
+      });
+      for (const slot of booking.slots) {
+        if (slot.instructorAmount != null) {
+          await createTransaction({
+            type: "payment",
+            role: "instructor",
+            direction: "credit",
+            amount: slot.instructorAmount,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: booking._id,
+            instructorId: instructor._id,
+            studentId: user.id,
+            stripePaymentIntentId: piId,
+            description: "Instructor share for booked slot",
+            occurredAt,
+          });
+        }
+        if (slot.dspCommission != null) {
+          await createTransaction({
+            type: "payment",
+            role: "platform",
+            direction: "credit",
+            amount: slot.dspCommission,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: booking._id,
+            studentId: user.id,
+            description: "Platform commission for booked slot",
+            occurredAt,
+          });
+        }
+      }
       const savedBooking = await StudentBooking.findById(booking._id)
         .populate(
           "instructorId",
@@ -997,8 +1126,8 @@ const studentBookingResolver = {
           throw new Error("Slot not found in this booking");
         }
 
-        // Block marking as completed before the slot end time
-        if (status === "completed") {
+        // Block marking as completed before the slot end time (skip in development for testing payout)
+        if (status === "completed" && process.env.NODE_ENV === "production") {
           const slot = booking.slots[slotIndex];
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
           const now = new Date();
@@ -1024,12 +1153,11 @@ const studentBookingResolver = {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
         }
 
-        // When marking completed: set completion and payout-eligible (3 days) for paid slots
+        // When marking completed: set completion and payout-eligible (see PAYOUT_DELAY_MS) for paid slots
         if (status === "completed") {
           const now = new Date();
           booking.slots[slotIndex].completionMarkedAt = now;
-          const payoutEligibleAt = new Date(now);
-          payoutEligibleAt.setDate(payoutEligibleAt.getDate() + 3);
+          const payoutEligibleAt = new Date(now.getTime() + PAYOUT_DELAY_MS);
           booking.slots[slotIndex].payoutEligibleAt = payoutEligibleAt;
           if (
             booking.slots[slotIndex].paymentStatus === "paid" &&
@@ -1367,11 +1495,25 @@ const studentBookingResolver = {
           "This slot was not paid via card; no refund applies.",
         );
       }
-      // Do not block refund based on payoutStatus "completed". With destination charges, the
-      // instructor's share is in their Stripe Connect account at payment time; we still allow
-      // refund and reverse that transfer. Block only when this slot has already been refunded.
+      // If we've already created a manual payout for this slot (from the instructor's Stripe
+      // balance to their bank), block refunds here. At that point the instructor has been
+      // paid out, and reversing both payout and transfer becomes complex.
+      if (slot.payoutId) {
+        throw new UserInputError(
+          "Refund is not available because the instructor has already been paid out for this lesson.",
+        );
+      }
+      // Block any duplicate or repeat refund: slot must not already be refunded.
       if (slot.refundedAt) {
         throw new UserInputError("This slot has already been refunded.");
+      }
+      if (slot.status === "refund") {
+        throw new UserInputError("This lesson has already been refunded.");
+      }
+      if (slot.paymentStatus === "refunded") {
+        throw new UserInputError(
+          "A refund has already been processed for this lesson.",
+        );
       }
 
       if (!booking.stripePaymentIntentId || slot.chargeAmount == null) {
@@ -1406,7 +1548,7 @@ const studentBookingResolver = {
         });
       }
 
-      await createRefund({
+      const { refundId } = await createRefund({
         paymentIntentId: booking.stripePaymentIntentId,
         amountCentimes,
         reason: "requested_by_customer",
@@ -1418,6 +1560,61 @@ const studentBookingResolver = {
       slot.refundedAt = new Date();
       booking.updatedAt = new Date();
       await booking.save();
+      const occurredAt = new Date();
+      // Student refund
+      await createTransaction({
+        type: "refund",
+        role: "student",
+        direction: "credit",
+        amount: slot.chargeAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: booking._id,
+        slotId,
+        studentId: user.id,
+        stripePaymentIntentId: booking.stripePaymentIntentId,
+        stripeRefundId: refundId,
+        description: "Refund for cancelled lesson slot",
+        occurredAt,
+      });
+      // Instructor share reversal (if we reversed a transfer)
+      if (
+        transferId &&
+        slot.instructorAmount != null &&
+        slot.instructorAmount > 0
+      ) {
+        await createTransaction({
+          type: "transfer_reversal",
+          role: "instructor",
+          direction: "debit",
+          amount: slot.instructorAmount,
+          currency: DEFAULT_CURRENCY.toUpperCase(),
+          status: "succeeded",
+          bookingId: booking._id,
+          slotId,
+          instructorId: booking.instructorId._id,
+          stripePaymentIntentId: booking.stripePaymentIntentId,
+          description: "Reversal of instructor share due to refund",
+          occurredAt,
+        });
+      }
+      // Platform commission reversal (20% we kept is effectively refunded)
+      if (slot.dspCommission != null && slot.dspCommission > 0) {
+        await createTransaction({
+          type: "transfer_reversal",
+          role: "platform",
+          direction: "debit",
+          amount: slot.dspCommission,
+          currency: DEFAULT_CURRENCY.toUpperCase(),
+          status: "succeeded",
+          bookingId: booking._id,
+          slotId,
+          stripePaymentIntentId: booking.stripePaymentIntentId,
+          stripeRefundId: refundId,
+          description: "Platform commission reversed due to refund",
+          occurredAt,
+        });
+      }
 
       // Sync refund status to instructor availability
       const availability = await teacherAvailabilityModel.findOne({

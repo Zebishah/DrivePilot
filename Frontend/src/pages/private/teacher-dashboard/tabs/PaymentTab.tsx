@@ -11,6 +11,13 @@ import {
   CardContent,
   CardActions,
   Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import LinkIcon from "@mui/icons-material/Link";
@@ -24,6 +31,7 @@ import {
   GET_TEACHER_PROFILE,
   REGENERATE_STRIPE_LINK,
 } from "../../../../graphql/mutations/profile";
+import { GET_INSTRUCTOR_TRANSACTIONS } from "../../../../graphql/Queries/transactionQueries";
 
 type OnboardingStatus =
   | "not_started"
@@ -36,9 +44,27 @@ type OnboardingStatus =
   | "rejected"
   | null;
 
+function formatTransactionDate(value: string | null | undefined): string {
+  if (value == null || value === "") return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export const PaymentTab: React.FC = () => {
   const [connectLoading, setConnectLoading] = useState(false);
   const { data, loading: queryLoading } = useQuery(GET_TEACHER_PROFILE);
+  const { data: transactionsData } = useQuery(GET_INSTRUCTOR_TRANSACTIONS, {
+    variables: { limit: 50, offset: 0 },
+    fetchPolicy: "network-only",
+  });
+  const instructorTransactions = transactionsData?.getInstructorTransactions ?? [];
   const [createStripeAccount] = useMutation(CREATE_STRIPE_ACCOUNT, {
     onCompleted: (res) => {
       const url = res?.createStripeAccount?.onboardingUrl;
@@ -353,6 +379,63 @@ export const PaymentTab: React.FC = () => {
           )}
         </CardActions>
       </Card>
+
+      {instructorTransactions.length > 0 && (
+        <Card elevation={3} sx={{ mt: 3, borderRadius: 3, p: { xs: 2, sm: 3 } }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Transaction history
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Your payments, payouts, and related activity.
+            </Typography>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Direction</TableCell>
+                    <TableCell align="right">Amount</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Description</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {instructorTransactions.map((t: { id: string; type: string; direction: string; amount: number; currency: string; status: string; description?: string; occurredAt?: string | null; createdAt?: string | null }) => (
+                    <TableRow key={t.id} hover>
+                      <TableCell>
+                        {formatTransactionDate(t.occurredAt ?? t.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={t.type} size="small" variant="outlined" />
+                      </TableCell>
+                      <TableCell>{t.direction}</TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          color: t.direction === "credit" ? "success.main" : "text.primary",
+                        }}
+                      >
+                        {t.direction === "credit" ? "+" : "-"} {Number(t.amount).toFixed(2)} {t.currency}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t.status}
+                          size="small"
+                          color={t.status === "succeeded" ? "success" : t.status === "failed" ? "error" : "default"}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 200 }}>{t.description ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
     </Box>
   );
 };

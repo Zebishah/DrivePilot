@@ -16,7 +16,7 @@ const { runInstructorPayoutJob } = require("./jobs/payoutJob");
 // ✅ Connect to MongoDB
 connectDB();
 
-// Run instructor payout job every 6 hours (for slots with payoutEligibleAt passed)
+// Run instructor payout job: 1 min for testing; for production use 6 * 60 * 60 * 1000 (6 hours)
 const PAYOUT_JOB_INTERVAL_MS = 6 * 60 * 60 * 1000;
 setInterval(() => {
   runInstructorPayoutJob().catch((err) =>

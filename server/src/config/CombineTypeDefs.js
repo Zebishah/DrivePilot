@@ -16,6 +16,7 @@ const chatTypeDefs = require("../graphql/typeDefs/chat.typeDefs");
 const VisitorTypeDefs = require("../graphql/typeDefs/VisitorsTypes");
 const AdminAnalyticsTypeDefs = require("../graphql/typeDefs/AdminOverallAnalyticsTypes");
 const AdminBookingTypeDefs = require("../graphql/typeDefs/AdminBookingType");
+const TransactionTypeDefs = require("../graphql/typeDefs/transaction.typeDefs");
 const typeDefs = mergeTypeDefs([
   userTypeDefs,
   SignupLinkTypedef,
@@ -33,6 +34,7 @@ const typeDefs = mergeTypeDefs([
   VisitorTypeDefs,
   AdminAnalyticsTypeDefs,
   AdminBookingTypeDefs,
+  TransactionTypeDefs,
 ]);
 
 module.exports = typeDefs;

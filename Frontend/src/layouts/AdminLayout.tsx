@@ -95,6 +95,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: LayoutGrid,
       path: "/admin-dashboard/StudentManagement",
     },
+    {
+      text: "All Transactions",
+      icon: LayoutGrid,
+      path: "/admin-dashboard/transactions",
+    },
     ...(user?.adminLevel === "super"
       ? [
           {

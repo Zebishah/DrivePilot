@@ -405,6 +405,10 @@ const typeDefs = gql`
     message: String
     onboardingUrl: String
   }
+  type SetPayoutSchedulePayload {
+    success: Boolean!
+    message: String
+  }
   enum DocumentStatus {
     pending
     accepted
@@ -458,6 +462,7 @@ const typeDefs = gql`
     createStripeAccount: CreateStripeAccountPayload!
     verifyStripeOnboarding: VerifyStripeOnboardingPayload!
     regenerateStripeLink: RegenerateStripeLinkPayload!
+    setInstructorPayoutToManual(instructorId: ID!): SetPayoutSchedulePayload!
   }
 `;
 

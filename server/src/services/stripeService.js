@@ -30,6 +30,27 @@ async function createExpressAccount(email) {
 }
 
 /**
+ * Configure a connected account to use manual payouts.
+ * With manual payouts, funds stay in the instructor's Stripe balance until
+ * we explicitly create a payout via the Payouts API.
+ * @param {string} accountId - Stripe connected account ID
+ * @returns {Promise<import('stripe').Stripe.Account>}
+ */
+async function setManualPayoutSchedule(accountId) {
+  // For Accounts v1-style settings we can still use accounts.update with
+  // settings.payouts.schedule.interval = 'manual'.
+  return stripe.accounts.update(accountId, {
+    settings: {
+      payouts: {
+        schedule: {
+          interval: "manual",
+        },
+      },
+    },
+  });
+}
+
+/**
  * Create an account link for onboarding (or re-onboarding).
  * @param {string} accountId - Stripe connected account ID
  * @param {{ refreshPath?: string, returnPath?: string }} paths - Optional path overrides
@@ -233,6 +254,40 @@ async function createTransferToInstructor(opts) {
 }
 
 /**
+ * Create a manual payout from an instructor's Stripe balance to their
+ * external bank account. Used when payouts.schedule.interval = 'manual'
+ * on the connected account.
+ * @param {{
+ *   accountId: string,
+ *   amountCentimes: number,
+ *   currency?: string,
+ *   metadata?: Record<string, string>,
+ * }} opts
+ * @returns {Promise<{ payoutId: string }>}
+ */
+async function createManualPayoutForInstructor(opts) {
+  const {
+    accountId,
+    amountCentimes,
+    currency = DEFAULT_CURRENCY,
+    metadata = {},
+  } = opts;
+
+  const payout = await stripe.payouts.create(
+    {
+      amount: Math.round(amountCentimes),
+      currency: currency.toLowerCase(),
+      metadata: { ...metadata },
+    },
+    {
+      stripeAccount: accountId,
+    },
+  );
+
+  return { payoutId: payout.id };
+}
+
+/**
  * Refund a PaymentIntent (full or partial). Refund goes back to original payment method.
  * @param {{ paymentIntentId: string, amountCentimes?: number, reason?: string }} opts
  * - If amountCentimes omitted, full refund.
@@ -357,6 +412,7 @@ async function retrieveCheckoutSession(sessionId) {
 module.exports = {
   stripe,
   createExpressAccount,
+  setManualPayoutSchedule,
   createAccountLink,
   retrieveAccount,
   accountToStripeSnapshot,
@@ -366,6 +422,7 @@ module.exports = {
   createCheckoutSessionForBooking,
   retrieveCheckoutSession,
   createTransferToInstructor,
+  createManualPayoutForInstructor,
   createRefund,
   getTransferIdFromPaymentIntent,
   createTransferReversal,
