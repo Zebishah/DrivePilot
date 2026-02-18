@@ -209,8 +209,15 @@ const studentBookingTypeDefs = gql`
     paymentIntentId: String
   }
 
+  type CreateBookingCheckoutPayload {
+    url: String!
+    bookingId: ID
+  }
+
   type Mutation {
     createBooking(input: StudentBookingInput!): CreateBookingPayload!
+    createBookingCheckoutSession(input: StudentBookingInput!): CreateBookingCheckoutPayload!
+    completeBookingFromCheckout(sessionId: String!): StudentBooking!
     completeBookingAfterPayment(
       paymentIntentId: ID!
       input: StudentBookingInput!

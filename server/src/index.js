@@ -45,7 +45,8 @@ if (process.env.Frontend_URL) {
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (e.g. same-origin, Postman) or literal "null" (some browsers in dev/redirects)
+      if (!origin || origin === "null" || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.log("❌ Blocked by CORS:", origin);

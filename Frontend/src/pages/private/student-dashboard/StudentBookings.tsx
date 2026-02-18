@@ -15,7 +15,7 @@ interface LessonHistoryItem {
   instructorName: string;
   slotStatus: string;
   bookingStatus: string;
-  instructorId: string;
+  instructorId: string | null;
   slotId: string;
   bookingId: string;
 }
@@ -44,24 +44,30 @@ const LessonBookingHistory: React.FC = () => {
   });
 
   if (!studentId) {
-    console.error("❌ No studentId provided. User:", user);
     return (
-      <div className="p-4 text-center text-red-500">
-        Please login to view lesson history.
+      <div className="p-6 text-center rounded-lg bg-gray-50 border border-gray-200">
+        <p className="text-gray-600">Please log in to view lesson history.</p>
       </div>
     );
   }
 
   if (loading) {
-    return <p className="text-center py-4">Loading lesson history...</p>;
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-block w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mb-3" />
+        <p className="text-gray-500">Loading lesson history...</p>
+      </div>
+    );
   }
 
   if (error) {
-    console.error("❌ Error loading lesson history:", error.message);
     return (
-      <p className="text-center py-4 text-red-500">
-        Error loading lesson history: {error.message}
-      </p>
+      <div className="w-full mb-8 bg-white rounded-lg shadow-sm overflow-hidden p-8 text-center">
+        <div className="max-w-sm mx-auto py-6 px-4 rounded-lg bg-gray-50 border border-gray-200">
+          <p className="text-gray-600 mb-1">We couldn’t load lesson history right now.</p>
+          <p className="text-sm text-gray-500">Please try again later.</p>
+        </div>
+      </div>
     );
   }
 
@@ -142,8 +148,14 @@ const LessonBookingHistory: React.FC = () => {
             )
           )
         ) : (
-          <div className="flex justify-center items-center p-8">
-            <p className="text-gray-500">No lesson history found</p>
+          <div className="flex flex-col justify-center items-center p-10 bg-gray-50 rounded-lg border border-gray-100">
+            <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center mb-3">
+              <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-600 font-medium">No lesson history yet</p>
+            <p className="text-sm text-gray-500 mt-1">Your booking history will appear here.</p>
           </div>
         )}
       </div>

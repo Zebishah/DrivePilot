@@ -63,7 +63,7 @@ const studentTypeDefs = gql`
     endTime: String!
     slotStatus: String!
     bookingStatus: String!
-    instructorId: ID!
+    instructorId: ID
     slotId: ID!
     bookingId: ID!
   }

@@ -40,6 +40,36 @@ export const CREATE_BOOKING = gql`
   }
 `;
 
+export const CREATE_BOOKING_CHECKOUT_SESSION = gql`
+  mutation CreateBookingCheckoutSession($input: StudentBookingInput!) {
+    createBookingCheckoutSession(input: $input) {
+      url
+      bookingId
+    }
+  }
+`;
+
+export const COMPLETE_BOOKING_FROM_CHECKOUT = gql`
+  mutation CompleteBookingFromCheckout($sessionId: String!) {
+    completeBookingFromCheckout(sessionId: $sessionId) {
+      _id
+      status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        paymentStatus
+      }
+      totalAmount
+      finalAmount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const COMPLETE_BOOKING_AFTER_PAYMENT = gql`
   mutation CompleteBookingAfterPayment(
     $paymentIntentId: ID!

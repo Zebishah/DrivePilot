@@ -120,8 +120,11 @@ const studentResolver = {
               bookingStatus: booking.status,
               instructorName: booking.instructorId
                 ? `${booking.instructorId.firstName} ${booking.instructorId.lastName}`
-                : "Unknown Instructor", // fallback if no instructor found
-              instructorId: booking.instructorId?._id || booking.instructorId,
+                : "Unknown Instructor",
+              instructorId:
+                booking.instructorId?._id?.toString() ??
+                booking.instructorId?.toString() ??
+                null,
               slotId: slot._id,
               bookingId: booking._id,
             });

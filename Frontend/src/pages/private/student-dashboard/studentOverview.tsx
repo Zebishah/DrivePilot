@@ -105,8 +105,8 @@ export default function StudentOverview() {
     return Math.min(100, (remaining / maxHours) * 100);
   };
 
-  // Error handling
-  if (statsError || lessonsError || feedbacksError) {
+  // Block only when main dashboard stats fail; lessons/feedbacks show inline errors
+  if (statsError) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -199,7 +199,11 @@ export default function StudentOverview() {
             </Link>
           </div>
 
-          {lessonsLoading ? (
+          {lessonsError ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm">
+              Could not load lessons. You can try again later.
+            </div>
+          ) : lessonsLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
                 <div
@@ -257,7 +261,11 @@ export default function StudentOverview() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               All Lessons
             </h2>
-            {lessonsLoading ? (
+            {lessonsError ? (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm">
+                Could not load lessons.
+              </div>
+            ) : lessonsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div
@@ -316,7 +324,11 @@ export default function StudentOverview() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Notes From Instructors
           </h2>
-          {feedbacksLoading ? (
+          {feedbacksError ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm">
+              Could not load feedbacks. You can try again later.
+            </div>
+          ) : feedbacksLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
                 <div

@@ -248,10 +248,110 @@ async function createRefund(opts) {
 }
 
 /**
+ * Get the Transfer ID from a PaymentIntent (for destination charges).
+ * Used to reverse the instructor's share when refunding.
+ * @param {string} paymentIntentId
+ * @returns {Promise<string|null>} Transfer ID or null if not a destination charge
+ */
+async function getTransferIdFromPaymentIntent(paymentIntentId) {
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge"],
+  });
+  const charge = pi.latest_charge;
+  if (!charge || typeof charge === "string") return null;
+  return charge.transfer || null;
+}
+
+/**
+ * Create a partial transfer reversal (for refunds on destination charges).
+ * Reverses the instructor's share so the platform does not cover it.
+ * @param {{ transferId: string, amountCentimes: number, metadata?: Record<string, string> }} opts
+ * @returns {Promise<{ reversalId: string }>}
+ */
+async function createTransferReversal(opts) {
+  const { transferId, amountCentimes, metadata = {} } = opts;
+  const reversal = await stripe.transfers.createReversal(transferId, {
+    amount: Math.round(amountCentimes),
+    metadata: { ...metadata },
+  });
+  return { reversalId: reversal.id };
+}
+
+/**
  * Retrieve a PaymentIntent (e.g. for webhooks or idempotency).
  */
 async function retrievePaymentIntent(paymentIntentId) {
   return stripe.paymentIntents.retrieve(paymentIntentId);
+}
+
+/**
+ * Create a Stripe Checkout Session for a lesson booking (redirect to Stripe's hosted page).
+ * Uses destination charge: platform keeps commission, rest goes to instructor.
+ * @param {{
+ *   amountCentimes: number,
+ *   currency?: string,
+ *   destinationAccountId: string,
+ *   transferAmountCentimes: number,
+ *   metadata?: Record<string, string>,
+ *   successPath?: string,
+ *   cancelPath?: string,
+ *   description?: string,
+ * }} opts
+ * @returns {Promise<{ url: string, sessionId: string }>}
+ */
+async function createCheckoutSessionForBooking(opts) {
+  const {
+    amountCentimes,
+    currency = DEFAULT_CURRENCY,
+    destinationAccountId,
+    transferAmountCentimes,
+    metadata = {},
+    successPath = "/student-dashboard/booking-details",
+    cancelPath = "/student-dashboard/booking-details",
+    description = "Lesson booking",
+  } = opts;
+
+  const base = FRONTEND_BASE.replace(/\/$/, "");
+  const successUrl = `${base}${successPath.startsWith("/") ? successPath : `/${successPath}`}?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${base}${cancelPath.startsWith("/") ? cancelPath : `/${cancelPath}`}?checkout=cancelled`;
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: [
+      {
+        price_data: {
+          currency: currency.toLowerCase(),
+          unit_amount: Math.round(amountCentimes),
+          product_data: {
+            name: "Lesson booking",
+            description: description || "Lesson booking",
+            images: [],
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    payment_intent_data: {
+      metadata: { ...metadata },
+      transfer_data: {
+        destination: destinationAccountId,
+        amount: Math.round(transferAmountCentimes),
+      },
+    },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  });
+
+  return { url: session.url, sessionId: session.id };
+}
+
+/**
+ * Retrieve a Checkout Session (e.g. to complete booking after redirect).
+ */
+async function retrieveCheckoutSession(sessionId) {
+  return stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["payment_intent"],
+  });
 }
 
 module.exports = {
@@ -263,8 +363,12 @@ module.exports = {
   FRONTEND_BASE,
   getCommissionSplit,
   createPaymentIntentForBooking,
+  createCheckoutSessionForBooking,
+  retrieveCheckoutSession,
   createTransferToInstructor,
   createRefund,
+  getTransferIdFromPaymentIntent,
+  createTransferReversal,
   retrievePaymentIntent,
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -16,16 +16,14 @@ import {
   DialogTitle,
   Tooltip,
 } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
 import { useMutation } from "@apollo/client";
 import {
   CANCEL_BOOKING,
-  CREATE_BOOKING,
-  COMPLETE_BOOKING_AFTER_PAYMENT,
+  CREATE_BOOKING_CHECKOUT_SESSION,
+  COMPLETE_BOOKING_FROM_CHECKOUT,
   REQUEST_REFUND,
 } from "../../../graphql/mutations/studentBooking";
 import toast from "react-hot-toast";
@@ -33,16 +31,8 @@ import advancedFormat from "dayjs/plugin/advancedFormat";
 import dayjs from "dayjs";
 dayjs.extend(advancedFormat);
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
-import {
-  getSlotDurationInHours,
-  getSlotDurations,
-} from "../../../components/StudentComponents/GetSlotDurationInHours";
-import { StripeCardForm } from "../../../components/StudentComponents/StripeCardForm";
-
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
-const stripePromise = stripePublishableKey
-  ? loadStripe(stripePublishableKey)
-  : null;
+import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
+import { Slot } from "../../../types/Bookings";
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -50,6 +40,7 @@ function formatLessonDateTime(dateStr: string, timeStr: string) {
 const BookingDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     selectedAvailability,
     instructorData,
@@ -57,7 +48,6 @@ const BookingDetails: React.FC = () => {
     isCurrentBooking = true,
     status,
     bookingId,
-    booking,
     initialAmount,
     finalAmountPrice,
     slotId,
@@ -70,29 +60,49 @@ const BookingDetails: React.FC = () => {
     email = "",
     description = "",
   } = location.state || {};
-  console.log("location.state", location.state);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isCancelled = status === "cancelled";
+  const [displayCancelled, setDisplayCancelled] = useState(false);
+  const isCancelled = status === "cancelled" || displayCancelled;
 
-  const [createBooking] = useMutation(CREATE_BOOKING, {
-    onError: (err) => {
-      console.error("Booking creation failed:", err);
-      toast.error(err.message || "Failed to create booking. Please try again.");
-      setError(err.message || "Failed to create booking. Please try again.");
-    },
-  });
-  const [completeBookingAfterPayment] = useMutation(
-    COMPLETE_BOOKING_AFTER_PAYMENT,
-    {
+  const [createBookingCheckoutSession, { loading: checkoutLoading }] =
+    useMutation(CREATE_BOOKING_CHECKOUT_SESSION, {
       onError: (err) => {
-        toast.error(
-          err.message || "Failed to complete booking after payment."
-        );
-        setError(err.message || "");
+        toast.error(err.message || "Failed to start checkout. Please try again.");
+        setError(err.message || "Failed to start checkout.");
       },
+    });
+  const [completeBookingFromCheckout] =
+    useMutation(COMPLETE_BOOKING_FROM_CHECKOUT, {
+      onError: (err) => {
+        toast.error(err.message || "Failed to complete booking.");
+      },
+    });
+
+  const [checkoutHandled, setCheckoutHandled] = useState(false);
+  const checkout = searchParams.get("checkout");
+  const sessionId = searchParams.get("session_id");
+  useEffect(() => {
+    if (checkout === "cancelled" && !checkoutHandled) {
+      toast("Payment was cancelled. You can try again when ready.");
+      setSearchParams({});
+      setCheckoutHandled(true);
+      return;
     }
-  );
+    if (checkout === "success" && sessionId && !checkoutHandled) {
+      setCheckoutHandled(true);
+      completeBookingFromCheckout({ variables: { sessionId } })
+        .then(() => {
+          setSearchParams({});
+          toast.success("Booking confirmed! Payment successful.");
+          navigate("/student-dashboard/book", { replace: true });
+        })
+        .catch(() => {
+          setSearchParams({});
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when URL params change
+  }, [checkout, sessionId, checkoutHandled]);
   // Calculate total amount based on number of lessons and lesson fee
   const lessonFee = bookedLessonFee;
   const lessonDiscount = bookedLessonDiscount;
@@ -123,7 +133,6 @@ const BookingDetails: React.FC = () => {
     setIsConfirmDialogOpen(false);
     setError(null);
   };
-  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const resolveInstructorId = (): string => {
     if (typeof instructorId === "string" && instructorId) return instructorId;
@@ -135,13 +144,8 @@ const BookingDetails: React.FC = () => {
     return "";
   };
 
-  const handleConfirmBookingWithPaymentMethod = async (
-    paymentMethodId: string,
-    cardLast4?: string,
-    cardBrand?: string
-  ) => {
+  const handleRedirectToStripeCheckout = async () => {
     try {
-      setConfirmLoading(true);
       setError(null);
       if (!selectedAvailability || selectedAvailability.length === 0) {
         throw new Error("No availability slots selected");
@@ -150,7 +154,6 @@ const BookingDetails: React.FC = () => {
       if (!resolvedInstructorId) {
         throw new Error("Invalid instructor information");
       }
-
       const mutationInput = {
         instructorId: resolvedInstructorId,
         slots: selectedAvailability.map((slot: { date: string; startTime: string; endTime: string }) => ({
@@ -160,62 +163,27 @@ const BookingDetails: React.FC = () => {
           status: "booked",
         })),
         totalAmount: parseFloat(totalAmount.toFixed(2)),
-        finalAmount: parseFloat(finalAmount),
+        finalAmount: Number(finalAmount),
         paymentMethod: {
           type: "card",
-          cardNumber: cardLast4 ? `**** **** **** ${cardLast4}` : "",
-          paymentMethodId,
-          cardLast4: cardLast4 || undefined,
-          cardBrand: cardBrand || undefined,
+          cardNumber: "",
+          paymentMethodId: "checkout",
         },
       };
-
-      const result = await createBooking({
+      const result = await createBookingCheckoutSession({
         variables: { input: mutationInput },
       });
-
-      const payload = result.data?.createBooking;
-      if (!payload) return;
-
-      if (payload.booking) {
+      const url = result.data?.createBookingCheckoutSession?.url;
+      if (url) {
         handleCloseDialog();
-        navigate("/student-dashboard/book");
-        toast.success("Booking created successfully!");
-        return;
-      }
-
-      if (payload.requiresAction && payload.clientSecret && payload.paymentIntentId && stripePromise) {
-        const stripe = await stripePromise;
-        if (!stripe) {
-          setError("Payment security check could not be loaded.");
-          return;
-        }
-        const { error: actionError } = await stripe.handleCardAction(
-          payload.clientSecret
-        );
-        if (actionError) {
-          setError(actionError.message || "Authentication failed.");
-          toast.error(actionError.message || "Authentication failed.");
-          return;
-        }
-        await completeBookingAfterPayment({
-          variables: {
-            paymentIntentId: payload.paymentIntentId,
-            input: mutationInput,
-          },
-        });
-        handleCloseDialog();
-        navigate("/student-dashboard/book");
-        toast.success("Booking created successfully!");
+        window.location.href = url;
       } else {
-        setError("Unexpected payment response. Please try again.");
+        setError("Could not open payment page. Please try again.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to create booking. Please try again.";
+      const msg = err instanceof Error ? err.message : "Failed to start checkout. Please try again.";
       setError(msg);
       toast.error(msg);
-    } finally {
-      setConfirmLoading(false);
     }
   };
   // Add new state for reschedule dialog
@@ -225,10 +193,10 @@ const BookingDetails: React.FC = () => {
     if (isCurrentBooking || isCancelled) {
       navigate(`/student-dashboard/search/instructors/${instructorId}`);
     }
-    const firstSlot = selectedAvailability[0];
-    const lessonStart = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
-    const now = new Date();
-    const msUntil = lessonStart - now;
+    const firstSlot = selectedAvailability?.[0];
+    const lessonStart = firstSlot ? new Date(`${firstSlot.date}T${firstSlot.startTime}`).getTime() : 0;
+    const now = Date.now();
+    const msUntil = lessonStart ? lessonStart - now : 0;
 
     if (msUntil < 48 * 60 * 60 * 1000) {
       setIsTooLate(true);
@@ -246,8 +214,8 @@ const BookingDetails: React.FC = () => {
       toast.success("Booking cancelled for rescheduling");
       // Navigate to instructor page for rebooking
       navigate(`/student-dashboard/search/instructors/${instructorId}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reschedule booking");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to reschedule booking");
     } finally {
       setRescheduleLoading(false);
       setIsRescheduleDialogOpen(false);
@@ -283,12 +251,11 @@ const BookingDetails: React.FC = () => {
     if (isCurrentBooking) {
       navigate(`/student-dashboard/search/instructors/${instructorId}`);
     }
-    const firstSlot = selectedAvailability[0];
-    const lessonStart = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
-    const now = new Date();
-    const msUntil = lessonStart - now;
+    const firstSlot = selectedAvailability?.[0];
+    const lessonStart = firstSlot ? new Date(`${firstSlot.date}T${firstSlot.startTime}`).getTime() : 0;
+    const now = Date.now();
+    const msUntil = lessonStart ? lessonStart - now : 0;
 
-    // < 48h?
     if (msUntil < 48 * 60 * 60 * 1000) {
       setIsTooLate(true);
     } else {
@@ -309,10 +276,14 @@ const BookingDetails: React.FC = () => {
         variables: { bookingId: bookingId, slotId: slotId },
       });
       toast.success("Booking cancelled successfully. You can request a refund for this lesson if you had paid.");
-      navigate(`/student-dashboard/book`);
+      setDisplayCancelled(true);
       handleCloseCancel();
-    } catch (err: any) {
-      const msg = err?.message || err?.graphQLErrors?.[0]?.message || "Failed to cancel booking";
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { graphQLErrors?: Array<{ message?: string }> })?.graphQLErrors?.[0]?.message ||
+            "Failed to cancel booking";
       setCancelError(msg);
       toast.error(msg);
     } finally {
@@ -328,10 +299,10 @@ const BookingDetails: React.FC = () => {
         variables: { bookingId: bookingId, slotId: slotId },
       });
       toast.success("Booking cancelled successfully (no refund issued)");
-      navigate(`/student-dashboard/book`);
+      setDisplayCancelled(true);
       handleCloseCancel();
-    } catch (err) {
-      toast.error(err.message || "Failed to cancel booking");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel booking");
     } finally {
       setCancelLoading(false);
     }
@@ -424,7 +395,7 @@ const BookingDetails: React.FC = () => {
                   <Button
                     variant="contained"
                     color="error"
-                    onClick={handleCancelBooking}
+                    onClick={handleOpenCancel}
                     disabled={isLessonPast || cancelLoading}
                     sx={{
                       width: "200px",
@@ -573,7 +544,7 @@ const BookingDetails: React.FC = () => {
           </Typography>
           <Grid container spacing={2}>
             {selectedAvailability && selectedAvailability.length > 0 ? (
-              selectedAvailability.map((slot: any, index: number) => (
+              selectedAvailability.map((slot: { date: string; startTime: string; endTime: string }, index: number) => (
                 <Grid item xs={12} sm={4} key={index}>
                   <Card
                     sx={{
@@ -590,7 +561,7 @@ const BookingDetails: React.FC = () => {
                         {slot.startTime} - {slot.endTime}
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
-                        {getSlotDurationInHours(slot)} hours lesson
+                        {getSlotDurationInHours(slot as Slot)} hours lesson
                       </Typography>
                       <Typography variant="body2" color="textSecondary">
                         {new Date(slot.date).toLocaleDateString([], {
@@ -641,12 +612,12 @@ const BookingDetails: React.FC = () => {
         {isCurrentBooking ? (
           <>
             <Typography variant="body2" color="text.secondary">
-              Next: enter card details to pay CHF {finalAmount.toFixed(2)} securely.
+              Next: pay CHF {finalAmount.toFixed(2)} securely on Stripe.
             </Typography>
             <Button
               variant="contained"
               onClick={handleConfirm}
-              disabled={confirmLoading || !initialPriceShown}
+              disabled={!initialPriceShown}
               sx={{
                 width: "200px",
                 bgcolor: "#5ec2d2",
@@ -655,36 +626,39 @@ const BookingDetails: React.FC = () => {
                 },
               }}
             >
-              {confirmLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                "Confirm Booking"
-              )}
+              Confirm Booking
             </Button>
           </>
         ) : (
-          <Box sx={{ display: "flex", gap: 2 }}>
-            {status === "cancelled" && bookingId && slotId && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              {isCancelled && bookingId && slotId && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleOpenRefund}
+                  disabled={refundLoading}
+                >
+                  {refundLoading ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    "Request refund"
+                  )}
+                </Button>
+              )}
               <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleOpenRefund}
-                disabled={refundLoading}
+                variant="outlined"
+                color="primary"
+                onClick={() => navigate("/student-dashboard/book")}
               >
-                {refundLoading ? (
-                  <CircularProgress size={20} />
-                ) : (
-                  "Request refund"
-                )}
+                Back to Bookings
               </Button>
+            </Box>
+            {isCancelled && bookingId && slotId && (
+              <Typography variant="caption" color="text.secondary">
+                Refund will be sent to the card you used to pay.
+              </Typography>
             )}
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={() => navigate("/student-dashboard/book")}
-            >
-              Back to Bookings
-            </Button>
           </Box>
         )}
       </Box>
@@ -748,38 +722,30 @@ const BookingDetails: React.FC = () => {
               </Typography>
             </Box>
 
-            {stripePromise ? (
-              <>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Enter your card below. You will be charged CHF {finalAmount.toFixed(2)} when you click Pay.
-                </Typography>
-                <Elements stripe={stripePromise}>
-                  <StripeCardForm
-                    amount={finalAmount}
-                    onSuccess={handleConfirmBookingWithPaymentMethod}
-                    onError={(msg) => setError(msg)}
-                    disabled={confirmLoading}
-                  />
-                </Elements>
-              </>
-            ) : (
-              <Alert severity="warning">
-                Payment is not configured (missing VITE_STRIPE_PUBLISHABLE_KEY).
-                Add it in Frontend .env to accept card payments, then restart the dev server.
-              </Alert>
-            )}
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              You will be redirected to Stripe&apos;s secure payment page to complete your booking. No card details are entered on this site.
+            </Typography>
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              onClick={handleRedirectToStripeCheckout}
+              disabled={checkoutLoading}
+              sx={{
+                py: 1.5,
+                mt: 1,
+                bgcolor: "#5fc2d3",
+                "&:hover": { bgcolor: "#4bb1c2" },
+              }}
+            >
+              {checkoutLoading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                `Pay CHF ${finalAmount.toFixed(2)} on Stripe`
+              )}
+            </Button>
           </DialogContent>
-          <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
-            {!stripePromise && (
-              <Button
-                variant="contained"
-                disabled
-                sx={{ width: "200px", bgcolor: "#ccc" }}
-              >
-                Configure Stripe to pay
-              </Button>
-            )}
-          </DialogActions>
+          <DialogActions sx={{ justifyContent: "center", pb: 3 }} />
         </Dialog>
       )}
 

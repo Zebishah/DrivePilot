@@ -247,7 +247,7 @@ const BookLesson: React.FC = () => {
         </Card>
       </Box>
     );
-  } // Keep the error state but enhance it
+  }
   if (error) {
     return (
       <Box
@@ -258,24 +258,39 @@ const BookLesson: React.FC = () => {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "50vh",
+          bgcolor: "#f5f5f5",
         }}
       >
-        <Typography variant="h6" color="error" sx={{ mb: 2 }}>
-          Error loading bookings
-        </Typography>
-
-        <Button
-          variant="contained"
-          onClick={() => refetch()}
+        <Box
           sx={{
-            bgcolor: "#5fc2d3",
-            "&:hover": {
-              bgcolor: "#4bb1c2",
-            },
+            maxWidth: 360,
+            py: 4,
+            px: 3,
+            textAlign: "center",
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 1,
+            border: "1px solid",
+            borderColor: "grey.200",
           }}
         >
-          Try Again
-        </Button>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+            We couldn’t load your bookings right now.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please try again in a moment.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => refetch()}
+            sx={{
+              bgcolor: "#5fc2d3",
+              "&:hover": { bgcolor: "#4bb1c2" },
+            }}
+          >
+            Try again
+          </Button>
+        </Box>
       </Box>
     );
   }
