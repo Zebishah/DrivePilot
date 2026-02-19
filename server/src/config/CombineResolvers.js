@@ -17,6 +17,7 @@ const visitorResolvers = require("../graphql/resolvers/visitor.resolver");
 const adminAnalyticsResolvers = require("../graphql/resolvers/AdminAnalytics.resolver");
 const AdminBookingResolvers = require("../graphql/resolvers/AdminBookingType.resolver");
 const transactionResolver = require("../graphql/resolvers/transaction.resolver");
+const refundRequestResolver = require("../graphql/resolvers/refundRequest.resolver");
 const resolvers = mergeResolvers([
   userResolvers,
   SignupLinkResolver,
@@ -35,6 +36,7 @@ const resolvers = mergeResolvers([
   visitorResolvers,
   adminAnalyticsResolvers,
   transactionResolver,
+  refundRequestResolver,
 ]);
 
 module.exports = resolvers;

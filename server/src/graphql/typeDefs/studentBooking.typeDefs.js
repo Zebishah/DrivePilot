@@ -226,7 +226,6 @@ const studentBookingTypeDefs = gql`
     ): StudentBooking!
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
-    requestRefund(bookingId: ID!, slotId: ID!): StudentBooking!
     markBookingsAsViewed: Boolean!
     updateSlotStatus(input: UpdateSlotStatusInput!): StudentBooking!
   }

@@ -19,13 +19,13 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
-import { useMutation } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import {
   CANCEL_BOOKING,
   CREATE_BOOKING_CHECKOUT_SESSION,
   COMPLETE_BOOKING_FROM_CHECKOUT,
-  REQUEST_REFUND,
 } from "../../../graphql/mutations/studentBooking";
+import { REQUEST_REFUND, GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest";
 import toast from "react-hot-toast";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import dayjs from "dayjs";
@@ -226,35 +226,45 @@ const BookingDetails: React.FC = () => {
   const [cancelError, setCancelError] = useState("");
   const [isTooLate, setIsTooLate] = useState(false);
   const [cancelBooking] = useMutation(CANCEL_BOOKING);
-  const [requestRefund, { loading: refundLoading }] = useMutation(
-    REQUEST_REFUND,
-    {
-      onCompleted: () => {
-        setRefundRequestedForSlot(true);
-        setRefundDialogOpen(false);
-        toast.success("Refund requested. It will be credited to your original payment method.");
-        navigate("/student-dashboard/book");
-      },
-      onError: (err) => {
-        toast.error(err.message || "Failed to request refund");
-      },
-    }
+  const { data: myRefundData, refetch: refetchMyRefundRequests } = useQuery(GET_MY_REFUND_REQUESTS, {
+    fetchPolicy: "network-only",
+  });
+  const myRefundRequests = myRefundData?.getMyRefundRequests ?? [];
+  const pendingRefundForThisSlot = Boolean(
+    bookingId &&
+      slotId &&
+      myRefundRequests.some(
+        (r: { bookingId: string; slotId: string; status: string }) =>
+          r.bookingId === bookingId && r.slotId === slotId && r.status === "pending"
+      )
   );
+
+  const [requestRefund, { loading: refundLoading }] = useMutation(REQUEST_REFUND, {
+    onCompleted: () => {
+      setRefundRequestedForSlot(true);
+      setRefundDialogOpen(false);
+      refetchMyRefundRequests();
+      toast.success("Refund requested. It will be processed after admin approval.");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to request refund");
+    },
+  });
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundRequestedForSlot, setRefundRequestedForSlot] = useState(false);
   const currentSlot =
     slot ||
     selectedAvailability?.find((s: { _id?: string }) => s._id === slotId);
   const isSlotRefunded = Boolean(
-    refundRequestedForSlot ||
-      currentSlot?.status === "refund" ||
+    currentSlot?.status === "refund" ||
       (currentSlot as { refundedAt?: string } | undefined)?.refundedAt ||
       (currentSlot as { paymentStatus?: string } | undefined)?.paymentStatus === "refunded"
   );
+  const isPendingOrRefunded = pendingRefundForThisSlot || refundRequestedForSlot || isSlotRefunded;
   const handleOpenRefund = () => setRefundDialogOpen(true);
   const handleCloseRefund = () => setRefundDialogOpen(false);
   const handleConfirmRefund = () => {
-    if (isSlotRefunded) return;
+    if (isPendingOrRefunded) return;
     if (bookingId && slotId) {
       requestRefund({ variables: { bookingId, slotId } });
     }
@@ -644,7 +654,12 @@ const BookingDetails: React.FC = () => {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-              {isCancelled && bookingId && slotId && !isSlotRefunded && (
+              {isCancelled && bookingId && slotId && pendingRefundForThisSlot && (
+                <Typography variant="body2" color="info.main" fontWeight={500}>
+                  Refund pending admin approval
+                </Typography>
+              )}
+              {isCancelled && bookingId && slotId && !isPendingOrRefunded && (
                 <Button
                   variant="contained"
                   color="secondary"
@@ -673,7 +688,9 @@ const BookingDetails: React.FC = () => {
             </Box>
             {isCancelled && bookingId && slotId && !isSlotRefunded && (
               <Typography variant="caption" color="text.secondary">
-                Refund will be sent to the card you used to pay.
+                {pendingRefundForThisSlot
+                  ? "Admin will review your refund request. You will be notified once processed."
+                  : "Refund will be sent to the card you used to pay after admin approval."}
               </Typography>
             )}
           </Box>
@@ -952,7 +969,8 @@ const BookingDetails: React.FC = () => {
             You are requesting a full refund for this cancelled lesson.
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            The refund will be credited to your original payment method
+            Your request will be sent to admin for approval. Once approved, the
+            refund will be credited to your original payment method
             {paymentMethod?.cardLast4
               ? ` (card ending ****${paymentMethod.cardLast4})`
               : ""}
@@ -964,7 +982,7 @@ const BookingDetails: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleConfirmRefund}
-            disabled={refundLoading || isSlotRefunded}
+            disabled={refundLoading || isPendingOrRefunded}
           >
             {refundLoading ? (
               <CircularProgress size={20} />

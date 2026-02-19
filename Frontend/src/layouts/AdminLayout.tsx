@@ -100,6 +100,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: LayoutGrid,
       path: "/admin-dashboard/transactions",
     },
+    {
+      text: "Refund requests",
+      icon: LayoutGrid,
+      path: "/admin-dashboard/refund-requests",
+    },
     ...(user?.adminLevel === "super"
       ? [
           {

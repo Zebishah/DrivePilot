@@ -17,6 +17,7 @@ const VisitorTypeDefs = require("../graphql/typeDefs/VisitorsTypes");
 const AdminAnalyticsTypeDefs = require("../graphql/typeDefs/AdminOverallAnalyticsTypes");
 const AdminBookingTypeDefs = require("../graphql/typeDefs/AdminBookingType");
 const TransactionTypeDefs = require("../graphql/typeDefs/transaction.typeDefs");
+const RefundRequestTypeDefs = require("../graphql/typeDefs/refundRequest.typeDefs");
 const typeDefs = mergeTypeDefs([
   userTypeDefs,
   SignupLinkTypedef,
@@ -35,6 +36,7 @@ const typeDefs = mergeTypeDefs([
   AdminAnalyticsTypeDefs,
   AdminBookingTypeDefs,
   TransactionTypeDefs,
+  RefundRequestTypeDefs,
 ]);
 
 module.exports = typeDefs;

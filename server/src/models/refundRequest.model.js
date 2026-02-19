@@ -1,0 +1,50 @@
+const mongoose = require("mongoose");
+
+const refundRequestSchema = new mongoose.Schema(
+  {
+    bookingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "StudentBooking",
+      required: true,
+    },
+    slotId: {
+      type: String,
+      required: true,
+    },
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    instructorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Instructor",
+      required: true,
+    },
+    amount: { type: Number, required: true },
+    currency: { type: String, default: "CHF" },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    requestedAt: { type: Date, default: Date.now },
+    processedAt: { type: Date },
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    stripeRefundId: { type: String },
+    rejectionReason: { type: String },
+    // Snapshot for admin display (student/instructor names)
+    studentName: { type: String },
+    instructorName: { type: String },
+    slotDate: { type: String },
+    slotStartTime: { type: String },
+    slotEndTime: { type: String },
+  },
+  { timestamps: true },
+);
+
+refundRequestSchema.index({ bookingId: 1, slotId: 1 });
+refundRequestSchema.index({ studentId: 1, status: 1 });
+refundRequestSchema.index({ status: 1 });
+
+module.exports = mongoose.model("RefundRequest", refundRequestSchema);
