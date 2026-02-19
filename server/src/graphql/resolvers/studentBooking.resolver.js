@@ -10,7 +10,17 @@ const {
 const { validateUser } = require("../../utils/auth");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { default: mongoose } = require("mongoose");
-const { User, Instructor } = require("../../models/User");
+const { User, Instructor, Admin } = require("../../models/User");
+
+async function getPlatformCommissionForSplit() {
+  const admin = await Admin.findOne().lean();
+  const pc = admin?.platformCommission || {};
+  return {
+    defaultRate: pc.defaultRate ?? 20,
+    defaultType: pc.defaultType ?? "percentage",
+    defaultFixedAmount: pc.defaultFixedAmount ?? 0,
+  };
+}
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
@@ -337,9 +347,11 @@ const studentBookingResolver = {
               "Instructor payment account is not set up. Please try another instructor.",
             );
           }
+          const platformSettings = await getPlatformCommissionForSplit();
           const { dspCommission, instructorAmount } = getCommissionSplit(
             finalAmount,
             instructor,
+            platformSettings,
           );
           const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
           const instructorShareCentimes = Math.round(
@@ -383,7 +395,7 @@ const studentBookingResolver = {
           };
           if (isCardPayment && stripePaymentIntentId) {
             const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
-              getCommissionSplit(perSlotAmount, instructor);
+              getCommissionSplit(perSlotAmount, instructor, platformSettings);
             base.paymentStatus = "paid";
             base.chargeAmount = perSlotAmount;
             base.dspCommission = slotDsp;
@@ -460,7 +472,7 @@ const studentBookingResolver = {
             description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
             occurredAt,
           });
-          // Platform gross receipt
+          // Platform gross receipt (link student so admin table shows who paid)
           await createTransaction({
             type: "payment",
             role: "platform",
@@ -469,6 +481,8 @@ const studentBookingResolver = {
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
             bookingId: booking._id,
+            studentId: user.id,
+            instructorId: instructor._id,
             stripePaymentIntentId: stripePaymentIntentId,
             description: "Platform gross receipt for booking",
             occurredAt,
@@ -656,9 +670,11 @@ const studentBookingResolver = {
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
         const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
+        const platformSettings = await getPlatformCommissionForSplit();
         const { dspCommission, instructorAmount } = getCommissionSplit(
           finalAmount,
           instructor,
+          platformSettings,
         );
         const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
         const instructorShareCentimes = Math.round(
@@ -828,9 +844,14 @@ const studentBookingResolver = {
           ? paymentIntent.id
           : session.payment_intent;
       booking.stripePaymentIntentId = piId;
+      const platformSettingsConfirm = await getPlatformCommissionForSplit();
       for (const slot of booking.slots) {
         const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
-          getCommissionSplit(perSlotAmount, instructor);
+          getCommissionSplit(
+            perSlotAmount,
+            instructor,
+            platformSettingsConfirm,
+          );
         slot.paymentStatus = "paid";
         slot.chargeAmount = perSlotAmount;
         slot.dspCommission = slotDsp;
@@ -861,6 +882,8 @@ const studentBookingResolver = {
         currency: DEFAULT_CURRENCY.toUpperCase(),
         status: "succeeded",
         bookingId: booking._id,
+        studentId: user.id,
+        instructorId: instructor._id,
         stripePaymentIntentId: piId,
         description: "Platform gross receipt for booking",
         occurredAt,
@@ -950,10 +973,12 @@ const studentBookingResolver = {
       const numSlots = validatedInput.slots.length;
       const finalAmount = Number(validatedInput.finalAmount);
       const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
+      const platformSettingsPay = await getPlatformCommissionForSplit();
       const enrichedSlots = validatedInput.slots.map((slot) => {
         const { dspCommission, instructorAmount } = getCommissionSplit(
           perSlotAmount,
           instructor,
+          platformSettingsPay,
         );
         return {
           ...slot,
@@ -1598,7 +1623,7 @@ const studentBookingResolver = {
           occurredAt,
         });
       }
-      // Platform commission reversal (20% we kept is effectively refunded)
+      // Platform commission reversal (link student/instructor so admin table shows who it relates to)
       if (slot.dspCommission != null && slot.dspCommission > 0) {
         await createTransaction({
           type: "transfer_reversal",
@@ -1609,6 +1634,8 @@ const studentBookingResolver = {
           status: "succeeded",
           bookingId: booking._id,
           slotId,
+          studentId: booking.studentId?._id ?? booking.studentId,
+          instructorId: booking.instructorId?._id ?? booking.instructorId,
           stripePaymentIntentId: booking.stripePaymentIntentId,
           stripeRefundId: refundId,
           description: "Platform commission reversed due to refund",

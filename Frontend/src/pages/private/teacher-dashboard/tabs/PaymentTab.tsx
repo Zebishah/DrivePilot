@@ -18,11 +18,13 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Modal,
 } from "@mui/material";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import LinkIcon from "@mui/icons-material/Link";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useQuery, useMutation } from "@apollo/client";
 
 import toast from "react-hot-toast";
@@ -31,7 +33,10 @@ import {
   GET_TEACHER_PROFILE,
   REGENERATE_STRIPE_LINK,
 } from "../../../../graphql/mutations/profile";
-import { GET_INSTRUCTOR_TRANSACTIONS } from "../../../../graphql/Queries/transactionQueries";
+import {
+  GET_INSTRUCTOR_TRANSACTIONS,
+  GET_INSTRUCTOR_TRANSACTION_STATS,
+} from "../../../../graphql/Queries/transactionQueries";
 
 type OnboardingStatus =
   | "not_started"
@@ -57,14 +62,31 @@ function formatTransactionDate(value: string | null | undefined): string {
   });
 }
 
+type InstructorTransaction = {
+  id: string;
+  type: string;
+  direction: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description?: string | null;
+  occurredAt?: string | null;
+  createdAt?: string | null;
+};
+
 export const PaymentTab: React.FC = () => {
   const [connectLoading, setConnectLoading] = useState(false);
+  const [viewTransaction, setViewTransaction] = useState<InstructorTransaction | null>(null);
   const { data, loading: queryLoading } = useQuery(GET_TEACHER_PROFILE);
   const { data: transactionsData } = useQuery(GET_INSTRUCTOR_TRANSACTIONS, {
     variables: { limit: 50, offset: 0 },
     fetchPolicy: "network-only",
   });
-  const instructorTransactions = transactionsData?.getInstructorTransactions ?? [];
+  const { data: statsData } = useQuery(GET_INSTRUCTOR_TRANSACTION_STATS, {
+    fetchPolicy: "network-only",
+  });
+  const instructorTransactions: InstructorTransaction[] = transactionsData?.getInstructorTransactions ?? [];
+  const stats = statsData?.getInstructorTransactionStats;
   const [createStripeAccount] = useMutation(CREATE_STRIPE_ACCOUNT, {
     onCompleted: (res) => {
       const url = res?.createStripeAccount?.onboardingUrl;
@@ -380,7 +402,7 @@ export const PaymentTab: React.FC = () => {
         </CardActions>
       </Card>
 
-      {instructorTransactions.length > 0 && (
+      {(instructorTransactions.length > 0 || stats) && (
         <Card elevation={3} sx={{ mt: 3, borderRadius: 3, p: { xs: 2, sm: 3 } }}>
           <CardContent>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
@@ -389,53 +411,127 @@ export const PaymentTab: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Your payments, payouts, and related activity.
             </Typography>
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Direction</TableCell>
-                    <TableCell align="right">Amount</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Description</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {instructorTransactions.map((t: { id: string; type: string; direction: string; amount: number; currency: string; status: string; description?: string; occurredAt?: string | null; createdAt?: string | null }) => (
-                    <TableRow key={t.id} hover>
-                      <TableCell>
-                        {formatTransactionDate(t.occurredAt ?? t.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={t.type} size="small" variant="outlined" />
-                      </TableCell>
-                      <TableCell>{t.direction}</TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          color: t.direction === "credit" ? "success.main" : "text.primary",
-                        }}
-                      >
-                        {t.direction === "credit" ? "+" : "-"} {Number(t.amount).toFixed(2)} {t.currency}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={t.status}
-                          size="small"
-                          color={t.status === "succeeded" ? "success" : t.status === "failed" ? "error" : "default"}
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 200 }}>{t.description ?? "—"}</TableCell>
+            {stats && (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
+                <Card variant="outlined" sx={{ minWidth: 130 }}>
+                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                    <Typography color="text.secondary" variant="body2">Total received</Typography>
+                    <Typography variant="h6">${stats.totalReceived.toFixed(2)}</Typography>
+                  </CardContent>
+                </Card>
+                <Card variant="outlined" sx={{ minWidth: 130 }}>
+                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                    <Typography color="text.secondary" variant="body2">Total payouts</Typography>
+                    <Typography variant="h6">${stats.totalPayouts.toFixed(2)}</Typography>
+                  </CardContent>
+                </Card>
+                <Card variant="outlined" sx={{ minWidth: 130 }}>
+                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                    <Typography color="text.secondary" variant="body2">Transactions</Typography>
+                    <Typography variant="h6">{stats.transactionCount}</Typography>
+                  </CardContent>
+                </Card>
+              </Stack>
+            )}
+            {instructorTransactions.length > 0 ? (
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Ref Number</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell align="right">Amount</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell align="right">Action</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {instructorTransactions.map((t) => (
+                      <TableRow key={t.id} hover>
+                        <TableCell>{t.id.slice(-9)}</TableCell>
+                        <TableCell>
+                          {formatTransactionDate(t.occurredAt ?? t.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={t.type} size="small" variant="outlined" />
+                        </TableCell>
+                        <TableCell
+                          align="right"
+                          sx={{
+                            color: t.direction === "credit" ? "success.main" : "text.primary",
+                          }}
+                        >
+                          {t.direction === "credit" ? "+" : "-"} ${Number(t.amount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={t.status}
+                            size="small"
+                            color={t.status === "succeeded" ? "success" : t.status === "failed" ? "error" : "default"}
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<VisibilityIcon />}
+                            onClick={() => setViewTransaction(t)}
+                          >
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No transactions yet.
+              </Typography>
+            )}
           </CardContent>
         </Card>
       )}
+
+      <Modal open={!!viewTransaction} onClose={() => setViewTransaction(null)}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "95%", sm: 420 },
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 3,
+            borderRadius: 2,
+          }}
+        >
+          {viewTransaction && (
+            <>
+              <Typography variant="h6" gutterBottom>Transaction Details</Typography>
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                <Typography variant="body2"><strong>Ref Number:</strong> {viewTransaction.id.slice(-9)}</Typography>
+                <Typography variant="body2"><strong>Type:</strong> {viewTransaction.type}</Typography>
+                <Typography variant="body2">
+                  <strong>Amount:</strong> {viewTransaction.direction === "credit" ? "+" : "-"} ${viewTransaction.amount.toFixed(2)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Date:</strong> {formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt)}
+                </Typography>
+                <Typography variant="body2"><strong>Status:</strong> {viewTransaction.status}</Typography>
+                {viewTransaction.description && (
+                  <Typography variant="body2"><strong>Description:</strong> {viewTransaction.description}</Typography>
+                )}
+              </Stack>
+              <Button variant="outlined" onClick={() => setViewTransaction(null)} sx={{ mt: 2 }}>Close</Button>
+            </>
+          )}
+        </Box>
+      </Modal>
     </Box>
   );
 };

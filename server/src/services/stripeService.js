@@ -136,20 +136,42 @@ const DEFAULT_CURRENCY = "chf";
 const CENTIMES_PER_UNIT = 100; // 1 CHF = 100 centimes for Stripe
 
 /**
- * Get commission split for a given amount (in CHF).
+ * Get commission split for a given amount (in CHF). Uses instructor commission if set, else platform defaults.
  * @param {number} amountChf - Total amount in CHF
- * @param {{ commission?: { rate?: number } }} instructor - Instructor doc with commission.rate (default 20%)
+ * @param {{ commission?: { rate?: number, type?: string, fixedAmount?: number } }} instructor - Instructor doc
+ * @param {{ defaultRate?: number, defaultType?: string, defaultFixedAmount?: number }} [platformSettings] - From Admin.platformCommission
  * @returns {{ dspCommission: number, instructorAmount: number }}
  */
-function getCommissionSplit(amountChf, instructor) {
-  const rate = (instructor.commission && instructor.commission.rate) ?? 20;
-  const dspCommission =
-    Math.round(amountChf * (rate / 100) * CENTIMES_PER_UNIT) /
-    CENTIMES_PER_UNIT;
+function getCommissionSplit(amountChf, instructor, platformSettings = {}) {
+  const defRate = platformSettings.defaultRate ?? 20;
+  const defType = platformSettings.defaultType ?? "percentage";
+  const defFixed = platformSettings.defaultFixedAmount ?? 0;
+
+  let dspCommission;
+  const inc = instructor?.commission;
+  if (inc?.type === "amount" || inc?.type === "fixed") {
+    const fixed = Number(inc.fixedAmount ?? 0);
+    dspCommission = Math.min(fixed, amountChf);
+  } else if (inc?.rate != null && inc.rate >= 0) {
+    dspCommission =
+      Math.round(amountChf * (Number(inc.rate) / 100) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+  } else if (defType === "amount") {
+    dspCommission = Math.min(defFixed, amountChf);
+  } else {
+    const rate = defRate;
+    dspCommission =
+      Math.round(amountChf * (rate / 100) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+  }
   const instructorAmount =
     Math.round((amountChf - dspCommission) * CENTIMES_PER_UNIT) /
     CENTIMES_PER_UNIT;
-  return { dspCommission, instructorAmount };
+  return {
+    dspCommission:
+      Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
+    instructorAmount,
+  };
 }
 
 /**

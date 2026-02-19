@@ -96,7 +96,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: "/admin-dashboard/StudentManagement",
     },
     {
-      text: "All Transactions",
+      text: "Payment management",
       icon: LayoutGrid,
       path: "/admin-dashboard/transactions",
     },

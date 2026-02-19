@@ -318,6 +318,15 @@ const AdminSchema = new mongoose.Schema({
   platformCommission: {
     defaultRate: { type: Number, default: 20 },
     canModifyRates: { type: Boolean, default: true },
+    defaultType: {
+      type: String,
+      enum: ["percentage", "amount"],
+      default: "percentage",
+    },
+    defaultFixedAmount: { type: Number, default: 0 },
+    minFare: { type: Number, default: null },
+    maxFare: { type: Number, default: null },
+    payoutMethods: { type: [String], default: ["Stripe"] },
   },
 
   // Refund management tracking

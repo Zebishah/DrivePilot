@@ -1,8 +1,9 @@
 const StudentBooking = require("../models/studentBooking.model");
 const {
-  createTransferToInstructor,
+  createManualPayoutForInstructor,
   CENTIMES_PER_UNIT,
 } = require("../services/stripeService");
+const { createTransaction } = require("../services/transactionService");
 
 async function runInstructorPayoutJob() {
   const now = new Date();
@@ -40,9 +41,9 @@ async function runInstructorPayoutJob() {
         const amountCentimes = Math.round(
           Number(slot.instructorAmount) * CENTIMES_PER_UNIT,
         );
-        const { transferId } = await createTransferToInstructor({
+        const { payoutId } = await createManualPayoutForInstructor({
+          accountId: instructor.stripeAccount.accountId,
           amountCentimes,
-          destinationAccountId: instructor.stripeAccount.accountId,
           metadata: {
             bookingId: String(booking._id),
             slotId: String(slot._id),
@@ -54,19 +55,71 @@ async function runInstructorPayoutJob() {
           {
             $set: {
               [`slots.${i}.payoutStatus`]: "completed",
-              [`slots.${i}.payoutId`]: transferId,
+              [`slots.${i}.payoutId`]: payoutId,
               [`slots.${i}.payoutDate`]: new Date(),
               updatedAt: new Date(),
             },
           },
         );
+        const occurredAt = new Date();
+        await createTransaction({
+          type: "payout",
+          role: "instructor",
+          direction: "credit",
+          amount: Number(slot.instructorAmount),
+          currency: "CHF",
+          status: "succeeded",
+          bookingId: booking._id,
+          slotId: slot._id,
+          instructorId: instructor._id,
+          stripePayoutId: payoutId,
+          description: "Payout to bank for completed lesson",
+          occurredAt,
+        });
         processed += 1;
       } catch (err) {
-        console.error(
-          `Payout failed for booking ${booking._id} slot ${slot._id}:`,
-          err.message,
-        );
-        errors += 1;
+        const isInsufficientFunds =
+          err.message &&
+          (err.message.includes("insufficient funds") ||
+            err.message.includes("balance is too low"));
+        if (isInsufficientFunds && process.env.NODE_ENV !== "production") {
+          await StudentBooking.updateOne(
+            { _id: booking._id },
+            {
+              $set: {
+                [`slots.${i}.payoutStatus`]: "completed",
+                [`slots.${i}.payoutId`]: "test_skipped_insufficient_balance",
+                [`slots.${i}.payoutDate`]: new Date(),
+                updatedAt: new Date(),
+              },
+            },
+          );
+          const occurredAt = new Date();
+          await createTransaction({
+            type: "payout",
+            role: "instructor",
+            direction: "credit",
+            amount: Number(slot.instructorAmount),
+            currency: "CHF",
+            status: "succeeded",
+            bookingId: booking._id,
+            slotId: slot._id,
+            instructorId: instructor._id,
+            stripePayoutId: "test_skipped_insufficient_balance",
+            description: "Payout to bank for completed lesson (test simulated)",
+            occurredAt,
+          });
+          console.log(
+            `[PayoutJob] Test mode: simulated payout for booking ${booking._id} slot ${slot._id}`,
+          );
+          processed += 1;
+        } else {
+          console.error(
+            `Payout failed for booking ${booking._id} slot ${slot._id}:`,
+            err.message,
+          );
+          errors += 1;
+        }
       }
     }
   }
