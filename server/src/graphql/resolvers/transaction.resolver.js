@@ -150,11 +150,15 @@ const transactionResolver = {
 
     async getBookingTransactions(_, { bookingId }, { user }) {
       if (!user) throw new AuthenticationError("Not authenticated");
-      // Admin or owner views only
       const query = { bookingId };
-      if (user.role === "Instructor") query.instructorId = user.id;
-      if (user.role === "Student") query.studentId = user.id;
-      // Admin sees all
+      if (user.role === "Instructor") {
+        query.instructorId = user.id;
+        query.role = "instructor";
+      }
+      if (user.role === "Student") {
+        query.studentId = user.id;
+        query.role = "student";
+      }
       return Transaction.find(query).sort({ occurredAt: 1, createdAt: 1 });
     },
 
@@ -162,7 +166,7 @@ const transactionResolver = {
       if (!user || user.role !== "Instructor") {
         throw new ForbiddenError("Not authorized");
       }
-      return Transaction.find({ instructorId: user.id })
+      return Transaction.find({ instructorId: user.id, role: "instructor" })
         .sort({ occurredAt: -1, createdAt: -1 })
         .skip(offset)
         .limit(limit);
@@ -187,6 +191,7 @@ const transactionResolver = {
           {
             $match: {
               instructorId: instructorOid,
+              role: "instructor",
               type: "payment",
               direction: "credit",
               status: "succeeded",
@@ -198,6 +203,7 @@ const transactionResolver = {
           {
             $match: {
               instructorId: instructorOid,
+              role: "instructor",
               type: "payout",
               direction: "credit",
               status: "succeeded",
@@ -206,7 +212,7 @@ const transactionResolver = {
           { $group: { _id: null, total: { $sum: "$amount" } } },
         ]),
         Transaction.aggregate([
-          { $match: { instructorId: instructorOid } },
+          { $match: { instructorId: instructorOid, role: "instructor" } },
           {
             $group: {
               _id: null,
@@ -235,7 +241,7 @@ const transactionResolver = {
       if (!user || user.role !== "Student") {
         throw new ForbiddenError("Not authorized");
       }
-      return Transaction.find({ studentId: user.id })
+      return Transaction.find({ studentId: user.id, role: "student" })
         .sort({ occurredAt: -1, createdAt: -1 })
         .skip(offset)
         .limit(limit);
@@ -260,6 +266,7 @@ const transactionResolver = {
           {
             $match: {
               studentId: studentOid,
+              role: "student",
               type: "payment",
               direction: "debit",
               status: "succeeded",
@@ -271,6 +278,7 @@ const transactionResolver = {
           {
             $match: {
               studentId: studentOid,
+              role: "student",
               type: "refund",
               direction: "credit",
               status: "succeeded",
@@ -279,7 +287,7 @@ const transactionResolver = {
           { $group: { _id: null, total: { $sum: "$amount" } } },
         ]),
         Transaction.aggregate([
-          { $match: { studentId: studentOid } },
+          { $match: { studentId: studentOid, role: "student" } },
           {
             $group: {
               _id: null,
@@ -308,7 +316,11 @@ const transactionResolver = {
       if (!user || user.role !== "Student") {
         throw new ForbiddenError("Not authorized");
       }
-      return Transaction.find({ bookingId, studentId: user.id }).sort({
+      return Transaction.find({
+        bookingId,
+        studentId: user.id,
+        role: "student",
+      }).sort({
         occurredAt: 1,
         createdAt: 1,
       });

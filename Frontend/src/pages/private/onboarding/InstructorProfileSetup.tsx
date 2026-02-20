@@ -1001,7 +1001,7 @@ const InstructorProfileSetup: React.FC = () => {
     <Box sx={{ mt: 4 }}>
       <Box sx={{ mt: 4 }}>
         {/* Payment information form fields will go here */}
-        <Typography>Payment information coming soon...</Typography>
+        <Typography>Click Submit to complete your profile setup...</Typography>
       </Box>
     </Box>
   );
