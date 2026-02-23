@@ -306,24 +306,24 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
           <strong style="color: #333; font-size: 16px;">${formatDate(
-            slot.date
+            slot.date,
           )}</strong>
           <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">${formatTime(
-            slot.startTime
+            slot.startTime,
           )} - ${formatTime(slot.endTime)}</p>
         </div>
         <span style="background-color: ${
           slot.status === "confirmed"
             ? "#28a745"
             : slot.status === "cancelled"
-            ? "#dc3545"
-            : "#ffc107"
+              ? "#dc3545"
+              : "#ffc107"
         }; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; text-transform: capitalize;">${
-        slot.status
-      }</span>
+          slot.status
+        }</span>
       </div>
     </div>
-  `
+  `,
     )
     .join("");
 
@@ -382,6 +382,70 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
             </div>
             
             <p style="margin-bottom: 25px; font-size: 16px;">Please ensure you're available at the scheduled times. For any changes or questions, contact support immediately.</p>
+          </div>
+          
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
+
+    case "payment_requires_action":
+      subject = "Action required: complete payment for your upcoming lesson";
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: #ff9800; font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center;">Additional authentication required</h2>
+            
+            <p style="margin-bottom: 16px; font-size: 16px;">
+              We tried to process your payment for an upcoming lesson, but your bank requires an extra security confirmation (3D Secure).
+            </p>
+            
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
+              ${slotsHtml}
+            </div>
+            
+            <p style="margin-bottom: 16px; font-size: 16px;">
+              Please log in to your dashboard and complete the payment to avoid any disruption to your lesson.
+            </p>
+          </div>
+          
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
+
+    case "payment_failed":
+      subject = "Payment failed for your upcoming lesson";
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: #dc3545; font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center;">Payment failed</h2>
+            
+            <p style="margin-bottom: 16px; font-size: 16px;">
+              We were unable to process the payment for one of your upcoming lessons. This may be due to insufficient funds, an expired card, or a bank block.
+            </p>
+            
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
+              ${slotsHtml}
+            </div>
+            
+            <p style="margin-bottom: 16px; font-size: 16px;">
+              Please log in to your dashboard to update your payment method or try again. If payment is not completed, the lesson may be cancelled.
+            </p>
           </div>
           
           <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
@@ -558,7 +622,7 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
   try {
     await Promise.all(emailPromises);
     console.log(
-      `Booking notification emails sent successfully to ${recipients.length} recipients`
+      `Booking notification emails sent successfully to ${recipients.length} recipients`,
     );
   } catch (error) {
     console.error("Error sending booking notification emails:", error);
@@ -643,8 +707,8 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
                   documentData.documentType || "N/A"
                 }</p>
                 <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${
-        documentData.status || "N/A"
-      }</span></p>
+                  documentData.status || "N/A"
+                }</span></p>
                 <p style="margin-bottom: 8px;"><strong>Update Date:</strong> ${new Date().toLocaleDateString(
                   "en-US",
                   {
@@ -652,7 +716,7 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
-                  }
+                  },
                 )}</p>
                 <p style="margin-bottom: 8px;"><strong>Update Time:</strong> ${new Date().toLocaleTimeString(
                   "en-US",
@@ -660,7 +724,7 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
                     hour: "numeric",
                     minute: "2-digit",
                     hour12: true,
-                  }
+                  },
                 )}</p>
               </div>
               
@@ -685,7 +749,7 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
               </div>
             `
                 : documentData.status === "rejected"
-                ? `
+                  ? `
               <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
                 <h4 style="color: #721c24; margin-bottom: 15px;">⚠️ Document Rejected</h4>
                 <p style="color: #721c24; margin: 0;">Your document has been rejected. Please review the requirements and resubmit a new document. Contact support if you need assistance.</p>
@@ -696,7 +760,7 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
                 }
               </div>
             `
-                : `
+                  : `
               <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
                 <h4 style="color: #856404; margin-bottom: 15px;">⏳ Under Review</h4>
                 <p style="color: #856404; margin: 0;">Your document is currently under review. We'll notify you once the review is complete.</p>
@@ -737,7 +801,7 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
   try {
     await Promise.all(emailPromises);
     console.log(
-      `Document status notification emails sent successfully to ${recipients.length} recipients`
+      `Document status notification emails sent successfully to ${recipients.length} recipients`,
     );
   } catch (error) {
     console.error("Error sending document status notification emails:", error);
@@ -748,7 +812,7 @@ const sendDocumentStatusEmail = async (recipients, documentData, type) => {
 const notifyBookingParties = async (
   bookingData,
   type,
-  adminEmail = process.env.ADMIN_EMAIL
+  adminEmail = process.env.ADMIN_EMAIL,
 ) => {
   try {
     const recipients = [];
@@ -795,7 +859,7 @@ const notifyBookingParties = async (
           instructor: bookingData.instructorId, // Changed from bookingData.instructorId
           reason: bookingData.reason || null,
         },
-        type
+        type,
       );
     }
 
@@ -809,7 +873,7 @@ const notifyDocumentStatusParties = async (
   documentData,
   instructorData,
   type,
-  adminEmail = process.env.ADMIN_EMAIL
+  adminEmail = process.env.ADMIN_EMAIL,
 ) => {
   try {
     const recipients = [];
@@ -845,7 +909,7 @@ const notifyDocumentStatusParties = async (
           instructor: instructorData,
           rejectionReason: documentData.rejectionReason || null,
         },
-        type
+        type,
       );
     }
 

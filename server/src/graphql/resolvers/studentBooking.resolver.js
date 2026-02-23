@@ -32,7 +32,10 @@ const {
   getCommissionSplit,
   createPaymentIntentForBooking,
   createCheckoutSessionForBooking,
+  createCustomer,
   retrieveCheckoutSession,
+  retrieveSetupIntent,
+  retrievePaymentMethod,
   createRefund,
   getTransferIdFromPaymentIntent,
   createTransferReversal,
@@ -690,6 +693,27 @@ const studentBookingResolver = {
           payoutStatus: "not_applicable",
         }));
 
+        // Decide instant vs deferred by gap between now and earliest slot start
+        const now = new Date();
+        const slotStartTimes = enrichedSlots.map(
+          (slot) => new Date(`${slot.date}T${slot.startTime}`),
+        );
+        const earliestSlotStart =
+          slotStartTimes.length > 0
+            ? new Date(Math.min(...slotStartTimes.map((d) => d.getTime())))
+            : null;
+        const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+        const isDeferred =
+          earliestSlotStart &&
+          earliestSlotStart.getTime() - now.getTime() > FORTY_EIGHT_HOURS_MS;
+
+        const gapHours = earliestSlotStart
+          ? (earliestSlotStart.getTime() - now.getTime()) / (60 * 60 * 1000)
+          : null;
+        console.log(
+          `[createBookingCheckoutSession] Earliest slot: ${earliestSlotStart?.toISOString()}, gap ${gapHours != null ? gapHours.toFixed(1) : "n/a"}h → ${isDeferred ? "DEFERRED (setup mode, charge at T-48)" : "INSTANT (payment now)"}`,
+        );
+
         const existingBookings = await StudentBooking.find({
           studentId: user.id,
           instructorId,
@@ -784,6 +808,20 @@ const studentBookingResolver = {
           ),
         );
 
+        let customerEmail = null;
+        let stripeCustomerIdForSession = null;
+        if (isDeferred) {
+          const student = await User.findById(user.id).select("email").lean();
+          customerEmail = student?.email || null;
+          if (!customerEmail) {
+            throw new UserInputError(
+              "Student email is required for saving your card. Please complete your profile.",
+            );
+          }
+          // Create Stripe Customer before Checkout so session.customer is set when they return.
+          stripeCustomerIdForSession = await createCustomer({ email: customerEmail });
+        }
+
         const { url } = await createCheckoutSessionForBooking({
           amountCentimes,
           transferAmountCentimes: instructorShareCentimes,
@@ -792,12 +830,16 @@ const studentBookingResolver = {
             bookingId: String(booking._id),
             studentId: String(user.id),
             instructorId: String(instructorId),
+            deferred: isDeferred ? "true" : "false",
           },
           successPath: "/student-dashboard/booking-details",
           cancelPath: "/student-dashboard/booking-details",
           description: `${numSlots} lesson(s) — CHF ${finalAmount.toFixed(2)}`,
+          mode: isDeferred ? "setup" : "payment",
+          customerEmail: customerEmail || undefined,
+          customerId: stripeCustomerIdForSession || undefined,
         });
-        return { url, bookingId: booking._id };
+        return { url, bookingId: booking._id, deferred: isDeferred };
       } catch (error) {
         console.error("createBookingCheckoutSession error:", error);
         if (error.errors) {
@@ -810,7 +852,11 @@ const studentBookingResolver = {
     completeBookingFromCheckout: async (_, { sessionId }, { user }) => {
       validateUser(user);
       const session = await retrieveCheckoutSession(sessionId);
-      if (!session || session.payment_status !== "paid") {
+      if (
+        !session ||
+        session.mode !== "payment" ||
+        session.payment_status !== "paid"
+      ) {
         throw new UserInputError(
           "Payment was not completed. Please try again or contact support.",
         );
@@ -934,6 +980,162 @@ const studentBookingResolver = {
         await notifyBookingParties(bookingData, "booking_created");
       } catch (emailError) {
         console.error("Failed to send booking creation emails:", emailError);
+      }
+      const io = getIOInstance();
+      if (io && io.notifyNewBooking) {
+        io.notifyNewBooking(JSON.parse(JSON.stringify(savedBooking)));
+      }
+      return savedBooking;
+    },
+
+    // For deferred bookings: Checkout in setup mode saves a payment method via SetupIntent.
+    // This resolver finalizes the booking after successful setup (no immediate charge).
+    completeDeferredBookingFromCheckout: async (_, { sessionId }, { user }) => {
+      validateUser(user);
+      console.log(
+        "[completeDeferredBookingFromCheckout] called, sessionId:",
+        sessionId?.slice(0, 20) + "...",
+      );
+      const session = await retrieveCheckoutSession(sessionId);
+      if (!session || session.mode !== "setup") {
+        console.warn(
+          "[completeDeferredBookingFromCheckout] invalid or non-setup session, mode:",
+          session?.mode,
+        );
+        throw new UserInputError(
+          "Invalid checkout session for deferred booking.",
+        );
+      }
+      const setupIntent = session.setup_intent;
+      if (
+        !setupIntent ||
+        typeof setupIntent === "string" ||
+        setupIntent.status !== "succeeded"
+      ) {
+        throw new UserInputError(
+          "Payment method was not saved. Please try again or contact support.",
+        );
+      }
+
+      const bookingId = session.metadata?.bookingId;
+      if (!bookingId) {
+        throw new UserInputError("Invalid checkout session.");
+      }
+      const booking = await StudentBooking.findById(bookingId);
+      if (!booking) {
+        throw new UserInputError("Booking not found.");
+      }
+      if (String(booking.studentId) !== String(user.id)) {
+        throw new UserInputError("This booking does not belong to you.");
+      }
+      if (booking.status !== "pending") {
+        console.log(
+          "[completeDeferredBookingFromCheckout] booking already completed, id:",
+          bookingId,
+        );
+        return booking;
+      }
+
+      // Save payment method and Stripe Customer ID for future T-48 off-session charges
+      const paymentMethodId =
+        typeof setupIntent.payment_method === "string"
+          ? setupIntent.payment_method
+          : setupIntent.payment_method?.id;
+      if (!paymentMethodId) {
+        throw new UserInputError("Could not determine saved payment method.");
+      }
+
+      // Customer ID is required for T-48 off-session charges. Try session, SetupIntent, PaymentMethod, then direct SetupIntent retrieve.
+      let stripeCustomerId =
+        typeof session.customer === "string"
+          ? session.customer
+          : session.customer?.id || null;
+      if (!stripeCustomerId && setupIntent.customer) {
+        stripeCustomerId =
+          typeof setupIntent.customer === "string"
+            ? setupIntent.customer
+            : setupIntent.customer?.id || null;
+      }
+      if (!stripeCustomerId && paymentMethodId) {
+        try {
+          const pm = await retrievePaymentMethod(paymentMethodId);
+          if (pm?.customer) {
+            stripeCustomerId =
+              typeof pm.customer === "string"
+                ? pm.customer
+                : pm.customer?.id || null;
+          }
+        } catch (pmErr) {
+          // ignore
+        }
+      }
+      // Fallback: retrieve SetupIntent directly with customer expanded (Checkout sometimes doesn't return customer on session)
+      if (!stripeCustomerId && setupIntent.id) {
+        try {
+          const si = await retrieveSetupIntent(setupIntent.id);
+          if (si?.customer) {
+            stripeCustomerId =
+              typeof si.customer === "string"
+                ? si.customer
+                : si.customer?.id || null;
+          }
+        } catch (siErr) {
+          // ignore
+        }
+      }
+      if (!stripeCustomerId) {
+        console.warn(
+          "[completeDeferredBookingFromCheckout] no stripeCustomerId — session.customer:",
+          session.customer,
+          "setupIntent.customer:",
+          setupIntent.customer,
+          "bookingId:",
+          bookingId,
+        );
+        throw new UserInputError(
+          "We could not link your card to your account. Please try again or contact support.",
+        );
+      }
+
+      console.log(
+        "[completeDeferredBookingFromCheckout] saving stripeCustomerId for booking",
+        bookingId,
+      );
+      booking.status = "confirmed";
+      booking.paymentMethod = {
+        ...(booking.paymentMethod || { type: "card" }),
+        paymentMethodId,
+        setupIntentId: setupIntent.id,
+      };
+      booking.stripeCustomerId = stripeCustomerId;
+
+      // Ensure all slots remain pending_payment (they were created that way)
+      booking.slots.forEach((slot) => {
+        if (!slot.paymentStatus || slot.paymentStatus === "pending_payment") {
+          slot.paymentStatus = "pending_payment";
+          slot.payoutStatus = slot.payoutStatus || "not_applicable";
+        }
+      });
+
+      await booking.save();
+
+      const savedBooking = await StudentBooking.findById(booking._id)
+        .populate(
+          "instructorId",
+          "_id firstName lastName email phone description profileImage address",
+        )
+        .populate(
+          "studentId",
+          "_id firstName lastName email phone profileImage homeAddress",
+        );
+      try {
+        const bookingData = JSON.parse(JSON.stringify(savedBooking));
+        await notifyBookingParties(bookingData, "booking_created");
+      } catch (emailError) {
+        console.error(
+          "Failed to send deferred booking creation emails:",
+          emailError,
+        );
       }
       const io = getIOInstance();
       if (io && io.notifyNewBooking) {

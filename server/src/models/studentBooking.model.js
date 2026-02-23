@@ -57,9 +57,20 @@ const studentBookingSchema = new mongoose.Schema(
         // --- Payment (per-slot for instant pay; T-48 will use later) ---
         paymentStatus: {
           type: String,
-          enum: ["pending_payment", "paid", "refunded"],
+          enum: [
+            "pending_payment", // Awaiting T-48 charge
+            "payment_failed", // T-48 charge failed
+            "requires_action", // 3DS authentication needed
+            "paid", // Payment successful
+            "refunded", // Refunded
+          ],
           default: "pending_payment",
         },
+        // Per-slot Stripe PaymentIntent for T-48 charging
+        paymentIntentId: { type: String },
+        chargedAt: { type: Date },
+        /** Number of T-48 charge attempts; after max retries slot is marked payment_failed */
+        paymentRetryCount: { type: Number, default: 0 },
         chargeAmount: { type: Number },
         dspCommission: { type: Number },
         instructorAmount: { type: Number },
@@ -95,11 +106,16 @@ const studentBookingSchema = new mongoose.Schema(
         type: String,
         required: false,
       },
+      // For card payments (immediate or T-48)
       paymentMethodId: { type: String },
       cardLast4: { type: String },
       cardBrand: { type: String },
+      // For deferred flow when using SetupIntents (optional)
+      setupIntentId: { type: String },
     },
     stripePaymentIntentId: { type: String },
+    /** Stripe Customer ID; required for off-session (T-48) charges when payment method was saved via setup mode */
+    stripeCustomerId: { type: String },
     cancellationDate: { type: Date },
     status: {
       type: String,

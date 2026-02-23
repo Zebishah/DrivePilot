@@ -24,6 +24,7 @@ import {
   CANCEL_BOOKING,
   CREATE_BOOKING_CHECKOUT_SESSION,
   COMPLETE_BOOKING_FROM_CHECKOUT,
+  COMPLETE_DEFERRED_BOOKING_FROM_CHECKOUT,
 } from "../../../graphql/mutations/studentBooking";
 import { REQUEST_REFUND, GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest";
 import toast from "react-hot-toast";
@@ -72,25 +73,63 @@ const BookingDetails: React.FC = () => {
         setError(err.message || "Failed to start checkout.");
       },
     });
-  const [completeBookingFromCheckout] =
-    useMutation(COMPLETE_BOOKING_FROM_CHECKOUT, {
+  const [completeBookingFromCheckout] = useMutation(
+    COMPLETE_BOOKING_FROM_CHECKOUT,
+    {
       onError: (err) => {
         toast.error(err.message || "Failed to complete booking.");
       },
-    });
+    },
+  );
+
+  const [completeDeferredBookingFromCheckout] = useMutation(
+    COMPLETE_DEFERRED_BOOKING_FROM_CHECKOUT,
+    {
+      // Error shown in useEffect .catch() to avoid double toast with success path fallback
+      onError: () => {},
+    },
+  );
 
   const [checkoutHandled, setCheckoutHandled] = useState(false);
   const checkout = searchParams.get("checkout");
   const sessionId = searchParams.get("session_id");
+
+  const runDeferredCompletion = () =>
+    completeDeferredBookingFromCheckout({ variables: { sessionId } })
+      .then(() => {
+        setSearchParams({});
+        toast.success(
+          "Card saved successfully. We will charge you 48 hours before each lesson.",
+        );
+        navigate("/student-dashboard/book", { replace: true });
+      })
+      .catch((err) => {
+        setSearchParams({});
+        toast.error(
+          err?.message ||
+            "We could not link your card to your account. Please try again or contact support.",
+        );
+      });
+
   useEffect(() => {
-    if (checkout === "cancelled" && !checkoutHandled) {
+    if (!sessionId || checkoutHandled) return;
+
+    if (checkout === "cancelled") {
       toast("Payment was cancelled. You can try again when ready.");
       setSearchParams({});
       setCheckoutHandled(true);
       return;
     }
-    if (checkout === "success" && sessionId && !checkoutHandled) {
-      setCheckoutHandled(true);
+
+    // We have session_id: complete the booking (deferred or instant).
+    setCheckoutHandled(true);
+
+    if (checkout === "setup_success") {
+      runDeferredCompletion();
+      return;
+    }
+
+    if (checkout === "success") {
       completeBookingFromCheckout({ variables: { sessionId } })
         .then(() => {
           setSearchParams({});
@@ -98,9 +137,13 @@ const BookingDetails: React.FC = () => {
           navigate("/student-dashboard/book", { replace: true });
         })
         .catch(() => {
-          setSearchParams({});
+          runDeferredCompletion();
         });
+      return;
     }
+
+    // session_id present but checkout param missing or unexpected: try deferred first (most common after "book lesson")
+    runDeferredCompletion();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when URL params change
   }, [checkout, sessionId, checkoutHandled]);
   // Calculate total amount based on number of lessons and lesson fee

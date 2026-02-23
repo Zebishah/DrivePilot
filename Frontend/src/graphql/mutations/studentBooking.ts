@@ -45,6 +45,7 @@ export const CREATE_BOOKING_CHECKOUT_SESSION = gql`
     createBookingCheckoutSession(input: $input) {
       url
       bookingId
+      deferred
     }
   }
 `;
@@ -52,6 +53,27 @@ export const CREATE_BOOKING_CHECKOUT_SESSION = gql`
 export const COMPLETE_BOOKING_FROM_CHECKOUT = gql`
   mutation CompleteBookingFromCheckout($sessionId: String!) {
     completeBookingFromCheckout(sessionId: $sessionId) {
+      _id
+      status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        paymentStatus
+      }
+      totalAmount
+      finalAmount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const COMPLETE_DEFERRED_BOOKING_FROM_CHECKOUT = gql`
+  mutation CompleteDeferredBookingFromCheckout($sessionId: String!) {
+    completeDeferredBookingFromCheckout(sessionId: $sessionId) {
       _id
       status
       slots {

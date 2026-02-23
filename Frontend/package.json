@@ -17,6 +17,7 @@
     "type-check": "tsc --noEmit --skipLibCheck false --strict"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
     "@apollo/client": "^3.13.8",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -52,6 +53,7 @@
     "material-ui-popup-state": "^5.3.5",
     "next": "^15.4.2",
     "pdfjs-dist": "^5.4.296",
+    "prop-types": "^15.8.1",
     "react": "^18.3.1",
     "react-apexcharts": "^1.7.0",
     "react-circular-progressbar": "^2.2.0",
@@ -71,6 +73,7 @@
     "react-shadow": "^20.6.0",
     "react-simple-star-rating": "^5.1.7",
     "react-slick": "^0.30.3",
+    "reselect": "^5.1.1",
     "slick-carousel": "^1.8.1",
     "socket.io-client": "^4.8.1",
     "styled-components": "^6.1.14",

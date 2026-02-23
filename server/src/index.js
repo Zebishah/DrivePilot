@@ -12,12 +12,13 @@ const cors = require("cors");
 const http = require("http");
 const { initSocket, setIOInstance } = require("./socket");
 const { runInstructorPayoutJob } = require("./jobs/payoutJob");
+const { runT48ChargeJob } = require("./jobs/t48ChargeJob");
 
 // ✅ Connect to MongoDB
 connectDB();
 
 // Run instructor payout job: 1 min for testing; for production use 6 * 60 * 60 * 1000 (6 hours)
-const PAYOUT_JOB_INTERVAL_MS = 1 * 60 * 1000;
+const PAYOUT_JOB_INTERVAL_MS = 6 * 60 * 60 * 1000;
 setInterval(() => {
   runInstructorPayoutJob().catch((err) =>
     console.error("[PayoutJob] Error:", err),
@@ -25,6 +26,15 @@ setInterval(() => {
 }, PAYOUT_JOB_INTERVAL_MS);
 runInstructorPayoutJob().catch((err) =>
   console.error("[PayoutJob] Initial run error:", err),
+);
+
+// Run T-48 charge job: 5 min for testing; adjust for production as needed
+const T48_JOB_INTERVAL_MS = 5 * 60 * 1000;
+setInterval(() => {
+  runT48ChargeJob().catch((err) => console.error("[T48ChargeJob] Error:", err));
+}, T48_JOB_INTERVAL_MS);
+runT48ChargeJob().catch((err) =>
+  console.error("[T48ChargeJob] Initial run error:", err),
 );
 
 // ✅ Initialize Express app and HTTP server

@@ -212,6 +212,7 @@ const studentBookingTypeDefs = gql`
   type CreateBookingCheckoutPayload {
     url: String!
     bookingId: ID
+    deferred: Boolean
   }
 
   type Mutation {
@@ -220,6 +221,7 @@ const studentBookingTypeDefs = gql`
       input: StudentBookingInput!
     ): CreateBookingCheckoutPayload!
     completeBookingFromCheckout(sessionId: String!): StudentBooking!
+    completeDeferredBookingFromCheckout(sessionId: String!): StudentBooking!
     completeBookingAfterPayment(
       paymentIntentId: ID!
       input: StudentBookingInput!

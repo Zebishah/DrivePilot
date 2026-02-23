@@ -7,6 +7,9 @@ const { createTransaction } = require("../services/transactionService");
 
 async function runInstructorPayoutJob() {
   const now = new Date();
+  console.log(
+    `[PayoutJob] Tick at ${now.toISOString()} — checking for slots eligible for instructor payout`,
+  );
   const bookings = await StudentBooking.find({
     "slots.payoutStatus": "pending",
     "slots.payoutEligibleAt": { $lte: now },
@@ -124,11 +127,7 @@ async function runInstructorPayoutJob() {
     }
   }
 
-  if (processed > 0 || errors > 0) {
-    console.log(
-      `[PayoutJob] Processed ${processed} slot(s), ${errors} error(s)`,
-    );
-  }
+  console.log(`[PayoutJob] Done. processed=${processed}, errors=${errors}`);
   return { processed, errors };
 }
 

@@ -63,6 +63,14 @@ stripe trigger account.updated
 
 Your local server will receive these at `http://localhost:4000/webhooks/stripe` and the signature will validate with the `whsec_...` from `stripe listen`.
 
+## Events used by this app
+
+- **payment_intent.succeeded** – platform payments / legacy booking flow
+- **checkout.session.completed** – deferred (setup) bookings: saves student’s Stripe customer ID and payment method on the booking so T-48 can charge even if the user never hits the frontend success URL
+- **account.updated**, **account.application.deauthorized**, **charge.dispute.created**, **charge.dispute.closed**, **payout.failed**, **payout.paid** – Connect account events
+
+`stripe listen` forwards all events to your local server. For **production**, in Stripe Dashboard add a webhook endpoint with your HTTPS URL and subscribe to the events above (or “Send all events” for simplicity).
+
 ## Notes
 
 - Keep `stripe listen` running while you develop; when you stop it, the same secret may be reused after next `stripe listen`, or a new one may be shown (update `.env` if it changes).

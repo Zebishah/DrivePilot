@@ -185,7 +185,9 @@ function getCommissionSplit(amountChf, instructor, platformSettings = {}) {
  *   customerId?: string,
  *   metadata?: Record<string, string>,
  *   confirm?: boolean,
+ *   offSession?: boolean,
  *   transferData?: { destinationAccountId: string, amountCentimes: number },
+ *   idempotencyKey?: string,
  * }} opts
  * @returns {Promise<{ paymentIntentId: string, status: string, clientSecret?: string, requiresAction?: boolean }>}
  */
@@ -197,7 +199,9 @@ async function createPaymentIntentForBooking(opts) {
     customerId,
     metadata = {},
     confirm = true,
+    offSession = false,
     transferData,
+    idempotencyKey,
   } = opts;
 
   const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/student-dashboard/book?payment=complete`;
@@ -210,6 +214,9 @@ async function createPaymentIntentForBooking(opts) {
     capture_method: "automatic",
     automatic_payment_methods: { enabled: true },
   };
+  if (offSession) {
+    params.off_session = true;
+  }
   if (customerId) params.customer = customerId;
   if (
     transferData?.destinationAccountId &&
@@ -221,12 +228,24 @@ async function createPaymentIntentForBooking(opts) {
     };
   }
 
-  const paymentIntent = await stripe.paymentIntents.create(params);
+  const createOptions = idempotencyKey
+    ? { idempotencyKey: idempotencyKey.slice(0, 255) }
+    : {};
+  const paymentIntent = await stripe.paymentIntents.create(
+    params,
+    createOptions,
+  );
 
   if (confirm) {
-    const confirmed = await stripe.paymentIntents.confirm(paymentIntent.id, {
-      return_url: returnUrl,
-    });
+    const confirmParams = offSession
+      ? {}
+      : {
+          return_url: returnUrl,
+        };
+    const confirmed = await stripe.paymentIntents.confirm(
+      paymentIntent.id,
+      confirmParams,
+    );
     if (confirmed.status === "requires_action") {
       return {
         paymentIntentId: confirmed.id,
@@ -363,16 +382,22 @@ async function retrievePaymentIntent(paymentIntentId) {
 
 /**
  * Create a Stripe Checkout Session for a lesson booking (redirect to Stripe's hosted page).
- * Uses destination charge: platform keeps commission, rest goes to instructor.
+ * Uses destination charge in payment mode: platform keeps commission, rest goes to instructor.
+ * In setup mode, only saves a payment method for later off-session charges (no immediate payment).
+ * When mode is "setup", pass customerEmail so Stripe creates/uses a Customer and attaches the
+ * payment method to it (required for off-session charges).
  * @param {{
  *   amountCentimes: number,
  *   currency?: string,
- *   destinationAccountId: string,
- *   transferAmountCentimes: number,
+ *   destinationAccountId?: string,
+ *   transferAmountCentimes?: number,
  *   metadata?: Record<string, string>,
  *   successPath?: string,
  *   cancelPath?: string,
  *   description?: string,
+ *   mode?: "payment" | "setup",
+ *   customerEmail?: string,
+ *   customerId?: string,  // When set for setup mode, use this Stripe Customer (session.customer will be set).
  * }} opts
  * @returns {Promise<{ url: string, sessionId: string }>}
  */
@@ -386,49 +411,111 @@ async function createCheckoutSessionForBooking(opts) {
     successPath = "/student-dashboard/booking-details",
     cancelPath = "/student-dashboard/booking-details",
     description = "Lesson booking",
+    mode = "payment",
+    customerEmail,
+    customerId,
   } = opts;
 
   const base = FRONTEND_BASE.replace(/\/$/, "");
-  const successUrl = `${base}${successPath.startsWith("/") ? successPath : `/${successPath}`}?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+  const checkoutParam = mode === "setup" ? "setup_success" : "success";
+  const successUrl = `${base}${successPath.startsWith("/") ? successPath : `/${successPath}`}?checkout=${checkoutParam}&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${base}${cancelPath.startsWith("/") ? cancelPath : `/${cancelPath}`}?checkout=cancelled`;
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: currency.toLowerCase(),
-          unit_amount: Math.round(amountCentimes),
-          product_data: {
-            name: "Lesson booking",
-            description: description || "Lesson booking",
-            images: [],
-          },
-        },
-        quantity: 1,
-      },
-    ],
-    payment_intent_data: {
+  let sessionParams;
+  if (mode === "setup") {
+    // Save card for later off-session charges. Use customerId if provided (we create Customer beforehand so session.customer is set).
+    if (!customerId && (!customerEmail || !String(customerEmail).trim())) {
+      throw new Error(
+        "customerId or customerEmail is required when creating a Checkout Session in setup mode.",
+      );
+    }
+    sessionParams = {
+      mode: "setup",
+      payment_method_types: ["card"],
+      currency: currency.toLowerCase(),
       metadata: { ...metadata },
-      transfer_data: {
-        destination: destinationAccountId,
-        amount: Math.round(transferAmountCentimes),
+      setup_intent_data: {
+        metadata: { ...metadata },
       },
-    },
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-  });
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    };
+    if (customerId) {
+      sessionParams.customer = customerId;
+    } else {
+      sessionParams.customer_email = String(customerEmail).trim().toLowerCase();
+    }
+  } else {
+    // Immediate payment using destination charges
+    sessionParams = {
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: currency.toLowerCase(),
+            unit_amount: Math.round(amountCentimes),
+            product_data: {
+              name: "Lesson booking",
+              description: description || "Lesson booking",
+              images: [],
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        metadata: { ...metadata },
+        transfer_data: {
+          destination: destinationAccountId,
+          amount: Math.round(transferAmountCentimes),
+        },
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    };
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams);
 
   return { url: session.url, sessionId: session.id };
 }
 
 /**
+ * Create a Stripe Customer (e.g. for deferred Checkout so session.customer is set).
+ * @param {{ email: string }} opts
+ * @returns {Promise<string>} Stripe Customer ID (cus_xxx)
+ */
+async function createCustomer(opts) {
+  const customer = await stripe.customers.create({
+    email: String(opts.email).trim().toLowerCase(),
+  });
+  return customer.id;
+}
+
+/**
  * Retrieve a Checkout Session (e.g. to complete booking after redirect).
+ * Expands setup_intent and customer so we get full objects / IDs for deferred flow.
  */
 async function retrieveCheckoutSession(sessionId) {
   return stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ["payment_intent"],
+    expand: ["payment_intent", "setup_intent", "customer"],
   });
+}
+
+/**
+ * Retrieve a SetupIntent (e.g. to get customer when session doesn't have it).
+ */
+async function retrieveSetupIntent(setupIntentId) {
+  return stripe.setupIntents.retrieve(setupIntentId, {
+    expand: ["customer"],
+  });
+}
+
+/**
+ * Retrieve a PaymentMethod (e.g. to get customer id when session/setup_intent don't have it).
+ */
+async function retrievePaymentMethod(paymentMethodId) {
+  return stripe.paymentMethods.retrieve(paymentMethodId);
 }
 
 module.exports = {
@@ -442,7 +529,10 @@ module.exports = {
   getCommissionSplit,
   createPaymentIntentForBooking,
   createCheckoutSessionForBooking,
+  createCustomer,
   retrieveCheckoutSession,
+  retrieveSetupIntent,
+  retrievePaymentMethod,
   createTransferToInstructor,
   createManualPayoutForInstructor,
   createRefund,

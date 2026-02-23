@@ -7,6 +7,9 @@ const {
   stripe,
   retrieveAccount,
   accountToStripeSnapshot,
+  retrieveCheckoutSession,
+  retrieveSetupIntent,
+  retrievePaymentMethod,
 } = require("../services/stripeService");
 const { Instructor } = require("../models/User");
 const StudentBooking = require("../models/studentBooking.model");
@@ -106,6 +109,88 @@ async function handlePayoutPaid(accountId) {
   );
 }
 
+/**
+ * When a deferred (setup) Checkout Session completes, save stripeCustomerId and payment
+ * method on the booking so T-48 can charge. Runs even if the user never hits the
+ * frontend success URL (e.g. closed tab, wrong redirect). Idempotent: safe if
+ * completeDeferredBookingFromCheckout already ran.
+ */
+async function handleCheckoutSessionCompleted(sessionId) {
+  const session = await retrieveCheckoutSession(sessionId);
+  if (!session || session.mode !== "setup") return;
+  const setupIntent = session.setup_intent;
+  if (
+    !setupIntent ||
+    typeof setupIntent === "string" ||
+    setupIntent.status !== "succeeded"
+  )
+    return;
+  const bookingId = session.metadata?.bookingId;
+  if (!bookingId) return;
+
+  const booking = await StudentBooking.findById(bookingId);
+  if (!booking || booking.status !== "pending") return;
+
+  const paymentMethodId =
+    typeof setupIntent.payment_method === "string"
+      ? setupIntent.payment_method
+      : setupIntent.payment_method?.id;
+  if (!paymentMethodId) return;
+
+  let stripeCustomerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id || null;
+  if (!stripeCustomerId && setupIntent.customer) {
+    stripeCustomerId =
+      typeof setupIntent.customer === "string"
+        ? setupIntent.customer
+        : setupIntent.customer?.id || null;
+  }
+  if (!stripeCustomerId && paymentMethodId) {
+    try {
+      const pm = await retrievePaymentMethod(paymentMethodId);
+      if (pm?.customer) {
+        stripeCustomerId =
+          typeof pm.customer === "string"
+            ? pm.customer
+            : pm.customer?.id || null;
+      }
+    } catch (_) {}
+  }
+  if (!stripeCustomerId && setupIntent.id) {
+    try {
+      const si = await retrieveSetupIntent(setupIntent.id);
+      if (si?.customer) {
+        stripeCustomerId =
+          typeof si.customer === "string"
+            ? si.customer
+            : si.customer?.id || null;
+      }
+    } catch (_) {}
+  }
+  if (!stripeCustomerId) return;
+
+  booking.status = "confirmed";
+  booking.stripeCustomerId = stripeCustomerId;
+  booking.paymentMethod = {
+    ...(booking.paymentMethod || { type: "card" }),
+    paymentMethodId,
+    setupIntentId: setupIntent.id,
+  };
+  booking.slots.forEach((slot) => {
+    if (!slot.paymentStatus || slot.paymentStatus === "pending_payment") {
+      slot.paymentStatus = "pending_payment";
+      slot.payoutStatus = slot.payoutStatus || "not_applicable";
+    }
+  });
+  await booking.save();
+  console.log(
+    "[Stripe Webhook] Deferred booking completed: saved stripeCustomerId for booking",
+    bookingId,
+  );
+}
+
 router.post("/", async (req, res) => {
   if (!WEBHOOK_SECRET) {
     console.error("STRIPE_WEBHOOK_SECRET is not set");
@@ -132,15 +217,33 @@ router.post("/", async (req, res) => {
   processedEvents.add(event.id);
 
   // Platform payment events (no Connect accountId)
+  if (event.type === "checkout.session.completed") {
+    const session = event.data?.object;
+    if (session?.id) {
+      try {
+        await handleCheckoutSessionCompleted(session.id);
+      } catch (e) {
+        console.error(
+          "[Stripe Webhook] checkout.session.completed handler:",
+          e?.message || e,
+        );
+      }
+    }
+    return res.status(200).send("OK");
+  }
+
   if (event.type === "payment_intent.succeeded") {
     const pi = event.data?.object;
     if (pi?.id) {
       try {
+        // For legacy flow: booking-level PaymentIntent
         const existing = await StudentBooking.findOne({
           stripePaymentIntentId: pi.id,
         }).lean();
-        if (existing) {
-          // Already saved by createBooking; nothing to do
+        if (!existing) {
+          // For T-48 per-slot flow: we may have stored slot paymentIntentId and created
+          // transactions at charge time already. To keep webhook idempotent and simple,
+          // we do not attempt additional updates here.
         }
       } catch (e) {
         console.error("payment_intent.succeeded handler:", e.message);
