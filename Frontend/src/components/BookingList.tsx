@@ -69,18 +69,27 @@ export const BookingList: React.FC<BookingListProps> = ({
     new Date(`${slot.date}T${slot.startTime}`); // assumes date = "YYYY-MM-DD" and startTime = "HH:mm"
   const getSlotEndDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.endTime}`);
+
+  /** Stripe checkout started but never completed (no payment, no card saved) — do not show as upcoming */
+  const isAbandonedPending = (booking: Booking) =>
+    booking.status === "pending" &&
+    !booking.stripeCustomerId &&
+    !(booking.slots ?? []).some((s) => s.paymentStatus === "paid");
+
   const categorizeBookings = (bookings: Booking[]) => {
     const now = new Date();
     const upcoming: Booking[] = [];
     const cancelled: Booking[] = [];
     const refund: Booking[] = [];
     const completed: Booking[] = [];
+    const abandoned: Booking[] = [];
 
     bookings.forEach((booking) => {
       const upcomingSlots: Slot[] = [];
       const cancelledSlots: Slot[] = [];
       const refundSlots: Slot[] = [];
       const completedSlots: Slot[] = [];
+      const abandonedSlots: Slot[] = [];
 
       booking.slots.forEach((slot) => {
         if (slot.status === "cancelled") {
@@ -94,7 +103,14 @@ export const BookingList: React.FC<BookingListProps> = ({
           completedSlots.push(slot);
         } else if (
           (slot.status === "booked" || slot.status === "confirmed") &&
-          getSlotEndDateTime(slot) > now
+          getSlotEndDateTime(slot) > now &&
+          isAbandonedPending(booking)
+        ) {
+          abandonedSlots.push(slot);
+        } else if (
+          (slot.status === "booked" || slot.status === "confirmed") &&
+          getSlotEndDateTime(slot) > now &&
+          !isAbandonedPending(booking)
         ) {
           upcomingSlots.push(slot);
         } else {
@@ -110,12 +126,14 @@ export const BookingList: React.FC<BookingListProps> = ({
         refund.push({ ...booking, slots: refundSlots });
       if (completedSlots.length > 0)
         completed.push({ ...booking, slots: completedSlots });
+      if (abandonedSlots.length > 0)
+        abandoned.push({ ...booking, slots: abandonedSlots });
     });
 
-    return { upcoming, cancelled, refund, completed };
+    return { upcoming, cancelled, refund, completed, abandoned };
   };
 
-  const { upcoming, cancelled, refund, completed } =
+  const { upcoming, cancelled, refund, completed, abandoned } =
     categorizeBookings(bookings);
 
   const slotCounts = {
@@ -123,6 +141,7 @@ export const BookingList: React.FC<BookingListProps> = ({
     cancelled: cancelled.reduce((acc, b) => acc + b.slots.length, 0),
     refund: refund.reduce((acc, b) => acc + b.slots.length, 0),
     completed: completed.reduce((acc, b) => acc + b.slots.length, 0),
+    abandoned: abandoned.reduce((acc, b) => acc + b.slots.length, 0),
   };
 
   let filteredBookings: Booking[] = [];
@@ -131,12 +150,15 @@ export const BookingList: React.FC<BookingListProps> = ({
       filteredBookings = upcoming;
       break;
     case 1:
-      filteredBookings = cancelled;
+      filteredBookings = abandoned;
       break;
     case 2:
-      filteredBookings = refund;
+      filteredBookings = cancelled;
       break;
     case 3:
+      filteredBookings = refund;
+      break;
+    case 4:
       filteredBookings = completed;
       break;
     default:
@@ -180,6 +202,7 @@ export const BookingList: React.FC<BookingListProps> = ({
           }}
         >
           <Tab label={`Upcoming (${slotCounts.upcoming})`} />
+          <Tab label={`Abandoned (${slotCounts.abandoned})`} />
           <Tab label={`Cancelled (${slotCounts.cancelled})`} />
           <Tab label={`Refund (${slotCounts.refund})`} />
           <Tab label={`Completed (${slotCounts.completed})`} />
@@ -359,42 +382,51 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 mt: -3,
                                 borderRadius: 2,
                                 bgcolor:
-                                  slot.status === "booked"
-                                    ? "rgba(0, 200, 83, 0.15)"
-                                    : slot.status === "cancelled"
+                                  tabValue === 1
+                                    ? "rgba(158, 158, 158, 0.2)"
+                                    : tabValue === 2
                                       ? "rgba(211, 47, 47, 0.15)"
-                                      : "rgba(255, 152, 0, 0.15)",
+                                      : tabValue === 3
+                                        ? "rgba(255, 152, 0, 0.15)"
+                                        : tabValue === 4
+                                          ? "rgba(0, 200, 83, 0.15)"
+                                          : "rgba(0, 200, 83, 0.15)",
                                 color:
-                                  slot.status === "booked"
-                                    ? "rgb(0, 170, 70)"
-                                    : slot.status === "cancelled"
+                                  tabValue === 1
+                                    ? "rgb(97, 97, 97)"
+                                    : tabValue === 2
                                       ? "rgb(211, 47, 47)"
-                                      : "rgb(255, 152, 0)",
+                                      : tabValue === 3
+                                        ? "rgb(255, 152, 0)"
+                                        : tabValue === 4
+                                          ? "rgb(0, 170, 70)"
+                                          : "rgb(0, 170, 70)",
                                 fontWeight: 600,
                                 fontSize: "0.75rem",
                                 letterSpacing: "0.5px",
                                 border: `1px solid ${
-                                  slot.status === "booked"
-                                    ? "rgba(0, 200, 83, 0.25)"
-                                    : slot.status === "cancelled"
+                                  tabValue === 1
+                                    ? "rgba(158, 158, 158, 0.4)"
+                                    : tabValue === 2
                                       ? "rgba(211, 47, 47, 0.25)"
-                                      : "rgba(255, 152, 0, 0.25)"
+                                      : tabValue === 3
+                                        ? "rgba(255, 152, 0, 0.25)"
+                                        : "rgba(0, 200, 83, 0.25)"
                                 }`,
                                 transition:
                                   "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                                 boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                               }}
                             >
-                              {/* {slot.status === "booked"
-                                ? "CONFIRMED"
-                                : slot.status.toUpperCase()} */}
                               {tabValue === 0
                                 ? "UPCOMING"
-                                : tabValue === 3
-                                  ? "COMPLETED"
-                                  : slot.status === "booked"
-                                    ? "CONFIRMED"
-                                    : slot.status.toUpperCase()}
+                                : tabValue === 1
+                                  ? "ABANDONED"
+                                  : tabValue === 2
+                                    ? "CANCELLED"
+                                    : tabValue === 3
+                                      ? "REFUND"
+                                      : "COMPLETED"}
                             </Typography>
                           </Box>
                           <Box
@@ -472,10 +504,14 @@ export const BookingList: React.FC<BookingListProps> = ({
             <Typography variant="h6" color="textSecondary" gutterBottom>
               No{" "}
               {tabValue === 0
-                ? ""
+                ? "Upcoming"
                 : tabValue === 1
-                  ? "Confirmed "
-                  : "Cancelled "}
+                  ? "Abandoned"
+                  : tabValue === 2
+                    ? "Cancelled"
+                    : tabValue === 3
+                      ? "Refund"
+                      : "Completed"}{" "}
               Slots Available
             </Typography>
             {showNewBookingButton && (

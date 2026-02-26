@@ -69,7 +69,12 @@ const refundRequestResolver = {
           "Refund can only be requested for a cancelled lesson. Please cancel the lesson first.",
         );
       }
-      if (slot.paymentStatus !== "paid") {
+      // Consider slot paid if paymentStatus is "paid" OR booking/slot has payment info (instant or T-48)
+      const slotPaid =
+        String(slot.paymentStatus) === "paid" ||
+        (booking.stripePaymentIntentId && slot.chargeAmount != null) ||
+        (slot.paymentIntentId && slot.chargeAmount != null);
+      if (!slotPaid) {
         throw new UserInputError(
           "This lesson was not paid; no refund applies.",
         );
@@ -86,7 +91,9 @@ const refundRequestResolver = {
       ) {
         throw new UserInputError("This lesson has already been refunded.");
       }
-      if (!booking.stripePaymentIntentId || slot.chargeAmount == null) {
+      // Instant payment: booking.stripePaymentIntentId. T-48 payment: slot.paymentIntentId (per-slot PI).
+      const paymentIntentId = booking.stripePaymentIntentId || slot.paymentIntentId;
+      if (!paymentIntentId || slot.chargeAmount == null) {
         throw new UserInputError("Payment information missing for refund.");
       }
 
@@ -182,7 +189,9 @@ const refundRequestResolver = {
           "Refund is not available because the instructor has already been paid out. Request rejected.",
         );
       }
-      if (!booking.stripePaymentIntentId || slot.chargeAmount == null) {
+      // Instant payment: booking.stripePaymentIntentId. T-48 payment: slot.paymentIntentId (per-slot PI).
+      const paymentIntentId = booking.stripePaymentIntentId || slot.paymentIntentId;
+      if (!paymentIntentId || slot.chargeAmount == null) {
         throw new UserInputError("Payment information missing for refund.");
       }
 
@@ -194,7 +203,7 @@ const refundRequestResolver = {
       let transferId = null;
       try {
         transferId = await getTransferIdFromPaymentIntent(
-          booking.stripePaymentIntentId,
+          paymentIntentId,
         ).catch(() => null);
         if (
           transferId &&
@@ -216,7 +225,7 @@ const refundRequestResolver = {
         }
 
         const result = await createRefund({
-          paymentIntentId: booking.stripePaymentIntentId,
+          paymentIntentId,
           amountCentimes,
           reason: "requested_by_customer",
         });
@@ -252,7 +261,7 @@ const refundRequestResolver = {
         bookingId: booking._id,
         slotId: refundRequest.slotId,
         studentId: booking.studentId._id,
-        stripePaymentIntentId: booking.stripePaymentIntentId,
+        stripePaymentIntentId: paymentIntentId,
         stripeRefundId: refundId,
         description: "Refund for cancelled lesson (approved by admin)",
         occurredAt,
@@ -273,7 +282,7 @@ const refundRequestResolver = {
           bookingId: booking._id,
           slotId: refundRequest.slotId,
           instructorId: booking.instructorId._id,
-          stripePaymentIntentId: booking.stripePaymentIntentId,
+          stripePaymentIntentId: paymentIntentId,
           description: "Reversal of instructor share due to refund",
           occurredAt,
         });
@@ -290,7 +299,7 @@ const refundRequestResolver = {
           slotId: refundRequest.slotId,
           studentId: booking.studentId._id,
           instructorId: booking.instructorId._id,
-          stripePaymentIntentId: booking.stripePaymentIntentId,
+          stripePaymentIntentId: paymentIntentId,
           stripeRefundId: refundId,
           description: "Platform commission reversed due to refund",
           occurredAt,

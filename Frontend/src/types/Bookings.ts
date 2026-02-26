@@ -16,6 +16,7 @@ export interface Slot {
   endTime: string;
   booked: boolean;
   status: string;
+  paymentStatus?: string;
 }
 
 export interface PaymentMethod {

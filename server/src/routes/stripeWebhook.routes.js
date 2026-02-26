@@ -11,8 +11,10 @@ const {
   retrieveSetupIntent,
   retrievePaymentMethod,
 } = require("../services/stripeService");
-const { Instructor } = require("../models/User");
+const { Instructor, Admin } = require("../models/User");
 const StudentBooking = require("../models/studentBooking.model");
+const { createTransaction } = require("../services/transactionService");
+const { getCommissionSplit } = require("../services/stripeService");
 
 const router = express.Router();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -236,14 +238,124 @@ router.post("/", async (req, res) => {
     const pi = event.data?.object;
     if (pi?.id) {
       try {
-        // For legacy flow: booking-level PaymentIntent
-        const existing = await StudentBooking.findOne({
+        // Legacy flow: booking-level PaymentIntent
+        const existingLegacy = await StudentBooking.findOne({
           stripePaymentIntentId: pi.id,
         }).lean();
-        if (!existing) {
-          // For T-48 per-slot flow: we may have stored slot paymentIntentId and created
-          // transactions at charge time already. To keep webhook idempotent and simple,
-          // we do not attempt additional updates here.
+        if (existingLegacy) {
+          return res.status(200).send("OK");
+        }
+        // T-48 per-slot flow: find slot by paymentIntentId, set paid, create transactions (idempotent)
+        const booking = await StudentBooking.findOne({
+          "slots.paymentIntentId": pi.id,
+        })
+          .populate("instructorId", "stripeAccount commission")
+          .populate("studentId", "_id");
+        if (booking) {
+          const slot = booking.slots.find(
+            (s) => s.paymentIntentId && String(s.paymentIntentId) === pi.id,
+          );
+          if (slot && slot.paymentStatus !== "paid") {
+            const admin = await Admin.findOne().lean();
+            const platformCommission = admin?.platformCommission || {};
+            const perSlotAmount =
+              (Number(booking.finalAmount || booking.totalAmount) || 0) /
+              (booking.slots?.length || 1);
+            const { dspCommission, instructorAmount } = getCommissionSplit(
+              perSlotAmount,
+              booking.instructorId,
+              platformCommission,
+            );
+            const occurredAt = new Date();
+            slot.paymentStatus = "paid";
+            slot.chargedAt = occurredAt;
+            slot.chargeAmount = perSlotAmount;
+            slot.dspCommission = dspCommission;
+            slot.instructorAmount = instructorAmount;
+            slot.payoutStatus = "not_applicable";
+            await booking.save();
+
+            await createTransaction({
+              type: "payment",
+              role: "student",
+              direction: "debit",
+              amount: perSlotAmount,
+              currency: "CHF",
+              status: "succeeded",
+              bookingId: booking._id,
+              slotId: slot._id,
+              studentId: booking.studentId?._id ?? booking.studentId,
+              stripePaymentIntentId: pi.id,
+              description: "Lesson payment (T-48 3DS completed)",
+              occurredAt,
+            });
+            await createTransaction({
+              type: "payment",
+              role: "platform",
+              direction: "credit",
+              amount: perSlotAmount,
+              currency: "CHF",
+              status: "succeeded",
+              bookingId: booking._id,
+              slotId: slot._id,
+              studentId: booking.studentId?._id ?? booking.studentId,
+              stripePaymentIntentId: pi.id,
+              description: "Platform gross receipt for lesson (T-48)",
+              occurredAt,
+            });
+            if (instructorAmount != null) {
+              await createTransaction({
+                type: "payment",
+                role: "instructor",
+                direction: "credit",
+                amount: instructorAmount,
+                currency: "CHF",
+                status: "succeeded",
+                bookingId: booking._id,
+                slotId: slot._id,
+                instructorId: booking.instructorId?._id ?? booking.instructorId,
+                studentId: booking.studentId?._id ?? booking.studentId,
+                stripePaymentIntentId: pi.id,
+                description: "Instructor share for lesson (T-48)",
+                occurredAt,
+              });
+            }
+            if (dspCommission != null) {
+              await createTransaction({
+                type: "payment",
+                role: "platform",
+                direction: "credit",
+                amount: dspCommission,
+                currency: "CHF",
+                bookingId: booking._id,
+                slotId: slot._id,
+                studentId: booking.studentId?._id ?? booking.studentId,
+                description: "Platform commission for lesson (T-48)",
+                occurredAt,
+              });
+            }
+            const allPaid =
+              booking.slots.length &&
+              booking.slots.every((s) => s.paymentStatus === "paid");
+            if (allPaid) {
+              await StudentBooking.updateOne(
+                { _id: booking._id },
+                {
+                  $set: {
+                    status: "confirmed",
+                    stripePaymentIntentId: pi.id,
+                    updatedAt: new Date(),
+                  },
+                },
+              );
+            }
+            console.log(
+              "[Stripe Webhook] payment_intent.succeeded: updated slot to paid for booking",
+              booking._id,
+              "slot",
+              slot._id,
+            );
+          }
         }
       } catch (e) {
         console.error("payment_intent.succeeded handler:", e.message);

@@ -206,42 +206,66 @@ async function createPaymentIntentForBooking(opts) {
 
   const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/student-dashboard/book?payment=complete`;
 
+  // Ensure all values are primitives (Stripe throws "Unknown arguments ([object Object])" for class instances / ObjectIds)
   const params = {
-    amount: Math.round(amountCentimes),
-    currency: currency.toLowerCase(),
-    payment_method: paymentMethodId,
-    metadata: { ...metadata },
+    amount: Math.round(Number(amountCentimes)),
+    currency: String(currency || DEFAULT_CURRENCY).toLowerCase(),
+    payment_method:
+      paymentMethodId != null ? String(paymentMethodId) : undefined,
+    metadata: Object.fromEntries(
+      Object.entries(metadata || {}).map(([k, v]) => [
+        k,
+        v != null ? String(v) : "",
+      ]),
+    ),
     capture_method: "automatic",
     automatic_payment_methods: { enabled: true },
   };
   if (offSession) {
     params.off_session = true;
+    // Stripe requires confirm: true when using off_session on create.
+    params.confirm = true;
   }
-  if (customerId) params.customer = customerId;
+  if (customerId != null && customerId !== "") {
+    params.customer = String(customerId);
+  }
   if (
     transferData?.destinationAccountId &&
     transferData?.amountCentimes != null
   ) {
     params.transfer_data = {
-      destination: transferData.destinationAccountId,
-      amount: Math.round(transferData.amountCentimes),
+      destination: String(transferData.destinationAccountId),
+      amount: Math.round(Number(transferData.amountCentimes)),
     };
   }
 
-  const createOptions = idempotencyKey
-    ? { idempotencyKey: idempotencyKey.slice(0, 255) }
-    : {};
-  const paymentIntent = await stripe.paymentIntents.create(
-    params,
-    createOptions,
-  );
+  const paymentIntent = idempotencyKey
+    ? await stripe.paymentIntents.create(params, {
+        idempotencyKey: String(idempotencyKey).slice(0, 255),
+      })
+    : await stripe.paymentIntents.create(params);
+
+  // When off_session we already passed confirm: true to create, so PI is already confirmed.
+  if (offSession) {
+    if (paymentIntent.status === "requires_action") {
+      return {
+        paymentIntentId: paymentIntent.id,
+        status: paymentIntent.status,
+        clientSecret: paymentIntent.client_secret,
+        requiresAction: true,
+      };
+    }
+    return {
+      paymentIntentId: paymentIntent.id,
+      status: paymentIntent.status,
+      clientSecret: paymentIntent.client_secret,
+    };
+  }
 
   if (confirm) {
-    const confirmParams = offSession
-      ? {}
-      : {
-          return_url: returnUrl,
-        };
+    const confirmParams = {
+      return_url: returnUrl,
+    };
     const confirmed = await stripe.paymentIntents.confirm(
       paymentIntent.id,
       confirmParams,
@@ -381,6 +405,20 @@ async function retrievePaymentIntent(paymentIntentId) {
 }
 
 /**
+ * Confirm a PaymentIntent with return_url (for 3DS redirect). Used when the client will
+ * complete authentication via redirect instead of in-page modal.
+ * @param {string} paymentIntentId
+ * @param {string} returnUrl - Where to send the customer after 3DS (e.g. complete-payment page with bookingId/slotId).
+ * @returns {Promise<import('stripe').Stripe.PaymentIntent>}
+ */
+async function confirmPaymentIntent(paymentIntentId, returnUrl) {
+  const confirmed = await stripe.paymentIntents.confirm(paymentIntentId, {
+    return_url: returnUrl,
+  });
+  return confirmed;
+}
+
+/**
  * Create a Stripe Checkout Session for a lesson booking (redirect to Stripe's hosted page).
  * Uses destination charge in payment mode: platform keeps commission, rest goes to instructor.
  * In setup mode, only saves a payment method for later off-session charges (no immediate payment).
@@ -433,6 +471,7 @@ async function createCheckoutSessionForBooking(opts) {
       mode: "setup",
       payment_method_types: ["card"],
       currency: currency.toLowerCase(),
+      locale: "de", // German; Stripe only allows e.g. de, en, fr (no de-CH). Disable Adaptive Pricing in Dashboard to show only CHF.
       metadata: { ...metadata },
       setup_intent_data: {
         metadata: { ...metadata },
@@ -446,9 +485,13 @@ async function createCheckoutSessionForBooking(opts) {
       sessionParams.customer_email = String(customerEmail).trim().toLowerCase();
     }
   } else {
-    // Immediate payment using destination charges
+    // Immediate payment using destination charges.
+    // Locale "de" (Stripe does not support de-CH). To show ONLY CHF (no PKR or other currency):
+    // Stripe Dashboard → Settings → Adaptive Pricing → turn OFF for Checkout.
+    // https://dashboard.stripe.com/settings/adaptive-pricing
     sessionParams = {
       mode: "payment",
+      locale: "de",
       line_items: [
         {
           price_data: {
@@ -539,6 +582,7 @@ module.exports = {
   getTransferIdFromPaymentIntent,
   createTransferReversal,
   retrievePaymentIntent,
+  confirmPaymentIntent,
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,
 };

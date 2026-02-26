@@ -86,6 +86,7 @@ export interface Slot {
   startTime: string;
   endTime: string;
   status: string;
+  paymentStatus?: string;
 }
 
 export interface Instructor {
@@ -107,6 +108,8 @@ export interface Booking {
   updatedAt: string;
   feedBackStatus?: string;
   bookerProfileImage: string;
+  /** Set when deferred checkout completed (card saved); used to exclude abandoned pending */
+  stripeCustomerId?: string | null;
 }
 
 export interface DashboardData {

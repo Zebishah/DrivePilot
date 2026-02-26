@@ -36,12 +36,31 @@ const {
   retrieveCheckoutSession,
   retrieveSetupIntent,
   retrievePaymentMethod,
+  retrievePaymentIntent,
+  confirmPaymentIntent,
   createRefund,
   getTransferIdFromPaymentIntent,
   createTransferReversal,
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,
+  FRONTEND_BASE,
 } = require("../../services/stripeService");
+
+/**
+ * True if booking was created for Stripe checkout but payment/card was never completed
+ * (user closed tab or cancelled). These should not appear as booked/upcoming.
+ */
+function isAbandonedPendingBooking(booking) {
+  if (!booking || booking.status !== "pending") return false;
+  if (booking.stripeCustomerId) return false; // deferred flow completed (card saved)
+  const slots = booking.slots || [];
+  const hasPaidSlot = slots.some(
+    (s) => s && String(s.paymentStatus) === "paid",
+  );
+  if (hasPaidSlot) return false; // instant payment completed for at least one slot
+  return true;
+}
+
 const studentBookingResolver = {
   Query: {
     // getStudentBookings: async (_, __, { user }) => {
@@ -59,7 +78,7 @@ const studentBookingResolver = {
       const currentDate = new Date();
       currentDate.setHours(0, 0, 0, 0); // start of today
 
-      // Get all bookings for this student
+      // Get all bookings for this student (exclude abandoned pending: checkout started but never completed)
       const allBookings = await StudentBooking.find({ studentId: user.id })
         .populate(
           "instructorId",
@@ -70,6 +89,7 @@ const studentBookingResolver = {
       const filteredBookings = [];
 
       for (const booking of allBookings) {
+        // Include abandoned pending so frontend can show them in "Abandoned" tab
         if (!booking.instructorId) continue;
 
         // keep only today/future slots
@@ -194,9 +214,10 @@ const studentBookingResolver = {
 
     getInstructorBookings: async (_, __, { user }) => {
       validateUser(user);
-      return await StudentBooking.find({ instructorId: user.id })
+      const bookings = await StudentBooking.find({ instructorId: user.id })
         .populate("studentId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
+      return bookings.filter((b) => !isAbandonedPendingBooking(b));
     },
     getStudentDashboardDetails: async (_, { studentId }, { user }) => {
       validateUser(user);
@@ -819,7 +840,9 @@ const studentBookingResolver = {
             );
           }
           // Create Stripe Customer before Checkout so session.customer is set when they return.
-          stripeCustomerIdForSession = await createCustomer({ email: customerEmail });
+          stripeCustomerIdForSession = await createCustomer({
+            email: customerEmail,
+          });
         }
 
         const { url } = await createCheckoutSessionForBooking({
@@ -847,6 +870,107 @@ const studentBookingResolver = {
         }
         throw error;
       }
+    },
+
+    createCheckoutSessionForPendingBooking: async (
+      _,
+      { bookingId },
+      { user },
+    ) => {
+      validateUser(user);
+      const booking = await StudentBooking.findOne({
+        _id: bookingId,
+        studentId: user.id,
+      })
+        .populate("instructorId", "stripeAccount commission")
+        .lean();
+      if (!booking) {
+        throw new UserInputError("Booking not found or access denied.");
+      }
+      if (booking.status !== "pending") {
+        throw new UserInputError(
+          "This booking is no longer pending. Use your booked lessons to view it.",
+        );
+      }
+      if (isAbandonedPendingBooking(booking)) {
+        // Keep going: this is exactly the case we want (resume checkout).
+      } else if (
+        booking.stripeCustomerId ||
+        (booking.slots || []).some((s) => String(s.paymentStatus) === "paid")
+      ) {
+        throw new UserInputError(
+          "This booking is already confirmed or paid. Check your booked lessons.",
+        );
+      }
+      const instructor = booking.instructorId;
+      if (!instructor?.stripeAccount?.accountId) {
+        throw new UserInputError(
+          "This instructor is not available for payment. Please contact support.",
+        );
+      }
+      const now = new Date();
+      const slotStartTimes = (booking.slots || []).map(
+        (slot) => new Date(`${slot.date}T${slot.startTime}`),
+      );
+      const earliestSlotStart =
+        slotStartTimes.length > 0
+          ? new Date(Math.min(...slotStartTimes.map((d) => d.getTime())))
+          : null;
+      const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+      const isDeferred =
+        earliestSlotStart &&
+        earliestSlotStart.getTime() - now.getTime() > FORTY_EIGHT_HOURS_MS;
+
+      const finalAmount = Number(
+        booking.finalAmount || booking.totalAmount || 0,
+      );
+      const numSlots = booking.slots?.length || 1;
+      const admin = await Admin.findOne().lean();
+      const platformCommission = admin?.platformCommission || {};
+      const { dspCommission, instructorAmount } = getCommissionSplit(
+        finalAmount,
+        instructor,
+        platformCommission,
+      );
+      const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
+      const instructorShareCentimes = Math.round(
+        Number(instructorAmount) * CENTIMES_PER_UNIT,
+      );
+      const instructorAccountId = instructor.stripeAccount.accountId;
+
+      let customerEmail = null;
+      let stripeCustomerIdForSession = null;
+      if (isDeferred) {
+        const student = await User.findById(user.id).select("email").lean();
+        customerEmail = student?.email || null;
+        if (!customerEmail) {
+          throw new UserInputError(
+            "Student email is required for saving your card. Please complete your profile.",
+          );
+        }
+        stripeCustomerIdForSession = await createCustomer({
+          email: customerEmail,
+        });
+      }
+
+      const { url } = await createCheckoutSessionForBooking({
+        amountCentimes,
+        transferAmountCentimes: instructorShareCentimes,
+        destinationAccountId: instructorAccountId,
+        metadata: {
+          bookingId: String(booking._id),
+          studentId: String(user.id),
+          instructorId: String(instructor._id),
+          deferred: isDeferred ? "true" : "false",
+        },
+        successPath: "/student-dashboard/booking-details",
+        cancelPath: "/student-dashboard/booking-details",
+        description: `${numSlots} lesson(s) — CHF ${finalAmount.toFixed(2)}`,
+        mode: isDeferred ? "setup" : "payment",
+        customerEmail: customerEmail || undefined,
+        customerId: stripeCustomerIdForSession || undefined,
+      });
+      return { url, bookingId: booking._id, deferred: isDeferred };
     },
 
     completeBookingFromCheckout: async (_, { sessionId }, { user }) => {
@@ -884,27 +1008,54 @@ const studentBookingResolver = {
       const finalAmount = Number(booking.finalAmount);
       const numSlots = booking.slots.length;
       const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
-      booking.status = "confirmed";
       const piId =
         typeof paymentIntent === "object" && paymentIntent?.id
           ? paymentIntent.id
           : session.payment_intent;
-      booking.stripePaymentIntentId = piId;
       const platformSettingsConfirm = await getPlatformCommissionForSplit();
-      for (const slot of booking.slots) {
-        const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
-          getCommissionSplit(
-            perSlotAmount,
-            instructor,
-            platformSettingsConfirm,
-          );
-        slot.paymentStatus = "paid";
-        slot.chargeAmount = perSlotAmount;
-        slot.dspCommission = slotDsp;
-        slot.instructorAmount = slotInstructor;
-        slot.payoutStatus = "not_applicable";
+      const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
+        getCommissionSplit(
+          perSlotAmount,
+          instructor,
+          platformSettingsConfirm,
+        );
+      // Use atomic update to avoid VersionError when a webhook updated the booking after we loaded it
+      const updateResult = await StudentBooking.updateOne(
+        {
+          _id: bookingId,
+          studentId: user.id,
+          status: "pending",
+        },
+        {
+          $set: {
+            status: "confirmed",
+            stripePaymentIntentId: piId,
+            "slots.$[].paymentStatus": "paid",
+            "slots.$[].chargeAmount": perSlotAmount,
+            "slots.$[].dspCommission": slotDsp,
+            "slots.$[].instructorAmount": slotInstructor,
+            "slots.$[].payoutStatus": "not_applicable",
+            updatedAt: new Date(),
+          },
+        },
+      );
+      if (updateResult.matchedCount === 0) {
+        // Already confirmed (e.g. by webhook) or not found
+        const current = await StudentBooking.findById(bookingId).populate(
+          "instructorId",
+          "_id firstName lastName email phone description profileImage address",
+        ).populate(
+          "studentId",
+          "_id firstName lastName email phone profileImage homeAddress",
+        );
+        if (current && String(current.status) === "confirmed") {
+          return current;
+        }
+        throw new UserInputError("Booking not found or already processed.");
       }
-      await booking.save();
+      // Reload for transactions and response (slots now have payment fields set)
+      const bookingUpdated = await StudentBooking.findById(bookingId);
+      if (!bookingUpdated) throw new UserInputError("Booking not found.");
       // Log transactions for checkout-based payment
       const occurredAt = new Date();
       await createTransaction({
@@ -914,7 +1065,7 @@ const studentBookingResolver = {
         amount: finalAmount,
         currency: DEFAULT_CURRENCY.toUpperCase(),
         status: "succeeded",
-        bookingId: booking._id,
+        bookingId: bookingId,
         studentId: user.id,
         stripePaymentIntentId: piId,
         description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
@@ -927,14 +1078,14 @@ const studentBookingResolver = {
         amount: finalAmount,
         currency: DEFAULT_CURRENCY.toUpperCase(),
         status: "succeeded",
-        bookingId: booking._id,
+        bookingId: bookingId,
         studentId: user.id,
         instructorId: instructor._id,
         stripePaymentIntentId: piId,
         description: "Platform gross receipt for booking",
         occurredAt,
       });
-      for (const slot of booking.slots) {
+      for (const slot of bookingUpdated.slots) {
         if (slot.instructorAmount != null) {
           await createTransaction({
             type: "payment",
@@ -943,7 +1094,7 @@ const studentBookingResolver = {
             amount: slot.instructorAmount,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
-            bookingId: booking._id,
+            bookingId: bookingId,
             instructorId: instructor._id,
             studentId: user.id,
             stripePaymentIntentId: piId,
@@ -959,14 +1110,14 @@ const studentBookingResolver = {
             amount: slot.dspCommission,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
-            bookingId: booking._id,
+            bookingId: bookingId,
             studentId: user.id,
             description: "Platform commission for booked slot",
             occurredAt,
           });
         }
       }
-      const savedBooking = await StudentBooking.findById(booking._id)
+      const savedBooking = await StudentBooking.findById(bookingId)
         .populate(
           "instructorId",
           "_id firstName lastName email phone description profileImage address",
@@ -1142,6 +1293,254 @@ const studentBookingResolver = {
         io.notifyNewBooking(JSON.parse(JSON.stringify(savedBooking)));
       }
       return savedBooking;
+    },
+
+    getT48ClientSecret: async (_, { bookingId, slotId }, { user }) => {
+      validateUser(user);
+      const booking = await StudentBooking.findOne({
+        _id: bookingId,
+        studentId: user.id,
+      }).lean();
+      if (!booking) {
+        throw new UserInputError("Booking not found or access denied.");
+      }
+      const slot = booking.slots?.find((s) => String(s._id) === String(slotId));
+      if (!slot) {
+        throw new UserInputError("Slot not found.");
+      }
+      if (
+        slot.paymentStatus !== "requires_action" &&
+        slot.paymentStatus !== "payment_failed"
+      ) {
+        throw new UserInputError(
+          "This slot does not require payment completion or has already been paid.",
+        );
+      }
+      // Only reuse existing PI when it's not already in requires_action. A PI in requires_action
+      // from T-48 was confirmed without return_url, so it has use_stripe_sdk (no redirect) and the
+      // in-page 3DS modal often never appears. Creating a new PI and confirming with return_url
+      // ensures the frontend gets redirect_to_url and can send the user to the bank.
+      const paymentIntentId = slot.paymentIntentId;
+      if (paymentIntentId) {
+        const pi = await retrievePaymentIntent(paymentIntentId);
+        if (pi?.client_secret && pi.status === "succeeded") {
+          return pi.client_secret; // e.g. user just returned from 3DS; frontend will complete flow
+        }
+        const canUse =
+          pi?.client_secret &&
+          ["requires_confirmation", "requires_payment_method"].includes(
+            pi.status,
+          );
+        if (canUse) return pi.client_secret;
+        // If status is requires_action, do NOT return it — fall through to create new PI with return_url
+        // PI canceled, expired, or requires_action — fall through to create a new one
+      }
+
+      // No valid PI: create a new PaymentIntent so the student can complete payment (e.g. link expired after 24h)
+      if (
+        !booking.paymentMethod?.paymentMethodId ||
+        !booking.stripeCustomerId
+      ) {
+        throw new UserInputError(
+          "No payment method found for this booking. Please re-book or contact support.",
+        );
+      }
+      const bookingWithInstructor = await StudentBooking.findOne({
+        _id: bookingId,
+        studentId: user.id,
+      })
+        .populate("instructorId", "stripeAccount commission")
+        .lean();
+      const instructor = bookingWithInstructor?.instructorId;
+      if (!instructor?.stripeAccount?.accountId) {
+        throw new UserInputError(
+          "Instructor payment setup is missing. Please contact support.",
+        );
+      }
+      const admin = await Admin.findOne().lean();
+      const platformCommission = admin?.platformCommission || {};
+      const totalAmount = Number(
+        bookingWithInstructor.finalAmount ||
+          bookingWithInstructor.totalAmount ||
+          0,
+      );
+      const numSlots = bookingWithInstructor.slots?.length || 1;
+      const perSlotAmount = numSlots > 0 ? totalAmount / numSlots : 0;
+      const { instructorAmount } = getCommissionSplit(
+        perSlotAmount,
+        instructor,
+        platformCommission,
+      );
+      const amountCentimes = Math.round(perSlotAmount * CENTIMES_PER_UNIT);
+      const instructorShareCentimes = Math.round(
+        Number(instructorAmount) * CENTIMES_PER_UNIT,
+      );
+      const paymentResult = await createPaymentIntentForBooking({
+        amountCentimes,
+        paymentMethodId: booking.paymentMethod.paymentMethodId,
+        customerId: booking.stripeCustomerId,
+        metadata: {
+          bookingId: String(bookingId),
+          slotId: String(slotId),
+          studentId: String(user.id),
+          instructorId: String(instructor._id),
+        },
+        confirm: false,
+        offSession: false,
+        transferData: {
+          destinationAccountId: instructor.stripeAccount.accountId,
+          amountCentimes: instructorShareCentimes,
+        },
+        idempotencyKey: `complete-${String(bookingId)}-${String(slotId)}`,
+      });
+      const newPiId = paymentResult?.paymentIntentId;
+      const newSecret = paymentResult?.clientSecret;
+      if (!newPiId || !newSecret) {
+        throw new UserInputError(
+          "Could not create payment session. Please try again or contact support.",
+        );
+      }
+      const slotIndex = bookingWithInstructor.slots.findIndex(
+        (s) => String(s._id) === String(slotId),
+      );
+      if (slotIndex !== -1) {
+        await StudentBooking.updateOne(
+          { _id: bookingId },
+          {
+            $set: {
+              [`slots.${slotIndex}.paymentIntentId`]: newPiId,
+              updatedAt: new Date(),
+            },
+          },
+        );
+      }
+      // If the PI is already succeeded (e.g. user just returned from 3DS; idempotency returned same PI), do not confirm again.
+      if (paymentResult.status === "succeeded") {
+        return newSecret;
+      }
+      // Confirm with return_url so when the frontend retrieves the PI it gets requires_action
+      // with redirect_to_url and can redirect the user to the bank (no stuck modal).
+      const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/student-dashboard/complete-payment?bookingId=${bookingId}&slotId=${slotId}`;
+      await confirmPaymentIntent(newPiId, returnUrl);
+      return newSecret;
+    },
+
+    completeT48SlotPayment: async (_, { paymentIntentId }, { user }) => {
+      validateUser(user);
+      const pi = await retrievePaymentIntent(paymentIntentId);
+      if (!pi || pi.status !== "succeeded") {
+        throw new UserInputError(
+          "Payment has not been completed yet. Please complete 3D Secure in the payment form.",
+        );
+      }
+      const bookingId = pi.metadata?.bookingId;
+      const slotId = pi.metadata?.slotId;
+      if (!bookingId || !slotId) {
+        throw new UserInputError("Invalid payment intent.");
+      }
+      const booking = await StudentBooking.findOne({
+        _id: bookingId,
+        studentId: user.id,
+      })
+        .populate(
+          "instructorId",
+          "_id firstName lastName email stripeAccount commission",
+        )
+        .populate("studentId", "_id");
+      if (!booking) {
+        throw new UserInputError("Booking not found or access denied.");
+      }
+      const slot = booking.slots?.find((s) => String(s._id) === String(slotId));
+      if (!slot) {
+        throw new UserInputError("Slot not found.");
+      }
+      if (slot.paymentStatus === "paid") {
+        return booking;
+      }
+      const admin = await Admin.findOne().lean();
+      const platformCommission = admin?.platformCommission || {};
+      const perSlotAmount =
+        (Number(booking.finalAmount || booking.totalAmount) || 0) /
+        (booking.slots?.length || 1);
+      const { dspCommission, instructorAmount } = getCommissionSplit(
+        perSlotAmount,
+        booking.instructorId,
+        platformCommission,
+      );
+      const occurredAt = new Date();
+      slot.paymentStatus = "paid";
+      slot.paymentIntentId = paymentIntentId;
+      slot.chargedAt = occurredAt;
+      slot.chargeAmount = perSlotAmount;
+      slot.dspCommission = dspCommission;
+      slot.instructorAmount = instructorAmount;
+      slot.payoutStatus = "not_applicable";
+      await booking.save();
+
+      await createTransaction({
+        type: "payment",
+        role: "student",
+        direction: "debit",
+        amount: perSlotAmount,
+        currency: "CHF",
+        status: "succeeded",
+        bookingId: booking._id,
+        slotId: slot._id,
+        studentId: booking.studentId._id,
+        stripePaymentIntentId: paymentIntentId,
+        description: "Lesson payment (T-48 3DS completed)",
+        occurredAt,
+      });
+      await createTransaction({
+        type: "payment",
+        role: "platform",
+        direction: "credit",
+        amount: perSlotAmount,
+        bookingId: booking._id,
+        slotId: slot._id,
+        studentId: booking.studentId._id,
+        stripePaymentIntentId: paymentIntentId,
+        description: "Platform gross receipt for lesson (T-48)",
+        occurredAt,
+      });
+      if (instructorAmount != null) {
+        await createTransaction({
+          type: "payment",
+          role: "instructor",
+          direction: "credit",
+          amount: instructorAmount,
+          currency: "CHF",
+          status: "succeeded",
+          bookingId: booking._id,
+          slotId: slot._id,
+          instructorId: booking.instructorId._id,
+          studentId: booking.studentId._id,
+          stripePaymentIntentId: paymentIntentId,
+          description: "Instructor share for lesson (T-48)",
+          occurredAt,
+        });
+      }
+      if (dspCommission != null) {
+        await createTransaction({
+          type: "payment",
+          role: "platform",
+          direction: "credit",
+          amount: dspCommission,
+          currency: "CHF",
+          bookingId: booking._id,
+          slotId: slot._id,
+          studentId: booking.studentId._id,
+          description: "Platform commission for lesson (T-48)",
+          occurredAt,
+        });
+      }
+      const updated = await StudentBooking.findById(booking._id)
+        .populate(
+          "instructorId",
+          "_id firstName lastName email description profileImage",
+        )
+        .populate("studentId", "_id firstName lastName email profileImage");
+      return updated;
     },
 
     completeBookingAfterPayment: async (

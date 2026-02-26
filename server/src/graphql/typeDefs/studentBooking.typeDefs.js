@@ -84,6 +84,7 @@ const studentBookingTypeDefs = gql`
     paymentMethod: PaymentMethod!
     status: BookingStatus!
     stripePaymentIntentId: String
+    stripeCustomerId: String
     profileImage: String
     createdAt: String!
     updatedAt: String!
@@ -220,12 +221,18 @@ const studentBookingTypeDefs = gql`
     createBookingCheckoutSession(
       input: StudentBookingInput!
     ): CreateBookingCheckoutPayload!
+    # Resume checkout for an abandoned pending booking (same booking, new Stripe session).
+    createCheckoutSessionForPendingBooking(bookingId: ID!): CreateBookingCheckoutPayload!
     completeBookingFromCheckout(sessionId: String!): StudentBooking!
     completeDeferredBookingFromCheckout(sessionId: String!): StudentBooking!
     completeBookingAfterPayment(
       paymentIntentId: ID!
       input: StudentBookingInput!
     ): StudentBooking!
+    # For T-48 3DS fallback: student completes a pending off-session PaymentIntent
+    completeT48SlotPayment(paymentIntentId: ID!): StudentBooking!
+    # Get client secret for a requires_action T-48 PaymentIntent so student can confirm it via Stripe.js
+    getT48ClientSecret(bookingId: ID!, slotId: ID!): String!
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
     markBookingsAsViewed: Boolean!

@@ -13,12 +13,15 @@ const http = require("http");
 const { initSocket, setIOInstance } = require("./socket");
 const { runInstructorPayoutJob } = require("./jobs/payoutJob");
 const { runT48ChargeJob } = require("./jobs/t48ChargeJob");
+const {
+  runPendingBookingCleanupJob,
+} = require("./jobs/pendingBookingCleanupJob");
 
 // ✅ Connect to MongoDB
 connectDB();
 
 // Run instructor payout job: 1 min for testing; for production use 6 * 60 * 60 * 1000 (6 hours)
-const PAYOUT_JOB_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const PAYOUT_JOB_INTERVAL_MS = 1 * 60 * 1000;
 setInterval(() => {
   runInstructorPayoutJob().catch((err) =>
     console.error("[PayoutJob] Error:", err),
@@ -35,6 +38,17 @@ setInterval(() => {
 }, T48_JOB_INTERVAL_MS);
 runT48ChargeJob().catch((err) =>
   console.error("[T48ChargeJob] Initial run error:", err),
+);
+
+// Abandoned Stripe checkout cleanup: every 30 min
+const PENDING_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+setInterval(() => {
+  runPendingBookingCleanupJob().catch((err) =>
+    console.error("[PendingBookingCleanupJob] Error:", err),
+  );
+}, PENDING_CLEANUP_INTERVAL_MS);
+runPendingBookingCleanupJob().catch((err) =>
+  console.error("[PendingBookingCleanupJob] Initial run error:", err),
 );
 
 // ✅ Initialize Express app and HTTP server

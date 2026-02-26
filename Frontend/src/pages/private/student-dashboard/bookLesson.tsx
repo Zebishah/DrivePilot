@@ -17,8 +17,11 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ChatIcon from "@mui/icons-material/Chat";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useQuery } from "@apollo/client";
-import { GET_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking";
+import { useQuery, useMutation } from "@apollo/client";
+import {
+  GET_STUDENT_BOOKINGS,
+  CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
+} from "../../../graphql/mutations/studentBooking";
 import { BookingList } from "../../../components/BookingList";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
@@ -70,6 +73,8 @@ const BookLesson: React.FC = () => {
     fetchPolicy: "network-only",
     notifyOnNetworkStatusChange: true,
   });
+  const [createCheckoutForPending, { loading: checkoutPendingLoading }] =
+    useMutation(CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING);
 
   const [page, setPage] = useState(1);
   const [tabValue, setTabValue] = useState(0);
@@ -295,6 +300,86 @@ const BookLesson: React.FC = () => {
     );
   }
 
+  // Abandoned = started checkout but didn't complete (closed tab). Same as "Abandoned" tab.
+  const isAbandonedPending = (b: Booking & { stripeCustomerId?: string | null }) =>
+    b.status === "pending" &&
+    !b.stripeCustomerId &&
+    !(b.slots ?? []).some((s: { paymentStatus?: string }) => s.paymentStatus === "paid");
+
+  const abandonedCheckoutSlots = bookings
+    .filter((b) => isAbandonedPending(b as Booking & { stripeCustomerId?: string | null }))
+    .flatMap((b) =>
+      (b.slots || [])
+        .filter(
+          (s: { status?: string; date?: string }) =>
+            s.status === "booked" || s.status === "confirmed",
+        )
+        .map((s: Slot) => ({
+          bookingId: b._id,
+          slotId: s._id,
+          date: s.date,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          instructorName: `${b.instructorId?.firstName || ""} ${b.instructorId?.lastName || ""}`.trim(),
+        })),
+    );
+  const abandonedByBooking = abandonedCheckoutSlots.reduce<
+    Array<{ bookingId: string; instructorName: string; slots: typeof abandonedCheckoutSlots }>
+  >((acc, slot) => {
+    const existing = acc.find((x) => x.bookingId === slot.bookingId);
+    if (existing) {
+      existing.slots.push(slot);
+    } else {
+      acc.push({ bookingId: slot.bookingId, instructorName: slot.instructorName, slots: [slot] });
+    }
+    return acc;
+  }, []);
+
+  // Complete payment: use SLOT status and SLOT paymentStatus only (one booking can have many slots; each slot has its own status).
+  // Show only slots where THIS slot is booked and THIS slot requires payment action (3DS / retry). Do not show all slots of a booking.
+  const now = new Date();
+  const oneHourMs = 60 * 60 * 1000;
+  type SlotWithPayment = AvailabilitySlot & { _id?: string; paymentStatus?: string };
+  const t48CompletePaymentSlots = bookings.flatMap(
+    (b: Booking) =>
+      ((b.slots || []) as SlotWithPayment[])
+        .filter((s: SlotWithPayment) => {
+          if (!s._id) return false;
+          // Slot-level: only slots that need payment (3DS or failed charge)
+          if (s.paymentStatus !== "requires_action" && s.paymentStatus !== "payment_failed")
+            return false;
+          // Slot-level: only slots that are actually booked (ignore available/cancelled/refund/completed/missed)
+          if (s.status !== "booked" && s.status !== "confirmed") return false;
+          // Don't show slots whose lesson time has already passed
+          const slotEnd = new Date(`${s.date}T${s.endTime}:00`);
+          if (slotEnd.getTime() < now.getTime() - oneHourMs) return false;
+          return true;
+        })
+        .map((s: SlotWithPayment) => ({
+          bookingId: b._id,
+          slotId: s._id as string,
+          date: s.date,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          instructorName: `${b.instructorId?.firstName || ""} ${b.instructorId?.lastName || ""}`.trim(),
+          paymentStatus: s.paymentStatus,
+        })),
+  );
+
+  const handleContinueToCheckout = async (bookingId: string) => {
+    try {
+      const { data } = await createCheckoutForPending({
+        variables: { bookingId },
+      });
+      const url = data?.createCheckoutSessionForPendingBooking?.url;
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err) {
+      console.error("Resume checkout failed:", err);
+    }
+  };
+
   return (
     <Box sx={{ px: 3, py: 1, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <BackButton
@@ -302,6 +387,152 @@ const BookLesson: React.FC = () => {
         variant="outline"
         label="Back"
       />
+      {/* Abandoned checkouts: resume payment for the same booking (no re-search, slot stays reserved). */}
+      {abandonedByBooking.length > 0 && (
+        <Card sx={{ mb: 3, mt: 2, borderLeft: "4px solid #9e9e9e" }}>
+          <Box
+            sx={{
+              pb: 1.6,
+              px: 2,
+              pt: 1.3,
+              borderBottom: 1,
+              borderBottomColor: "divider",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Incomplete checkouts
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              You started checkout but didn’t complete payment (e.g. closed the tab). Use “Continue to checkout” to finish payment for the same lesson — no need to search again.
+            </Typography>
+          </Box>
+          <CardContent>
+            <Stack spacing={2}>
+              {abandonedByBooking.map((item) => (
+                <Box
+                  key={item.bookingId}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 1,
+                    p: 1.5,
+                    bgcolor: "action.hover",
+                    borderRadius: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {item.instructorName}
+                    </Typography>
+                    {item.slots.map((slot) => (
+                      <Typography
+                        key={`${slot.bookingId}-${slot.slotId}`}
+                        variant="body2"
+                        color="text.secondary"
+                      >
+                        {new Date(slot.date).toLocaleDateString([], {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })}{" "}
+                        · {slot.startTime} – {slot.endTime}
+                      </Typography>
+                    ))}
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 500 }}
+                    >
+                      Checkout not completed
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={checkoutPendingLoading}
+                    sx={{ bgcolor: "#5fc2d3", textTransform: "none" }}
+                    onClick={() => handleContinueToCheckout(item.bookingId)}
+                  >
+                    {checkoutPendingLoading ? "Loading…" : "Continue to checkout"}
+                  </Button>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+      {/* T-48: Slots with requires_action (3DS) or payment_failed (retry) — each slot shows its own reason */}
+      {t48CompletePaymentSlots.length > 0 && (
+        <Card sx={{ mb: 3, mt: 2, borderLeft: "4px solid #f57c00" }}>
+          <Box
+            sx={{
+              pb: 1.6,
+              px: 2,
+              pt: 1.3,
+              borderBottom: 1,
+              borderBottomColor: "divider",
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Complete payment for your lesson
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              For each lesson below, either your bank asked for extra verification (3D Secure) or the charge failed — see the status under each slot. Click &quot;Complete payment&quot; to finish or try again; no need to re-book.
+            </Typography>
+          </Box>
+          <CardContent>
+            <Stack spacing={2}>
+              {t48CompletePaymentSlots.map((slot) => (
+                <Box
+                  key={`${slot.bookingId}-${slot.slotId}`}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 1,
+                    p: 1.5,
+                    bgcolor: "action.hover",
+                    borderRadius: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {slot.instructorName}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(slot.date).toLocaleDateString([], {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}{" "}
+                      · {slot.startTime} – {slot.endTime}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 500 }}>
+                      {slot.paymentStatus === "requires_action"
+                        ? "Authentication required (3D Secure)"
+                        : "Payment failed — try again"}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    sx={{ bgcolor: "#f57c00", textTransform: "none" }}
+                    onClick={() =>
+                      navigate(
+                        `/student-dashboard/complete-payment?bookingId=${slot.bookingId}&slotId=${slot.slotId}`,
+                      )
+                    }
+                  >
+                    Complete payment
+                  </Button>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
       {/* Payment Methods Card - Only show if we have selectedAvailability */}
       {selectedAvailability && selectedAvailability.length > 0 && (
         <Card>

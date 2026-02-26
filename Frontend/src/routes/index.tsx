@@ -31,6 +31,7 @@ import OtpVerification from "../pages/public/auth/OtpVerify";
 import TwoFactorAuth from "../pages/public/auth/TwoFactorAuth";
 import StudentProfileSetting from "../pages/private/student-dashboard/profileSetting";
 import StudentBookings from "../pages/private/student-dashboard/bookLesson";
+import { CompletePaymentPage } from "../pages/private/student-dashboard/CompletePaymentPage";
 import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
 import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
 import EditStudentProfile from "../pages/private/student-dashboard/EditStudentProfile";
@@ -119,6 +120,7 @@ const router = createBrowserRouter([
       },
       { path: "search/instructors/:id", element: <OurInstructor /> },
       { path: "booking-details", element: <BookingDetails /> },
+      { path: "complete-payment", element: <CompletePaymentPage /> },
       { path: "help-support", element: <FAQPage /> },
       { path: "reviews", element: <Dashboard /> },
       { path: "Feedback", element: <FeedBackAndRating /> },

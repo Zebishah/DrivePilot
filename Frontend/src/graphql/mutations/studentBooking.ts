@@ -50,6 +50,16 @@ export const CREATE_BOOKING_CHECKOUT_SESSION = gql`
   }
 `;
 
+export const CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING = gql`
+  mutation CreateCheckoutSessionForPendingBooking($bookingId: ID!) {
+    createCheckoutSessionForPendingBooking(bookingId: $bookingId) {
+      url
+      bookingId
+      deferred
+    }
+  }
+`;
+
 export const COMPLETE_BOOKING_FROM_CHECKOUT = gql`
   mutation CompleteBookingFromCheckout($sessionId: String!) {
     completeBookingFromCheckout(sessionId: $sessionId) {
@@ -151,6 +161,29 @@ export const UPDATE_SLOT_STATUS = gql`
     }
   }
 `;
+export const GET_T48_CLIENT_SECRET = gql`
+  mutation GetT48ClientSecret($bookingId: ID!, $slotId: ID!) {
+    getT48ClientSecret(bookingId: $bookingId, slotId: $slotId)
+  }
+`;
+
+export const COMPLETE_T48_SLOT_PAYMENT = gql`
+  mutation CompleteT48SlotPayment($paymentIntentId: ID!) {
+    completeT48SlotPayment(paymentIntentId: $paymentIntentId) {
+      _id
+      status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        paymentStatus
+      }
+    }
+  }
+`;
+
 export const GET_STUDENT_BOOKINGS = gql`
   query GetStudentBookings {
     getStudentBookings {
@@ -189,6 +222,7 @@ export const GET_STUDENT_BOOKINGS = gql`
         cardBrand
       }
       stripePaymentIntentId
+      stripeCustomerId
       teacherTariff {
         lessonFee
         finalPricePerLesson

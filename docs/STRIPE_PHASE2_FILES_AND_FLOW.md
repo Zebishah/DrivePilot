@@ -16,6 +16,81 @@ This document lists **every file** that was changed for the Stripe T-48 / instan
 
 ---
 
+## Multi-slot booking: how payment works (instant vs T-48)
+
+When a student books **multiple slots at once** (e.g. 3 lessons), payment is handled as follows.
+
+### Instant payment (pay now – gap ≤ 48h)
+
+- **One charge for the whole booking**
+  - One Stripe **Checkout Session** (mode `payment`) is created with the **total amount** (e.g. 3 × CHF 90 = CHF 270).
+  - Stripe creates a single **PaymentIntent** for that session and charges the full amount once.
+- **After payment**
+  - Frontend calls `completeBookingFromCheckout(sessionId)`, which:
+    - Sets `booking.stripePaymentIntentId` to that one PaymentIntent ID.
+    - Marks **all slots** in the booking as `paymentStatus: "paid"` and sets per-slot `chargeAmount`, `dspCommission`, `instructorAmount`.
+  - Slots do **not** get their own `paymentIntentId`; the booking has one `stripePaymentIntentId` for the entire payment.
+
+So: **multiple slots → one payment, one PaymentIntent, all slots marked paid together.**
+
+### Deferred payment (save card – gap > 48h, charge at T-48)
+
+- **At checkout**
+  - One Stripe **Checkout Session** (mode `setup`) is created. **No charge**; only the card is saved.
+  - Webhook `checkout.session.completed` (or `completeDeferredBookingFromCheckout`) saves `stripeCustomerId` and `paymentMethod.paymentMethodId` on the booking.
+  - **All slots** stay `paymentStatus: "pending_payment"`; none have `paymentIntentId` yet.
+- **At T-48 (48 hours before each lesson)**
+  - The **T-48 job** (`t48ChargeJob.js`) runs periodically. For each booking that has `pending_payment` slots and a saved payment method:
+    - It loops over **each slot** whose start time is within the T-48 window (lesson start − 48h ≤ now).
+    - For **each such slot** it creates **one PaymentIntent** with:
+      - Amount = **per-slot amount** (e.g. totalAmount / numSlots).
+      - Metadata: `bookingId`, `slotId`, `studentId`, `instructorId`.
+      - Idempotency key: `t48-{bookingId}-{slotId}` (so the same slot is never charged twice).
+    - It charges that PaymentIntent (off-session). If it **succeeds** → slot is updated to `paid` and `slots.$.paymentIntentId` is set. If **requires_action** (3DS) → slot is set to `requires_action` and the student must complete payment (e.g. “Complete payment” in dashboard). If it **fails** → slot is set to `payment_failed` (retries up to max, then stop).
+  - Webhook **`payment_intent.succeeded`** finds the slot by `slots.paymentIntentId === pi.id` and marks that slot paid (idempotent).
+
+So: **multiple slots → one card saved at checkout; then one PaymentIntent per slot at T-48, each charged when its lesson is within 48 hours.**
+
+### Summary table
+
+| Scenario              | When payment happens | PaymentIntents              | Where PI ID is stored              |
+|-----------------------|----------------------|-----------------------------|------------------------------------|
+| Instant (multi-slot)  | At checkout (one go) | 1 for full booking amount   | `booking.stripePaymentIntentId`    |
+| Deferred (multi-slot) | T-48 per slot        | 1 per slot (per-slot amount)| `slot.paymentIntentId` (each slot) |
+
+The “Complete payment” flow (for 3DS or retry after `payment_failed`) uses **per-slot** `getT48ClientSecret(bookingId, slotId)` and `completeT48SlotPayment(paymentIntentId)` because at T-48 each slot has its own PaymentIntent.
+
+---
+
+## Cancel one slot and refund (instant payment: one PI for 3 slots)
+
+When the student paid once for 3 slots (one PaymentIntent), cancelling and refunding **one** slot works as follows.
+
+### 1. Cancel the slot
+
+- **Student or instructor:** `cancelBookingSlot(bookingId, slotId)` — marks that slot as `status: "cancelled"`, `booked: false`, sets `cancellationDate`. Other slots are unchanged. Booking status becomes `semi_cancelled` if some slots remain, or `cancelled` if all are cancelled.
+- **Admin:** `cancelBookingAdmin` — same effect (slot cancelled, availability updated).
+
+No refund happens yet; the student must request a refund (or admin approves it).
+
+### 2. Refund that slot only (partial refund)
+
+- **Student:** Calls `requestRefund(bookingId, slotId)`. Allowed only if the slot is **cancelled**, **paid**, and not already refunded/payout not yet done. Creates a **RefundRequest** (pending).
+- **Admin:** When approving via `approveRefundRequest(id)` the code:
+  1. Uses the **same** PaymentIntent as the whole booking: `booking.stripePaymentIntentId`.
+  2. Refunds **only that slot’s amount**: `createRefund({ paymentIntentId, amountCentimes: slot.chargeAmount in centimes })`. Stripe supports **partial refunds** on a single PaymentIntent, so only that slot’s share (e.g. CHF 90) goes back to the student’s card.
+  3. Reverses the **instructor’s share for that slot** from the original transfer: `getTransferIdFromPaymentIntent(booking.stripePaymentIntentId)` returns the one Transfer for the original charge; then `createTransferReversal({ transferId, amountCentimes: slot.instructorAmount in centimes })`. Stripe supports **partial transfer reversals**, so only that slot’s instructor share (e.g. CHF 72) is taken back from the instructor’s connected account.
+  4. Marks the slot as `status: "refund"`, `paymentStatus: "refunded"`, sets `refundedAt`, and records transactions (student refund, instructor reversal, platform commission reversal).
+
+So: **one PaymentIntent for 3 slots** → cancel one slot → **partial refund** (one slot’s `chargeAmount`) + **partial transfer reversal** (one slot’s `instructorAmount`). The other two slots stay paid; payout for them is unchanged.
+
+### Requirements for this to work
+
+- Each slot must have **per-slot amounts** set when the booking is completed: `chargeAmount`, `instructorAmount`, `dspCommission` (e.g. from `completeBookingFromCheckout` or instant `createBooking`). The refund flow uses `slot.chargeAmount` and `slot.instructorAmount` for the partial refund and reversal.
+- Refund is blocked if the instructor has already been **paid out** for that slot (`slot.payoutId` set), because the transfer has already left the platform.
+
+---
+
 ## 1. Server – Data model
 
 ### `server/src/models/studentBooking.model.js`
@@ -99,7 +174,7 @@ This document lists **every file** that was changed for the Stripe T-48 / instan
 - **`CreateBookingCheckoutPayload`**
   - New field: **`deferred: Boolean`** so the frontend can show different copy or handle redirects differently if needed.
 - **Mutation**
-  - **`completeDeferredBookingFromCheckout(sessionId: String!): StudentBooking!`** – used after the student returns from Stripe when they only saved their card (deferred flow).
+  - **`completeDeferredBookingFromCheckout(sessionId:      String!): StudentBooking!`** – used after the student returns from Stripe when they only saved their card (deferred flow).
 
 **Why it matters:** The API contract for “create checkout” and “complete deferred booking” is defined here; resolvers implement it.
 

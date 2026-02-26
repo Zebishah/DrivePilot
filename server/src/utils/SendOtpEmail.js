@@ -298,6 +298,23 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
     });
   };
   console.log("bookingData", bookingData);
+  const completePaymentBaseUrl = (
+    process.env.Frontend_URL ||
+    process.env.FRONTEND_URL ||
+    "http://localhost:5173"
+  ).replace(/\/$/, "");
+  const pendingPaymentSlots = (bookingData.slots || []).filter(
+    (s) =>
+      s.paymentStatus === "requires_action" ||
+      s.paymentStatus === "payment_failed",
+  );
+  const firstPendingSlot = pendingPaymentSlots[0];
+  const completePaymentLink =
+    firstPendingSlot && bookingData.id
+      ? `${completePaymentBaseUrl}/student-dashboard/complete-payment?bookingId=${bookingData.id}&slotId=${firstPendingSlot._id}`
+      : `${completePaymentBaseUrl}/student-dashboard/book`;
+  const dashboardBookUrl = `${completePaymentBaseUrl}/student-dashboard/book`;
+
   // Generate slots HTML
   const slotsHtml = bookingData.slots
     .map(
@@ -411,8 +428,14 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
               ${slotsHtml}
             </div>
             
-            <p style="margin-bottom: 16px; font-size: 16px;">
-              Please log in to your dashboard and complete the payment to avoid any disruption to your lesson.
+            <p style="margin-bottom: 20px; font-size: 16px;">
+              Please complete the payment using the button below (you may need to confirm with your bank via 3D Secure).
+            </p>
+            <div style="text-align: center; margin-bottom: 24px;">
+              <a href="${completePaymentLink}" style="display: inline-block; background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete payment</a>
+            </div>
+            <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
+              Or go to your <a href="${dashboardBookUrl}" style="color: #3d5afe;">dashboard</a> to see all pending payments.
             </p>
           </div>
           
@@ -443,8 +466,14 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
               ${slotsHtml}
             </div>
             
-            <p style="margin-bottom: 16px; font-size: 16px;">
-              Please log in to your dashboard to update your payment method or try again. If payment is not completed, the lesson may be cancelled.
+            <p style="margin-bottom: 20px; font-size: 16px;">
+              Please complete the payment or update your payment method using the button below.
+            </p>
+            <div style="text-align: center; margin-bottom: 24px;">
+              <a href="${completePaymentLink}" style="display: inline-block; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete payment / Try again</a>
+            </div>
+            <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
+              Or go to your <a href="${dashboardBookUrl}" style="color: #3d5afe;">dashboard</a> to see all pending payments. If payment is not completed, the lesson may be cancelled.
             </p>
           </div>
           

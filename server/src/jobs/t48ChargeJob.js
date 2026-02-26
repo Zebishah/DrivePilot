@@ -1,11 +1,13 @@
 const StudentBooking = require("../models/studentBooking.model");
 const {
   createPaymentIntentForBooking,
+  retrievePaymentIntent,
   CENTIMES_PER_UNIT,
 } = require("../services/stripeService");
 const { createTransaction } = require("../services/transactionService");
 const { Admin, Instructor } = require("../models/User");
 const { getCommissionSplit } = require("../services/stripeService");
+const { notifyBookingParties } = require("../utils/SendOtpEmail");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -149,7 +151,32 @@ async function runT48ChargeJob() {
               },
             },
           );
-          if (r.modifiedCount) requiresAction += 1;
+          if (r.modifiedCount) {
+            requiresAction += 1;
+            // Send email to student/instructor/admin so they know action is required
+            try {
+              const fullBooking = await StudentBooking.findById(booking._id)
+                .populate(
+                  "instructorId",
+                  "_id firstName lastName email phone description profileImage address",
+                )
+                .populate(
+                  "studentId",
+                  "_id firstName lastName email phone profileImage homeAddress",
+                );
+              if (fullBooking) {
+                await notifyBookingParties(
+                  JSON.parse(JSON.stringify(fullBooking)),
+                  "payment_requires_action",
+                );
+              }
+            } catch (emailErr) {
+              console.error(
+                "[T48ChargeJob] Failed to send payment_requires_action email:",
+                emailErr,
+              );
+            }
+          }
           continue;
         }
 
@@ -290,6 +317,67 @@ async function runT48ChargeJob() {
           `[T48ChargeJob] Failed for booking ${booking._id} slot ${slot._id}:`,
           err.message,
         );
+
+        // "This transaction requires authentication" = 3DS needed; show Complete payment immediately (no retries)
+        const requiresAuth =
+          err.message &&
+          String(err.message).toLowerCase().includes("requires authentication");
+        const paymentIntentId =
+          err.payment_intent?.id ||
+          (typeof err.payment_intent === "string" ? err.payment_intent : null) ||
+          err.raw?.payment_intent?.id ||
+          (typeof err.raw?.payment_intent === "string"
+            ? err.raw.payment_intent
+            : null);
+
+        if (requiresAuth) {
+          let piIdToUse = paymentIntentId;
+          if (paymentIntentId) {
+            try {
+              const pi = await retrievePaymentIntent(paymentIntentId);
+              if (pi && pi.status !== "requires_action") piIdToUse = null;
+            } catch (_) {
+              piIdToUse = null;
+            }
+          }
+          const updateFields = {
+            "slots.$.paymentStatus": "requires_action",
+          };
+          if (piIdToUse) updateFields["slots.$.paymentIntentId"] = piIdToUse;
+          const r = await StudentBooking.updateOne(
+            slotStillPendingFilter(booking._id, slot._id),
+            { $set: updateFields },
+          );
+          if (r.modifiedCount) {
+            console.log(
+              `[T48ChargeJob] Slot ${slot._id}: requires_action (3DS). Marked slot; student must complete payment.`,
+            );
+            requiresAction += 1;
+            try {
+              const fullBooking = await StudentBooking.findById(booking._id)
+                .populate(
+                  "instructorId",
+                  "_id firstName lastName email phone description profileImage address",
+                )
+                .populate(
+                  "studentId",
+                  "_id firstName lastName email phone profileImage homeAddress",
+                );
+              if (fullBooking) {
+                await notifyBookingParties(
+                  JSON.parse(JSON.stringify(fullBooking)),
+                  "payment_requires_action",
+                );
+              }
+            } catch (emailErr) {
+              console.error(
+                "[T48ChargeJob] Failed to send payment_requires_action email:",
+                emailErr,
+              );
+            }
+          }
+          continue;
+        }
 
         const retryCount = slot.paymentRetryCount ?? 0;
         if (retryCount < T48_MAX_RETRIES) {

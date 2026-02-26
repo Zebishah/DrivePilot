@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const studentBookingModel = require("../../models/studentBooking.model");
 
 const { User, Student, Instructor } = require("../../models/User");
+
+// Payout delay after lesson completed (must match studentBooking.resolver.js)
+const PAYOUT_DELAY_MS = 1 * 60 * 1000;
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = require("../../models/StudentBooking");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
@@ -140,6 +143,20 @@ const AdminBookingResolvers = {
 
         if (status === "cancelled" && oldStatus !== "cancelled") {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
+        }
+
+        // When marking completed: set completion and payout-eligible (same as instructor updateSlotStatus)
+        if (status === "completed") {
+          const now = new Date();
+          booking.slots[slotIndex].completionMarkedAt = now;
+          const payoutEligibleAt = new Date(now.getTime() + PAYOUT_DELAY_MS);
+          booking.slots[slotIndex].payoutEligibleAt = payoutEligibleAt;
+          if (
+            booking.slots[slotIndex].paymentStatus === "paid" &&
+            booking.slots[slotIndex].instructorAmount != null
+          ) {
+            booking.slots[slotIndex].payoutStatus = "pending";
+          }
         }
 
         // Update booking-level status based on all slots (same as instructor)
