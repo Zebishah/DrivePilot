@@ -46,6 +46,7 @@ import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import PlaceIcon from "@mui/icons-material/Place";
 import CategoryIcon from "@mui/icons-material/Category";
 import InfoIcon from "@mui/icons-material/Info";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   GET_ADMIN_TRANSACTIONS_WITH_PARTIES,
@@ -164,9 +165,13 @@ export default function AdminTransactionsPage() {
     return `${sign} $${t.amount.toFixed(2)}`;
   };
 
-  // Show main party: instructor for instructor share/payout rows; student for total paid, commission, refunds
-  const displayParty = (t: Transaction): TransactionParty | null =>
-    t.role === "instructor" && t.instructor ? t.instructor : (t.student ?? t.instructor ?? null);
+  // Show the party that the transaction belongs to: instructor for instructor share/payout; platform for commission; student for payment/refund
+  const displayParty = (t: Transaction): TransactionParty | null => {
+    if (t.role === "instructor" && t.instructor) return t.instructor;
+    if (t.role === "platform") return null; // Platform commission: show "Platform" in UI, not student
+    return t.student ?? t.instructor ?? null;
+  };
+  const isPlatformTransaction = (t: Transaction) => t.role === "platform";
   const isRefund = (t: Transaction) => t.type === "refund";
   const commissionDisplay = (t: Transaction) => {
     if (t.role === "platform" && t.type === "payment" && t.description?.toLowerCase().includes("commission"))
@@ -473,7 +478,21 @@ export default function AdminTransactionsPage() {
                       return (
                         <TableRow key={t.id} hover>
                           <TableCell>
-                            {party ? (
+                            {isPlatformTransaction(t) ? (
+                              <Stack direction="row" alignItems="center" spacing={1}>
+                                <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main" }}>
+                                  <AccountBalanceIcon sx={{ fontSize: 18 }} />
+                                </Avatar>
+                                <Box>
+                                  <Typography variant="body2" fontWeight={500}>
+                                    Platform
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Commission / admin
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                            ) : party ? (
                               <Stack direction="row" alignItems="center" spacing={1}>
                                 <Avatar
                                   src={party.profileImage ?? undefined}
@@ -550,15 +569,18 @@ export default function AdminTransactionsPage() {
           }}
         >
           {viewTransaction && (() => {
-            const party = viewTransaction.role === "instructor" && viewTransaction.instructor
-              ? viewTransaction.instructor
-              : (viewTransaction.student ?? viewTransaction.instructor ?? null);
+            const isPlatform = viewTransaction.role === "platform";
+            const party = isPlatform
+              ? null
+              : (viewTransaction.role === "instructor" && viewTransaction.instructor
+                  ? viewTransaction.instructor
+                  : (viewTransaction.student ?? viewTransaction.instructor ?? null));
             const isRefundTx = viewTransaction.type === "refund";
             const dateStr = formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt);
             return (
               <>
                 <Stack direction={{ xs: "column", md: "row" }} sx={{ flex: 1, minHeight: 0 }}>
-                  {/* Left: User / Profile */}
+                  {/* Left: User / Profile or Platform */}
                   <Box
                     sx={{
                       width: { xs: "100%", md: 280 },
@@ -575,9 +597,19 @@ export default function AdminTransactionsPage() {
                     }}
                   >
                     <Typography variant="subtitle1" fontWeight={700} color="text.primary" sx={{ mb: 2, alignSelf: "flex-start" }}>
-                      My Profile
+                      {isPlatform ? "Transaction party" : "My Profile"}
                     </Typography>
-                    {party ? (
+                    {isPlatform ? (
+                      <>
+                        <Avatar
+                          sx={{ width: 100, height: 100, mb: 1.5, border: "3px solid", borderColor: "primary.main", bgcolor: "primary.main" }}
+                        >
+                          <AccountBalanceIcon sx={{ fontSize: 48 }} />
+                        </Avatar>
+                        <Typography variant="h6" fontWeight={600}>Platform</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Commission / admin</Typography>
+                      </>
+                    ) : party ? (
                       <>
                         <Avatar
                           src={party.profileImage ?? undefined}
