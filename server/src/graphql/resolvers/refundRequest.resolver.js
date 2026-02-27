@@ -18,9 +18,21 @@ function toIsoString(value) {
   return null;
 }
 
+function toId(value) {
+  if (value == null) return null;
+  if (typeof value === "string") return value;
+  if (value.toString && typeof value.toString === "function") return value.toString();
+  return String(value);
+}
+
 const refundRequestResolver = {
   RefundRequest: {
-    id: (parent) => parent._id?.toString() || parent.id,
+    id: (parent) => toId(parent._id) || toId(parent.id),
+    bookingId: (parent) => toId(parent.bookingId),
+    slotId: (parent) => toId(parent.slotId),
+    studentId: (parent) => toId(parent.studentId),
+    instructorId: (parent) => toId(parent.instructorId),
+    processedBy: (parent) => toId(parent.processedBy),
     requestedAt: (parent) => toIsoString(parent.requestedAt),
     processedAt: (parent) => toIsoString(parent.processedAt),
   },
@@ -50,6 +62,8 @@ const refundRequestResolver = {
         throw new ForbiddenError("Not authorized");
       }
 
+      const slotIdStr = String(slotId);
+
       const booking = await StudentBooking.findById(bookingId)
         .populate("instructorId", "_id firstName lastName email")
         .populate("studentId", "_id firstName lastName email");
@@ -61,7 +75,7 @@ const refundRequestResolver = {
         );
       }
 
-      const slot = booking.slots.id(slotId);
+      const slot = booking.slots.id(slotIdStr);
       if (!slot) throw new UserInputError("Slot not found");
 
       if (slot.status !== "cancelled") {
@@ -94,12 +108,12 @@ const refundRequestResolver = {
       // Instant payment: booking.stripePaymentIntentId. T-48 payment: slot.paymentIntentId (per-slot PI).
       const paymentIntentId = booking.stripePaymentIntentId || slot.paymentIntentId;
       if (!paymentIntentId || slot.chargeAmount == null) {
-        throw new UserInputError("Payment information missing for refund.");
+          throw new UserInputError("Payment information missing for refund.");
       }
 
       const existing = await RefundRequest.findOne({
         bookingId,
-        slotId,
+        slotId: slotIdStr,
       }).lean();
       if (existing) {
         if (existing.status === "pending") {
@@ -126,7 +140,7 @@ const refundRequestResolver = {
 
       const refundRequest = await RefundRequest.create({
         bookingId: booking._id,
-        slotId,
+        slotId: slotIdStr,
         studentId: booking.studentId._id,
         instructorId: booking.instructorId._id,
         amount: slot.chargeAmount,

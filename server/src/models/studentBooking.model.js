@@ -119,7 +119,14 @@ const studentBookingSchema = new mongoose.Schema(
     cancellationDate: { type: Date },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "completed", "cancelled", "refund"],
+      enum: [
+        "pending",
+        "confirmed",
+        "completed",
+        "semi_cancelled",
+        "cancelled",
+        "refund",
+      ],
       default: "pending",
     },
 

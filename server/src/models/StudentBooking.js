@@ -77,7 +77,7 @@ const slotSchema = new Schema(
     review: { type: Boolean, default: false },
     cancellationDate: { type: String },
   },
-  { _id: true }
+  { _id: true },
 );
 
 // Payment Method Schema - Updated for Stripe
@@ -99,7 +99,7 @@ const paymentMethodSchema = new Schema(
     // TWINT details
     twintToken: { type: String }, // TWINT User-on-File token
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Main Booking Schema - Updated
@@ -146,7 +146,8 @@ const studentBookingSchema = new Schema(
         "confirmed", // All slots paid
         "in_progress", // Some lessons happened
         "completed", // All lessons done
-        "cancelled", // Cancelled
+        "semi_cancelled", // Some slots cancelled, some still active
+        "cancelled", // All slots cancelled
         "refunded", // Refunded
       ],
       default: "pending_payment",
@@ -171,7 +172,7 @@ const studentBookingSchema = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Indexes
@@ -187,7 +188,7 @@ studentBookingSchema.virtual("overallStatus").get(function () {
   const allPaid = this.slots.every((s) => s.paymentStatus === "paid");
   const anyPaid = this.slots.some((s) => s.paymentStatus === "paid");
   const allCompleted = this.slots.every(
-    (s) => s.lessonStatus === "completed" || s.lessonStatus === "missed"
+    (s) => s.lessonStatus === "completed" || s.lessonStatus === "missed",
   );
 
   if (allCompleted) return "completed";

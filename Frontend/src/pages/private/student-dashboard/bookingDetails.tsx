@@ -298,6 +298,10 @@ const BookingDetails: React.FC = () => {
   const currentSlot =
     slot ||
     selectedAvailability?.find((s: { _id?: string }) => s._id === slotId);
+  /** Slot-level cancelled: show refund UI for this slot (works for semi_cancelled bookings too) */
+  const isSlotCancelled = Boolean(
+    (currentSlot as { status?: string } | undefined)?.status === "cancelled"
+  );
   const isSlotRefunded = Boolean(
     currentSlot?.status === "refund" ||
       (currentSlot as { refundedAt?: string } | undefined)?.refundedAt ||
@@ -697,12 +701,12 @@ const BookingDetails: React.FC = () => {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-              {isCancelled && bookingId && slotId && pendingRefundForThisSlot && (
+              {isSlotCancelled && bookingId && slotId && pendingRefundForThisSlot && (
                 <Typography variant="body2" color="info.main" fontWeight={500}>
                   Refund pending admin approval
                 </Typography>
               )}
-              {isCancelled && bookingId && slotId && !isPendingOrRefunded && (
+              {isSlotCancelled && bookingId && slotId && !isPendingOrRefunded && (
                 <Button
                   variant="contained"
                   color="secondary"
@@ -716,7 +720,7 @@ const BookingDetails: React.FC = () => {
                   )}
                 </Button>
               )}
-              {isCancelled && bookingId && slotId && isSlotRefunded && (
+              {isSlotCancelled && bookingId && slotId && isSlotRefunded && (
                 <Typography variant="body2" color="text.secondary">
                   This lesson has been refunded.
                 </Typography>
@@ -729,7 +733,7 @@ const BookingDetails: React.FC = () => {
                 Back to Bookings
               </Button>
             </Box>
-            {isCancelled && bookingId && slotId && !isSlotRefunded && (
+            {isSlotCancelled && bookingId && slotId && !isSlotRefunded && (
               <Typography variant="caption" color="text.secondary">
                 {pendingRefundForThisSlot
                   ? "Admin will review your refund request. You will be notified once processed."

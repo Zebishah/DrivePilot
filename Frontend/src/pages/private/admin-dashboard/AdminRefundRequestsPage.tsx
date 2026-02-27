@@ -40,6 +40,17 @@ function formatDate(value: string | null | undefined): string {
   return format(d, "dd MMM yyyy HH:mm");
 }
 
+function formatTime24(value: string | null | undefined): string {
+  if (value == null || value === "") return "";
+  const [rawH, rawM] = value.split(":");
+  const h = Number(rawH);
+  const m = Number(rawM ?? "0");
+  if (Number.isNaN(h) || Number.isNaN(m)) return value;
+  const hh = h.toString().padStart(2, "0");
+  const mm = m.toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 interface RefundRequestRow {
   id: string;
   bookingId: string;
@@ -158,7 +169,10 @@ export default function AdminRefundRequestsPage() {
                     <TableCell>{r.studentName ?? "—"}</TableCell>
                     <TableCell>{r.instructorName ?? "—"}</TableCell>
                     <TableCell>
-                      {r.slotDate ?? "—"} {r.slotStartTime ?? ""}–{r.slotEndTime ?? ""}
+                      {r.slotDate ?? "—"}{" "}
+                      {formatTime24(r.slotStartTime)}
+                      {r.slotStartTime || r.slotEndTime ? "–" : ""}
+                      {formatTime24(r.slotEndTime)}
                     </TableCell>
                     <TableCell align="right">
                       {r.currency} {r.amount.toFixed(2)}
