@@ -96,23 +96,17 @@ const transactionResolver = {
       if (!user || user.role !== "Admin") {
         throw new ForbiddenError("Not authorized");
       }
-      const [platformCredits, platformDebits, counts] = await Promise.all([
+      // Gross volume = sum of "Platform gross receipt" only (one per payment). Matches Stripe dashboard "Gross volume".
+      // We do NOT sum "Platform commission" here to avoid double-counting (gross receipt already includes the full payment).
+      const [grossVolume, counts] = await Promise.all([
         Transaction.aggregate([
           {
             $match: {
               role: "platform",
               direction: "credit",
               status: "succeeded",
-            },
-          },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
-        ]),
-        Transaction.aggregate([
-          {
-            $match: {
-              role: "platform",
-              direction: "debit",
-              status: "succeeded",
+              type: "payment",
+              description: { $regex: /gross receipt/i },
             },
           },
           { $group: { _id: null, total: { $sum: "$amount" } } },
@@ -136,11 +130,10 @@ const transactionResolver = {
           },
         ]),
       ]);
-      const earned =
-        (platformCredits[0]?.total ?? 0) - (platformDebits[0]?.total ?? 0);
       const c = counts[0] || {};
+      const totalEarned = Math.round((grossVolume[0]?.total ?? 0) * 100) / 100;
       return {
-        totalEarned: Math.round(earned * 100) / 100,
+        totalEarned,
         totalPayments: c.totalPayments ?? 0,
         totalRefunds: c.totalRefunds ?? 0,
         totalPayouts: c.totalPayouts ?? 0,

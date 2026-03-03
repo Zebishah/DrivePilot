@@ -222,7 +222,9 @@ const studentBookingTypeDefs = gql`
       input: StudentBookingInput!
     ): CreateBookingCheckoutPayload!
     # Resume checkout for an abandoned pending booking (same booking, new Stripe session).
-    createCheckoutSessionForPendingBooking(bookingId: ID!): CreateBookingCheckoutPayload!
+    createCheckoutSessionForPendingBooking(
+      bookingId: ID!
+    ): CreateBookingCheckoutPayload!
     completeBookingFromCheckout(sessionId: String!): StudentBooking!
     completeDeferredBookingFromCheckout(sessionId: String!): StudentBooking!
     completeBookingAfterPayment(

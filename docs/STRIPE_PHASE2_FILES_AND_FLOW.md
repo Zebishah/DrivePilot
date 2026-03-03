@@ -53,10 +53,10 @@ So: **multiple slots → one card saved at checkout; then one PaymentIntent per 
 
 ### Summary table
 
-| Scenario              | When payment happens | PaymentIntents              | Where PI ID is stored              |
-|-----------------------|----------------------|-----------------------------|------------------------------------|
-| Instant (multi-slot)  | At checkout (one go) | 1 for full booking amount   | `booking.stripePaymentIntentId`    |
-| Deferred (multi-slot) | T-48 per slot        | 1 per slot (per-slot amount)| `slot.paymentIntentId` (each slot) |
+| Scenario              | When payment happens | PaymentIntents               | Where PI ID is stored              |
+| --------------------- | -------------------- | ---------------------------- | ---------------------------------- |
+| Instant (multi-slot)  | At checkout (one go) | 1 for full booking amount    | `booking.stripePaymentIntentId`    |
+| Deferred (multi-slot) | T-48 per slot        | 1 per slot (per-slot amount) | `slot.paymentIntentId` (each slot) |
 
 The “Complete payment” flow (for 3DS or retry after `payment_failed`) uses **per-slot** `getT48ClientSecret(bookingId, slotId)` and `completeT48SlotPayment(paymentIntentId)` because at T-48 each slot has its own PaymentIntent.
 

@@ -32,6 +32,7 @@ import {
   CREATE_STRIPE_ACCOUNT,
   GET_TEACHER_PROFILE,
   REGENERATE_STRIPE_LINK,
+  VERIFY_STRIPE_ONBOARDING,
 } from "../../../../graphql/mutations/profile";
 import {
   GET_INSTRUCTOR_TRANSACTIONS,
@@ -77,7 +78,7 @@ type InstructorTransaction = {
 export const PaymentTab: React.FC = () => {
   const [connectLoading, setConnectLoading] = useState(false);
   const [viewTransaction, setViewTransaction] = useState<InstructorTransaction | null>(null);
-  const { data, loading: queryLoading } = useQuery(GET_TEACHER_PROFILE);
+  const { data, loading: queryLoading, refetch: refetchProfile } = useQuery(GET_TEACHER_PROFILE);
   const { data: transactionsData } = useQuery(GET_INSTRUCTOR_TRANSACTIONS, {
     variables: { limit: 50, offset: 0 },
     fetchPolicy: "network-only",
@@ -115,6 +116,23 @@ export const PaymentTab: React.FC = () => {
     onError: (err) => {
       setConnectLoading(false);
       toast.error(err.message || "Failed to continue setup");
+    },
+  });
+
+  const [verifyStripeOnboarding, { loading: verifyLoading }] = useMutation(VERIFY_STRIPE_ONBOARDING, {
+    onCompleted: async (res) => {
+      const v = res?.verifyStripeOnboarding;
+      await refetchProfile();
+      if (v?.onboardingStatus === "verified") {
+        toast.success("Stripe account verified. Payments are enabled.");
+      } else if (v?.onboardingStatus === "restricted") {
+        toast.error("Stripe has restricted your account. Please fix the issues in Stripe.");
+      } else {
+        toast.success("Status refreshed.");
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to refresh status");
     },
   });
 
@@ -213,9 +231,11 @@ export const PaymentTab: React.FC = () => {
           alert: (
             <Alert severity="info" sx={{ mt: 2 }}>
               Under review — you will be able to receive payments once
-              verification is complete.
+              verification is complete. If Stripe has already decided, refresh to see the updated status.
             </Alert>
           ),
+          primaryLabel: "Refresh status",
+          primaryAction: () => verifyStripeOnboarding(),
         };
       case "restricted":
       case "disabled":
@@ -386,17 +406,17 @@ export const PaymentTab: React.FC = () => {
                   ? "warning"
                   : "primary"
               }
-              disabled={connectLoading}
+              disabled={connectLoading || verifyLoading}
               onClick={stateContent.primaryAction}
               sx={{ textTransform: "none", minWidth: 170 }}
             >
-              {connectLoading ? (
+              {(connectLoading || verifyLoading) ? (
                 <CircularProgress
                   size={20}
                   sx={{ color: "inherit", mr: 1 }}
                 />
               ) : null}
-              {connectLoading ? "Please wait..." : stateContent.primaryLabel}
+              {(connectLoading || verifyLoading) ? "Please wait..." : stateContent.primaryLabel}
             </Button>
           )}
         </CardActions>

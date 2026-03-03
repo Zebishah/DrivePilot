@@ -21,7 +21,8 @@ function toIsoString(value) {
 function toId(value) {
   if (value == null) return null;
   if (typeof value === "string") return value;
-  if (value.toString && typeof value.toString === "function") return value.toString();
+  if (value.toString && typeof value.toString === "function")
+    return value.toString();
   return String(value);
 }
 
@@ -83,6 +84,16 @@ const refundRequestResolver = {
           "Refund can only be requested for a cancelled lesson. Please cancel the lesson first.",
         );
       }
+
+      // Refund cannot be requested for lessons that are already in the past (lesson date/time has passed)
+      const slotEnd = new Date(
+        `${slot.date}T${slot.endTime || slot.startTime}`,
+      );
+      if (slotEnd <= new Date()) {
+        throw new UserInputError(
+          "Refund cannot be requested for lessons that have already passed. Please request a refund before the lesson date.",
+        );
+      }
       // Consider slot paid if paymentStatus is "paid" OR booking/slot has payment info (instant or T-48)
       const slotPaid =
         String(slot.paymentStatus) === "paid" ||
@@ -106,9 +117,10 @@ const refundRequestResolver = {
         throw new UserInputError("This lesson has already been refunded.");
       }
       // Instant payment: booking.stripePaymentIntentId. T-48 payment: slot.paymentIntentId (per-slot PI).
-      const paymentIntentId = booking.stripePaymentIntentId || slot.paymentIntentId;
+      const paymentIntentId =
+        booking.stripePaymentIntentId || slot.paymentIntentId;
       if (!paymentIntentId || slot.chargeAmount == null) {
-          throw new UserInputError("Payment information missing for refund.");
+        throw new UserInputError("Payment information missing for refund.");
       }
 
       const existing = await RefundRequest.findOne({
@@ -204,7 +216,8 @@ const refundRequestResolver = {
         );
       }
       // Instant payment: booking.stripePaymentIntentId. T-48 payment: slot.paymentIntentId (per-slot PI).
-      const paymentIntentId = booking.stripePaymentIntentId || slot.paymentIntentId;
+      const paymentIntentId =
+        booking.stripePaymentIntentId || slot.paymentIntentId;
       if (!paymentIntentId || slot.chargeAmount == null) {
         throw new UserInputError("Payment information missing for refund.");
       }

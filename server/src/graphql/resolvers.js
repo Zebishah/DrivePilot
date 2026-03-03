@@ -1435,10 +1435,15 @@ instead.`);
           "No Stripe account found. Use Connect with Stripe first.",
         );
       }
-      if (instructor.stripeAccount?.detailsSubmitted) {
+      // Only skip new link when account is already fully verified (no need to re-onboard).
+      // When Stripe restricts or rejects (detailsSubmitted but not chargesEnabled), allow a new link so they can fix it.
+      if (
+        instructor.stripeAccount?.chargesEnabled &&
+        instructor.stripeAccount?.payoutsEnabled
+      ) {
         return {
           success: true,
-          message: "Account already submitted; use Verify to refresh status",
+          message: "Account already verified; no onboarding needed",
           onboardingUrl: null,
         };
       }

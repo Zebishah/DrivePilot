@@ -115,10 +115,11 @@ function accountToStripeSnapshot(account) {
   let onboardingStatus = "submitted";
   if (chargesEnabled && payoutsEnabled) {
     onboardingStatus = "verified";
+  } else if (requirements.disabled_reason) {
+    // Stripe has restricted/rejected the account — show this before "submitted" so we don't show "Under review" when Stripe says restricted
+    onboardingStatus = "restricted";
   } else if (detailsSubmitted && !chargesEnabled) {
     onboardingStatus = "submitted";
-  } else if (requirements.disabled_reason) {
-    onboardingStatus = "restricted";
   } else if (account.id && !detailsSubmitted) {
     onboardingStatus = "link_generated";
   }

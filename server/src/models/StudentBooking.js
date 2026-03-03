@@ -146,7 +146,7 @@ const studentBookingSchema = new Schema(
         "confirmed", // All slots paid
         "in_progress", // Some lessons happened
         "completed", // All lessons done
-        "semi_cancelled", // Some slots cancelled, some still active
+        "semi_cancelled", // Some slots cancelled, some still activethere
         "cancelled", // All slots cancelled
         "refunded", // Refunded
       ],

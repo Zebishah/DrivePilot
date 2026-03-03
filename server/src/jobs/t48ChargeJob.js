@@ -324,7 +324,9 @@ async function runT48ChargeJob() {
           String(err.message).toLowerCase().includes("requires authentication");
         const paymentIntentId =
           err.payment_intent?.id ||
-          (typeof err.payment_intent === "string" ? err.payment_intent : null) ||
+          (typeof err.payment_intent === "string"
+            ? err.payment_intent
+            : null) ||
           err.raw?.payment_intent?.id ||
           (typeof err.raw?.payment_intent === "string"
             ? err.raw.payment_intent

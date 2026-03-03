@@ -1014,11 +1014,7 @@ const studentBookingResolver = {
           : session.payment_intent;
       const platformSettingsConfirm = await getPlatformCommissionForSplit();
       const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
-        getCommissionSplit(
-          perSlotAmount,
-          instructor,
-          platformSettingsConfirm,
-        );
+        getCommissionSplit(perSlotAmount, instructor, platformSettingsConfirm);
       // Use atomic update to avoid VersionError when a webhook updated the booking after we loaded it
       const updateResult = await StudentBooking.updateOne(
         {
@@ -1041,13 +1037,15 @@ const studentBookingResolver = {
       );
       if (updateResult.matchedCount === 0) {
         // Already confirmed (e.g. by webhook) or not found
-        const current = await StudentBooking.findById(bookingId).populate(
-          "instructorId",
-          "_id firstName lastName email phone description profileImage address",
-        ).populate(
-          "studentId",
-          "_id firstName lastName email phone profileImage homeAddress",
-        );
+        const current = await StudentBooking.findById(bookingId)
+          .populate(
+            "instructorId",
+            "_id firstName lastName email phone description profileImage address",
+          )
+          .populate(
+            "studentId",
+            "_id firstName lastName email phone profileImage homeAddress",
+          );
         if (current && String(current.status) === "confirmed") {
           return current;
         }

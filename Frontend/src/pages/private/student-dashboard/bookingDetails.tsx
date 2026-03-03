@@ -91,6 +91,8 @@ const BookingDetails: React.FC = () => {
   );
 
   const [checkoutHandled, setCheckoutHandled] = useState(false);
+  /** Set when user returns from Stripe with checkout=cancelled (so we can show retry message when state was lost) */
+  const [paymentCancelledReturn, setPaymentCancelledReturn] = useState(false);
   const checkout = searchParams.get("checkout");
   const sessionId = searchParams.get("session_id");
 
@@ -112,14 +114,20 @@ const BookingDetails: React.FC = () => {
       });
 
   useEffect(() => {
-    if (!sessionId || checkoutHandled) return;
-
+    // Handle cancel first: Stripe cancel_url has ?checkout=cancelled but usually no session_id
     if (checkout === "cancelled") {
       toast("Payment was cancelled. You can try again when ready.");
-      setSearchParams({});
+      setSearchParams((prev) => {
+        prev.delete("checkout");
+        prev.delete("session_id");
+        return prev;
+      });
       setCheckoutHandled(true);
+      setPaymentCancelledReturn(true);
       return;
     }
+
+    if (!sessionId || checkoutHandled) return;
 
     // We have session_id: complete the booking (deferred or instant).
     setCheckoutHandled(true);
@@ -281,6 +289,10 @@ const BookingDetails: React.FC = () => {
           r.bookingId === bookingId && r.slotId === slotId && r.status === "pending"
       )
   );
+  const rejectedRefundForThisSlot = myRefundRequests.find(
+    (r: { bookingId: string; slotId: string; status: string; rejectionReason?: string | null }) =>
+      bookingId && slotId && r.bookingId === bookingId && r.slotId === slotId && r.status === "rejected"
+  ) as { rejectionReason?: string | null } | undefined;
 
   const [requestRefund, { loading: refundLoading }] = useMutation(REQUEST_REFUND, {
     onCompleted: () => {
@@ -383,6 +395,30 @@ const BookingDetails: React.FC = () => {
         }`
       ).getTime() < Date.now()
     : false;
+  // User returned from Stripe with checkout=cancelled; redirect loses location.state so show retry message
+  if (paymentCancelledReturn && !instructorId) {
+    return (
+      <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+        <BackButton variant="outline" showIcon={true} />
+        <Card sx={{ mb: 3, mt: 2, p: 3 }}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Payment was cancelled. You can try again when ready.
+          </Alert>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            Your booking is still pending. Go to Book lesson to find your incomplete checkout and continue to payment.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate("/student-dashboard/book", { replace: true })}
+            sx={{ textTransform: "none" }}
+          >
+            Go to Book lesson
+          </Button>
+        </Card>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <BackButton variant="outline" showIcon={true} />
@@ -706,7 +742,15 @@ const BookingDetails: React.FC = () => {
                   Refund pending admin approval
                 </Typography>
               )}
-              {isSlotCancelled && bookingId && slotId && !isPendingOrRefunded && (
+              {isSlotCancelled && bookingId && slotId && rejectedRefundForThisSlot && (
+                <Typography variant="body2" color="error.main" fontWeight={500}>
+                  Your refund request was rejected.
+                  {rejectedRefundForThisSlot.rejectionReason
+                    ? ` Reason: ${rejectedRefundForThisSlot.rejectionReason}`
+                    : ""}
+                </Typography>
+              )}
+              {isSlotCancelled && bookingId && slotId && !isPendingOrRefunded && !rejectedRefundForThisSlot && (
                 <Button
                   variant="contained"
                   color="secondary"
@@ -737,7 +781,9 @@ const BookingDetails: React.FC = () => {
               <Typography variant="caption" color="text.secondary">
                 {pendingRefundForThisSlot
                   ? "Admin will review your refund request. You will be notified once processed."
-                  : "Refund will be sent to the card you used to pay after admin approval."}
+                  : rejectedRefundForThisSlot
+                    ? "A previous refund request for this lesson was rejected. Contact support if you have questions."
+                    : "Refund will be sent to the card you used to pay after admin approval."}
               </Typography>
             )}
           </Box>
