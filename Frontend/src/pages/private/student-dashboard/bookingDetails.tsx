@@ -61,8 +61,11 @@ const BookingDetails: React.FC = () => {
     email = "",
     description = "",
   } = location.state || {};
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Slot needs 3DS or retry after T-48 charge (requires_action or payment_failed) */
+  const slotNeedsPayment =
+    (slot as { paymentStatus?: string } | undefined)?.paymentStatus === "requires_action" ||
+    (slot as { paymentStatus?: string } | undefined)?.paymentStatus === "payment_failed";
   const [displayCancelled, setDisplayCancelled] = useState(false);
   const isCancelled = status === "cancelled" || displayCancelled;
 
@@ -175,16 +178,6 @@ const BookingDetails: React.FC = () => {
   const finalDiscountShown = lessonDiscount
     ? lessonDiscount
     : discountPercentage;
-  const handleConfirm = () => {
-    setError(null);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setIsConfirmDialogOpen(false);
-    setError(null);
-  };
-
   const resolveInstructorId = (): string => {
     if (typeof instructorId === "string" && instructorId) return instructorId;
     if (instructorData && typeof instructorData === "object") {
@@ -226,7 +219,6 @@ const BookingDetails: React.FC = () => {
       });
       const url = result.data?.createBookingCheckoutSession?.url;
       if (url) {
-        handleCloseDialog();
         window.location.href = url;
       } else {
         setError("Could not open payment page. Please try again.");
@@ -719,10 +711,15 @@ const BookingDetails: React.FC = () => {
             <Typography variant="body2" color="text.secondary">
               Next: pay CHF {finalAmount.toFixed(2)} securely on Stripe.
             </Typography>
+            {error && (
+              <Alert severity="error" onClose={() => setError(null)} sx={{ width: "100%", maxWidth: 400 }}>
+                {error}
+              </Alert>
+            )}
             <Button
               variant="contained"
-              onClick={handleConfirm}
-              disabled={!initialPriceShown}
+              onClick={handleRedirectToStripeCheckout}
+              disabled={!initialPriceShown || checkoutLoading}
               sx={{
                 width: "200px",
                 bgcolor: "#5ec2d2",
@@ -731,11 +728,35 @@ const BookingDetails: React.FC = () => {
                 },
               }}
             >
-              Confirm Booking
+              {checkoutLoading ? (
+                <>
+                  <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                  Redirecting…
+                </>
+              ) : (
+                "Confirm Booking"
+              )}
             </Button>
           </>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
+            {slotNeedsPayment && bookingId && slotId && (
+              <Alert severity="warning" sx={{ width: "100%", maxWidth: 500 }}>
+                Your bank requires extra verification (3D Secure) or the charge needs to be completed. Click below to finish payment — no need to re-book.
+                <Button
+                  variant="contained"
+                  size="small"
+                  sx={{ mt: 1.5 }}
+                  onClick={() =>
+                    navigate(
+                      `/student-dashboard/complete-payment?bookingId=${bookingId}&slotId=${slotId}`,
+                    )
+                  }
+                >
+                  Complete payment
+                </Button>
+              </Alert>
+            )}
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
               {isSlotCancelled && bookingId && slotId && pendingRefundForThisSlot && (
                 <Typography variant="body2" color="info.main" fontWeight={500}>
@@ -790,91 +811,7 @@ const BookingDetails: React.FC = () => {
         )}
       </Box>
 
-      {/* Confirmation Dialog - Only show for current bookings */}
-      {isCurrentBooking && (
-        <Dialog
-          open={isConfirmDialogOpen}
-          onClose={handleCloseDialog}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogContent sx={{ position: "relative", pt: 2 }}>
-            <IconButton
-              onClick={handleCloseDialog}
-              sx={{
-                position: "absolute",
-                right: 8,
-                top: 8,
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            <Typography variant="h6" align="center" gutterBottom>
-              Confirm Lesson Booking
-            </Typography>
-
-            <Typography align="center" gutterBottom>
-              {selectedAvailability?.length || 0} lesson
-              {selectedAvailability?.length > 1 ? "s" : ""} — CHF{" "}
-              {finalAmount.toFixed(2)} (after discount)
-            </Typography>
-
-            <Box sx={{ bgcolor: "#f5f5f5", p: 2, borderRadius: 1, mt: 2, mb: 2 }}>
-              <Typography variant="body2" gutterBottom>
-                <strong>Start:</strong>{" "}
-                {selectedAvailability?.[0]
-                  ? formatLessonDateTime(
-                      selectedAvailability[0].date,
-                      selectedAvailability[0].startTime
-                    )
-                  : "—"}
-              </Typography>
-              <Typography variant="body2">
-                <strong>End:</strong>{" "}
-                {selectedAvailability?.length
-                  ? formatLessonDateTime(
-                      selectedAvailability[selectedAvailability.length - 1]
-                        .date,
-                      selectedAvailability[selectedAvailability.length - 1]
-                        .endTime
-                    )
-                  : "—"}
-              </Typography>
-            </Box>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              You will be redirected to Stripe&apos;s secure payment page to complete your booking. No card details are entered on this site.
-            </Typography>
-            <Button
-              variant="contained"
-              fullWidth
-              size="large"
-              onClick={handleRedirectToStripeCheckout}
-              disabled={checkoutLoading}
-              sx={{
-                py: 1.5,
-                mt: 1,
-                bgcolor: "#5fc2d3",
-                "&:hover": { bgcolor: "#4bb1c2" },
-              }}
-            >
-              {checkoutLoading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                `Pay CHF ${finalAmount.toFixed(2)} on Stripe`
-              )}
-            </Button>
-          </DialogContent>
-          <DialogActions sx={{ justifyContent: "center", pb: 3 }} />
-        </Dialog>
-      )}
+      {/* Confirmation Dialog - Only show for current bookings - REMOVED: redirect goes directly to Stripe */}
 
       <Dialog
         open={isCancelDialogOpen}

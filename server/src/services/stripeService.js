@@ -472,7 +472,7 @@ async function createCheckoutSessionForBooking(opts) {
       mode: "setup",
       payment_method_types: ["card"],
       currency: currency.toLowerCase(),
-      locale: "de", // German; Stripe only allows e.g. de, en, fr (no de-CH). Disable Adaptive Pricing in Dashboard to show only CHF.
+      locale: "en",
       metadata: { ...metadata },
       setup_intent_data: {
         metadata: { ...metadata },
@@ -486,13 +486,10 @@ async function createCheckoutSessionForBooking(opts) {
       sessionParams.customer_email = String(customerEmail).trim().toLowerCase();
     }
   } else {
-    // Immediate payment using destination charges.
-    // Locale "de" (Stripe does not support de-CH). To show ONLY CHF (no PKR or other currency):
-    // Stripe Dashboard → Settings → Adaptive Pricing → turn OFF for Checkout.
-    // https://dashboard.stripe.com/settings/adaptive-pricing
+    // Use locale "en" so Checkout and save-card page are in English.
     sessionParams = {
       mode: "payment",
-      locale: "de",
+      locale: "en",
       line_items: [
         {
           price_data: {

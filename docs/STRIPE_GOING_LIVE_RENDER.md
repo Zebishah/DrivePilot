@@ -4,6 +4,37 @@ When you deploy your project to **Render** (or any live host), you **must not** 
 
 ---
 
+## 1a. Testing on Render with test credentials (no real payments)
+
+You can deploy to Render and still use **test** keys so that only test cards work and no real money is charged. The only thing that won’t work is the **Stripe CLI webhook secret** — that secret is only for `stripe listen` forwarding to localhost. For Render you need a webhook that Stripe sends to your **live URL**.
+
+**Do this:**
+
+1. **Use test keys on Render**
+   - Backend: `STRIPE_SECRET_KEY` = `sk_test_...`
+   - Frontend: `VITE_STRIPE_PUBLISHABLE_KEY` = `pk_test_...`
+   - `FRONTEND_URL` = your Render frontend URL (e.g. `https://your-app.onrender.com`)
+
+2. **Create a test-mode webhook endpoint in Stripe Dashboard (for your Render URL)**
+   - Open [Stripe Dashboard](https://dashboard.stripe.com).
+   - **Turn on “Test mode”** (toggle top right).
+   - Go to **Developers → Webhooks**.
+   - Click **Add endpoint**.
+   - **Endpoint URL:** `https://your-backend.onrender.com/webhooks/stripe`  
+     (Use the real URL of your backend on Render.)
+   - **Events to send:** same as production (e.g. `checkout.session.completed`, `payment_intent.succeeded`, `account.updated`, etc.) or “Receive all events”.
+   - Create the endpoint. Stripe shows a **Signing secret** (`whsec_...`). Copy it.
+
+3. **Set the webhook secret on Render**
+   - In Render, for your **backend** service, set:
+   - `STRIPE_WEBHOOK_SECRET` = the `whsec_...` from the **Dashboard** endpoint you just created (not the one from `stripe listen`).
+
+4. **Redeploy** the backend so it uses the new env.
+
+After this, your Render app uses test credentials and test cards (e.g. 4242 4242 4242 4242), and webhooks are signed with the Dashboard endpoint secret so verification succeeds. When you’re ready for real payments, switch to live keys and add a **live** webhook endpoint as in section 4 below.
+
+---
+
 ## 1. Test (sandbox) vs Live – quick answer
 
 | Item | Localhost (development) | Live (e.g. Render) |
@@ -116,12 +147,14 @@ Your backend uses `FRONTEND_URL` (or `Frontend_URL`) when building Stripe Checko
 
 ## 5. Summary table
 
-| Variable | Localhost (dev) | Live (Render) |
-|----------|------------------|---------------|
-| `STRIPE_SECRET_KEY` | `sk_test_...` | `sk_live_...` |
-| `STRIPE_WEBHOOK_SECRET` | From `stripe listen` (CLI) | From Dashboard webhook for `https://your-api.onrender.com/webhooks/stripe` |
-| `VITE_STRIPE_PUBLISHABLE_KEY` (frontend) | `pk_test_...` | `pk_live_...` |
-| `FRONTEND_URL` (backend) | `http://localhost:5173` (or your dev URL) | `https://your-app.onrender.com` |
+| Variable | Localhost (dev) | Render with **test** credentials | Render with **live** (real payments) |
+|----------|------------------|-----------------------------------|--------------------------------------|
+| `STRIPE_SECRET_KEY` | `sk_test_...` | `sk_test_...` | `sk_live_...` |
+| `STRIPE_WEBHOOK_SECRET` | From `stripe listen` (CLI) | From **Dashboard** webhook (test mode) for `https://your-api.onrender.com/webhooks/stripe` | From **Dashboard** webhook (live mode) for same URL |
+| `VITE_STRIPE_PUBLISHABLE_KEY` (frontend) | `pk_test_...` | `pk_test_...` | `pk_live_...` |
+| `FRONTEND_URL` (backend) | `http://localhost:5173` | `https://your-app.onrender.com` | `https://your-app.onrender.com` |
+
+**Important:** The CLI secret from `stripe listen` only works when the CLI is forwarding to localhost. On Render you must create a webhook endpoint in the Dashboard (test or live) for your Render URL and use that endpoint’s signing secret.
 
 ---
 
