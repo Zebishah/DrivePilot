@@ -299,9 +299,38 @@ const BookingDetails: React.FC = () => {
   });
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundRequestedForSlot, setRefundRequestedForSlot] = useState(false);
+  const isLessonPast = selectedAvailability?.length
+    ? new Date(
+        `${selectedAvailability[selectedAvailability.length - 1].date}T${
+          selectedAvailability[selectedAvailability.length - 1].endTime || "23:59"
+        }`
+      ).getTime() < Date.now()
+    : false;
   const currentSlot =
     slot ||
     selectedAvailability?.find((s: { _id?: string }) => s._id === slotId);
+  /** Current slot's lesson date/time has passed (for single-slot view from booked lessons) */
+  const slotDate = (currentSlot as { date?: string } | undefined)?.date;
+  const slotEndTime =
+    (currentSlot as { endTime?: string; startTime?: string } | undefined)?.endTime ||
+    (currentSlot as { startTime?: string } | undefined)?.startTime ||
+    "23:59";
+  const isSlotLessonPast =
+    !!currentSlot &&
+    !!slotDate &&
+    new Date(`${slotDate}T${slotEndTime}`).getTime() < Date.now();
+  /** Cannot cancel if lesson past or slot already completed/missed/refunded */
+  const cannotCancel =
+    isLessonPast ||
+    (currentSlot as { status?: string } | undefined)?.status === "completed" ||
+    (currentSlot as { status?: string } | undefined)?.status === "missed" ||
+    (currentSlot as { status?: string } | undefined)?.status === "refund";
+  /** Can complete payment (3DS/retry) only if slot needs payment and lesson not past and not completed/missed */
+  const canCompletePayment =
+    slotNeedsPayment &&
+    !isSlotLessonPast &&
+    (currentSlot as { status?: string } | undefined)?.status !== "completed" &&
+    (currentSlot as { status?: string } | undefined)?.status !== "missed";
   /** Slot-level cancelled: show refund UI for this slot (works for semi_cancelled bookings too) */
   const isSlotCancelled = Boolean(
     (currentSlot as { status?: string } | undefined)?.status === "cancelled"
@@ -380,13 +409,6 @@ const BookingDetails: React.FC = () => {
       setCancelLoading(false);
     }
   };
-  const isLessonPast = selectedAvailability?.length
-    ? new Date(
-        `${selectedAvailability[selectedAvailability.length - 1].date}T${
-          selectedAvailability[selectedAvailability.length - 1].endTime
-        }`
-      ).getTime() < Date.now()
-    : false;
   // User returned from Stripe with checkout=cancelled; redirect loses location.state so show retry message
   if (paymentCancelledReturn && !instructorId) {
     return (
@@ -458,7 +480,11 @@ const BookingDetails: React.FC = () => {
           )} */}
           <Box>
             <Tooltip
-              title={isLessonPast ? "You can't reschedule past bookings." : ""}
+              title={
+                cannotCancel
+                  ? "You can't reschedule: lesson is past or already completed/missed/refunded."
+                  : ""
+              }
               arrow
             >
               <span>
@@ -466,15 +492,15 @@ const BookingDetails: React.FC = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleReschedule}
-                  disabled={isLessonPast}
+                  disabled={cannotCancel}
                   sx={{
                     width: "200px",
-                    opacity: isLessonPast ? 0.6 : 1,
-                    pointerEvents: isLessonPast ? "none" : "auto",
-                    bgcolor: isLessonPast ? "#d3d3d3" : "#5ec2d2",
+                    opacity: cannotCancel ? 0.6 : 1,
+                    pointerEvents: cannotCancel ? "none" : "auto",
+                    bgcolor: cannotCancel ? "#d3d3d3" : "#5ec2d2",
                     mr: 2,
                     "&:hover": {
-                      bgcolor: isLessonPast ? "#d3d3d3" : "rgba(65, 135, 147)",
+                      bgcolor: cannotCancel ? "#d3d3d3" : "rgba(65, 135, 147)",
                     },
                   }}
                 >
@@ -485,7 +511,11 @@ const BookingDetails: React.FC = () => {
 
             {!isCancelled && (
               <Tooltip
-                title={isLessonPast ? "You can't cancel past bookings." : ""}
+                title={
+                  cannotCancel
+                    ? "You can't cancel: lesson is past or already completed/missed/refunded."
+                    : ""
+                }
                 arrow
               >
                 <span>
@@ -493,14 +523,14 @@ const BookingDetails: React.FC = () => {
                     variant="contained"
                     color="error"
                     onClick={handleOpenCancel}
-                    disabled={isLessonPast || cancelLoading}
+                    disabled={cannotCancel || cancelLoading}
                     sx={{
                       width: "200px",
-                      opacity: isLessonPast ? 0.6 : 1,
-                      pointerEvents: isLessonPast ? "none" : "auto",
-                      bgcolor: isLessonPast ? "#d3d3d3" : "#f44336",
+                      opacity: cannotCancel ? 0.6 : 1,
+                      pointerEvents: cannotCancel ? "none" : "auto",
+                      bgcolor: cannotCancel ? "#d3d3d3" : "#f44336",
                       "&:hover": {
-                        bgcolor: isLessonPast ? "#d3d3d3" : "#d32f2f",
+                        bgcolor: cannotCancel ? "#d3d3d3" : "#d32f2f",
                       },
                     }}
                   >
@@ -739,64 +769,94 @@ const BookingDetails: React.FC = () => {
             </Button>
           </>
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
-            {slotNeedsPayment && bookingId && slotId && (
-              <Alert severity="warning" sx={{ width: "100%", maxWidth: 500 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, alignItems: "stretch", width: "100%", maxWidth: 500 }}>
+            {canCompletePayment && bookingId && slotId && (
+              <Alert severity="warning" sx={{ width: "100%" }}>
                 Your bank requires extra verification (3D Secure) or the charge needs to be completed. Click below to finish payment — no need to re-book.
-                <Button
-                  variant="contained"
-                  size="small"
-                  sx={{ mt: 1.5 }}
-                  onClick={() =>
-                    navigate(
-                      `/student-dashboard/complete-payment?bookingId=${bookingId}&slotId=${slotId}`,
-                    )
-                  }
-                >
-                  Complete payment
-                </Button>
               </Alert>
             )}
-            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-              {isSlotCancelled && bookingId && slotId && pendingRefundForThisSlot && (
-                <Typography variant="body2" color="info.main" fontWeight={500}>
-                  Refund pending admin approval
-                </Typography>
-              )}
-              {isSlotCancelled && bookingId && slotId && rejectedRefundForThisSlot && (
-                <Typography variant="body2" color="error.main" fontWeight={500}>
-                  Your refund request was rejected.
-                  {rejectedRefundForThisSlot.rejectionReason
-                    ? ` Reason: ${rejectedRefundForThisSlot.rejectionReason}`
-                    : ""}
-                </Typography>
-              )}
-              {isSlotCancelled && bookingId && slotId && !isPendingOrRefunded && !rejectedRefundForThisSlot && (
+            {slotNeedsPayment && !canCompletePayment && bookingId && slotId && (
+              <Alert severity="info" sx={{ width: "100%" }}>
+                This lesson can no longer be paid (lesson date has passed or lesson was marked completed/missed).
+              </Alert>
+            )}
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 2,
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+              }}
+            >
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}>
+                {isSlotCancelled && bookingId && slotId && pendingRefundForThisSlot && (
+                  <Typography variant="body2" color="info.main" fontWeight={500}>
+                    Refund pending admin approval
+                  </Typography>
+                )}
+                {isSlotCancelled && bookingId && slotId && rejectedRefundForThisSlot && (
+                  <Typography variant="body2" color="error.main" fontWeight={500}>
+                    Your refund request was rejected.
+                    {rejectedRefundForThisSlot.rejectionReason
+                      ? ` Reason: ${rejectedRefundForThisSlot.rejectionReason}`
+                      : ""}
+                  </Typography>
+                )}
+                {isSlotCancelled && bookingId && slotId && !isPendingOrRefunded && !rejectedRefundForThisSlot && (
+                  <Tooltip
+                    title={
+                      isSlotLessonPast
+                        ? "Refund cannot be requested after the lesson date has passed."
+                        : ""
+                    }
+                    arrow
+                  >
+                    <span>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={handleOpenRefund}
+                        disabled={refundLoading || isSlotLessonPast}
+                      >
+                        {refundLoading ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          "Request refund"
+                        )}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
+                {isSlotCancelled && bookingId && slotId && isSlotRefunded && (
+                  <Typography variant="body2" color="text.secondary">
+                    This lesson has been refunded.
+                  </Typography>
+                )}
+              </Box>
+              <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexShrink: 0 }}>
+                {canCompletePayment && bookingId && slotId && (
+                  <Button
+                    variant="contained"
+                    size="medium"
+                    onClick={() =>
+                      navigate(
+                        `/student-dashboard/complete-payment?bookingId=${bookingId}&slotId=${slotId}`,
+                      )
+                    }
+                  >
+                    Complete payment
+                  </Button>
+                )}
                 <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleOpenRefund}
-                  disabled={refundLoading}
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => navigate("/student-dashboard/book")}
                 >
-                  {refundLoading ? (
-                    <CircularProgress size={20} />
-                  ) : (
-                    "Request refund"
-                  )}
+                  Back to Bookings
                 </Button>
-              )}
-              {isSlotCancelled && bookingId && slotId && isSlotRefunded && (
-                <Typography variant="body2" color="text.secondary">
-                  This lesson has been refunded.
-                </Typography>
-              )}
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={() => navigate("/student-dashboard/book")}
-              >
-                Back to Bookings
-              </Button>
+              </Box>
             </Box>
             {isSlotCancelled && bookingId && slotId && !isSlotRefunded && (
               <Typography variant="caption" color="text.secondary">

@@ -916,6 +916,11 @@ const studentBookingResolver = {
         slotStartTimes.length > 0
           ? new Date(Math.min(...slotStartTimes.map((d) => d.getTime())))
           : null;
+      if (earliestSlotStart && earliestSlotStart <= now) {
+        throw new UserInputError(
+          "Cannot complete checkout: lesson date has passed.",
+        );
+      }
       const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
       const isDeferred =
         earliestSlotStart &&
@@ -1000,6 +1005,16 @@ const studentBookingResolver = {
       }
       if (booking.status !== "pending") {
         return booking;
+      }
+      // Do not allow completing checkout if any lesson date has passed
+      const slotEndTimes = (booking.slots || []).map(
+        (s) => new Date(`${s.date}T${s.endTime || s.startTime}`),
+      );
+      const now = new Date();
+      if (slotEndTimes.length > 0 && slotEndTimes.some((d) => d <= now)) {
+        throw new UserInputError(
+          "Cannot complete checkout: lesson date has passed.",
+        );
       }
       const instructor = await Instructor.findById(booking.instructorId).lean();
       if (!instructor) {
@@ -1314,6 +1329,20 @@ const studentBookingResolver = {
           "This slot does not require payment completion or has already been paid.",
         );
       }
+      // Do not allow completing 3DS/payment if lesson date passed or instructor marked completed/missed
+      if (slot.status === "completed" || slot.status === "missed") {
+        throw new UserInputError(
+          "Cannot complete payment: this lesson was marked completed or missed.",
+        );
+      }
+      const slotEnd = new Date(
+        `${slot.date}T${slot.endTime || slot.startTime}`,
+      );
+      if (slotEnd <= new Date()) {
+        throw new UserInputError(
+          "Cannot complete payment: lesson date has passed.",
+        );
+      }
       // Only reuse existing PI when it's not already in requires_action. A PI in requires_action
       // from T-48 was confirmed without return_url, so it has use_stripe_sdk (no redirect) and the
       // in-page 3DS modal often never appears. Creating a new PI and confirming with return_url
@@ -1454,6 +1483,20 @@ const studentBookingResolver = {
       }
       if (slot.paymentStatus === "paid") {
         return booking;
+      }
+      // Do not allow completing payment if lesson date passed or instructor marked completed/missed
+      if (slot.status === "completed" || slot.status === "missed") {
+        throw new UserInputError(
+          "Cannot complete payment: this lesson was marked completed or missed.",
+        );
+      }
+      const slotEndDate = new Date(
+        `${slot.date}T${slot.endTime || slot.startTime}`,
+      );
+      if (slotEndDate <= new Date()) {
+        throw new UserInputError(
+          "Cannot complete payment: lesson date has passed.",
+        );
       }
       const admin = await Admin.findOne().lean();
       const platformCommission = admin?.platformCommission || {};
@@ -1993,6 +2036,15 @@ const studentBookingResolver = {
 
         if (slot.status === "cancelled") {
           throw new UserInputError("Slot is already cancelled");
+        }
+        if (
+          slot.status === "completed" ||
+          slot.status === "missed" ||
+          slot.status === "refund"
+        ) {
+          throw new UserInputError(
+            "Cannot cancel: lesson is already completed, missed, or refunded.",
+          );
         }
 
         // Cancel only before the booking date (slot date)

@@ -77,7 +77,7 @@ const studentBookingSchema = new mongoose.Schema(
         // --- Payout (3 days after completed) ---
         payoutStatus: {
           type: String,
-          enum: ["not_applicable", "pending", "completed"],
+          enum: ["not_applicable", "pending", "processing", "completed"],
           default: "not_applicable",
         },
         completionMarkedAt: { type: Date },

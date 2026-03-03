@@ -40,6 +40,25 @@ async function runInstructorPayoutJob() {
         continue;
       }
 
+      // Atomically claim this slot (pending -> processing) to prevent double payout when job runs concurrently
+      const claimResult = await StudentBooking.updateOne(
+        {
+          _id: booking._id,
+          "slots._id": slot._id,
+          "slots.payoutStatus": "pending",
+          "slots.payoutEligibleAt": { $lte: now },
+        },
+        {
+          $set: {
+            "slots.$.payoutStatus": "processing",
+            updatedAt: new Date(),
+          },
+        },
+      );
+      if (claimResult.modifiedCount === 0) {
+        continue; // Another process claimed it or already paid out
+      }
+
       try {
         const amountCentimes = Math.round(
           Number(slot.instructorAmount) * CENTIMES_PER_UNIT,
@@ -54,12 +73,12 @@ async function runInstructorPayoutJob() {
         });
 
         await StudentBooking.updateOne(
-          { _id: booking._id },
+          { _id: booking._id, "slots._id": slot._id },
           {
             $set: {
-              [`slots.${i}.payoutStatus`]: "completed",
-              [`slots.${i}.payoutId`]: payoutId,
-              [`slots.${i}.payoutDate`]: new Date(),
+              "slots.$.payoutStatus": "completed",
+              "slots.$.payoutId": payoutId,
+              "slots.$.payoutDate": new Date(),
               updatedAt: new Date(),
             },
           },
@@ -87,12 +106,12 @@ async function runInstructorPayoutJob() {
             err.message.includes("balance is too low"));
         if (isInsufficientFunds && process.env.NODE_ENV !== "production") {
           await StudentBooking.updateOne(
-            { _id: booking._id },
+            { _id: booking._id, "slots._id": slot._id },
             {
               $set: {
-                [`slots.${i}.payoutStatus`]: "completed",
-                [`slots.${i}.payoutId`]: "test_skipped_insufficient_balance",
-                [`slots.${i}.payoutDate`]: new Date(),
+                "slots.$.payoutStatus": "completed",
+                "slots.$.payoutId": "test_skipped_insufficient_balance",
+                "slots.$.payoutDate": new Date(),
                 updatedAt: new Date(),
               },
             },
@@ -121,6 +140,16 @@ async function runInstructorPayoutJob() {
             `Payout failed for booking ${booking._id} slot ${slot._id}:`,
             err.message,
           );
+          // Reset to pending so a future run can retry
+          await StudentBooking.updateOne(
+            { _id: booking._id, "slots._id": slot._id },
+            {
+              $set: {
+                "slots.$.payoutStatus": "pending",
+                updatedAt: new Date(),
+              },
+            },
+          ).catch(() => {});
           errors += 1;
         }
       }

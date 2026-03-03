@@ -215,6 +215,35 @@ const refundRequestResolver = {
           "Refund is not available because the instructor has already been paid out. Request rejected.",
         );
       }
+      // Do not approve refund if lesson was marked completed or missed (data integrity)
+      if (slot.status === "completed" || slot.status === "missed") {
+        await RefundRequest.findByIdAndUpdate(id, {
+          status: "rejected",
+          processedAt: new Date(),
+          processedBy: user.id,
+          rejectionReason:
+            "Lesson was marked completed or missed; refund not allowed.",
+        });
+        throw new UserInputError(
+          "Refund cannot be approved: lesson is marked completed or missed.",
+        );
+      }
+      // Do not approve refund if lesson date has passed (request may have been submitted before date passed)
+      const slotEnd = new Date(
+        `${slot.date}T${slot.endTime || slot.startTime}`,
+      );
+      if (slotEnd <= new Date()) {
+        await RefundRequest.findByIdAndUpdate(id, {
+          status: "rejected",
+          processedAt: new Date(),
+          processedBy: user.id,
+          rejectionReason:
+            "Lesson date has passed; refund approval not allowed.",
+        });
+        throw new UserInputError(
+          "Refund cannot be approved: lesson date has passed.",
+        );
+      }
       // Instant payment: booking.stripePaymentIntentId. T-48 payment: slot.paymentIntentId (per-slot PI).
       const paymentIntentId =
         booking.stripePaymentIntentId || slot.paymentIntentId;
