@@ -148,15 +148,14 @@ function getCommissionSplit(amountChf, instructor, platformSettings = {}) {
   const defType = platformSettings.defaultType ?? "percentage";
   const defFixed = platformSettings.defaultFixedAmount ?? 0;
 
+  // Use platform Commission Management (Admin.platformCommission) as source of truth.
+  // So when admin sets 40% in Commission Management, admin gets 40%, instructor 60%.
+  // Instructor commission is only used for explicit per-instructor overrides (fixed amount or custom rate).
   let dspCommission;
   const inc = instructor?.commission;
   if (inc?.type === "amount" || inc?.type === "fixed") {
     const fixed = Number(inc.fixedAmount ?? 0);
     dspCommission = Math.min(fixed, amountChf);
-  } else if (inc?.rate != null && inc.rate >= 0) {
-    dspCommission =
-      Math.round(amountChf * (Number(inc.rate) / 100) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
   } else if (defType === "amount") {
     dspCommission = Math.min(defFixed, amountChf);
   } else {

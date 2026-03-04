@@ -12,6 +12,7 @@ import {
   Stack,
   Tabs,
   Tab,
+  Alert,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -75,6 +76,9 @@ const BookLesson: React.FC = () => {
   });
   const [createCheckoutForPending, { loading: checkoutPendingLoading }] =
     useMutation(CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING);
+
+  const [loadingCheckoutBookingId, setLoadingCheckoutBookingId] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [tabValue, setTabValue] = useState(0);
@@ -341,8 +345,15 @@ const BookLesson: React.FC = () => {
   const oneHourMs = 60 * 60 * 1000;
   type SlotWithPayment = AvailabilitySlot & { _id?: string; paymentStatus?: string };
   const t48CompletePaymentSlots = bookings.flatMap(
-    (b: Booking) =>
-      ((b.slots || []) as SlotWithPayment[])
+    (b: Booking & { paymentMethod?: { paymentMethodId?: string }; stripeCustomerId?: string | null }) => {
+      // Only show T-48 / 3DS completion when the original deferred booking has a saved card.
+      // If there is no saved payment method or Stripe customer, backend will reject with
+      // "No payment method found for this booking", so we hide those here to avoid confusion.
+      const hasSavedCard =
+        Boolean(b.paymentMethod?.paymentMethodId) && Boolean(b.stripeCustomerId);
+      if (!hasSavedCard) return [];
+
+      return ((b.slots || []) as SlotWithPayment[])
         .filter((s: SlotWithPayment) => {
           if (!s._id) return false;
           // Slot-level: only slots that need payment (3DS or failed charge)
@@ -363,10 +374,13 @@ const BookLesson: React.FC = () => {
           endTime: s.endTime,
           instructorName: `${b.instructorId?.firstName || ""} ${b.instructorId?.lastName || ""}`.trim(),
           paymentStatus: s.paymentStatus,
-        })),
+        }));
+    },
   );
 
   const handleContinueToCheckout = async (bookingId: string) => {
+    setCheckoutError(null);
+    setLoadingCheckoutBookingId(bookingId);
     try {
       const { data } = await createCheckoutForPending({
         variables: { bookingId },
@@ -374,9 +388,18 @@ const BookLesson: React.FC = () => {
       const url = data?.createCheckoutSessionForPendingBooking?.url;
       if (url) {
         window.location.href = url;
+        return;
       }
-    } catch (err) {
+      setCheckoutError("Could not open checkout. Please try again or contact support.");
+    } catch (err: unknown) {
+      const msg =
+        (err as { graphQLErrors?: Array<{ message?: string }> })?.graphQLErrors?.[0]?.message ||
+        (err as { message?: string })?.message ||
+        "Failed to start checkout. Please try again or contact support.";
+      setCheckoutError(msg);
       console.error("Resume checkout failed:", err);
+    } finally {
+      setLoadingCheckoutBookingId(null);
     }
   };
 
@@ -407,57 +430,69 @@ const BookLesson: React.FC = () => {
             </Typography>
           </Box>
           <CardContent>
+            {checkoutError && (
+              <Alert
+                severity="error"
+                onClose={() => setCheckoutError(null)}
+                sx={{ mb: 2 }}
+              >
+                {checkoutError}
+              </Alert>
+            )}
             <Stack spacing={2}>
-              {abandonedByBooking.map((item) => (
-                <Box
-                  key={item.bookingId}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                    gap: 1,
-                    p: 1.5,
-                    bgcolor: "action.hover",
-                    borderRadius: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle2">
-                      {item.instructorName}
-                    </Typography>
-                    {item.slots.map((slot) => (
-                      <Typography
-                        key={`${slot.bookingId}-${slot.slotId}`}
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        {new Date(slot.date).toLocaleDateString([], {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
-                        })}{" "}
-                        · {slot.startTime} – {slot.endTime}
-                      </Typography>
-                    ))}
-                    <Typography
-                      variant="caption"
-                      sx={{ color: "text.secondary", fontWeight: 500 }}
-                    >
-                      Checkout not completed
-                    </Typography>
-                  </Box>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={checkoutPendingLoading}
-                    sx={{ bgcolor: "#5fc2d3", textTransform: "none" }}
-                    onClick={() => handleContinueToCheckout(item.bookingId)}
+              {abandonedByBooking.map((item) => {
+                const thisButtonLoading = loadingCheckoutBookingId === item.bookingId;
+                return (
+                  <Box
+                    key={item.bookingId}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      p: 1.5,
+                      bgcolor: "action.hover",
+                      borderRadius: 2,
+                    }}
                   >
-                    {checkoutPendingLoading ? "Loading…" : "Continue to checkout"}
-                  </Button>
-                </Box>
-              ))}
+                    <Box>
+                      <Typography variant="subtitle2">
+                        {item.instructorName}
+                      </Typography>
+                      {item.slots.map((slot) => (
+                        <Typography
+                          key={`${slot.bookingId}-${slot.slotId}`}
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          {new Date(slot.date).toLocaleDateString([], {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}{" "}
+                          · {slot.startTime} – {slot.endTime}
+                        </Typography>
+                      ))}
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary", fontWeight: 500 }}
+                      >
+                        Checkout not completed
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={loadingCheckoutBookingId != null || checkoutPendingLoading}
+                      sx={{ bgcolor: "#5fc2d3", textTransform: "none" }}
+                      onClick={() => handleContinueToCheckout(item.bookingId)}
+                    >
+                      {thisButtonLoading ? "Loading…" : "Continue to checkout"}
+                    </Button>
+                  </Box>
+                );
+              })}
             </Stack>
           </CardContent>
         </Card>
