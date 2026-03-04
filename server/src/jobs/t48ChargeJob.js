@@ -79,6 +79,8 @@ async function runT48ChargeJob() {
     for (let i = 0; i < booking.slots.length; i++) {
       const slot = booking.slots[i];
       if (slot.paymentStatus !== "pending_payment") continue;
+      // Do not charge cancelled slots (e.g. student cancelled before T-48)
+      if (slot.status === "cancelled" || slot.booked === false) continue;
 
       const slotStart = new Date(`${slot.date}T${slot.startTime}`);
       const chargeTime = new Date(slotStart.getTime() - FORTY_EIGHT_HOURS_MS);

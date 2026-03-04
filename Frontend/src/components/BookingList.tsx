@@ -343,6 +343,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                               sx={{
                                 display: "flex",
                                 flexDirection: "column",
+                                gap: 0.5,
                               }}
                             >
                               <Typography
@@ -373,6 +374,38 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   day: "numeric",
                                 })}
                               </Typography>
+                              {tabValue === 0 && (
+                                <Typography
+                                  component="span"
+                                  variant="caption"
+                                  sx={{
+                                    display: "inline-block",
+                                    mt: 0.5,
+                                    px: 1,
+                                    py: 0.25,
+                                    borderRadius: 1,
+                                    fontWeight: 600,
+                                    fontSize: "0.65rem",
+                                    letterSpacing: "0.3px",
+                                    alignSelf: "flex-start",
+                                    ...(String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
+                                      ? {
+                                          bgcolor: "rgba(0, 200, 83, 0.15)",
+                                          color: "rgb(0, 150, 60)",
+                                          border: "1px solid rgba(0, 200, 83, 0.35)",
+                                        }
+                                      : {
+                                          bgcolor: "rgba(255, 152, 0, 0.15)",
+                                          color: "rgb(200, 120, 0)",
+                                          border: "1px solid rgba(255, 152, 0, 0.35)",
+                                        }),
+                                  }}
+                                >
+                                  {String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
+                                    ? "Paid"
+                                    : "Unpaid (T-48)"}
+                                </Typography>
+                              )}
                             </Box>
                             <Typography
                               className="status-badge"

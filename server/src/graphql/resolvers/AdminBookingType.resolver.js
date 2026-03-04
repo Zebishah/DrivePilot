@@ -1,6 +1,7 @@
 const { UserInputError } = require("apollo-server-express");
 const mongoose = require("mongoose");
 const studentBookingModel = require("../../models/studentBooking.model");
+const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
 
 const { User, Student, Instructor } = require("../../models/User");
 
@@ -123,11 +124,21 @@ const AdminBookingResolvers = {
         }
 
         // Block marking as completed before the slot end time (skip in development for testing)
+        // Slot times are in business timezone (SLOT_TIMEZONE, default Europe/Zurich)
         if (status === "completed" && process.env.NODE_ENV === "production") {
           const slot = booking.slots[slotIndex];
-          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          const now = new Date();
-          if (slotEnd > now) {
+          const endTimeStr =
+            slot.endTime && slot.endTime.split(":").length >= 3
+              ? slot.endTime
+              : `${slot.endTime || "17:00"}:00`;
+          const slotEndMs = getSlotEndTimestampUtc(slot.date, endTimeStr);
+          const nowMs = Date.now();
+          if (isNaN(slotEndMs)) {
+            throw new Error(
+              "Cannot mark this slot as completed: invalid slot end time.",
+            );
+          }
+          if (slotEndMs > nowMs) {
             throw new Error(
               "Cannot mark this slot as completed before its end time.",
             );

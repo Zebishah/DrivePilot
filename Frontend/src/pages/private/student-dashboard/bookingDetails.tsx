@@ -335,6 +335,11 @@ const BookingDetails: React.FC = () => {
   const isSlotCancelled = Boolean(
     (currentSlot as { status?: string } | undefined)?.status === "cancelled"
   );
+  /** Slot was actually paid (so refund is possible). Deferred booking cancelled before T-48 is not paid. */
+  const isSlotPaid = Boolean(
+    (currentSlot as { paymentStatus?: string } | undefined)?.paymentStatus === "paid" ||
+    (currentSlot as { chargeAmount?: number } | undefined)?.chargeAmount != null
+  );
   const isSlotRefunded = Boolean(
     currentSlot?.status === "refund" ||
       (currentSlot as { refundedAt?: string } | undefined)?.refundedAt ||
@@ -804,7 +809,19 @@ const BookingDetails: React.FC = () => {
                       : ""}
                   </Typography>
                 )}
-                {isSlotCancelled && bookingId && slotId && !isPendingOrRefunded && !rejectedRefundForThisSlot && (
+                {isSlotCancelled && bookingId && slotId && !isSlotPaid && !isSlotRefunded && (
+                  <Typography variant="body2" color="text.secondary">
+                    This lesson was not paid (e.g. cancelled before charge); no refund applies.
+                  </Typography>
+                )}
+                {isSlotCancelled && bookingId && slotId && isSlotRefunded && (
+                  <Typography variant="body2" color="text.secondary">
+                    This lesson has been refunded.
+                  </Typography>
+                )}
+              </Box>
+              <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexShrink: 0 }}>
+                {isSlotCancelled && bookingId && slotId && isSlotPaid && !isPendingOrRefunded && !rejectedRefundForThisSlot && (
                   <Tooltip
                     title={
                       isSlotLessonPast
@@ -829,13 +846,6 @@ const BookingDetails: React.FC = () => {
                     </span>
                   </Tooltip>
                 )}
-                {isSlotCancelled && bookingId && slotId && isSlotRefunded && (
-                  <Typography variant="body2" color="text.secondary">
-                    This lesson has been refunded.
-                  </Typography>
-                )}
-              </Box>
-              <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexShrink: 0 }}>
                 {canCompletePayment && bookingId && slotId && (
                   <Button
                     variant="contained"
@@ -860,11 +870,13 @@ const BookingDetails: React.FC = () => {
             </Box>
             {isSlotCancelled && bookingId && slotId && !isSlotRefunded && (
               <Typography variant="caption" color="text.secondary">
-                {pendingRefundForThisSlot
-                  ? "Admin will review your refund request. You will be notified once processed."
-                  : rejectedRefundForThisSlot
-                    ? "A previous refund request for this lesson was rejected. Contact support if you have questions."
-                    : "Refund will be sent to the card you used to pay after admin approval."}
+                {!isSlotPaid
+                  ? "This lesson was not paid; no refund applies."
+                  : pendingRefundForThisSlot
+                    ? "Admin will review your refund request. You will be notified once processed."
+                    : rejectedRefundForThisSlot
+                      ? "A previous refund request for this lesson was rejected. Contact support if you have questions."
+                      : "Refund will be sent to the card you used to pay after admin approval."}
               </Typography>
             )}
           </Box>

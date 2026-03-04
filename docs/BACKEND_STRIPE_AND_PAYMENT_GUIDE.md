@@ -91,6 +91,9 @@ This document lists **every backend file** that contains Stripe or payment-relat
 
 Constants: **`DEFAULT_CURRENCY`** (`"chf"`), **`CENTIMES_PER_UNIT`** (100 for CHF), **`FRONTEND_BASE`** (used in success/cancel URLs).
 
+**Show only CHF on Stripe Checkout (no PKR or other local currency):**  
+The app charges only in CHF. In code we set **`adaptive_pricing: { enabled: false }`** when creating the Checkout Session so Stripe does not show the customer’s local currency. If both currencies still appear (e.g. after an SDK or API version change), turn off **Adaptive Pricing** in the Stripe Dashboard: **[Settings → Adaptive Pricing](https://dashboard.stripe.com/settings/adaptive-pricing)** and disable it for Checkout.
+
 ---
 
 ## 2. `server/src/routes/stripeWebhook.routes.js`

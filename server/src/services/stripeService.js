@@ -486,10 +486,11 @@ async function createCheckoutSessionForBooking(opts) {
       sessionParams.customer_email = String(customerEmail).trim().toLowerCase();
     }
   } else {
-    // Use locale "en" so Checkout and save-card page are in English.
+    // Payment mode: single currency (CHF) only. Disable Adaptive Pricing so Stripe does not show customer's local currency (e.g. PKR).
     sessionParams = {
       mode: "payment",
       locale: "en",
+      adaptive_pricing: { enabled: false },
       line_items: [
         {
           price_data: {

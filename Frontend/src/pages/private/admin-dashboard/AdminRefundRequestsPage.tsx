@@ -98,6 +98,7 @@ export default function AdminRefundRequestsPage() {
   });
 
   const requests: RefundRequestRow[] = data?.getRefundRequests ?? [];
+  const isProcessing = approving || rejecting;
 
   const handleApprove = (id: string) => {
     approveRefund({ variables: { id } });
@@ -199,8 +200,8 @@ export default function AdminRefundRequestsPage() {
                             size="small"
                             variant="contained"
                             color="success"
-                            startIcon={<CheckCircleIcon />}
-                            disabled={approving}
+                            startIcon={approving ? <CircularProgress size={16} /> : <CheckCircleIcon />}
+                            disabled={isProcessing}
                             onClick={() => handleApprove(r.id)}
                           >
                             Approve
@@ -210,7 +211,7 @@ export default function AdminRefundRequestsPage() {
                             variant="outlined"
                             color="error"
                             startIcon={<CancelIcon />}
-                            disabled={rejecting}
+                            disabled={isProcessing}
                             onClick={() => setRejectDialog({ id: r.id, reason: "" })}
                           >
                             Reject
@@ -244,8 +245,10 @@ export default function AdminRefundRequestsPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRejectDialog(null)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleRejectSubmit} disabled={rejecting}>
+          <Button onClick={() => setRejectDialog(null)} disabled={isProcessing}>
+            Cancel
+          </Button>
+          <Button variant="contained" color="error" onClick={handleRejectSubmit} disabled={isProcessing}>
             {rejecting ? <CircularProgress size={24} /> : "Reject"}
           </Button>
         </DialogActions>
