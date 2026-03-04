@@ -20,8 +20,8 @@ const {
 // ✅ Connect to MongoDB
 connectDB();
 
-// Run instructor payout job: 1 min for testing; for production use 6 * 60 * 60 * 1000 (6 hours)
-const PAYOUT_JOB_INTERVAL_MS = 1 * 60 * 1000;
+// Run instructor payout job every 3 min; for production use 6 * 60 * 60 * 1000 (6 hours)
+const PAYOUT_JOB_INTERVAL_MS = 3 * 60 * 1000;
 setInterval(() => {
   runInstructorPayoutJob().catch((err) =>
     console.error("[PayoutJob] Error:", err),
