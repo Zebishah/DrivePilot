@@ -328,10 +328,11 @@ export const BookingList: React.FC<BookingListProps> = ({
                             onBookingClick(booking, slot._id, slot)
                           }
                         >
+                          {/* Top row: time & date (left), status badge (right, aligned to top) */}
                           <Box
                             sx={{
                               display: "flex",
-                              alignItems: "center",
+                              alignItems: "flex-start",
                               justifyContent: "space-between",
                               width: "100%",
                               position: "relative",
@@ -343,7 +344,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                               sx={{
                                 display: "flex",
                                 flexDirection: "column",
-                                gap: 0.5,
+                                gap: 0.25,
                               }}
                             >
                               <Typography
@@ -353,7 +354,6 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 sx={{
                                   color: "#2c5282",
                                   transition: "color 0.3s ease",
-                                  mb: 0.5,
                                 }}
                               >
                                 {slot.startTime} - {slot.endTime}
@@ -374,45 +374,12 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   day: "numeric",
                                 })}
                               </Typography>
-                              {tabValue === 0 && (
-                                <Typography
-                                  component="span"
-                                  variant="caption"
-                                  sx={{
-                                    display: "inline-block",
-                                    mt: 0.5,
-                                    px: 1,
-                                    py: 0.25,
-                                    borderRadius: 1,
-                                    fontWeight: 600,
-                                    fontSize: "0.65rem",
-                                    letterSpacing: "0.3px",
-                                    alignSelf: "flex-start",
-                                    ...(String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
-                                      ? {
-                                          bgcolor: "rgba(0, 200, 83, 0.15)",
-                                          color: "rgb(0, 150, 60)",
-                                          border: "1px solid rgba(0, 200, 83, 0.35)",
-                                        }
-                                      : {
-                                          bgcolor: "rgba(255, 152, 0, 0.15)",
-                                          color: "rgb(200, 120, 0)",
-                                          border: "1px solid rgba(255, 152, 0, 0.35)",
-                                        }),
-                                  }}
-                                >
-                                  {String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
-                                    ? "Paid"
-                                    : "Unpaid (T-48)"}
-                                </Typography>
-                              )}
                             </Box>
                             <Typography
                               className="status-badge"
                               sx={{
                                 px: 2,
                                 py: 0.8,
-                                mt: -3,
                                 borderRadius: 2,
                                 bgcolor:
                                   tabValue === 1
@@ -462,21 +429,59 @@ export const BookingList: React.FC<BookingListProps> = ({
                                       : "COMPLETED"}
                             </Typography>
                           </Box>
+                          {/* Bottom row: Paid/Unpaid (left), View Details (right) */}
                           <Box
                             sx={{
                               display: "flex",
                               flexDirection: "row",
-                              gap: 1,
-                              mt: -3,
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              position: "relative",
+                              zIndex: 1,
                             }}
                           >
+                            {tabValue !== 2 && tabValue !== 3 ? (
+                              <Typography
+                                component="span"
+                                sx={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  px: 1.5,
+                                  py: 0.5,
+                                  borderRadius: 2,
+                                  fontWeight: 600,
+                                  fontSize: "0.7rem",
+                                  letterSpacing: "0.3px",
+                                  border: "1px solid",
+                                  ...(String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
+                                    ? {
+                                        bgcolor: "rgba(0, 200, 83, 0.12)",
+                                        color: "rgb(0, 150, 60)",
+                                        borderColor: "rgba(0, 200, 83, 0.4)",
+                                      }
+                                    : {
+                                        bgcolor: "rgba(255, 152, 0, 0.12)",
+                                        color: "rgb(200, 120, 0)",
+                                        borderColor: "rgba(255, 152, 0, 0.4)",
+                                      }),
+                                }}
+                              >
+                                {String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
+                                  ? "Paid"
+                                  : "Unpaid (T-48)"}
+                              </Typography>
+                            ) : (
+                              <Box />
+                            )}
                             <Button
                               variant="outlined"
                               size="small"
                               startIcon={<VisibilityIcon />}
-                              onClick={() =>
-                                onBookingClick(booking, slot._id, slot)
-                              }
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                onBookingClick(booking, slot._id, slot);
+                              }}
                               sx={{
                                 bgcolor: "rgba(95, 194, 211, 0.08)",
                                 color: "#5fc2d3",
@@ -485,7 +490,6 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 borderRadius: 2,
                                 py: 0.5,
                                 fontSize: "0.7rem",
-                                marginLeft: "auto",
                                 textTransform: "none",
                                 transition: "all 0.3s ease",
                                 "&:hover": {

@@ -63,6 +63,10 @@ const transactionTypeDefs = gql`
     occurredAt: String
     createdAt: String!
     updatedAt: String!
+
+    # Human-readable summary of the related lesson slot (for student/admin views),
+    # for example: "05 Mar 2026 · 17:00 – 18:00". Uses booking/slot date & time.
+    lessonSummary: String
   }
 
   input AdminTransactionFilterInput {

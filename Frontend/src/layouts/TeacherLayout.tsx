@@ -277,6 +277,11 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       icon: MessageSquare,
       path: "/teacher-dashboard/chat",
     },
+    {
+      text: "Transaction History",
+      icon: LayoutGrid,
+      path: "/teacher-dashboard/transaction-history",
+    },
     { text: "Logout", icon: LogOut, path: "/logout" },
   ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -16,6 +16,8 @@ import {
   Button,
   Chip,
   Stack,
+  Tabs,
+  Tab,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -68,11 +70,13 @@ interface RefundRequestRow {
 }
 
 export default function AdminRefundRequestsPage() {
-  const [statusFilter, setStatusFilter] = useState<string>("pending");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("all");
   const [rejectDialog, setRejectDialog] = useState<{ id: string; reason: string } | null>(null);
 
   const { data, loading, error, refetch } = useQuery(GET_REFUND_REQUESTS, {
-    variables: { status: statusFilter || undefined },
+    variables: { status: statusFilter === "all" ? undefined : statusFilter },
     fetchPolicy: "network-only",
   });
 
@@ -120,17 +124,28 @@ export default function AdminRefundRequestsPage() {
         Students request refunds after cancelling a lesson. Approve or reject each request here.
       </Typography>
 
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        {["pending", "approved", "rejected"].map((s) => (
-          <Chip
-            key={s}
-            label={s.charAt(0).toUpperCase() + s.slice(1)}
-            onClick={() => setStatusFilter(s)}
-            color={s === "pending" ? "warning" : s === "approved" ? "success" : "default"}
-            variant={statusFilter === s ? "filled" : "outlined"}
-          />
-        ))}
-      </Stack>
+      <Tabs
+        value={statusFilter}
+        onChange={(
+          _,
+          v: "all" | "pending" | "approved" | "rejected",
+        ) => setStatusFilter(v)}
+        sx={{
+          mb: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: 600,
+            minHeight: 42,
+          },
+        }}
+      >
+        <Tab label="All" value="all" />
+        <Tab label="Pending" value="pending" />
+        <Tab label="Approved" value="approved" />
+        <Tab label="Rejected" value="rejected" />
+      </Tabs>
 
       {loading && (
         <Box display="flex" justifyContent="center" py={4}>
@@ -144,8 +159,27 @@ export default function AdminRefundRequestsPage() {
       )}
 
       {!loading && !error && (
-        <TableContainer component={Paper} elevation={2}>
-          <Table size="small" stickyHeader>
+        <TableContainer
+          component={Paper}
+          elevation={0}
+          sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+        >
+          <Table
+            size="medium"
+            stickyHeader
+            sx={{
+              "& .MuiTableCell-head": {
+                py: 1.8,
+                bgcolor: "grey.50",
+                borderBottom: "1px solid",
+                borderBottomColor: "divider",
+                fontWeight: 600,
+              },
+              "& .MuiTableCell-body": {
+                py: 1.8,
+              },
+            }}
+          >
             <TableHead>
               <TableRow>
                 <TableCell>Student</TableCell>
@@ -154,13 +188,23 @@ export default function AdminRefundRequestsPage() {
                 <TableCell align="right">Amount</TableCell>
                 <TableCell>Requested</TableCell>
                 <TableCell>Status</TableCell>
-                {statusFilter === "pending" && <TableCell align="right">Action</TableCell>}
+                {(statusFilter === "pending" || statusFilter === "all") && (
+                  <TableCell align="right">Action</TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
               {requests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={statusFilter === "pending" ? 7 : 6} align="center" sx={{ py: 4 }}>
+                  <TableCell
+                    colSpan={
+                      statusFilter === "pending" || statusFilter === "all"
+                        ? 7
+                        : 6
+                    }
+                    align="center"
+                    sx={{ py: 4 }}
+                  >
                     No refund requests found.
                   </TableCell>
                 </TableRow>
@@ -181,7 +225,7 @@ export default function AdminRefundRequestsPage() {
                     <TableCell>{formatDate(r.requestedAt)}</TableCell>
                     <TableCell>
                       <Chip
-                        label={r.status}
+                        label={r.status.charAt(0).toUpperCase() + r.status.slice(1)}
                         size="small"
                         color={
                           r.status === "approved"
@@ -190,33 +234,49 @@ export default function AdminRefundRequestsPage() {
                               ? "default"
                               : "warning"
                         }
-                        variant="outlined"
+                        variant="filled"
                       />
                     </TableCell>
-                    {statusFilter === "pending" && (
+                    {(statusFilter === "pending" || statusFilter === "all") && (
                       <TableCell align="right">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            startIcon={approving ? <CircularProgress size={16} /> : <CheckCircleIcon />}
-                            disabled={isProcessing}
-                            onClick={() => handleApprove(r.id)}
+                        {r.status === "pending" ? (
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            justifyContent="flex-end"
                           >
-                            Approve
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            startIcon={<CancelIcon />}
-                            disabled={isProcessing}
-                            onClick={() => setRejectDialog({ id: r.id, reason: "" })}
-                          >
-                            Reject
-                          </Button>
-                        </Stack>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="success"
+                              startIcon={
+                                approving ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <CheckCircleIcon />
+                                )
+                              }
+                              disabled={isProcessing}
+                              onClick={() => handleApprove(r.id)}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              startIcon={<CancelIcon />}
+                              disabled={isProcessing}
+                              onClick={() =>
+                                setRejectDialog({ id: r.id, reason: "" })
+                              }
+                            >
+                              Reject
+                            </Button>
+                          </Stack>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                     )}
                   </TableRow>

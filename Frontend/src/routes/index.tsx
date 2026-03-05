@@ -62,6 +62,7 @@ import AdminRefundRequestsPage from "../pages/private/admin-dashboard/AdminRefun
 import StudentBookingWInst from "../components/InstructorComponent/StudentBookingWInst";
 import FeedBackAndRating from "../components/StudentComponents/ReviewTab/OnlyReviewsTab";
 import StudentPaymentHistoryPage from "../pages/private/student-dashboard/StudentPaymentHistoryPage";
+import InstructorTransactionHistoryPage from "../pages/private/teacher-dashboard/InstructorTransactionHistoryPage";
 
 const router = createBrowserRouter([
   {
@@ -163,6 +164,7 @@ const router = createBrowserRouter([
       { path: "studentProgress/:studentId", element: <StudentDashboard /> },
       { path: "my-students", element: <StudentsProgressDashboard /> },
       { path: "chat", element: <InstructorChatPage /> },
+      { path: "transaction-history", element: <InstructorTransactionHistoryPage /> },
     ],
   },
   {

@@ -22,6 +22,31 @@ function toIsoString(value) {
   return null;
 }
 
+function formatLessonSummary(slot) {
+  if (!slot?.date) return null;
+  try {
+    const start = slot.startTime || slot.time || null;
+    const end = slot.endTime || null;
+    const d = new Date(`${slot.date}T${start || "12:00"}`);
+    const dateLabel = Number.isNaN(d.getTime())
+      ? slot.date
+      : d.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+    if (start && end) {
+      return `${dateLabel} · ${start} – ${end}`;
+    }
+    if (start) {
+      return `${dateLabel} · ${start}`;
+    }
+    return dateLabel;
+  } catch {
+    return slot.date;
+  }
+}
+
 async function toTransactionParty(userDoc) {
   if (!userDoc) return null;
   const id = userDoc._id?.toString() || userDoc.id;
@@ -45,6 +70,27 @@ const transactionResolver = {
     updatedAt: (parent) =>
       toIsoString(parent.updatedAt) ??
       (parent.updatedAt ? String(parent.updatedAt) : ""),
+    lessonSummary: async (parent) => {
+      if (!parent.bookingId) return null;
+      const booking = await StudentBooking.findById(parent.bookingId)
+        .select("slots")
+        .lean();
+      if (!booking || !Array.isArray(booking.slots) || booking.slots.length === 0)
+        return null;
+      let slot = null;
+      if (parent.slotId) {
+        const targetId = parent.slotId.toString();
+        slot =
+          booking.slots.find(
+            (s) => s._id && s._id.toString && s._id.toString() === targetId,
+          ) || null;
+      }
+      if (!slot) {
+        // Fallback: use first slot
+        slot = booking.slots[0];
+      }
+      return formatLessonSummary(slot);
+    },
     student: async (parent) => {
       let id = parent.studentId;
       if (!id && parent.bookingId) {
