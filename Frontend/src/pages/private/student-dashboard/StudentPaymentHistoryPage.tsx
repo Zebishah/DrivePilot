@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -19,6 +19,8 @@ import {
   CardContent,
   Stack,
   Modal,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
@@ -31,6 +33,7 @@ import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import SendIcon from "@mui/icons-material/Send";
 import InfoIcon from "@mui/icons-material/Info";
+import LessonIcon from "@mui/icons-material/School";
 import { useQuery } from "@apollo/client";
 import {
   GET_STUDENT_TRANSACTIONS,
@@ -45,11 +48,11 @@ function formatTransactionDate(value: string | null | undefined): string {
   return format(d, "dd MMM yyyy hh:mm a");
 }
 
-type StatusLabel = "Pending" | "Completed" | "Cancel" | "Refund";
+type StatusLabel = "Pending" | "Completed" | "Rejected" | "Refund";
 
 function statusLabel(t: { type: string; status: string }): StatusLabel {
   if (t.type === "refund") return "Refund";
-  if (t.status === "cancelled" || t.status === "failed") return "Cancel";
+  if (t.status === "cancelled" || t.status === "failed") return "Rejected";
   if (t.status === "pending") return "Pending";
   return "Completed";
 }
@@ -58,10 +61,33 @@ function statusColor(s: StatusLabel): "warning" | "success" | "error" | "info" |
   switch (s) {
     case "Pending": return "warning";
     case "Completed": return "success";
-    case "Cancel": return "error";
+    case "Rejected": return "error";
     case "Refund": return "info";
     default: return "default";
   }
+}
+
+export type TransactionFilter = "all" | "completed" | "refund" | "rejected";
+
+function filterTransactions(
+  list: Transaction[],
+  filter: TransactionFilter,
+): Transaction[] {
+  if (filter === "all") return list;
+  return list.filter((t) => {
+    const label = statusLabel(t);
+    if (filter === "completed") return label === "Completed";
+    if (filter === "refund") return label === "Refund";
+    if (filter === "rejected") return label === "Rejected";
+    return true;
+  });
+}
+
+function lessonLabel(t: Transaction): string {
+  if (t.lessonSummary && t.lessonSummary.trim()) return t.lessonSummary.trim();
+  if (t.description && t.description.trim()) return t.description.trim();
+  if (t.type === "refund") return "Refund";
+  return "Lesson payment";
 }
 
 function DetailRow({
@@ -94,12 +120,14 @@ interface Transaction {
   status: string;
   bookingId?: string | null;
   description?: string | null;
+   lessonSummary?: string | null;
   occurredAt?: string | null;
   createdAt: string;
 }
 
 export default function StudentPaymentHistoryPage() {
   const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
+  const [filter, setFilter] = useState<TransactionFilter>("all");
 
   const { data, loading, error } = useQuery(GET_STUDENT_TRANSACTIONS, {
     variables: { limit: 50, offset: 0 },
@@ -111,6 +139,10 @@ export default function StudentPaymentHistoryPage() {
 
   const transactions: Transaction[] = data?.getStudentTransactions ?? [];
   const stats = statsData?.getStudentTransactionStats;
+  const filteredTransactions = useMemo(
+    () => filterTransactions(transactions, filter),
+    [transactions, filter],
+  );
 
   const formatAmount = (t: Transaction) => {
     const sign = t.direction === "credit" ? "+" : "-";
@@ -275,57 +307,101 @@ export default function StudentPaymentHistoryPage() {
         </Stack>
       )}
 
-      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-        All Payment List
+      <Box sx={{ mb: 2 }}>
+        <Tabs
+          value={filter}
+          onChange={(_, v: TransactionFilter) => setFilter(v)}
+          sx={{
+            minHeight: 44,
+            "& .MuiTab-root": { textTransform: "none", fontWeight: 600 },
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Tab label={`All (${transactions.length})`} value="all" />
+          <Tab
+            label={`Completed (${transactions.filter((t) => statusLabel(t) === "Completed").length})`}
+            value="completed"
+          />
+          <Tab
+            label={`Refund (${transactions.filter((t) => statusLabel(t) === "Refund").length})`}
+            value="refund"
+          />
+          <Tab
+            label={`Rejected (${transactions.filter((t) => statusLabel(t) === "Rejected").length})`}
+            value="rejected"
+          />
+        </Tabs>
+      </Box>
+
+      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
+        Payment list
       </Typography>
-      <TableContainer component={Paper} elevation={2}>
+      <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
         <Table
-          size="small"
+          size="medium"
           stickyHeader
           sx={{
             "& .MuiTableCell-head": {
-              py: 2.5,
+              py: 2,
+              fontWeight: 600,
+              bgcolor: "grey.50",
             },
             "& .MuiTableCell-body": {
-              py: 2.5,
+              py: 2,
             },
           }}
         >
           <TableHead>
             <TableRow>
-              <TableCell>Ref Number</TableCell>
+              <TableCell>Ref number</TableCell>
+              <TableCell>Lesson</TableCell>
               <TableCell>Amount</TableCell>
-              <TableCell>Date of Payment</TableCell>
+              <TableCell>Date</TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="right">Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {transactions.length === 0 ? (
+            {filteredTransactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                  No transactions yet. Payments and refunds will appear here.
+                <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
+                  <Typography color="text.secondary">
+                    {transactions.length === 0
+                      ? "No transactions yet. Payments and refunds will appear here."
+                      : `No ${filter === "all" ? "" : filter} transactions.`}
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              transactions.map((t) => (
-                <TableRow key={t.id} hover>
-                  <TableCell>{t.id.slice(-9)}</TableCell>
+              filteredTransactions.map((t) => (
+                <TableRow key={t.id} hover sx={{ "&:hover": { bgcolor: "action.hover" } }}>
+                  <TableCell sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
+                    {t.id.slice(-9)}
+                  </TableCell>
+                  <TableCell sx={{ maxWidth: 220 }}>
+                    <Typography variant="body2" noWrap title={lessonLabel(t)}>
+                      {lessonLabel(t)}
+                    </Typography>
+                  </TableCell>
                   <TableCell
                     sx={{
                       color: t.direction === "credit" ? "success.main" : "text.primary",
-                      fontWeight: 500,
+                      fontWeight: 600,
                     }}
                   >
                     {formatAmount(t)}
                   </TableCell>
-                  <TableCell>{formatTransactionDate(t.occurredAt ?? t.createdAt)}</TableCell>
+                  <TableCell sx={{ color: "text.secondary" }}>
+                    {formatTransactionDate(t.occurredAt ?? t.createdAt)}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={statusLabel(t)}
                       size="small"
                       color={statusColor(statusLabel(t))}
-                      variant="outlined"
+                      variant="filled"
+                      sx={{ fontWeight: 500 }}
                     />
                   </TableCell>
                   <TableCell align="right">
@@ -334,8 +410,9 @@ export default function StudentPaymentHistoryPage() {
                       variant="contained"
                       startIcon={<VisibilityIcon />}
                       onClick={() => setViewTransaction(t)}
+                      sx={{ textTransform: "none", fontWeight: 600 }}
                     >
-                      View Details
+                      View details
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -372,12 +449,14 @@ export default function StudentPaymentHistoryPage() {
                   label={statusLabel(viewTransaction)}
                   color={
                     statusLabel(viewTransaction) === "Refund"
-                      ? "error"
-                      : statusLabel(viewTransaction) === "Completed"
-                        ? "success"
-                        : "default"
+                      ? "info"
+                      : statusLabel(viewTransaction) === "Rejected"
+                        ? "error"
+                        : statusLabel(viewTransaction) === "Completed"
+                          ? "success"
+                          : "warning"
                   }
-                  variant="outlined"
+                  variant="filled"
                   sx={{ fontWeight: 600 }}
                 />
               </Stack>
@@ -397,6 +476,7 @@ export default function StudentPaymentHistoryPage() {
                 </Stack>
 
                 <Stack spacing={1.5}>
+                  <DetailRow icon={<LessonIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Lesson" value={lessonLabel(viewTransaction)} />
                   <DetailRow icon={<AccountBalanceIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Funding Source" value="Card" />
                   <DetailRow icon={<SendIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Sent to" value="Driving School Platform (DSP)" />
                   <DetailRow

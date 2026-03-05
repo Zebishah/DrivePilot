@@ -18,6 +18,7 @@ const TRANSACTION_FIELDS = gql`
     stripePayoutId
     stripeRefundId
     description
+    lessonSummary
     occurredAt
     createdAt
     updatedAt

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -27,13 +27,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Checkbox,
-  FormGroup,
-  FormControlLabel,
   TextField,
-  Menu
 } from "@mui/material";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PaymentIcon from "@mui/icons-material/Payment";
@@ -90,7 +85,6 @@ type TransactionType =
   | "transfer_reversal"
   | "adjustment";
 type TransactionRole = "platform" | "instructor" | "student";
-type TransactionStatus = "pending" | "succeeded" | "failed" | "cancelled";
 
 interface TransactionParty {
   id: string;
@@ -115,6 +109,7 @@ interface Transaction {
   student?: TransactionParty | null;
   instructor?: TransactionParty | null;
   description?: string | null;
+  lessonSummary?: string | null;
   occurredAt?: string | null;
   createdAt: string;
 }
@@ -138,9 +133,8 @@ interface CommissionSettings {
 
 export default function AdminTransactionsPage() {
   const [tab, setTab] = useState(0);
-  const [roleFilter, setRoleFilter] = useState<TransactionRole | "">("");
-  const [statusFilter, setStatusFilter] = useState<TransactionStatus | "">("");
-  const [filterAnchor, setFilterAnchor] = useState<null | HTMLElement>(null);
+  const [partyTab, setPartyTab] = useState<"all" | TransactionRole>("all");
+  const [typeTab, setTypeTab] = useState<"all" | TransactionType>("all");
   const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
   const [profileParty, setProfileParty] = useState<TransactionParty | null>(null);
 
@@ -148,17 +142,25 @@ export default function AdminTransactionsPage() {
     fetchPolicy: "network-only",
   });
   const { data, loading, error } = useQuery(GET_ADMIN_TRANSACTIONS_WITH_PARTIES, {
-    variables: {
-      filter: {
-        ...(roleFilter && { role: roleFilter }),
-        ...(statusFilter && { status: statusFilter }),
-      },
-    },
     fetchPolicy: "network-only",
   });
 
   const transactions: Transaction[] = data?.getAdminTransactions ?? [];
   const stats: AdminStats | null = statsData?.getAdminTransactionStats ?? null;
+  const partyScopedTransactions = useMemo(
+    () =>
+      transactions.filter((t) => (partyTab === "all" ? true : t.role === partyTab)),
+    [transactions, partyTab],
+  );
+  const filteredTransactions = useMemo(
+    () =>
+      transactions.filter((t) => {
+        if (partyTab !== "all" && t.role !== partyTab) return false;
+        if (typeTab !== "all" && t.type !== typeTab) return false;
+        return true;
+      }),
+    [transactions, partyTab, typeTab],
+  );
 
   const formatAmount = (t: Transaction) => {
     const sign = t.direction === "credit" ? "+" : "-";
@@ -366,70 +368,43 @@ export default function AdminTransactionsPage() {
             </Stack>
           )}
 
-          <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
-            <Button
-              startIcon={<FilterListIcon />}
-              onClick={(e) => setFilterAnchor(e.currentTarget)}
-              variant="outlined"
-              size="small"
+          <Box sx={{ mb: 1.5 }}>
+            <Tabs
+              value={partyTab}
+              onChange={(_, v: "all" | TransactionRole) => setPartyTab(v)}
+              variant="scrollable"
+              allowScrollButtonsMobile
+              sx={{
+                minHeight: 42,
+                borderBottom: 1,
+                borderColor: "divider",
+                "& .MuiTab-root": { textTransform: "none", fontWeight: 600, minHeight: 42 },
+              }}
             >
-              Filters
-            </Button>
-            <Menu
-              anchorEl={filterAnchor}
-              open={Boolean(filterAnchor)}
-              onClose={() => setFilterAnchor(null)}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              <Tab label={`All users (${transactions.length})`} value="all" />
+              <Tab label={`Admin commission (${transactions.filter((t) => t.role === "platform").length})`} value="platform" />
+              <Tab label={`Instructor (${transactions.filter((t) => t.role === "instructor").length})`} value="instructor" />
+              <Tab label={`Student (${transactions.filter((t) => t.role === "student").length})`} value="student" />
+            </Tabs>
+            <Tabs
+              value={typeTab}
+              onChange={(_, v: "all" | TransactionType) => setTypeTab(v)}
+              variant="scrollable"
+              allowScrollButtonsMobile
+              sx={{
+                mt: 1,
+                minHeight: 40,
+                "& .MuiTab-root": { textTransform: "none", fontWeight: 600, minHeight: 40 },
+              }}
             >
-              <Box sx={{ px: 2, py: 1, minWidth: 200 }}>
-                <Typography variant="subtitle2" color="text.secondary">User</Typography>
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={roleFilter === ""}
-                        onChange={() => setRoleFilter("")}
-                      />
-                    }
-                    label="All"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={roleFilter === "student"}
-                        onChange={() => setRoleFilter(roleFilter === "student" ? "" : "student")}
-                      />
-                    }
-                    label="Student"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={roleFilter === "instructor"}
-                        onChange={() => setRoleFilter(roleFilter === "instructor" ? "" : "instructor")}
-                      />
-                    }
-                    label="Instructor"
-                  />
-                </FormGroup>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>Status</Typography>
-                <FormGroup>
-                  <FormControlLabel
-                    control={<Checkbox checked={statusFilter === ""} onChange={() => setStatusFilter("")} />}
-                    label="All"
-                  />
-                  <FormControlLabel
-                    control={<Checkbox checked={statusFilter === "succeeded"} onChange={() => setStatusFilter(statusFilter === "succeeded" ? "" : "succeeded")} />}
-                    label="Succeeded"
-                  />
-                  <FormControlLabel
-                    control={<Checkbox checked={statusFilter === "pending"} onChange={() => setStatusFilter(statusFilter === "pending" ? "" : "pending")} />}
-                    label="Pending"
-                  />
-                </FormGroup>
-              </Box>
-            </Menu>
-          </Stack>
+              <Tab label={`All types (${partyScopedTransactions.length})`} value="all" />
+              <Tab label={`Payments (${partyScopedTransactions.filter((t) => t.type === "payment").length})`} value="payment" />
+              <Tab label={`Refunds (${partyScopedTransactions.filter((t) => t.type === "refund").length})`} value="refund" />
+              <Tab label={`Payouts (${partyScopedTransactions.filter((t) => t.type === "payout").length})`} value="payout" />
+              <Tab label={`Reversals (${partyScopedTransactions.filter((t) => t.type === "transfer_reversal").length})`} value="transfer_reversal" />
+              <Tab label={`Adjustments (${partyScopedTransactions.filter((t) => t.type === "adjustment").length})`} value="adjustment" />
+            </Tabs>
+          </Box>
 
           {loading && (
             <Box display="flex" justifyContent="center" py={4}>
@@ -440,17 +415,20 @@ export default function AdminTransactionsPage() {
             <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>
           )}
           {!loading && !error && (
-            <TableContainer component={Paper} elevation={2}>
+            <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
               <Table
-                size="small"
+                size="medium"
                 stickyHeader
                 sx={{
                   "& .MuiTableCell-head": {
-                    py: 2.5,
-                    borderRadius: "10px",
+                    py: 1.8,
+                    bgcolor: "grey.50",
+                    borderBottom: "1px solid",
+                    borderBottomColor: "divider",
+                    fontWeight: 600,
                   },
                   "& .MuiTableCell-body": {
-                    py: 2.5,
+                    py: 1.8,
                   },
                 }}
               >
@@ -459,6 +437,7 @@ export default function AdminTransactionsPage() {
                     <TableCell>Users</TableCell>
                     <TableCell>Transaction ID</TableCell>
                     <TableCell>Date &amp; Time</TableCell>
+                    <TableCell>Lesson slot</TableCell>
                     <TableCell>Refund</TableCell>
                     <TableCell>Commission</TableCell>
                     <TableCell align="right">Amount</TableCell>
@@ -466,14 +445,14 @@ export default function AdminTransactionsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {transactions.length === 0 ? (
+                  {filteredTransactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         No transactions found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    transactions.map((t) => {
+                    filteredTransactions.map((t) => {
                       const party = displayParty(t);
                       return (
                         <TableRow key={t.id} hover>
@@ -519,6 +498,11 @@ export default function AdminTransactionsPage() {
                           </TableCell>
                           <TableCell>{t.id.slice(-9)}</TableCell>
                           <TableCell>{formatTransactionDate(t.occurredAt ?? t.createdAt)}</TableCell>
+                          <TableCell sx={{ maxWidth: 190 }}>
+                            <Typography variant="body2" noWrap title={t.lessonSummary || "—"}>
+                              {t.lessonSummary || "—"}
+                            </Typography>
+                          </TableCell>
                           <TableCell>
                             {isRefund(t) ? (
                               <Chip label="Initiated Refund" size="small" color="error" variant="outlined" />
@@ -660,6 +644,7 @@ export default function AdminTransactionsPage() {
                         <DetailRow icon={<FingerprintIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Transaction ID" value={viewTransaction.id} />
                         <DetailRow icon={<CategoryIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Type" value={viewTransaction.type} />
                         <DetailRow icon={<InfoIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Role" value={viewTransaction.role} />
+                        <DetailRow icon={<CalendarTodayIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Lesson slot" value={viewTransaction.lessonSummary || "—"} />
                         <DetailRow icon={<AttachMoneyIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Amount" value={formatAmount(viewTransaction)} valueColor={viewTransaction.direction === "credit" ? "success.main" : undefined} />
                         <DetailRow icon={<CalendarTodayIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Date" value={dateStr} />
                         <DetailRow icon={<ReceiptLongIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Status" value={viewTransaction.status} />

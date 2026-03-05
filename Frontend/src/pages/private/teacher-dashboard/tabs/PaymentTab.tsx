@@ -19,12 +19,17 @@ import {
   TableRow,
   Paper,
   Modal,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import LinkIcon from "@mui/icons-material/Link";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useQuery, useMutation } from "@apollo/client";
 
 import toast from "react-hot-toast";
@@ -71,13 +76,34 @@ type InstructorTransaction = {
   currency: string;
   status: string;
   description?: string | null;
+  lessonSummary?: string | null;
   occurredAt?: string | null;
   createdAt?: string | null;
 };
 
+type SectionTab = "setup" | "history";
+type HistoryFilter =
+  | "all"
+  | "payment"
+  | "payout"
+  | "refund"
+  | "transfer_reversal";
+
+function transactionTypeLabel(type: string): string {
+  if (type === "transfer_reversal") return "Transfer reversal";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function lessonSlotLabel(t: InstructorTransaction): string {
+  if (t.lessonSummary && t.lessonSummary.trim()) return t.lessonSummary.trim();
+  return "—";
+}
+
 export const PaymentTab: React.FC = () => {
   const [connectLoading, setConnectLoading] = useState(false);
   const [viewTransaction, setViewTransaction] = useState<InstructorTransaction | null>(null);
+  const [sectionTab] = useState<SectionTab>("setup");
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const { data, loading: queryLoading, refetch: refetchProfile } = useQuery(GET_TEACHER_PROFILE);
   const { data: transactionsData } = useQuery(GET_INSTRUCTOR_TRANSACTIONS, {
     variables: { limit: 50, offset: 0 },
@@ -86,8 +112,18 @@ export const PaymentTab: React.FC = () => {
   const { data: statsData } = useQuery(GET_INSTRUCTOR_TRANSACTION_STATS, {
     fetchPolicy: "network-only",
   });
-  const instructorTransactions: InstructorTransaction[] = transactionsData?.getInstructorTransactions ?? [];
+  const instructorTransactions: InstructorTransaction[] = useMemo(
+    () => transactionsData?.getInstructorTransactions ?? [],
+    [transactionsData],
+  );
   const stats = statsData?.getInstructorTransactionStats;
+  const filteredTransactions = useMemo(
+    () =>
+      historyFilter === "all"
+        ? instructorTransactions
+        : instructorTransactions.filter((t) => t.type === historyFilter),
+    [instructorTransactions, historyFilter],
+  );
   const [createStripeAccount] = useMutation(CREATE_STRIPE_ACCOUNT, {
     onCompleted: (res) => {
       const url = res?.createStripeAccount?.onboardingUrl;
@@ -287,6 +323,7 @@ export const PaymentTab: React.FC = () => {
         width: "100%",
       }}
     >
+      {sectionTab === "setup" && (
       <Card
         elevation={3}
         sx={{
@@ -421,67 +458,100 @@ export const PaymentTab: React.FC = () => {
           )}
         </CardActions>
       </Card>
+      )}
 
-      {(instructorTransactions.length > 0 || stats) && (
-        <Card elevation={3} sx={{ mt: 3, borderRadius: 3, p: { xs: 2, sm: 3 } }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      {sectionTab === "history" && (
+        <Card elevation={3} sx={{ borderRadius: 3, p: { xs: 2, sm: 3 } }}>
+          <CardContent sx={{ p: 0 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
               Transaction history
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Your payments, payouts, and related activity.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              View all payment, payout, refund, and transfer reversal activity.
             </Typography>
+
             {stats && (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }} flexWrap="wrap">
-                <Card variant="outlined" sx={{ minWidth: 130 }}>
-                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-                    <Typography color="text.secondary" variant="body2">Total received</Typography>
-                    <Typography variant="h6">${stats.totalReceived.toFixed(2)}</Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2.5 }} flexWrap="wrap">
+                <Card elevation={0} sx={{ flex: 1, minWidth: 170, borderRadius: 2.5, bgcolor: "rgba(0, 191, 165, 0.08)", border: "1px solid rgba(0, 191, 165, 0.35)" }}>
+                  <CardContent sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: "50%", bgcolor: "rgba(0, 191, 165, 0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <AttachMoneyIcon sx={{ color: "teal.main", fontSize: 20 }} />
+                    </Box>
+                    <Box>
+                      <Typography color="text.secondary" variant="caption">Total received</Typography>
+                      <Typography variant="h6">${stats.totalReceived.toFixed(2)}</Typography>
+                    </Box>
                   </CardContent>
                 </Card>
-                <Card variant="outlined" sx={{ minWidth: 130 }}>
-                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-                    <Typography color="text.secondary" variant="body2">Total payouts</Typography>
-                    <Typography variant="h6">${stats.totalPayouts.toFixed(2)}</Typography>
+                <Card elevation={0} sx={{ flex: 1, minWidth: 170, borderRadius: 2.5, bgcolor: "rgba(33, 150, 243, 0.06)", border: "1px solid rgba(33, 150, 243, 0.3)" }}>
+                  <CardContent sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: "50%", bgcolor: "rgba(33, 150, 243, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <AccountBalanceWalletIcon sx={{ color: "info.main", fontSize: 20 }} />
+                    </Box>
+                    <Box>
+                      <Typography color="text.secondary" variant="caption">Total payouts</Typography>
+                      <Typography variant="h6">${stats.totalPayouts.toFixed(2)}</Typography>
+                    </Box>
                   </CardContent>
                 </Card>
-                <Card variant="outlined" sx={{ minWidth: 130 }}>
-                  <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-                    <Typography color="text.secondary" variant="body2">Transactions</Typography>
-                    <Typography variant="h6">{stats.transactionCount}</Typography>
+                <Card elevation={0} sx={{ flex: 1, minWidth: 170, borderRadius: 2.5, bgcolor: "rgba(76, 175, 80, 0.06)", border: "1px solid rgba(76, 175, 80, 0.35)" }}>
+                  <CardContent sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: "50%", bgcolor: "rgba(76, 175, 80, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ReceiptLongIcon sx={{ color: "success.main", fontSize: 20 }} />
+                    </Box>
+                    <Box>
+                      <Typography color="text.secondary" variant="caption">Transactions</Typography>
+                      <Typography variant="h6">{stats.transactionCount}</Typography>
+                    </Box>
                   </CardContent>
                 </Card>
               </Stack>
             )}
-            {instructorTransactions.length > 0 ? (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
+
+            <Tabs
+              value={historyFilter}
+              onChange={(_, value: HistoryFilter) => setHistoryFilter(value)}
+              sx={{ mb: 1.5, borderBottom: 1, borderColor: "divider", "& .MuiTab-root": { textTransform: "none", fontWeight: 600, minHeight: 40 } }}
+              variant="scrollable"
+              allowScrollButtonsMobile
+            >
+              <Tab value="all" label={`All (${instructorTransactions.length})`} />
+              <Tab value="payment" label={`Payments (${instructorTransactions.filter((t) => t.type === "payment").length})`} />
+              <Tab value="payout" label={`Payouts (${instructorTransactions.filter((t) => t.type === "payout").length})`} />
+              <Tab value="refund" label={`Refunds (${instructorTransactions.filter((t) => t.type === "refund").length})`} />
+              <Tab value="transfer_reversal" label={`Reversals (${instructorTransactions.filter((t) => t.type === "transfer_reversal").length})`} />
+            </Tabs>
+
+            {filteredTransactions.length > 0 ? (
+              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                <Table size="medium" stickyHeader sx={{ "& .MuiTableCell-head": { py: 1.8, bgcolor: "grey.50", fontWeight: 600 }, "& .MuiTableCell-body": { py: 1.9 } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Ref Number</TableCell>
+                      <TableCell>Ref number</TableCell>
                       <TableCell>Date</TableCell>
+                      <TableCell>Lesson slot</TableCell>
                       <TableCell>Type</TableCell>
+                     
                       <TableCell align="right">Amount</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell align="right">Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {instructorTransactions.map((t) => (
+                    {filteredTransactions.map((t) => (
                       <TableRow key={t.id} hover>
-                        <TableCell>{t.id.slice(-9)}</TableCell>
-                        <TableCell>
-                          {formatTransactionDate(t.occurredAt ?? t.createdAt)}
+                        <TableCell sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>{t.id.slice(-9)}</TableCell>
+                        <TableCell>{formatTransactionDate(t.occurredAt ?? t.createdAt)}</TableCell>
+                        <TableCell sx={{ maxWidth: 180 }}>
+                          <Typography variant="body2" noWrap title={lessonSlotLabel(t)}>
+                            {lessonSlotLabel(t)}
+                          </Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip label={t.type} size="small" variant="outlined" />
+                          <Chip label={transactionTypeLabel(t.type)} size="small" variant="outlined" />
                         </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{
-                            color: t.direction === "credit" ? "success.main" : "text.primary",
-                          }}
-                        >
+
+                        <TableCell align="right" sx={{ color: t.direction === "credit" ? "success.main" : "text.primary", fontWeight: 600 }}>
                           {t.direction === "credit" ? "+" : "-"} ${Number(t.amount).toFixed(2)}
                         </TableCell>
                         <TableCell>
@@ -489,7 +559,7 @@ export const PaymentTab: React.FC = () => {
                             label={t.status}
                             size="small"
                             color={t.status === "succeeded" ? "success" : t.status === "failed" ? "error" : "default"}
-                            variant="outlined"
+                            variant="filled"
                           />
                         </TableCell>
                         <TableCell align="right">
@@ -498,6 +568,7 @@ export const PaymentTab: React.FC = () => {
                             variant="outlined"
                             startIcon={<VisibilityIcon />}
                             onClick={() => setViewTransaction(t)}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
                           >
                             View
                           </Button>
@@ -508,8 +579,8 @@ export const PaymentTab: React.FC = () => {
                 </Table>
               </TableContainer>
             ) : (
-              <Typography variant="body2" color="text.secondary">
-                No transactions yet.
+              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                No transactions found for this filter.
               </Typography>
             )}
           </CardContent>
