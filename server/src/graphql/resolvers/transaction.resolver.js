@@ -227,14 +227,29 @@ const transactionResolver = {
       return Transaction.find(query).sort({ occurredAt: 1, createdAt: 1 });
     },
 
-    async getInstructorTransactions(_, { limit = 50, offset = 0 }, { user }) {
+    async getInstructorTransactions(
+      _,
+      { limit = 50, offset = 0, type },
+      { user },
+    ) {
       if (!user || user.role !== "Instructor") {
         throw new ForbiddenError("Not authorized");
       }
-      return Transaction.find({ instructorId: user.id, role: "instructor" })
+      const query = { instructorId: user.id, role: "instructor" };
+      if (type) query.type = type;
+      return Transaction.find(query)
         .sort({ occurredAt: -1, createdAt: -1 })
         .skip(offset)
         .limit(limit);
+    },
+
+    async getInstructorTransactionCount(_, { type }, { user }) {
+      if (!user || user.role !== "Instructor") {
+        throw new ForbiddenError("Not authorized");
+      }
+      const query = { instructorId: user.id, role: "instructor" };
+      if (type) query.type = type;
+      return Transaction.countDocuments(query);
     },
 
     async getInstructorTransactionStats(_, __, { user }) {
@@ -302,14 +317,43 @@ const transactionResolver = {
       };
     },
 
-    async getStudentTransactions(_, { limit = 50, offset = 0 }, { user }) {
+    async getStudentTransactions(
+      _,
+      { limit = 50, offset = 0, view = "all" },
+      { user },
+    ) {
       if (!user || user.role !== "Student") {
         throw new ForbiddenError("Not authorized");
       }
-      return Transaction.find({ studentId: user.id, role: "student" })
+      const query = { studentId: user.id, role: "student" };
+      if (view === "refund") {
+        query.type = "refund";
+      } else if (view === "rejected") {
+        query.status = { $in: ["failed", "cancelled"] };
+      } else if (view === "completed") {
+        query.type = { $ne: "refund" };
+        query.status = { $nin: ["pending", "failed", "cancelled"] };
+      }
+      return Transaction.find(query)
         .sort({ occurredAt: -1, createdAt: -1 })
         .skip(offset)
         .limit(limit);
+    },
+
+    async getStudentTransactionCount(_, { view = "all" }, { user }) {
+      if (!user || user.role !== "Student") {
+        throw new ForbiddenError("Not authorized");
+      }
+      const query = { studentId: user.id, role: "student" };
+      if (view === "refund") {
+        query.type = "refund";
+      } else if (view === "rejected") {
+        query.status = { $in: ["failed", "cancelled"] };
+      } else if (view === "completed") {
+        query.type = { $ne: "refund" };
+        query.status = { $nin: ["pending", "failed", "cancelled"] };
+      }
+      return Transaction.countDocuments(query);
     },
 
     async getStudentTransactionStats(_, __, { user }) {

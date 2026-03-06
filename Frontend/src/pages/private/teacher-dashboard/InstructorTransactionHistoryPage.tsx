@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -17,6 +17,8 @@ import {
   Paper,
   Button,
   Modal,
+  Pagination,
+  LinearProgress,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
@@ -25,6 +27,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useQuery } from "@apollo/client";
 import {
   GET_INSTRUCTOR_TRANSACTIONS,
+  GET_INSTRUCTOR_TRANSACTIONS_COUNT,
   GET_INSTRUCTOR_TRANSACTION_STATS,
 } from "../../../graphql/Queries/transactionQueries";
 
@@ -73,28 +76,47 @@ function lessonSlotLabel(t: InstructorTransaction): string {
 
 export default function InstructorTransactionHistoryPage() {
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
+  const [page, setPage] = useState(1);
   const [viewTransaction, setViewTransaction] =
     useState<InstructorTransaction | null>(null);
+  const PAGE_SIZE = 15;
 
-  const { data: transactionsData } = useQuery(GET_INSTRUCTOR_TRANSACTIONS, {
-    variables: { limit: 100, offset: 0 },
+  const {
+    data: transactionsData,
+    previousData: previousTransactionsData,
+    loading: transactionsLoading,
+  } = useQuery(GET_INSTRUCTOR_TRANSACTIONS, {
+    variables: {
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+      type: historyFilter === "all" ? undefined : historyFilter,
+    },
     fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+  });
+  const {
+    data: countData,
+    previousData: previousCountData,
+    loading: countLoading,
+  } = useQuery(GET_INSTRUCTOR_TRANSACTIONS_COUNT, {
+    variables: { type: historyFilter === "all" ? undefined : historyFilter },
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
   });
   const { data: statsData } = useQuery(GET_INSTRUCTOR_TRANSACTION_STATS, {
     fetchPolicy: "network-only",
   });
 
+  const effectiveTransactionsData = transactionsData ?? previousTransactionsData;
+  const effectiveCountData = countData ?? previousCountData;
   const instructorTransactions: InstructorTransaction[] =
-    transactionsData?.getInstructorTransactions ?? [];
+    effectiveTransactionsData?.getInstructorTransactions ?? [];
   const stats = statsData?.getInstructorTransactionStats;
-
-  const filteredTransactions = useMemo(
-    () =>
-      historyFilter === "all"
-        ? instructorTransactions
-        : instructorTransactions.filter((t) => t.type === historyFilter),
-    [instructorTransactions, historyFilter],
-  );
+  const totalCount: number = effectiveCountData?.getInstructorTransactionCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const isTableLoading =
+    (transactionsLoading || countLoading) &&
+    Boolean(previousTransactionsData || previousCountData);
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
@@ -231,7 +253,10 @@ export default function InstructorTransactionHistoryPage() {
 
           <Tabs
             value={historyFilter}
-            onChange={(_, value: HistoryFilter) => setHistoryFilter(value)}
+            onChange={(_, value: HistoryFilter) => {
+              setHistoryFilter(value);
+              setPage(1);
+            }}
             sx={{
               mb: 1.5,
               borderBottom: 1,
@@ -245,26 +270,15 @@ export default function InstructorTransactionHistoryPage() {
             variant="scrollable"
             allowScrollButtonsMobile
           >
-            <Tab value="all" label={`All (${instructorTransactions.length})`} />
-            <Tab
-              value="payment"
-              label={`Payments (${instructorTransactions.filter((t) => t.type === "payment").length})`}
-            />
-            <Tab
-              value="payout"
-              label={`Payouts (${instructorTransactions.filter((t) => t.type === "payout").length})`}
-            />
-            <Tab
-              value="refund"
-              label={`Refunds (${instructorTransactions.filter((t) => t.type === "refund").length})`}
-            />
-            <Tab
-              value="transfer_reversal"
-              label={`Reversals (${instructorTransactions.filter((t) => t.type === "transfer_reversal").length})`}
-            />
+            <Tab value="all" label="All" />
+            <Tab value="payment" label="Payments" />
+            <Tab value="payout" label="Payouts" />
+            <Tab value="refund" label="Refunds" />
+            <Tab value="transfer_reversal" label="Reversals" />
           </Tabs>
+          {isTableLoading && <LinearProgress sx={{ mb: 1 }} />}
 
-          {filteredTransactions.length > 0 ? (
+          {instructorTransactions.length > 0 ? (
             <TableContainer
               component={Paper}
               variant="outlined"
@@ -295,7 +309,7 @@ export default function InstructorTransactionHistoryPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredTransactions.map((t) => (
+                  {instructorTransactions.map((t) => (
                     <TableRow key={t.id} hover>
                       <TableCell
                         sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}
@@ -378,6 +392,24 @@ export default function InstructorTransactionHistoryPage() {
               No transactions found for this filter.
             </Typography>
           )}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{ mt: 1.5 }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Showing {(page - 1) * PAGE_SIZE + (instructorTransactions.length ? 1 : 0)}-
+              {(page - 1) * PAGE_SIZE + instructorTransactions.length} of {totalCount}
+            </Typography>
+            <Pagination
+              page={page}
+              count={totalPages}
+              onChange={(_, p) => setPage(p)}
+              color="primary"
+              shape="rounded"
+            />
+          </Stack>
         </CardContent>
       </Card>
 

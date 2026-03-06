@@ -27,6 +27,13 @@ const transactionTypeDefs = gql`
     cancelled
   }
 
+  enum StudentTransactionView {
+    all
+    completed
+    refund
+    rejected
+  }
+
   type TransactionParty {
     id: ID!
     firstName: String!
@@ -131,9 +138,19 @@ const transactionTypeDefs = gql`
     getAdminTransactionCount(filter: AdminTransactionFilterInput): Int!
     getAdminTransactionStats: AdminTransactionStats!
     getBookingTransactions(bookingId: ID!): [Transaction!]!
-    getInstructorTransactions(limit: Int, offset: Int): [Transaction!]!
+    getInstructorTransactions(
+      limit: Int
+      offset: Int
+      type: TransactionType
+    ): [Transaction!]!
+    getInstructorTransactionCount(type: TransactionType): Int!
     getInstructorTransactionStats: InstructorTransactionStats!
-    getStudentTransactions(limit: Int, offset: Int): [Transaction!]!
+    getStudentTransactions(
+      limit: Int
+      offset: Int
+      view: StudentTransactionView
+    ): [Transaction!]!
+    getStudentTransactionCount(view: StudentTransactionView): Int!
     getStudentTransactionStats: StudentTransactionStats!
     getStudentBookingTransactions(bookingId: ID!): [Transaction!]!
     getPlatformCommissionSettings: PlatformCommissionSettings!
