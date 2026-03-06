@@ -1163,7 +1163,12 @@ instead.`);
       });
 
       // Create reset URL
-      const resetUrl = `${process.env.Frontend_URL}/auth/reset-password/${resetToken}`;
+      const frontendBase = (
+        process.env.FRONTEND_URL ||
+        process.env.Frontend_URL ||
+        "http://localhost:5173"
+      ).replace(/\/$/, "");
+      const resetUrl = `${frontendBase}/auth/reset-password/${resetToken}`;
 
       // Send email using the email service
       try {
