@@ -156,7 +156,11 @@ const SignupLinkResolver = {
       }
 
       const token = uuidv4();
-      const baseUrl = process.env.Frontend_URL || "http://localhost:5137";
+      const baseUrl = (
+        process.env.FRONTEND_URL ||
+        process.env.Frontend_URL ||
+        "http://localhost:5173"
+      ).replace(/\/$/, "");
       const signupLink = `${baseUrl}/signup/${token}`;
 
       const newSignupToken = new SignupToken({
@@ -217,7 +221,7 @@ const SignupLinkResolver = {
         const updatedLink = await SignupToken.findOneAndUpdate(
           { _id: id },
           { pending },
-          { new: true }
+          { new: true },
         );
 
         if (!updatedLink) {
@@ -227,7 +231,7 @@ const SignupLinkResolver = {
         return updatedLink;
       } catch (error) {
         throw new Error(
-          "An error occurred while updating the signup link status."
+          "An error occurred while updating the signup link status.",
         );
       }
     },

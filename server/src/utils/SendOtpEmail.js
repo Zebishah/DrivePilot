@@ -1,5 +1,12 @@
 const nodemailer = require("nodemailer");
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000);
+const FRONTEND_BASE = (
+  process.env.FRONTEND_URL ||
+  process.env.Frontend_URL ||
+  "http://localhost:5173"
+).replace(/\/$/, "");
+const buildFrontendUrl = (path = "/") =>
+  `${FRONTEND_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
 const sendOtpEmail = async (email, otp, type) => {
   let subject = "";
@@ -60,7 +67,7 @@ const sendOtpEmail = async (email, otp, type) => {
         otp === "verified"
           ? `<div style="background-color: #e8f9f0; border: 1px solid #b2f2bb; border-radius: 6px; padding: 15px; text-align: center; margin-bottom: 25px;">
               <p style="color: #28a745; font-weight: 600; font-size: 16px;">✅ You now have full instructor access!</p>
-              <a href="${process.env.Frontend_URL}" style="display: inline-block; margin-top: 10px; background-color: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: 500;">Go to Dashboard</a>
+              <a href="${buildFrontendUrl("/")}" style="display: inline-block; margin-top: 10px; background-color: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: 500;">Go to Dashboard</a>
             </div>`
           : `<div style="background-color: #fff5f5; border: 1px solid #f5c2c7; border-radius: 6px; padding: 15px; text-align: center; margin-bottom: 25px;">
               <p style="color: #d9534f; font-weight: 600; font-size: 16px;">⚠️ Your account is temporarily restricted.</p>
@@ -129,9 +136,7 @@ const sendOtpEmail = async (email, otp, type) => {
         
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${
-            process.env.Frontend_URL
-          }auth/signin" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
+          <a href="${buildFrontendUrl("/auth/signin")}" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
         </div>
                 
         <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions or need assistance, our support team is always here to help. Simply reply to this email or contact us through our website.</p>
@@ -173,9 +178,7 @@ const sendOtpEmail = async (email, otp, type) => {
         
         
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${
-            process.env.Frontend_URL
-          }auth/signin" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
+          <a href="${buildFrontendUrl("/auth/signin")}" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
         </div>
                 
         <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions or need assistance, our support team is always here to help. Simply reply to this email or contact us through our website.</p>
@@ -298,11 +301,7 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
     });
   };
   console.log("bookingData", bookingData);
-  const completePaymentBaseUrl = (
-    process.env.Frontend_URL ||
-    process.env.FRONTEND_URL ||
-    "http://localhost:5173"
-  ).replace(/\/$/, "");
+  const completePaymentBaseUrl = FRONTEND_BASE;
   const pendingPaymentSlots = (bookingData.slots || []).filter(
     (s) =>
       s.paymentStatus === "requires_action" ||

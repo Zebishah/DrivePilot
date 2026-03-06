@@ -3,10 +3,15 @@ const passport = require("../config/passport");
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
+const frontendBase = (
+  process.env.FRONTEND_URL ||
+  process.env.Frontend_URL ||
+  "http://localhost:5173"
+).replace(/\/$/, "");
 
 router.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 router.get(
   "/auth/google/callback",
@@ -31,22 +36,21 @@ router.get(
         isUserVerified: req.user.isUserVerified,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     // Ensure proper formatting of the frontend URL
-    const frontendURL = process.env.Frontend_URL;
     res
       .status(307)
       .redirect(
-        `${frontendURL}/auth/auth-success?token=${encodeURIComponent(token)}`
+        `${frontendBase}/auth/auth-success?token=${encodeURIComponent(token)}`,
       );
-  }
+  },
 );
 
 router.get(
   "/auth/facebook",
-  passport.authenticate("facebook", { scope: ["email"] })
+  passport.authenticate("facebook", { scope: ["email"] }),
 );
 
 router.get(
@@ -64,18 +68,16 @@ router.get(
         isUserVerified: req.user.isUserVerified,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1d" },
     );
 
     // Ensure proper formatting of the frontend URL
-    const frontendURL = process.env.Frontend_URL;
-    // Use an absolute URL (res.redirect automatically appends relative paths if not formatted correctly)
     res
       .status(307)
       .redirect(
-        `${frontendURL}/auth/auth-success?token=${encodeURIComponent(token)}`
+        `${frontendBase}/auth/auth-success?token=${encodeURIComponent(token)}`,
       );
-  }
+  },
 );
 
 module.exports = router;

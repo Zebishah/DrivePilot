@@ -7,6 +7,9 @@ const allowedOrigins = [
   "https://studio.apollographql.com",
 ];
 
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
 if (process.env.Frontend_URL) {
   allowedOrigins.push(process.env.Frontend_URL);
 }
@@ -65,7 +68,7 @@ function initSocket(server) {
         instructorSockets.set(userId, socket.id);
         console.log(`👨‍🏫 Instructor registered: ${userId} (${socket.id})`);
         console.log(
-          `📊 Total instructors registered: ${instructorSockets.size}`
+          `📊 Total instructors registered: ${instructorSockets.size}`,
         );
 
         socket.emit("instructor_registered", {
@@ -114,7 +117,7 @@ function initSocket(server) {
       };
       console.log(
         `📨 Emitting message to room: ${message.conversationId}`,
-        message
+        message,
       );
       socket.to(message.conversationId).emit("receive_message", message);
       socket.emit("receive_message", message);
@@ -198,7 +201,7 @@ function initSocket(server) {
     if (studentId && studentSockets.has(studentId)) {
       const studentSocketId = studentSockets.get(studentId);
       console.log(
-        `📢 Notifying student ${studentId} about booking confirmation`
+        `📢 Notifying student ${studentId} about booking confirmation`,
       );
       io.to(studentSocketId).emit("student_booking_confirmed", bookingInfo);
     } else {
