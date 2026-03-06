@@ -27,8 +27,12 @@ const TRANSACTION_FIELDS = gql`
 
 export const GET_ADMIN_TRANSACTIONS = gql`
   ${TRANSACTION_FIELDS}
-  query GetAdminTransactions($filter: AdminTransactionFilterInput) {
-    getAdminTransactions(filter: $filter) {
+  query GetAdminTransactions(
+    $filter: AdminTransactionFilterInput
+    $limit: Int
+    $offset: Int
+  ) {
+    getAdminTransactions(filter: $filter, limit: $limit, offset: $offset) {
       ...TransactionFields
     }
   }
@@ -36,19 +40,35 @@ export const GET_ADMIN_TRANSACTIONS = gql`
 
 export const GET_INSTRUCTOR_TRANSACTIONS = gql`
   ${TRANSACTION_FIELDS}
-  query GetInstructorTransactions($limit: Int, $offset: Int) {
-    getInstructorTransactions(limit: $limit, offset: $offset) {
+  query GetInstructorTransactions($limit: Int, $offset: Int, $type: TransactionType) {
+    getInstructorTransactions(limit: $limit, offset: $offset, type: $type) {
       ...TransactionFields
     }
   }
 `;
 
+export const GET_INSTRUCTOR_TRANSACTIONS_COUNT = gql`
+  query GetInstructorTransactionCount($type: TransactionType) {
+    getInstructorTransactionCount(type: $type)
+  }
+`;
+
 export const GET_STUDENT_TRANSACTIONS = gql`
   ${TRANSACTION_FIELDS}
-  query GetStudentTransactions($limit: Int, $offset: Int) {
-    getStudentTransactions(limit: $limit, offset: $offset) {
+  query GetStudentTransactions(
+    $limit: Int
+    $offset: Int
+    $view: StudentTransactionView
+  ) {
+    getStudentTransactions(limit: $limit, offset: $offset, view: $view) {
       ...TransactionFields
     }
+  }
+`;
+
+export const GET_STUDENT_TRANSACTIONS_COUNT = gql`
+  query GetStudentTransactionCount($view: StudentTransactionView) {
+    getStudentTransactionCount(view: $view)
   }
 `;
 
@@ -84,12 +104,22 @@ const TRANSACTION_PARTY_FIELDS = gql`
 export const GET_ADMIN_TRANSACTIONS_WITH_PARTIES = gql`
   ${TRANSACTION_FIELDS}
   ${TRANSACTION_PARTY_FIELDS}
-  query GetAdminTransactions($filter: AdminTransactionFilterInput) {
-    getAdminTransactions(filter: $filter) {
+  query GetAdminTransactions(
+    $filter: AdminTransactionFilterInput
+    $limit: Int
+    $offset: Int
+  ) {
+    getAdminTransactions(filter: $filter, limit: $limit, offset: $offset) {
       ...TransactionFields
       student { ...TransactionPartyFields }
       instructor { ...TransactionPartyFields }
     }
+  }
+`;
+
+export const GET_ADMIN_TRANSACTIONS_COUNT = gql`
+  query GetAdminTransactionCount($filter: AdminTransactionFilterInput) {
+    getAdminTransactionCount(filter: $filter)
   }
 `;
 

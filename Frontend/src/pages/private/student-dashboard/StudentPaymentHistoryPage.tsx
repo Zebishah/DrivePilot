@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -21,6 +21,8 @@ import {
   Modal,
   Tabs,
   Tab,
+  Pagination,
+  LinearProgress,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
@@ -37,6 +39,7 @@ import LessonIcon from "@mui/icons-material/School";
 import { useQuery } from "@apollo/client";
 import {
   GET_STUDENT_TRANSACTIONS,
+  GET_STUDENT_TRANSACTIONS_COUNT,
   GET_STUDENT_TRANSACTION_STATS,
 } from "../../../graphql/Queries/transactionQueries";
 import { format } from "date-fns";
@@ -68,20 +71,6 @@ function statusColor(s: StatusLabel): "warning" | "success" | "error" | "info" |
 }
 
 export type TransactionFilter = "all" | "completed" | "refund" | "rejected";
-
-function filterTransactions(
-  list: Transaction[],
-  filter: TransactionFilter,
-): Transaction[] {
-  if (filter === "all") return list;
-  return list.filter((t) => {
-    const label = statusLabel(t);
-    if (filter === "completed") return label === "Completed";
-    if (filter === "refund") return label === "Refund";
-    if (filter === "rejected") return label === "Rejected";
-    return true;
-  });
-}
 
 function lessonLabel(t: Transaction): string {
   if (t.lessonSummary && t.lessonSummary.trim()) return t.lessonSummary.trim();
@@ -128,28 +117,50 @@ interface Transaction {
 export default function StudentPaymentHistoryPage() {
   const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
   const [filter, setFilter] = useState<TransactionFilter>("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
 
-  const { data, loading, error } = useQuery(GET_STUDENT_TRANSACTIONS, {
-    variables: { limit: 50, offset: 0 },
+  const {
+    data,
+    previousData,
+    loading,
+    error,
+  } = useQuery(GET_STUDENT_TRANSACTIONS, {
+    variables: {
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+      view: filter,
+    },
     fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+  });
+  const {
+    data: countData,
+    previousData: previousCountData,
+    loading: countLoading,
+  } = useQuery(GET_STUDENT_TRANSACTIONS_COUNT, {
+    variables: { view: filter },
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
   });
   const { data: statsData } = useQuery(GET_STUDENT_TRANSACTION_STATS, {
     fetchPolicy: "network-only",
   });
 
-  const transactions: Transaction[] = data?.getStudentTransactions ?? [];
+  const effectiveData = data ?? previousData;
+  const effectiveCountData = countData ?? previousCountData;
+  const transactions: Transaction[] = effectiveData?.getStudentTransactions ?? [];
   const stats = statsData?.getStudentTransactionStats;
-  const filteredTransactions = useMemo(
-    () => filterTransactions(transactions, filter),
-    [transactions, filter],
-  );
+  const totalCount: number = effectiveCountData?.getStudentTransactionCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const isTableLoading = (loading || countLoading) && Boolean(previousData || previousCountData);
 
   const formatAmount = (t: Transaction) => {
     const sign = t.direction === "credit" ? "+" : "-";
     return `${sign} $${t.amount.toFixed(2)}`;
   };
 
-  if (loading && !data) {
+  if (loading && !effectiveData) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
         <CircularProgress />
@@ -310,7 +321,10 @@ export default function StudentPaymentHistoryPage() {
       <Box sx={{ mb: 2 }}>
         <Tabs
           value={filter}
-          onChange={(_, v: TransactionFilter) => setFilter(v)}
+          onChange={(_, v: TransactionFilter) => {
+            setFilter(v);
+            setPage(1);
+          }}
           sx={{
             minHeight: 44,
             "& .MuiTab-root": { textTransform: "none", fontWeight: 600 },
@@ -318,25 +332,17 @@ export default function StudentPaymentHistoryPage() {
             borderColor: "divider",
           }}
         >
-          <Tab label={`All (${transactions.length})`} value="all" />
-          <Tab
-            label={`Completed (${transactions.filter((t) => statusLabel(t) === "Completed").length})`}
-            value="completed"
-          />
-          <Tab
-            label={`Refund (${transactions.filter((t) => statusLabel(t) === "Refund").length})`}
-            value="refund"
-          />
-          <Tab
-            label={`Rejected (${transactions.filter((t) => statusLabel(t) === "Rejected").length})`}
-            value="rejected"
-          />
+          <Tab label="All" value="all" />
+          <Tab label="Completed" value="completed" />
+          <Tab label="Refund" value="refund" />
+          <Tab label="Rejected" value="rejected" />
         </Tabs>
       </Box>
 
       <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
         Payment list
       </Typography>
+      {isTableLoading && <LinearProgress sx={{ mb: 1 }} />}
       <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
         <Table
           size="medium"
@@ -363,18 +369,16 @@ export default function StudentPaymentHistoryPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredTransactions.length === 0 ? (
+            {transactions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                   <Typography color="text.secondary">
-                    {transactions.length === 0
-                      ? "No transactions yet. Payments and refunds will appear here."
-                      : `No ${filter === "all" ? "" : filter} transactions.`}
+                    No transactions yet. Payments and refunds will appear here.
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              filteredTransactions.map((t) => (
+              transactions.map((t) => (
                 <TableRow key={t.id} hover sx={{ "&:hover": { bgcolor: "action.hover" } }}>
                   <TableCell sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
                     {t.id.slice(-9)}
@@ -421,6 +425,24 @@ export default function StudentPaymentHistoryPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mt: 1.5 }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Showing {(page - 1) * PAGE_SIZE + (transactions.length ? 1 : 0)}-
+          {(page - 1) * PAGE_SIZE + transactions.length} of {totalCount}
+        </Typography>
+        <Pagination
+          page={page}
+          count={totalPages}
+          onChange={(_, p) => setPage(p)}
+          color="primary"
+          shape="rounded"
+        />
+      </Stack>
 
       <Modal open={!!viewTransaction} onClose={() => setViewTransaction(null)}>
         <Box
