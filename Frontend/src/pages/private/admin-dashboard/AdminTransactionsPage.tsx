@@ -28,6 +28,7 @@ import {
   Select,
   MenuItem,
   TextField,
+  Pagination,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
@@ -45,6 +46,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   GET_ADMIN_TRANSACTIONS_WITH_PARTIES,
+  GET_ADMIN_TRANSACTIONS_COUNT,
   GET_ADMIN_TRANSACTION_STATS,
   GET_PLATFORM_COMMISSION_SETTINGS,
   UPDATE_PLATFORM_COMMISSION_SETTINGS,
@@ -135,32 +137,38 @@ export default function AdminTransactionsPage() {
   const [tab, setTab] = useState(0);
   const [partyTab, setPartyTab] = useState<"all" | TransactionRole>("all");
   const [typeTab, setTypeTab] = useState<"all" | TransactionType>("all");
+  const [page, setPage] = useState(1);
   const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
   const [profileParty, setProfileParty] = useState<TransactionParty | null>(null);
+  const PAGE_SIZE = 20;
+  const activeFilter = useMemo(
+    () => ({
+      ...(partyTab !== "all" && { role: partyTab }),
+      ...(typeTab !== "all" && { type: typeTab }),
+    }),
+    [partyTab, typeTab],
+  );
 
   const { data: statsData } = useQuery(GET_ADMIN_TRANSACTION_STATS, {
     fetchPolicy: "network-only",
   });
   const { data, loading, error } = useQuery(GET_ADMIN_TRANSACTIONS_WITH_PARTIES, {
+    variables: {
+      filter: activeFilter,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    },
+    fetchPolicy: "network-only",
+  });
+  const { data: countData } = useQuery(GET_ADMIN_TRANSACTIONS_COUNT, {
+    variables: { filter: activeFilter },
     fetchPolicy: "network-only",
   });
 
   const transactions: Transaction[] = data?.getAdminTransactions ?? [];
   const stats: AdminStats | null = statsData?.getAdminTransactionStats ?? null;
-  const partyScopedTransactions = useMemo(
-    () =>
-      transactions.filter((t) => (partyTab === "all" ? true : t.role === partyTab)),
-    [transactions, partyTab],
-  );
-  const filteredTransactions = useMemo(
-    () =>
-      transactions.filter((t) => {
-        if (partyTab !== "all" && t.role !== partyTab) return false;
-        if (typeTab !== "all" && t.type !== typeTab) return false;
-        return true;
-      }),
-    [transactions, partyTab, typeTab],
-  );
+  const totalCount: number = countData?.getAdminTransactionCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const formatAmount = (t: Transaction) => {
     const sign = t.direction === "credit" ? "+" : "-";
@@ -371,7 +379,10 @@ export default function AdminTransactionsPage() {
           <Box sx={{ mb: 1.5 }}>
             <Tabs
               value={partyTab}
-              onChange={(_, v: "all" | TransactionRole) => setPartyTab(v)}
+              onChange={(_, v: "all" | TransactionRole) => {
+                setPartyTab(v);
+                setPage(1);
+              }}
               variant="scrollable"
               allowScrollButtonsMobile
               sx={{
@@ -381,14 +392,17 @@ export default function AdminTransactionsPage() {
                 "& .MuiTab-root": { textTransform: "none", fontWeight: 600, minHeight: 42 },
               }}
             >
-              <Tab label={`All users (${transactions.length})`} value="all" />
-              <Tab label={`Admin commission (${transactions.filter((t) => t.role === "platform").length})`} value="platform" />
-              <Tab label={`Instructor (${transactions.filter((t) => t.role === "instructor").length})`} value="instructor" />
-              <Tab label={`Student (${transactions.filter((t) => t.role === "student").length})`} value="student" />
+              <Tab label="All users" value="all" />
+              <Tab label="Admin commission" value="platform" />
+              <Tab label="Instructor" value="instructor" />
+              <Tab label="Student" value="student" />
             </Tabs>
             <Tabs
               value={typeTab}
-              onChange={(_, v: "all" | TransactionType) => setTypeTab(v)}
+              onChange={(_, v: "all" | TransactionType) => {
+                setTypeTab(v);
+                setPage(1);
+              }}
               variant="scrollable"
               allowScrollButtonsMobile
               sx={{
@@ -397,12 +411,12 @@ export default function AdminTransactionsPage() {
                 "& .MuiTab-root": { textTransform: "none", fontWeight: 600, minHeight: 40 },
               }}
             >
-              <Tab label={`All types (${partyScopedTransactions.length})`} value="all" />
-              <Tab label={`Payments (${partyScopedTransactions.filter((t) => t.type === "payment").length})`} value="payment" />
-              <Tab label={`Refunds (${partyScopedTransactions.filter((t) => t.type === "refund").length})`} value="refund" />
-              <Tab label={`Payouts (${partyScopedTransactions.filter((t) => t.type === "payout").length})`} value="payout" />
-              <Tab label={`Reversals (${partyScopedTransactions.filter((t) => t.type === "transfer_reversal").length})`} value="transfer_reversal" />
-              <Tab label={`Adjustments (${partyScopedTransactions.filter((t) => t.type === "adjustment").length})`} value="adjustment" />
+              <Tab label="All types" value="all" />
+              <Tab label="Payments" value="payment" />
+              <Tab label="Refunds" value="refund" />
+              <Tab label="Payouts" value="payout" />
+              <Tab label="Reversals" value="transfer_reversal" />
+              <Tab label="Adjustments" value="adjustment" />
             </Tabs>
           </Box>
 
@@ -415,6 +429,7 @@ export default function AdminTransactionsPage() {
             <Alert severity="error" sx={{ mb: 2 }}>{error.message}</Alert>
           )}
           {!loading && !error && (
+            <>
             <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
               <Table
                 size="medium"
@@ -445,14 +460,14 @@ export default function AdminTransactionsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredTransactions.length === 0 ? (
+                  {transactions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         No transactions found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTransactions.map((t) => {
+                    transactions.map((t) => {
                       const party = displayParty(t);
                       return (
                         <TableRow key={t.id} hover>
@@ -526,6 +541,25 @@ export default function AdminTransactionsPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+           
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{ mt: 1.5 }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Showing {(page - 1) * PAGE_SIZE + (transactions.length ? 1 : 0)}-
+                {(page - 1) * PAGE_SIZE + transactions.length} of {totalCount}
+              </Typography>
+              <Pagination
+                page={page}
+                count={totalPages}
+                onChange={(_, p) => setPage(p)}
+                color="primary"
+                shape="rounded"
+              />
+            </Stack> </>
           )}
         </>
       )}

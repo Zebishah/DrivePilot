@@ -60,6 +60,22 @@ async function toTransactionParty(userDoc) {
   };
 }
 
+function buildAdminTransactionQuery(filter = {}) {
+  const query = {};
+  if (filter.type) query.type = filter.type;
+  if (filter.role) query.role = filter.role;
+  if (filter.status) query.status = filter.status;
+  if (filter.instructorId) query.instructorId = filter.instructorId;
+  if (filter.studentId) query.studentId = filter.studentId;
+  if (filter.bookingId) query.bookingId = filter.bookingId;
+  if (filter.from || filter.to) {
+    query.occurredAt = {};
+    if (filter.from) query.occurredAt.$gte = new Date(filter.from);
+    if (filter.to) query.occurredAt.$lte = new Date(filter.to);
+  }
+  return query;
+}
+
 const transactionResolver = {
   Transaction: {
     id: (parent) => parent._id?.toString() || parent.id,
@@ -75,7 +91,11 @@ const transactionResolver = {
       const booking = await StudentBooking.findById(parent.bookingId)
         .select("slots")
         .lean();
-      if (!booking || !Array.isArray(booking.slots) || booking.slots.length === 0)
+      if (
+        !booking ||
+        !Array.isArray(booking.slots) ||
+        booking.slots.length === 0
+      )
         return null;
       let slot = null;
       if (parent.slotId) {
@@ -119,23 +139,29 @@ const transactionResolver = {
     },
   },
   Query: {
-    async getAdminTransactions(_, { filter = {} }, { user }) {
+    async getAdminTransactions(
+      _,
+      { filter = {}, limit = 50, offset = 0 },
+      { user },
+    ) {
       if (!user || user.role !== "Admin") {
         throw new ForbiddenError("Not authorized");
       }
-      const query = {};
-      if (filter.type) query.type = filter.type;
-      if (filter.role) query.role = filter.role;
-      if (filter.status) query.status = filter.status;
-      if (filter.instructorId) query.instructorId = filter.instructorId;
-      if (filter.studentId) query.studentId = filter.studentId;
-      if (filter.bookingId) query.bookingId = filter.bookingId;
-      if (filter.from || filter.to) {
-        query.occurredAt = {};
-        if (filter.from) query.occurredAt.$gte = new Date(filter.from);
-        if (filter.to) query.occurredAt.$lte = new Date(filter.to);
+      const query = buildAdminTransactionQuery(filter);
+      const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+      const safeOffset = Math.max(Number(offset) || 0, 0);
+      return Transaction.find(query)
+        .sort({ occurredAt: -1, createdAt: -1 })
+        .skip(safeOffset)
+        .limit(safeLimit);
+    },
+
+    async getAdminTransactionCount(_, { filter = {} }, { user }) {
+      if (!user || user.role !== "Admin") {
+        throw new ForbiddenError("Not authorized");
       }
-      return Transaction.find(query).sort({ occurredAt: -1, createdAt: -1 });
+      const query = buildAdminTransactionQuery(filter);
+      return Transaction.countDocuments(query);
     },
 
     async getAdminTransactionStats(_, __, { user }) {

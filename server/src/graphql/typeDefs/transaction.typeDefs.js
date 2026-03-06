@@ -123,7 +123,12 @@ const transactionTypeDefs = gql`
   }
 
   extend type Query {
-    getAdminTransactions(filter: AdminTransactionFilterInput): [Transaction!]!
+    getAdminTransactions(
+      filter: AdminTransactionFilterInput
+      limit: Int
+      offset: Int
+    ): [Transaction!]!
+    getAdminTransactionCount(filter: AdminTransactionFilterInput): Int!
     getAdminTransactionStats: AdminTransactionStats!
     getBookingTransactions(bookingId: ID!): [Transaction!]!
     getInstructorTransactions(limit: Int, offset: Int): [Transaction!]!

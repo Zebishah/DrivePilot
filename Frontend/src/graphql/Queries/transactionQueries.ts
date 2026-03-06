@@ -27,8 +27,12 @@ const TRANSACTION_FIELDS = gql`
 
 export const GET_ADMIN_TRANSACTIONS = gql`
   ${TRANSACTION_FIELDS}
-  query GetAdminTransactions($filter: AdminTransactionFilterInput) {
-    getAdminTransactions(filter: $filter) {
+  query GetAdminTransactions(
+    $filter: AdminTransactionFilterInput
+    $limit: Int
+    $offset: Int
+  ) {
+    getAdminTransactions(filter: $filter, limit: $limit, offset: $offset) {
       ...TransactionFields
     }
   }
@@ -84,12 +88,22 @@ const TRANSACTION_PARTY_FIELDS = gql`
 export const GET_ADMIN_TRANSACTIONS_WITH_PARTIES = gql`
   ${TRANSACTION_FIELDS}
   ${TRANSACTION_PARTY_FIELDS}
-  query GetAdminTransactions($filter: AdminTransactionFilterInput) {
-    getAdminTransactions(filter: $filter) {
+  query GetAdminTransactions(
+    $filter: AdminTransactionFilterInput
+    $limit: Int
+    $offset: Int
+  ) {
+    getAdminTransactions(filter: $filter, limit: $limit, offset: $offset) {
       ...TransactionFields
       student { ...TransactionPartyFields }
       instructor { ...TransactionPartyFields }
     }
+  }
+`;
+
+export const GET_ADMIN_TRANSACTIONS_COUNT = gql`
+  query GetAdminTransactionCount($filter: AdminTransactionFilterInput) {
+    getAdminTransactionCount(filter: $filter)
   }
 `;
 
