@@ -8,6 +8,7 @@ const { createTransaction } = require("../services/transactionService");
 const { Admin, Instructor } = require("../models/User");
 const { getCommissionSplit } = require("../services/stripeService");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
+const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -82,11 +83,18 @@ async function runT48ChargeJob() {
       // Do not charge cancelled slots (e.g. student cancelled before T-48)
       if (slot.status === "cancelled" || slot.booked === false) continue;
 
-      const slotStart = new Date(`${slot.date}T${slot.startTime}`);
-      const chargeTime = new Date(slotStart.getTime() - FORTY_EIGHT_HOURS_MS);
-      if (chargeTime > now) {
+      const slotStartUtcMs = getSlotStartTimestampUtc(slot.date, slot.startTime);
+      if (!Number.isFinite(slotStartUtcMs)) {
+        console.warn(
+          `[T48ChargeJob] Slot ${slot._id} (${slot.date} ${slot.startTime}): invalid slot start time; skipping.`,
+        );
+        continue;
+      }
+      const chargeTimeUtcMs = slotStartUtcMs - FORTY_EIGHT_HOURS_MS;
+      if (chargeTimeUtcMs > now.getTime()) {
+        const chargeTimeIso = new Date(chargeTimeUtcMs).toISOString();
         console.log(
-          `[T48ChargeJob] Slot ${slot._id} (${slot.date} ${slot.startTime}): not yet in T-48 window (chargeTime ${chargeTime.toISOString()} > now). Skipping.`,
+          `[T48ChargeJob] Slot ${slot._id} (${slot.date} ${slot.startTime}): not yet in T-48 window (chargeTime ${chargeTimeIso} > now). Skipping.`,
         );
         continue;
       }

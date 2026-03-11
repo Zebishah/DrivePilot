@@ -12,7 +12,6 @@ This document explains where DSP commission is configured, how to see commission
 - **What you can set:**
   - **Commission type:** Percentage or fixed amount.
   - **Commission value:** For percentage, the platform’s share (e.g. 40 means the admin gets 40%, the instructor gets 60%). For fixed amount, the platform’s share per lesson in CHF.
-  - Optional: minimum/maximum fare and payout methods (e.g. Stripe).
 
 This is the **platform-wide default** applied to all instructors. The same logic is used for instant payments at checkout, deferred (T-48) charges, and payouts. Commission is **not** configurable per transaction in the Stripe Dashboard; Stripe only sees the full payment and the transfer we send to the instructor’s Connect account.
 
@@ -58,17 +57,33 @@ There is **no** Stripe section labeled “Commission”. The commission is the d
 
 ---
 
+Truth / what to tell the client
+Stripe Dashboard will NOT show a separate “DSP commission” line item. Stripe records:
+
+the full payment (gross) on the platform Stripe account, and
+(if you use Connect transfers) the transfer to the instructor’s connected account. The difference is effectively the platform’s commission, but Stripe does not label it as “commission” or show a dedicated “commission transaction”.
+Where they can actually verify commission is in the DSP Admin Dashboard, not Stripe:
+
+Admin → Payment Management → Commission Management: shows the configured default commission (rate/type).
+Admin → Payment Management → Transactions: shows platform-side transactions (gross receipt and commission entries) so they can confirm amounts per booking/slot.
+Suggested client answer (copy/paste)
+In Stripe, you won’t see a separate “DSP commission” transaction. Stripe only shows the gross payment and (for Connect) the transfer to the instructor account. Stripe doesn’t label the retained amount as “commission”.
+To verify commission, please use the DSP Admin Dashboard → Payment Management:
+
+Commission Management shows the configured commission rate/type.
+Transactions shows the platform’s gross receipts and commission amounts per lesson/slot.
+
 ## 4. Summary: where to configure and verify
 
-| What you want to do | Where |
-|---------------------|--------|
-| **Configure commission** (rate, type, etc.) | DSP Admin Dashboard → Payment Management → **Commission Management** tab |
+| What you want to do                            | Where                                                                                           |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Configure commission** (rate, type, etc.)    | DSP Admin Dashboard → Payment Management → **Commission Management** tab                        |
 | **See platform commission and gross receipts** | DSP Admin Dashboard → Payment Management → **Transactions** (filter by Admin/Platform and type) |
-| **See instructor net earnings** | Instructor Dashboard → **Transaction History** (and Payment tab transaction list) |
-| **See what the student paid** | Student Dashboard → **Payment History** |
-| **See gross payments in Stripe** | Stripe Dashboard → **Payments** |
-| **See what was sent to instructors** | Stripe Dashboard → **Connect → Accounts** → select instructor → **Transfers** |
-| **See “commission” in Stripe** | Not available; commission = (Payments − Transfers), managed in DSP Admin |
+| **See instructor net earnings**                | Instructor Dashboard → **Transaction History** (and Payment tab transaction list)               |
+| **See what the student paid**                  | Student Dashboard → **Payment History**                                                         |
+| **See gross payments in Stripe**               | Stripe Dashboard → **Payments**                                                                 |
+| **See what was sent to instructors**           | Stripe Dashboard → **Connect → Accounts** → select instructor → **Transfers**                   |
+| **See “commission” in Stripe**                 | Not available; commission = (Payments − Transfers), managed in DSP Admin                        |
 
 ---
 

@@ -1,6 +1,9 @@
 const { studentBookingSchema } = require("../../schemas/studentBooking.schema");
 const StudentBooking = require("../../models/studentBooking.model");
-const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
+const {
+  getSlotEndTimestampUtc,
+  getSlotStartTimestampUtc,
+} = require("../../utils/slotTimezone");
 
 // Payout delay after lesson completed: 1 min for testing; for production use 3 * 24 * 60 * 60 * 1000 (3 days)
 const PAYOUT_DELAY_MS = 1 * 60 * 1000;
@@ -717,12 +720,12 @@ const studentBookingResolver = {
 
         // Decide instant vs deferred by gap between now and earliest slot start
         const now = new Date();
-        const slotStartTimes = enrichedSlots.map(
-          (slot) => new Date(`${slot.date}T${slot.startTime}`),
-        );
+        const slotStartUtcTimes = enrichedSlots
+          .map((slot) => getSlotStartTimestampUtc(slot.date, slot.startTime))
+          .filter((ms) => Number.isFinite(ms));
         const earliestSlotStart =
-          slotStartTimes.length > 0
-            ? new Date(Math.min(...slotStartTimes.map((d) => d.getTime())))
+          slotStartUtcTimes.length > 0
+            ? new Date(Math.min(...slotStartUtcTimes))
             : null;
         const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
         const isDeferred =
@@ -910,12 +913,12 @@ const studentBookingResolver = {
         );
       }
       const now = new Date();
-      const slotStartTimes = (booking.slots || []).map(
-        (slot) => new Date(`${slot.date}T${slot.startTime}`),
-      );
+      const slotStartUtcTimes = (booking.slots || [])
+        .map((slot) => getSlotStartTimestampUtc(slot.date, slot.startTime))
+        .filter((ms) => Number.isFinite(ms));
       const earliestSlotStart =
-        slotStartTimes.length > 0
-          ? new Date(Math.min(...slotStartTimes.map((d) => d.getTime())))
+        slotStartUtcTimes.length > 0
+          ? new Date(Math.min(...slotStartUtcTimes))
           : null;
       if (earliestSlotStart && earliestSlotStart <= now) {
         throw new UserInputError(
