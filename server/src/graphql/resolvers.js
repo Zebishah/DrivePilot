@@ -31,6 +31,7 @@ const { Review } = require("../models/Reviews");
 const {
   createExpressAccount,
   createAccountLink,
+  createLoginLink,
   setManualPayoutSchedule,
   retrieveAccount,
   accountToStripeSnapshot,
@@ -349,6 +350,27 @@ const resolvers = {
       } catch (error) {
         console.error("Error fetching enriched student data:", error);
         throw new Error("Failed to fetch students with lesson stats");
+      }
+    },
+    getStripeExpressDashboardUrl: async (_, __, { user }) => {
+      if (!user) throw new AuthenticationError("Not authenticated");
+      if (user.role !== "Instructor") {
+        throw new ForbiddenError("Only instructors can open the Stripe Express dashboard");
+      }
+      const instructor = await Instructor.findById(user.id);
+      if (!instructor) throw new UserInputError("Instructor not found");
+      const accountId = instructor.stripeAccount?.accountId;
+      if (!accountId) {
+        throw new UserInputError("No Stripe account linked. Connect with Stripe first.");
+      }
+      try {
+        const { url } = await createLoginLink(accountId);
+        return { url };
+      } catch (err) {
+        console.error("getStripeExpressDashboardUrl error:", err);
+        throw new UserInputError(
+          err.message || "Could not open Stripe dashboard. Try again in a moment.",
+        );
       }
     },
   },

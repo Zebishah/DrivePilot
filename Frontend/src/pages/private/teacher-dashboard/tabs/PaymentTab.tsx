@@ -30,12 +30,13 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation, useLazyQuery } from "@apollo/client";
 
 import toast from "react-hot-toast";
 import {
   CREATE_STRIPE_ACCOUNT,
   GET_TEACHER_PROFILE,
+  GET_STRIPE_EXPRESS_DASHBOARD_URL,
   REGENERATE_STRIPE_LINK,
   VERIFY_STRIPE_ONBOARDING,
 } from "../../../../graphql/mutations/profile";
@@ -171,6 +172,24 @@ export const PaymentTab: React.FC = () => {
       toast.error(err.message || "Failed to refresh status");
     },
   });
+
+  const [getStripeDashboardUrl, { loading: dashboardLinkLoading }] = useLazyQuery(
+    GET_STRIPE_EXPRESS_DASHBOARD_URL,
+    {
+      fetchPolicy: "network-only",
+      onCompleted: (res) => {
+        const url = res?.getStripeExpressDashboardUrl?.url;
+        if (url) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        } else {
+          toast.error("Could not open Stripe dashboard.");
+        }
+      },
+      onError: (err) => {
+        toast.error(err.message || "Could not open Stripe dashboard. Try again in a moment.");
+      },
+    },
+  );
 
   const status = (data?.teacherProfile?.onboardingStatus ??
     "not_started") as OnboardingStatus;
@@ -435,6 +454,20 @@ export const PaymentTab: React.FC = () => {
             gap: 1.5,
           }}
         >
+          {status === "verified" && (
+            <Button
+              variant="outlined"
+              color="primary"
+              disabled={dashboardLinkLoading}
+              onClick={() => getStripeDashboardUrl()}
+              sx={{ textTransform: "none", minWidth: 170 }}
+            >
+              {dashboardLinkLoading ? (
+                <CircularProgress size={20} sx={{ color: "inherit", mr: 1 }} />
+              ) : null}
+              {dashboardLinkLoading ? "Opening..." : "Open Stripe Dashboard"}
+            </Button>
+          )}
           {stateContent.primaryLabel && stateContent.primaryAction && (
             <Button
               variant="contained"
