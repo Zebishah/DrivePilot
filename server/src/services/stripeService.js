@@ -72,6 +72,16 @@ async function createAccountLink(accountId, paths = {}) {
 }
 
 /**
+ * Create a one-time login link for the Express dashboard (so the connected account holder can view earnings, payouts, etc.).
+ * @param {string} accountId - Stripe connected account ID (Express)
+ * @returns {Promise<{ url: string }>}
+ */
+async function createLoginLink(accountId) {
+  const link = await stripe.accounts.createLoginLink(accountId);
+  return { url: link.url };
+}
+
+/**
  * Retrieve full account (optionally with requirements expanded).
  * @param {string} accountId
  * @returns {Promise<import('stripe').Stripe.Account>}
@@ -564,6 +574,7 @@ module.exports = {
   createExpressAccount,
   setManualPayoutSchedule,
   createAccountLink,
+  createLoginLink,
   retrieveAccount,
   accountToStripeSnapshot,
   FRONTEND_BASE,

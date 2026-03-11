@@ -334,13 +334,21 @@ const instructorResolver = {
         return count + booking.slots.filter(isUpcomingSlot).length;
       }, 0);
 
-      // Total earnings: only from attended slots (completed or time passed); split by slot share per booking
+      // Total earnings (net, after DSP commission): sum instructorAmount for attended slots; fallback to gross per-slot for legacy slots without instructorAmount
       const totalEarnings = bookings.reduce((sum, booking) => {
         const activeInBooking = booking.slots.filter(isActiveSlot).length;
         if (activeInBooking === 0) return sum;
-        const perSlotAmount = (booking.finalAmount || 0) / activeInBooking;
-        const attendedInBooking = booking.slots.filter(isAttendedSlot).length;
-        return sum + perSlotAmount * attendedInBooking;
+        const perSlotGross = (booking.finalAmount || 0) / activeInBooking;
+        return (
+          sum +
+          booking.slots.filter(isAttendedSlot).reduce((slotSum, slot) => {
+            const net =
+              slot.instructorAmount != null && slot.instructorAmount >= 0
+                ? slot.instructorAmount
+                : perSlotGross;
+            return slotSum + net;
+          }, 0)
+        );
       }, 0);
 
       // Last booking = most recent attended slot (by slot end date/time)

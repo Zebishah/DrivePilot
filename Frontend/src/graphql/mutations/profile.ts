@@ -77,6 +77,14 @@ export const REGENERATE_STRIPE_LINK = gql`
   }
 `;
 
+export const GET_STRIPE_EXPRESS_DASHBOARD_URL = gql`
+  query GetStripeExpressDashboardUrl {
+    getStripeExpressDashboardUrl {
+      url
+    }
+  }
+`;
+
 // Mutation to update the teacher's profile
 export const UPDATE_TEACHER_PROFILE = gql`
   mutation UpdateTeacherProfile($input: UpdateInstructorProfileInput!) {

@@ -24,7 +24,9 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import { useQuery } from "@apollo/client";
+import { useQuery, useLazyQuery } from "@apollo/client";
+import toast from "react-hot-toast";
+import { GET_STRIPE_EXPRESS_DASHBOARD_URL } from "../../../graphql/mutations/profile";
 import {
   GET_INSTRUCTOR_TRANSACTIONS,
   GET_INSTRUCTOR_TRANSACTIONS_COUNT,
@@ -107,6 +109,24 @@ export default function InstructorTransactionHistoryPage() {
     fetchPolicy: "network-only",
   });
 
+  const [getStripeDashboardUrl, { loading: dashboardLinkLoading }] = useLazyQuery(
+    GET_STRIPE_EXPRESS_DASHBOARD_URL,
+    {
+      fetchPolicy: "network-only",
+      onCompleted: (res) => {
+        const url = res?.getStripeExpressDashboardUrl?.url;
+        if (url) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        } else {
+          toast.error("Could not open Stripe dashboard.");
+        }
+      },
+      onError: (err) => {
+        toast.error(err.message || "Could not open Stripe dashboard. Try again in a moment.");
+      },
+    },
+  );
+
   const effectiveTransactionsData = transactionsData ?? previousTransactionsData;
   const effectiveCountData = countData ?? previousCountData;
   const instructorTransactions: InstructorTransaction[] =
@@ -122,12 +142,31 @@ export default function InstructorTransactionHistoryPage() {
     <Box sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
       <Card elevation={3} sx={{ borderRadius: 3, p: { xs: 2, sm: 3 } }}>
         <CardContent sx={{ p: 0 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
-            Transaction history
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            View all payment, payout, refund, and transfer reversal activity.
-          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            sx={{ mb: 2.5 }}
+            gap={1.5}
+          >
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Transaction history
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                View all payment, payout, refund, and transfer reversal activity.
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              color="primary"
+              disabled={dashboardLinkLoading}
+              onClick={() => getStripeDashboardUrl()}
+              sx={{ textTransform: "none", flexShrink: 0 }}
+            >
+              {dashboardLinkLoading ? "Opening..." : "Open Stripe Dashboard"}
+            </Button>
+          </Stack>
 
           {stats && (
             <Stack

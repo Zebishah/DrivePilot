@@ -405,6 +405,9 @@ const typeDefs = gql`
     message: String
     onboardingUrl: String
   }
+  type StripeExpressDashboardPayload {
+    url: String!
+  }
   type SetPayoutSchedulePayload {
     success: Boolean!
     message: String
@@ -419,6 +422,7 @@ const typeDefs = gql`
     allInstructorsWithDetails: [InstructorWithDetails!]
     getInstructorDocuments(instructorId: ID!): InstructorDocumentsResponse!
     allStudentsWithLessonStats: [StudentWithLessonStats!]
+    getStripeExpressDashboardUrl: StripeExpressDashboardPayload!
   }
   type Mutation {
     signUp(input: SignUpInput!): AuthPayload!
