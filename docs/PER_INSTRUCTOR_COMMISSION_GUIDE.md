@@ -91,6 +91,7 @@ This is used in:
 - **Stripe webhook flows**
 
 So the per-instructor override affects both:
+
 - **Instant bookings**
 - **Deferred / T‑48 bookings**
 
@@ -119,6 +120,7 @@ This ensures the refund uses the **same split amounts** that were applied when t
 - Lesson price: **90 CHF**
 
 Result:
+
 - Instructor: \(90 × 0.70 = 63\) CHF
 - Admin/platform: \(90 × 0.30 = 27\) CHF
 
@@ -129,6 +131,7 @@ Result:
 - Lesson price: **90 CHF**
 
 Result:
+
 - Instructor: \(90 × 0.60 = 54\) CHF
 - Admin/platform: \(90 × 0.40 = 36\) CHF
 
@@ -138,5 +141,4 @@ Result:
 
 1. Set **Default instructor share (%)** in Commission Management (e.g. 70).
 2. For Instructor A set override to 60; for Instructor B leave empty.
-3. Make a new paid booking with each instructor (same amount).\n4. Check Admin Transactions:\n   - Instructor A should reflect 60/40 split.\n   - Instructor B should reflect 70/30 split.\n5. Approve a refund for one cancelled slot and verify the refund and reversal entries are created.
-
+3. Make a new paid booking with each instructor (same amount).\n4. Check Admin Transactions:\n - Instructor A should reflect 60/40 split.\n - Instructor B should reflect 70/30 split.\n5. Approve a refund for one cancelled slot and verify the refund and reversal entries are created.

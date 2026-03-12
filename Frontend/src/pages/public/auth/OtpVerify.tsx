@@ -13,7 +13,7 @@ import {
 import { styled } from "@mui/material/styles";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import logoSrc from "../../../../../Frontend/public/Website-new-logo.png"; // Adjust the path as necessary
+const logoSrc = "/Website-new-logo.png";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
