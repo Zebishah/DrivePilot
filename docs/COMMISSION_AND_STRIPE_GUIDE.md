@@ -12,8 +12,14 @@ This document explains where DSP commission is configured, how to see commission
 - **What you can set:**
   - **Commission type:** Percentage or fixed amount.
   - **Commission value:** For percentage, the platform’s share (e.g. 40 means the admin gets 40%, the instructor gets 60%). For fixed amount, the platform’s share per lesson in CHF.
+  - **Default instructor share (%):** The percentage the instructor gets by default (e.g. 80 = instructor 80%, admin 20%). This is the **platform-wide default** applied to every instructor who does **not** have a custom commission set.
 
-This is the **platform-wide default** applied to all instructors. The same logic is used for instant payments at checkout, deferred (T-48) charges, and payouts. Commission is **not** configurable per transaction in the Stripe Dashboard; Stripe only sees the full payment and the transfer we send to the instructor’s Connect account.
+**Per-instructor override**
+
+- **Location:** **DSP Admin Dashboard → Instructor Management** → open an instructor (detail modal).
+- **Commission override** section: You can set an **Instructor share (%)** for that instructor only (e.g. 60% → instructor gets 60%, admin gets 40%). If you leave it empty or click **“Use platform default”**, that instructor uses the **Default instructor share (%)** from Commission Management instead.
+
+So: if an instructor has a custom commission set, that value is used; otherwise the platform default (Default instructor share or the legacy commission value) applies. The same logic is used for instant payments at checkout, deferred (T-48) charges, and payouts. Commission is **not** configurable per transaction in the Stripe Dashboard; Stripe only sees the full payment and the transfer we send to the instructor’s Connect account.
 
 ---
 
@@ -75,15 +81,16 @@ Transactions shows the platform’s gross receipts and commission amounts per le
 
 ## 4. Summary: where to configure and verify
 
-| What you want to do                            | Where                                                                                           |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Configure commission** (rate, type, etc.)    | DSP Admin Dashboard → Payment Management → **Commission Management** tab                        |
-| **See platform commission and gross receipts** | DSP Admin Dashboard → Payment Management → **Transactions** (filter by Admin/Platform and type) |
-| **See instructor net earnings**                | Instructor Dashboard → **Transaction History** (and Payment tab transaction list)               |
-| **See what the student paid**                  | Student Dashboard → **Payment History**                                                         |
-| **See gross payments in Stripe**               | Stripe Dashboard → **Payments**                                                                 |
-| **See what was sent to instructors**           | Stripe Dashboard → **Connect → Accounts** → select instructor → **Transfers**                   |
-| **See “commission” in Stripe**                 | Not available; commission = (Payments − Transfers), managed in DSP Admin                        |
+| What you want to do                                         | Where                                                                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Configure commission** (rate, type, default instructor %) | DSP Admin Dashboard → Payment Management → **Commission Management** tab                        |
+| **Set per-instructor commission override**                  | DSP Admin Dashboard → **Instructor Management** → open instructor → **Commission override**     |
+| **See platform commission and gross receipts**              | DSP Admin Dashboard → Payment Management → **Transactions** (filter by Admin/Platform and type) |
+| **See instructor net earnings**                             | Instructor Dashboard → **Transaction History** (and Payment tab transaction list)               |
+| **See what the student paid**                               | Student Dashboard → **Payment History**                                                         |
+| **See gross payments in Stripe**                            | Stripe Dashboard → **Payments**                                                                 |
+| **See what was sent to instructors**                        | Stripe Dashboard → **Connect → Accounts** → select instructor → **Transfers**                   |
+| **See “commission” in Stripe**                              | Not available; commission = (Payments − Transfers), managed in DSP Admin                        |
 
 ---
 

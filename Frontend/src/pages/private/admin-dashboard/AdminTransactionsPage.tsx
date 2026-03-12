@@ -126,6 +126,7 @@ interface AdminStats {
 
 interface CommissionSettings {
   defaultRate: number;
+  defaultInstructorRate: number | null;
   defaultType: string;
   defaultFixedAmount: number;
   minFare: number | null;
@@ -751,6 +752,7 @@ function CommissionManagementTab() {
   const settings: CommissionSettings | null = data?.getPlatformCommissionSettings ?? null;
   const [commissionType, setCommissionType] = useState<string>("percentage");
   const [commissionValue, setCommissionValue] = useState<string>("20");
+  const [defaultInstructorRateDisplay, setDefaultInstructorRateDisplay] = useState<string>("80");
   const [minFare, setMinFare] = useState<string>("");
   const [maxFare, setMaxFare] = useState<string>("");
   const [payoutMethods, setPayoutMethods] = useState<string[]>(["Stripe"]);
@@ -759,18 +761,40 @@ function CommissionManagementTab() {
     if (!settings) return;
     setCommissionType(settings.defaultType ?? "percentage");
     setCommissionValue(String(settings.defaultRate ?? 20));
+    setDefaultInstructorRateDisplay(
+      settings.defaultInstructorRate != null
+        ? String(settings.defaultInstructorRate)
+        : String(100 - (settings.defaultRate ?? 20)),
+    );
     setMinFare(settings.minFare != null ? String(settings.minFare) : "");
     setMaxFare(settings.maxFare != null ? String(settings.maxFare) : "");
     setPayoutMethods(Array.isArray(settings.payoutMethods) && settings.payoutMethods.length ? settings.payoutMethods : ["Stripe"]);
   }, [settings]);
 
+  const instructorShareNum =
+    commissionType === "percentage"
+      ? Math.max(0, Math.min(100, Number(defaultInstructorRateDisplay) || 0))
+      : 0;
+  const adminCommissionDisplay = commissionType === "percentage" ? 100 - instructorShareNum : commissionValue;
+
   const handleSave = async () => {
     const numVal = parseFloat(commissionValue);
+    const instructorRateVal = parseFloat(defaultInstructorRateDisplay);
+    const defaultInstructorRate =
+      Number.isFinite(instructorRateVal) && instructorRateVal >= 0 && instructorRateVal <= 100
+        ? instructorRateVal
+        : null;
     await updateSettings({
       variables: {
         input: {
           defaultType: commissionType,
-          defaultRate: commissionType === "percentage" ? (Number.isFinite(numVal) ? numVal : 20) : (settings?.defaultRate ?? 20),
+          defaultRate:
+            commissionType === "percentage"
+              ? (Number.isFinite(instructorRateVal) && instructorRateVal >= 0 && instructorRateVal <= 100
+                  ? 100 - instructorRateVal
+                  : settings?.defaultRate ?? 20)
+              : (Number.isFinite(numVal) ? numVal : settings?.defaultRate ?? 20),
+          defaultInstructorRate: defaultInstructorRate,
           defaultFixedAmount: commissionType === "amount" ? (Number.isFinite(numVal) ? numVal : 0) : (settings?.defaultFixedAmount ?? 0),
           minFare: minFare === "" ? null : parseFloat(minFare),
           maxFare: maxFare === "" ? null : parseFloat(maxFare),
@@ -831,15 +855,31 @@ function CommissionManagementTab() {
           </Select>
         </FormControl>
         <TextField
-          label="Commission Value"
+          label="Default instructor share (%)"
           fullWidth
           type="number"
-          value={commissionValue}
-          onChange={(e) => setCommissionValue(e.target.value)}
-          inputProps={commissionType === "percentage" ? { min: 0, max: 100 } : { min: 0 }}
+          value={defaultInstructorRateDisplay}
+          onChange={(e) => setDefaultInstructorRateDisplay(e.target.value)}
+          inputProps={{ min: 0, max: 100 }}
+          helperText="Instructor gets this % by default; admin gets the remainder. Used when an instructor has no custom commission set."
           sx={{
             "& .MuiInputBase-input": {
-              padding: "14px !important", // override the shorthand directly
+              padding: "14px !important",
+            },
+          }}
+        />
+        <TextField
+          label={commissionType === "percentage" ? "Admin commission (%)" : "Commission Value"}
+          fullWidth
+          type="number"
+          value={commissionType === "percentage" ? String(adminCommissionDisplay) : commissionValue}
+          onChange={(e) => setCommissionValue(e.target.value)}
+          inputProps={commissionType === "percentage" ? { min: 0, max: 100 } : { min: 0 }}
+          disabled={commissionType === "percentage"}
+          helperText={commissionType === "percentage" ? "Set automatically from default instructor share (100% − instructor %)." : undefined}
+          sx={{
+            "& .MuiInputBase-input": {
+              padding: "14px !important",
             },
           }}
         />

@@ -21,6 +21,7 @@ async function getPlatformCommissionForSplit() {
   const pc = admin?.platformCommission || {};
   return {
     defaultRate: pc.defaultRate ?? 20,
+    defaultInstructorRate: pc.defaultInstructorRate ?? null,
     defaultType: pc.defaultType ?? "percentage",
     defaultFixedAmount: pc.defaultFixedAmount ?? 0,
   };

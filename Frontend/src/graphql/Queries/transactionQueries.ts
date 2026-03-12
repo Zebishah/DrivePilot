@@ -163,6 +163,7 @@ export const GET_PLATFORM_COMMISSION_SETTINGS = gql`
   query GetPlatformCommissionSettings {
     getPlatformCommissionSettings {
       defaultRate
+      defaultInstructorRate
       defaultType
       defaultFixedAmount
       minFare
@@ -176,6 +177,7 @@ export const UPDATE_PLATFORM_COMMISSION_SETTINGS = gql`
   mutation UpdatePlatformCommissionSettings($input: UpdatePlatformCommissionInput!) {
     updatePlatformCommissionSettings(input: $input) {
       defaultRate
+      defaultInstructorRate
       defaultType
       defaultFixedAmount
       minFare

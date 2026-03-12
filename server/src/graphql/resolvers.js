@@ -263,6 +263,9 @@ const resolvers = {
               studentCount: studentIds.size,
               reviewRating, // ⬅️ Average rating here
               reviewsCount,
+              commission: {
+                instructorRate: instructor.commission?.instructorRate ?? null,
+              },
             };
           }),
         );
@@ -355,13 +358,17 @@ const resolvers = {
     getStripeExpressDashboardUrl: async (_, __, { user }) => {
       if (!user) throw new AuthenticationError("Not authenticated");
       if (user.role !== "Instructor") {
-        throw new ForbiddenError("Only instructors can open the Stripe Express dashboard");
+        throw new ForbiddenError(
+          "Only instructors can open the Stripe Express dashboard",
+        );
       }
       const instructor = await Instructor.findById(user.id);
       if (!instructor) throw new UserInputError("Instructor not found");
       const accountId = instructor.stripeAccount?.accountId;
       if (!accountId) {
-        throw new UserInputError("No Stripe account linked. Connect with Stripe first.");
+        throw new UserInputError(
+          "No Stripe account linked. Connect with Stripe first.",
+        );
       }
       try {
         const { url } = await createLoginLink(accountId);
@@ -369,7 +376,8 @@ const resolvers = {
       } catch (err) {
         console.error("getStripeExpressDashboardUrl error:", err);
         throw new UserInputError(
-          err.message || "Could not open Stripe dashboard. Try again in a moment.",
+          err.message ||
+            "Could not open Stripe dashboard. Try again in a moment.",
         );
       }
     },
@@ -1487,6 +1495,29 @@ instead.`);
           err.message || "Failed to regenerate Stripe link",
         );
       }
+    },
+
+    updateInstructorCommission: async (
+      _,
+      { instructorId, input },
+      { user },
+    ) => {
+      if (!user) throw new AuthenticationError("Not authenticated");
+      if (user.role !== "Admin") {
+        throw new ForbiddenError(
+          "Only admins can update instructor commission",
+        );
+      }
+      const instructor = await Instructor.findById(instructorId);
+      if (!instructor) throw new UserInputError("Instructor not found");
+      if (!instructor.commission) instructor.commission = {};
+      instructor.commission.instructorRate =
+        input.instructorRate !== undefined && input.instructorRate !== null
+          ? input.instructorRate
+          : null;
+      instructor.commission.lastModifiedAt = new Date();
+      await instructor.save();
+      return instructor;
     },
   },
 };

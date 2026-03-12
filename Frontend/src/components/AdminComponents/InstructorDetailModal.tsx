@@ -17,6 +17,7 @@ import {
 import { useMutation, gql } from "@apollo/client";
 import toast from "react-hot-toast";
 import { StarRating } from "../StudentComponents/ReviewTab/RatingComponent";
+import { UPDATE_INSTRUCTOR_COMMISSION } from "../../graphql/Queries/InstructorProfiles";
 
 // Simple date formatter
 const formatDate = (dateString) => {
@@ -46,6 +47,7 @@ interface Instructor {
   carName?: string;
   transmissionType?: string;
   languagePreference?: string[];
+  commission?: { instructorRate?: number | null } | null;
   documents: Array<{
     _id: string;
     documentType: string;
@@ -202,6 +204,26 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
   onClose,
   refetchInstructors,
 }) => {
+  const [instructorRateDisplay, setInstructorRateDisplay] = useState<string>(
+    instructor?.commission?.instructorRate != null ? String(instructor.commission.instructorRate) : "",
+  );
+  React.useEffect(() => {
+    setInstructorRateDisplay(
+      instructor?.commission?.instructorRate != null ? String(instructor.commission.instructorRate) : "",
+    );
+  }, [instructor?.commission?.instructorRate]);
+
+  const [updateCommission, { loading: updatingCommission }] = useMutation(
+    UPDATE_INSTRUCTOR_COMMISSION,
+    {
+      onCompleted: () => {
+        if (refetchInstructors) refetchInstructors();
+        toast.success("Commission updated");
+      },
+      onError: (err) => toast.error(err.message || "Failed to update commission"),
+    },
+  );
+
   const [updateStatus, { loading: updating }] = useMutation(
     UPDATE_INSTRUCTOR_VERIFICATION_STATUS,
     {
@@ -456,6 +478,69 @@ export const InstructorDetailModal: React.FC<InstructorDetailModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Commission override */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+              Commission override
+            </h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Set a custom instructor share (%) for this instructor. Leave empty or use &quot;Use platform default&quot; to apply the default from Commission Management.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={instructorRateDisplay}
+                onChange={(e) => setInstructorRateDisplay(e.target.value)}
+                placeholder="e.g. 60"
+                className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <span className="text-sm text-gray-600">% to instructor</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setInstructorRateDisplay("");
+                  updateCommission({
+                    variables: {
+                      instructorId: instructor.id || instructor._id,
+                      input: { instructorRate: null },
+                    },
+                  });
+                }}
+                disabled={updatingCommission}
+                className="text-sm px-3 py-1.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Use platform default
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const val = parseFloat(instructorRateDisplay);
+                  if (!Number.isFinite(val) || val < 0 || val > 100) {
+                    toast.error("Enter a number between 0 and 100");
+                    return;
+                  }
+                  updateCommission({
+                    variables: {
+                      instructorId: instructor.id || instructor._id,
+                      input: { instructorRate: val },
+                    },
+                  });
+                }}
+                disabled={updatingCommission}
+                className="text-sm px-4 py-1.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {updatingCommission ? "Saving..." : "Save commission"}
+              </button>
+            </div>
+            {instructor?.commission?.instructorRate != null && (
+              <p className="text-xs text-gray-500 mt-2">
+                Current: {instructor.commission.instructorRate}% to instructor (custom)
+              </p>
+            )}
+          </div>
 
           {/* Registration Date */}
           <div className="text-sm text-gray-500 pt-4 border-t border-gray-200">
