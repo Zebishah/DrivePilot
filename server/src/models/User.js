@@ -267,6 +267,9 @@ const InstructorSchema = new mongoose.Schema({
       default: 20, // percent
     },
 
+    /** Per-instructor override: instructor share % (0–100). When set, this instructor gets this % and admin gets the rest. */
+    instructorRate: { type: Number, default: null },
+
     type: {
       type: String,
       enum: ["percentage", "fixed"],
@@ -317,6 +320,8 @@ const AdminSchema = new mongoose.Schema({
   // Platform-wide commission settings
   platformCommission: {
     defaultRate: { type: Number, default: 20 },
+    /** When set, platform default = instructor gets this %; admin gets the rest. When null, defaultRate = admin %. */
+    defaultInstructorRate: { type: Number, default: null },
     canModifyRates: { type: Boolean, default: true },
     defaultType: {
       type: String,

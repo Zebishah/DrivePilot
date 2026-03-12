@@ -147,36 +147,88 @@ const DEFAULT_CURRENCY = "chf";
 const CENTIMES_PER_UNIT = 100; // 1 CHF = 100 centimes for Stripe
 
 /**
- * Get commission split for a given amount (in CHF). Uses instructor commission if set, else platform defaults.
+ * Get commission split for a given amount (in CHF). Per-instructor override (instructorRate) wins; then platform defaultInstructorRate or defaultRate.
  * @param {number} amountChf - Total amount in CHF
- * @param {{ commission?: { rate?: number, type?: string, fixedAmount?: number } }} instructor - Instructor doc
- * @param {{ defaultRate?: number, defaultType?: string, defaultFixedAmount?: number }} [platformSettings] - From Admin.platformCommission
+ * @param {{ commission?: { instructorRate?: number, type?: string, fixedAmount?: number } }} instructor - Instructor doc
+ * @param {{ defaultRate?: number, defaultInstructorRate?: number, defaultType?: string, defaultFixedAmount?: number }} [platformSettings] - From Admin.platformCommission
  * @returns {{ dspCommission: number, instructorAmount: number }}
  */
 function getCommissionSplit(amountChf, instructor, platformSettings = {}) {
   const defRate = platformSettings.defaultRate ?? 20;
+  const defInstructorRate = platformSettings.defaultInstructorRate;
   const defType = platformSettings.defaultType ?? "percentage";
   const defFixed = platformSettings.defaultFixedAmount ?? 0;
 
-  // Use platform Commission Management (Admin.platformCommission) as source of truth.
-  // So when admin sets 40% in Commission Management, admin gets 40%, instructor 60%.
-  // Instructor commission is only used for explicit per-instructor overrides (fixed amount or custom rate).
   let dspCommission;
+  let instructorAmount;
   const inc = instructor?.commission;
+
+  // 1) Per-instructor percentage override: instructor gets instructorRate %, admin gets the rest
+  const instructorRate = inc?.instructorRate;
+  if (
+    instructorRate != null &&
+    Number.isFinite(instructorRate) &&
+    instructorRate >= 0 &&
+    instructorRate <= 100
+  ) {
+    instructorAmount =
+      Math.round(amountChf * (instructorRate / 100) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+    dspCommission =
+      Math.round((amountChf - instructorAmount) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+    return {
+      dspCommission:
+        Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
+      instructorAmount:
+        Math.round(instructorAmount * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
+    };
+  }
+
+  // 2) Per-instructor fixed amount (existing)
   if (inc?.type === "amount" || inc?.type === "fixed") {
     const fixed = Number(inc.fixedAmount ?? 0);
     dspCommission = Math.min(fixed, amountChf);
-  } else if (defType === "amount") {
+    instructorAmount =
+      Math.round((amountChf - dspCommission) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+    return {
+      dspCommission:
+        Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
+      instructorAmount,
+    };
+  }
+
+  // 3) Platform default
+  if (defType === "amount") {
     dspCommission = Math.min(defFixed, amountChf);
-  } else {
-    const rate = defRate;
+  } else if (
+    defInstructorRate != null &&
+    Number.isFinite(defInstructorRate) &&
+    defInstructorRate >= 0 &&
+    defInstructorRate <= 100
+  ) {
+    instructorAmount =
+      Math.round(amountChf * (defInstructorRate / 100) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
     dspCommission =
-      Math.round(amountChf * (rate / 100) * CENTIMES_PER_UNIT) /
+      Math.round((amountChf - instructorAmount) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+    return {
+      dspCommission:
+        Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
+      instructorAmount:
+        Math.round(instructorAmount * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
+    };
+  } else {
+    dspCommission =
+      Math.round(amountChf * (defRate / 100) * CENTIMES_PER_UNIT) /
+      CENTIMES_PER_UNIT;
+    instructorAmount =
+      Math.round((amountChf - dspCommission) * CENTIMES_PER_UNIT) /
       CENTIMES_PER_UNIT;
   }
-  const instructorAmount =
-    Math.round((amountChf - dspCommission) * CENTIMES_PER_UNIT) /
-    CENTIMES_PER_UNIT;
+
   return {
     dspCommission:
       Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,

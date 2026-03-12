@@ -56,6 +56,9 @@ export const GET_ALL_INSTRUCTORS_DETAILS = gql`
       createdAt
       verificationStatus
       updatedAt
+      commission {
+        instructorRate
+      }
       documents {
         _id
         documentType
@@ -63,6 +66,17 @@ export const GET_ALL_INSTRUCTORS_DETAILS = gql`
         status
         createdAt
         reSubmitted
+      }
+    }
+  }
+`;
+
+export const UPDATE_INSTRUCTOR_COMMISSION = gql`
+  mutation UpdateInstructorCommission($instructorId: ID!, $input: UpdateInstructorCommissionInput!) {
+    updateInstructorCommission(instructorId: $instructorId, input: $input) {
+      id
+      commission {
+        instructorRate
       }
     }
   }

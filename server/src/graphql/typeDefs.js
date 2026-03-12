@@ -102,6 +102,9 @@ const typeDefs = gql`
     documents: [DocumentInput!]! # Required array
   }
 
+  type InstructorCommission {
+    instructorRate: Float
+  }
   type Instructor implements User {
     id: ID!
     firstName: String!
@@ -128,6 +131,7 @@ const typeDefs = gql`
     gender: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    commission: InstructorCommission
   }
   type InstructorWithDetails implements User {
     id: ID!
@@ -159,6 +163,7 @@ const typeDefs = gql`
     gender: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    commission: InstructorCommission
   }
   type Admin implements User {
     id: ID!
@@ -467,6 +472,13 @@ const typeDefs = gql`
     verifyStripeOnboarding: VerifyStripeOnboardingPayload!
     regenerateStripeLink: RegenerateStripeLinkPayload!
     setInstructorPayoutToManual(instructorId: ID!): SetPayoutSchedulePayload!
+    updateInstructorCommission(
+      instructorId: ID!
+      input: UpdateInstructorCommissionInput!
+    ): Instructor!
+  }
+  input UpdateInstructorCommissionInput {
+    instructorRate: Float
   }
 `;
 

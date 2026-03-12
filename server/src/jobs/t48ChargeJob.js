@@ -45,7 +45,7 @@ async function runT48ChargeJob() {
     "slots.paymentStatus": "pending_payment",
     "paymentMethod.paymentMethodId": { $exists: true, $ne: null },
   })
-    .populate("instructorId", "stripeAccount commission firstName lastName")
+    .populate("instructorId", "stripeAccount firstName lastName commission")
     .populate("studentId", "_id")
     .lean();
 
@@ -83,7 +83,10 @@ async function runT48ChargeJob() {
       // Do not charge cancelled slots (e.g. student cancelled before T-48)
       if (slot.status === "cancelled" || slot.booked === false) continue;
 
-      const slotStartUtcMs = getSlotStartTimestampUtc(slot.date, slot.startTime);
+      const slotStartUtcMs = getSlotStartTimestampUtc(
+        slot.date,
+        slot.startTime,
+      );
       if (!Number.isFinite(slotStartUtcMs)) {
         console.warn(
           `[T48ChargeJob] Slot ${slot._id} (${slot.date} ${slot.startTime}): invalid slot start time; skipping.`,

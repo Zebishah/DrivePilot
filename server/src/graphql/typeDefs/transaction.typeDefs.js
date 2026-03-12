@@ -113,6 +113,7 @@ const transactionTypeDefs = gql`
 
   type PlatformCommissionSettings {
     defaultRate: Float!
+    defaultInstructorRate: Float
     defaultType: String!
     defaultFixedAmount: Float!
     minFare: Float
@@ -122,6 +123,7 @@ const transactionTypeDefs = gql`
 
   input UpdatePlatformCommissionInput {
     defaultRate: Float
+    defaultInstructorRate: Float
     defaultType: String
     defaultFixedAmount: Float
     minFare: Float

@@ -443,6 +443,7 @@ const transactionResolver = {
       const pc = admin?.platformCommission || {};
       return {
         defaultRate: pc.defaultRate ?? 20,
+        defaultInstructorRate: pc.defaultInstructorRate ?? null,
         defaultType: pc.defaultType ?? "percentage",
         defaultFixedAmount: pc.defaultFixedAmount ?? 0,
         minFare: pc.minFare ?? null,
@@ -462,6 +463,8 @@ const transactionResolver = {
       if (!admin) throw new ForbiddenError("No admin found");
       const pc = admin.platformCommission || {};
       if (input.defaultRate != null) pc.defaultRate = input.defaultRate;
+      if (input.defaultInstructorRate !== undefined)
+        pc.defaultInstructorRate = input.defaultInstructorRate;
       if (input.defaultType != null) pc.defaultType = input.defaultType;
       if (input.defaultFixedAmount != null)
         pc.defaultFixedAmount = input.defaultFixedAmount;
@@ -471,6 +474,7 @@ const transactionResolver = {
       await admin.save();
       return {
         defaultRate: pc.defaultRate ?? 20,
+        defaultInstructorRate: pc.defaultInstructorRate ?? null,
         defaultType: pc.defaultType ?? "percentage",
         defaultFixedAmount: pc.defaultFixedAmount ?? 0,
         minFare: pc.minFare ?? null,
