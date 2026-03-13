@@ -7,6 +7,7 @@ export interface InstructorAnalytics {
   activeBookingsCount: number;
   totalEarnings: number;
   lastBooking: StudentBookingNew | null;
+  recentBookings: StudentBookingNew[];
   averageLessonsPerStudent: number;
   cancellationRate: number;
   attendanceRate: number;

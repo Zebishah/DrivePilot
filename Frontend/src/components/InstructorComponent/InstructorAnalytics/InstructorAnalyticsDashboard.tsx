@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Users, Calendar, DollarSign, Award } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { LastTrainedStudent } from "./LastTrainedStudent";
@@ -26,9 +26,36 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
         status
         createdAt
         studentId {
+          _id
           firstName
           lastName
           email
+          profileImage
+        }
+        instructorId {
+          firstName
+          lastName
+          email
+        }
+        slots {
+          date
+          startTime
+          endTime
+          status
+        }
+        studentTotalLessons
+        studentLocation
+      }
+      recentBookings {
+        _id
+        status
+        createdAt
+        studentId {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
         }
         instructorId {
           firstName
@@ -62,13 +89,40 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
     fetchPolicy: "no-cache",
   });
 
+  const recentBookings = (data?.getInstructorAnalytics as InstructorAnalytics)
+    ?.recentBookings ?? [];
+
+  const [currentRecentIndex, setCurrentRecentIndex] = useState(0);
+  const clampedIndex =
+    recentBookings.length > 0
+      ? Math.min(Math.max(0, currentRecentIndex), recentBookings.length - 1)
+      : 0;
+  const currentBooking = useMemo(
+    () => recentBookings[clampedIndex] ?? null,
+    [recentBookings, clampedIndex]
+  );
+
   useEffect(() => {
     if (user?.id) refetch();
   }, [user, refetch]);
 
+  useEffect(() => {
+    setCurrentRecentIndex(0);
+  }, [recentBookings.length]);
+
+  const handleNextRecent = () => {
+    if (recentBookings.length <= 1) return;
+    setCurrentRecentIndex((i) => (i + 1) % recentBookings.length);
+  };
+  const handleSelectRecentIndex = (index: number) => {
+    setCurrentRecentIndex(index);
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error) return <p>Error: {error.message}</p>;
+
   const analytics = data?.getInstructorAnalytics as InstructorAnalytics;
+
   return (
     <div className=" bg-gray-50 p-6 w-full ">
       <div className=" w-full space-y-6 ">
@@ -112,18 +166,22 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             </div>
           </div>
           <LastTrainedStudent
-            student={analytics.lastBooking?.studentId || null}
-            totalLessons={analytics.lastBooking?.studentTotalLessons || 0}
+            student={currentBooking?.studentId ?? null}
+            totalLessons={currentBooking?.studentTotalLessons ?? 0}
             joiningDate={
-              analytics.lastBooking?.createdAt
+              currentBooking?.createdAt
                 ? new Date(
-                    Number(analytics.lastBooking.createdAt)
+                    Number(currentBooking.createdAt)
                   ).toLocaleDateString()
                 : ""
             }
             satisfaction={100}
-            completionDate={analytics.lastBooking?.slots[0]?.date}
-            studentLocation={analytics.lastBooking?.studentLocation}
+            completionDate={currentBooking?.slots?.[0]?.date}
+            studentLocation={currentBooking?.studentLocation ?? null}
+            recentCount={recentBookings.length}
+            currentIndex={clampedIndex}
+            onNext={handleNextRecent}
+            onSelectIndex={handleSelectRecentIndex}
           />
         </div>
 

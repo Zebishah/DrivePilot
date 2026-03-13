@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import ChatList from "../../../../components/Chat/ChatList";
 import ChatWindow from "../../../../components/Chat/ChatWindow";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,20 +14,39 @@ import { UserType } from "../../../../types/chatTypes";
 
 const InstructorChatPage: React.FC = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const { user } = useAuth();
   const { conversations, selectedConversation } = useSelector(
     (state: RootState) => state.chat
   );
 
+  const studentIdFromState = (location.state as { studentId?: string } | null)
+    ?.studentId;
+
   useEffect(() => {
-    if (conversations.length > 0 && !selectedConversation) {
+    if (conversations.length > 0 && studentIdFromState) {
+      const withStudent = conversations.find(
+        (c) => c.user._id === studentIdFromState
+      );
+      if (withStudent) {
+        dispatch(selectConversation(withStudent));
+      }
+    }
+  }, [conversations, studentIdFromState, dispatch]);
+
+  useEffect(() => {
+    if (
+      conversations.length > 0 &&
+      !selectedConversation &&
+      !studentIdFromState
+    ) {
       const mostRecentConversation = conversations[0];
       dispatch(selectConversation(mostRecentConversation));
     }
     // Clear unread messages when entering chat page
     dispatch(clearUnreadMessages());
     localStorage.setItem("unreadMessages", "false");
-  }, [conversations, selectedConversation, dispatch]);
+  }, [conversations, selectedConversation, studentIdFromState, dispatch]);
 
   useEffect(() => {
     return () => {

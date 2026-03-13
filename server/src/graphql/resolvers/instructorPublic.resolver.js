@@ -299,6 +299,7 @@ const instructorResolver = {
           activeBookings: 0,
           totalEarnings: 0,
           lastBooking: null,
+          recentBookings: [],
           averageLessonsPerStudent: 0,
           cancellationRate: 0,
           attendanceRate: 0,
@@ -359,26 +360,38 @@ const instructorResolver = {
           booking: b,
         })),
       );
-      const lastSlot =
-        allSlotsWithBooking.sort(
-          (a, b) =>
-            new Date(`${b.date}T${b.endTime}:00`).getTime() -
-            new Date(`${a.date}T${a.endTime}:00`).getTime(),
-        )[0] || null;
 
-      let lastBooking = null;
+      // Recent bookings: one entry per student (their most recent attended slot), sorted by that slot descending, max 10
+      const byStudentId = new Map();
+      for (const item of allSlotsWithBooking) {
+        const sid = item.booking.studentId?._id?.toString();
+        if (!sid) continue;
+        const existing = byStudentId.get(sid);
+        const itemTime = new Date(`${item.date}T${item.endTime}:00`).getTime();
+        if (
+          !existing ||
+          new Date(`${existing.date}T${existing.endTime}:00`).getTime() <
+            itemTime
+        ) {
+          byStudentId.set(sid, item);
+        }
+      }
+      const sortedByRecent = [...byStudentId.values()].sort(
+        (a, b) =>
+          new Date(`${b.date}T${b.endTime}:00`).getTime() -
+          new Date(`${a.date}T${a.endTime}:00`).getTime(),
+      );
+      const MAX_RECENT = 10;
+      const recentSlots = sortedByRecent.slice(0, MAX_RECENT);
 
-      if (lastSlot) {
+      const buildBookingFromSlot = (lastSlot) => {
         const lastStudent = lastSlot.booking.studentId;
-
-        // Count attended lessons by this student with this instructor
         const studentTotalLessons = bookings.reduce((sum, b) => {
           if (b.studentId?._id?.toString() !== lastStudent?._id?.toString())
             return sum;
           return sum + b.slots.filter(isActiveSlot).length;
         }, 0);
-
-        lastBooking = {
+        return {
           _id: lastSlot.booking._id,
           studentId: lastStudent,
           instructorId: lastSlot.booking.instructorId,
@@ -391,7 +404,10 @@ const instructorResolver = {
           studentTotalLessons,
           studentLocation: lastStudent?.location || null,
         };
-      }
+      };
+
+      const recentBookings = recentSlots.map(buildBookingFromSlot);
+      const lastBooking = recentBookings[0] || null;
 
       // Total lessons = active slots only (booked, not cancelled/refund)
       const totalLessons = bookings.reduce(
@@ -428,6 +444,7 @@ const instructorResolver = {
         activeBookings,
         totalEarnings,
         lastBooking,
+        recentBookings,
         averageLessonsPerStudent,
         cancellationRate,
         attendanceRate,

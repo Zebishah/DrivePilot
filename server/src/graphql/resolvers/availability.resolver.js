@@ -86,24 +86,47 @@ const resolvers = {
           }
         }
 
-        // 3️⃣ Validate start/end time
-        const startHour = parseInt(newStart.split(":")[0], 10);
-        const endHour = parseInt(newEnd.split(":")[0], 10);
-        if (startHour >= endHour) {
+        // 3️⃣ Validate start/end time using minutes (support custom minutes like 10:15)
+        const [startHour, startMinute] = newStart.split(":").map((v) => parseInt(v, 10));
+        const [endHour, endMinute] = newEnd.split(":").map((v) => parseInt(v, 10));
+
+        const startTotalMinutes = startHour * 60 + (startMinute || 0);
+        const endTotalMinutes = endHour * 60 + (endMinute || 0);
+
+        if (endTotalMinutes <= startTotalMinutes) {
           throw new Error("End time must be greater than start time");
         }
 
-        // 4️⃣ Generate new hourly slots
+        if (endTotalMinutes - startTotalMinutes < 60) {
+          throw new Error(
+            "Oops! Availability slots need to be at least 1 hour long. Try selecting a longer time range."
+          );
+        }
+
+        // 4️⃣ Generate new 1-hour slots, preserving the exact start minutes
         const newSlots = [];
-        for (let hour = startHour; hour < endHour; hour++) {
-          const start = `${hour.toString().padStart(2, "0")}:00`;
-          const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
+        for (
+          let currentStartMinutes = startTotalMinutes;
+          currentStartMinutes + 60 <= endTotalMinutes;
+          currentStartMinutes += 60
+        ) {
+          const currentEndMinutes = currentStartMinutes + 60;
+
+          const startH = Math.floor(currentStartMinutes / 60)
+            .toString()
+            .padStart(2, "0");
+          const startM = (currentStartMinutes % 60).toString().padStart(2, "0");
+
+          const endH = Math.floor(currentEndMinutes / 60)
+            .toString()
+            .padStart(2, "0");
+          const endM = (currentEndMinutes % 60).toString().padStart(2, "0");
 
           newSlots.push({
             id: new mongoose.Types.ObjectId().toString(),
             date: input.date,
-            startTime: start,
-            endTime: end,
+            startTime: `${startH}:${startM}`,
+            endTime: `${endH}:${endM}`,
             booked: false,
             status: "available",
           });

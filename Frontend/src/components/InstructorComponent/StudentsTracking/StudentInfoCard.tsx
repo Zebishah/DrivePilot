@@ -44,12 +44,13 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({
               <p className="text-gray-600 mt-2">{studentInfo.location}</p>
             </div>
             <div className="flex space-x-3">
-              <button
-                disabled={true}
-                className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm transition-colors"
+              <Link
+                to="/teacher-dashboard/chat"
+                state={{ studentId: studentInfo._id }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
               >
-                Message (pending)
-              </button>
+                Message
+              </Link>
               <Link
                 to={"/teacher-dashboard/feedback"}
                 className="px-4 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition-colors"

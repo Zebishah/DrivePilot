@@ -10,6 +10,10 @@ interface LastTrainedStudentProps {
   satisfaction?: number;
   completionDate?: string;
   studentLocation: string | null;
+  recentCount?: number;
+  currentIndex?: number;
+  onNext?: () => void;
+  onSelectIndex?: (index: number) => void;
 }
 
 export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
@@ -19,7 +23,15 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
   satisfaction = 100,
   completionDate,
   studentLocation,
+  recentCount = 0,
+  currentIndex = 0,
+  onNext,
+  onSelectIndex,
 }) => {
+  const showCarousel = recentCount > 1;
+  const canGoNext = showCarousel && typeof onNext === "function";
+  const canSelectDot =
+    showCarousel && typeof onSelectIndex === "function" && recentCount > 0;
   if (!student) {
     return (
       <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -76,7 +88,13 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
           </h4>
           <p className="text-gray-600 text-sm">{studentLocation}</p>
         </div>
-        <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+        <button
+          type="button"
+          onClick={canGoNext ? onNext : undefined}
+          disabled={!canGoNext}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-default disabled:hover:bg-transparent"
+          aria-label="Next student"
+        >
           <ChevronRight size={20} className="text-gray-400" />
         </button>
       </div>
@@ -106,17 +124,22 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
         </div>
       </div>
 
-      {/* Pagination dots */}
-      <div className="flex justify-center space-x-2 mt-8 ">
-        {[0, 1, 2, 3, 4].map((dot) => (
-          <button
-            key={dot}
-            className={`w-2 h-2 rounded-full ${
-              dot === 0 ? "bg-gray-400" : "bg-gray-200"
-            }`}
-          />
-        ))}
-      </div>
+      {/* Pagination dots: one per recent student, highlight current */}
+      {recentCount > 0 && (
+        <div className="flex justify-center gap-2 mt-8">
+          {Array.from({ length: recentCount }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => canSelectDot && onSelectIndex?.(i)}
+              aria-label={`Go to student ${i + 1} of ${recentCount}`}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                i === currentIndex ? "bg-gray-600 scale-110" : "bg-gray-200 hover:bg-gray-300"
+              } ${canSelectDot ? "cursor-pointer" : "cursor-default"}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
