@@ -317,12 +317,16 @@ const instructorResolver = {
       // Helper: active slot = booked, not cancelled, not refund
       const isActiveSlot = (s) =>
         s.booked && s.status !== "cancelled" && s.status !== "refund";
-      // Attended = completed by status OR slot end time passed
-      const isAttendedSlot = (s) => {
+      // Completed lesson for earnings & counts:
+      // - non-cancelled/refund
+      // - AND either explicitly marked completed OR its end time is in the past
+      const isCompletedLessonSlot = (s) => {
         if (!isActiveSlot(s)) return false;
         const slotEnd = new Date(`${s.date}T${s.endTime}:00`);
         return s.status === "completed" || slotEnd <= now;
       };
+      // Attended uses the same definition as completed lessons here
+      const isAttendedSlot = isCompletedLessonSlot;
       // Upcoming/active booking = active slot not yet completed
       const isUpcomingSlot = (s) => {
         if (!isActiveSlot(s)) return false;
@@ -335,26 +339,32 @@ const instructorResolver = {
         return count + booking.slots.filter(isUpcomingSlot).length;
       }, 0);
 
-      // Total earnings (net, after DSP commission): sum instructorAmount for attended slots; fallback to gross per-slot for legacy slots without instructorAmount
+      // Total earnings (net, after DSP commission): sum instructorAmount for
+      // completed lessons (including past-dated ones not manually marked),
+      // fallback to gross per-slot for legacy slots without instructorAmount
       const totalEarnings = bookings.reduce((sum, booking) => {
-        const activeInBooking = booking.slots.filter(isActiveSlot).length;
-        if (activeInBooking === 0) return sum;
-        const perSlotGross = (booking.finalAmount || 0) / activeInBooking;
+        const completedInBooking = booking.slots.filter(
+          isCompletedLessonSlot,
+        ).length;
+        if (completedInBooking === 0) return sum;
+        const perSlotGross = (booking.finalAmount || 0) / completedInBooking;
         return (
           sum +
-          booking.slots.filter(isAttendedSlot).reduce((slotSum, slot) => {
-            const net =
-              slot.instructorAmount != null && slot.instructorAmount >= 0
-                ? slot.instructorAmount
-                : perSlotGross;
-            return slotSum + net;
-          }, 0)
+          booking.slots
+            .filter(isCompletedLessonSlot)
+            .reduce((slotSum, slot) => {
+              const net =
+                slot.instructorAmount != null && slot.instructorAmount >= 0
+                  ? slot.instructorAmount
+                  : perSlotGross;
+              return slotSum + net;
+            }, 0)
         );
       }, 0);
 
-      // Last booking = most recent attended slot (by slot end date/time)
+      // Last booking = most recent completed lesson (by slot end date/time)
       const allSlotsWithBooking = bookings.flatMap((b) =>
-        b.slots.filter(isAttendedSlot).map((s) => ({
+        b.slots.filter(isCompletedLessonSlot).map((s) => ({
           ...(s.toObject?.() || s),
           slotId: s._id,
           booking: b,
@@ -383,6 +393,8 @@ const instructorResolver = {
       );
       const MAX_RECENT = 10;
       const recentSlots = sortedByRecent.slice(0, MAX_RECENT);
+      const lastLessonDate =
+        sortedByRecent.length > 0 ? sortedByRecent[0].date : null;
 
       const buildBookingFromSlot = (lastSlot) => {
         const lastStudent = lastSlot.booking.studentId;
@@ -419,25 +431,29 @@ const instructorResolver = {
         ? totalLessons / totalStudents
         : 0;
 
+      const attendedLessons = bookings.reduce(
+        (sum, b) => sum + b.slots.filter(isCompletedLessonSlot).length,
+        0,
+      );
+
       const cancelledLessons = bookings.reduce(
         (sum, b) =>
           sum + b.slots.filter((s) => s.status === "cancelled").length,
         0,
       );
 
-      const totalSlotsForCancellation = totalLessons + cancelledLessons;
-      const cancellationRate = totalSlotsForCancellation
-        ? (cancelledLessons / totalSlotsForCancellation) * 100
+      // Total booked lessons = attended + cancelled (we currently don't model other end states)
+      const totalBookedLessons = attendedLessons + cancelledLessons;
+
+      const attendanceRate = totalBookedLessons
+        ? (attendedLessons / totalBookedLessons) * 100
         : 0;
 
-      const attendedLessons = bookings.reduce(
-        (sum, b) => sum + b.slots.filter(isAttendedSlot).length,
-        0,
-      );
-
-      const attendanceRate = totalLessons
-        ? (attendedLessons / totalLessons) * 100
+      const cancellationRate = totalBookedLessons
+        ? (cancelledLessons / totalBookedLessons) * 100
         : 0;
+
+      const totalLessonsGiven = attendedLessons;
 
       return {
         totalStudents,
@@ -446,8 +462,10 @@ const instructorResolver = {
         lastBooking,
         recentBookings,
         averageLessonsPerStudent,
+        totalLessonsGiven,
         cancellationRate,
         attendanceRate,
+        lastLessonDate,
         instructor: await User.Instructor.findById(instructorId),
       };
     },

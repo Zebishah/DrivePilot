@@ -129,6 +129,8 @@ const instructorTypeDefs = gql`
     averageLessonsPerStudent: Float!
     cancellationRate: Float!
     attendanceRate: Float!
+    totalLessonsGiven: Int
+    lastLessonDate: String
     instructor: Instructor!
   }
 

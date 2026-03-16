@@ -241,6 +241,7 @@ const studentBookingResolver = {
 
       const now = new Date();
 
+      // These stats should reflect only actually completed lessons
       let totalLessonCount = 0;
       let totalDurationMinutes = 0;
       const graphMap = new Map();
@@ -278,17 +279,6 @@ const studentBookingResolver = {
           return slot.status !== "completed" && slotEnd > now;
         });
 
-        // Stats and graph: count only active slots
-        for (const slot of activeSlots) {
-          totalLessonCount += 1;
-          const start = new Date(`${slot.date}T${slot.startTime}:00`);
-          const end = new Date(`${slot.date}T${slot.endTime}:00`);
-          const duration = (end - start) / (1000 * 60);
-          totalDurationMinutes += duration;
-          const count = graphMap.get(slot.date) || 0;
-          graphMap.set(slot.date, count + 1);
-        }
-
         if (completedSlots.length > 0) {
           completedBookings.push({
             ...finalBookingBase,
@@ -300,6 +290,18 @@ const studentBookingResolver = {
             ...finalBookingBase,
             slots: inProgressSlots,
           });
+        }
+
+        // Stats and graph: count only completed slots so numbers
+        // clearly reflect actually completed lessons
+        for (const slot of completedSlots) {
+          totalLessonCount += 1;
+          const start = new Date(`${slot.date}T${slot.startTime}:00`);
+          const end = new Date(`${slot.date}T${slot.endTime}:00`);
+          const duration = (end - start) / (1000 * 60);
+          totalDurationMinutes += duration;
+          const count = graphMap.get(slot.date) || 0;
+          graphMap.set(slot.date, count + 1);
         }
       }
 

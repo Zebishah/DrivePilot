@@ -62,7 +62,7 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({
         </div>
         <div className="text-right">
           <div className="flex gap-3 items-center mb-1">
-            <div className="text-sm text-gray-500">Total Lessons :</div>
+            <div className="text-sm text-gray-500">Completed Lessons :</div>
             <div className="text-lg font-semibold text-gray-900">
               {lessonStats.totalLessons} Lessons
             </div>

@@ -255,7 +255,7 @@ export const GET_COMPLETED_STUDENT_BOOKINGS = gql`
         profileImage
       }
       slots {
-        id
+        _id
         date
         startTime
         endTime

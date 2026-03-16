@@ -7,6 +7,7 @@ interface ProgressMetricProps {
   value: string;
   color: "green" | "red" | "teal" | string; // allow hex values too
   badge?: string;
+  showProgressBar?: boolean;
 }
 
 export const ProgressMetric: React.FC<ProgressMetricProps> = ({
@@ -16,6 +17,7 @@ export const ProgressMetric: React.FC<ProgressMetricProps> = ({
   value,
   color,
   badge,
+  showProgressBar = true,
 }) => {
   const getColorClasses = (color: string) => {
     // ✅ Case 1: Hex color
@@ -98,24 +100,26 @@ export const ProgressMetric: React.FC<ProgressMetricProps> = ({
           >
             {value}
           </span>
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
               <span className="text-xs font-bold text-gray-600">C</span>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full ${colors.bg} transition-all duration-500`}
-          style={{
-            ...colors.style,
-            width: `${Math.min(percentage, 100)}%`,
-          }}
-        ></div>
-      </div>
+      {showProgressBar && (
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full ${colors.bg} transition-all duration-500`}
+            style={{
+              ...colors.style,
+              width: `${Math.min(percentage, 100)}%`,
+            }}
+          ></div>
+        </div>
+      )}
     </div>
   );
 };

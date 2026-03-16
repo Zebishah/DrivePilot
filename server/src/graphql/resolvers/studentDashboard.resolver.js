@@ -53,14 +53,12 @@ const studentDashboardResolver = {
         instructorSet.add(booking.instructorId.toString());
       }
 
-      // Use lessonHoursLeft from student when it has a value; otherwise compute from slots
+      // Remaining hours is a manual pedagogical estimate set by the instructor.
+      // Do NOT auto-calculate from upcoming lessons; just surface the stored value.
       const lessonHoursLeft = student?.lessonHoursLeft;
-      const hasLessonHoursLeft =
-        lessonHoursLeft != null && String(lessonHoursLeft).trim() !== "";
-      const remainingHours = hasLessonHoursLeft
-        ? String(lessonHoursLeft)
-        : upcomingLessonHours > 0
-          ? String(Math.round(upcomingLessonHours * 10) / 10)
+      const remainingHours =
+        lessonHoursLeft != null && String(lessonHoursLeft).trim() !== ""
+          ? String(lessonHoursLeft)
           : "0";
 
       return {

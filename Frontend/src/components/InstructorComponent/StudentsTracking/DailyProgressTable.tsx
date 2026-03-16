@@ -1,6 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Booking } from "../../../types/Student";
+import { useMutation } from "@apollo/client";
+import { CANCEL_BOOKING } from "../../../graphql/mutations/studentBooking";
+import { toast } from "react-hot-toast";
+import ConfirmationModal from "../../AdminComponents/ConfirmationModal";
 
 interface DailyProgressTableProps {
   completedBookings: Booking[];
@@ -15,6 +19,42 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
   selectedTab,
   setSelectedTab,
 }) => {
+  const [cancelBookingSlot, { loading: cancelling }] = useMutation(CANCEL_BOOKING);
+  const [cancelTarget, setCancelTarget] = useState<{
+    bookingId: string;
+    slotId: string;
+  } | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
+  const handleCancel = async (bookingId: string, slotId: string) => {
+    try {
+      await cancelBookingSlot({
+        variables: { bookingId, slotId },
+        awaitRefetchQueries: true,
+        refetchQueries: ["GetStudentDashboardDetails"],
+      });
+      toast.success("Lesson cancelled successfully.");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to cancel lesson.";
+      toast.error(message);
+    }
+  };
+  const openCancelModal = (bookingId: string, slotId: string) => {
+    setCancelTarget({ bookingId, slotId });
+    setIsCancelModalOpen(true);
+  };
+
+  const closeCancelModal = () => {
+    setIsCancelModalOpen(false);
+    setCancelTarget(null);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    await handleCancel(cancelTarget.bookingId, cancelTarget.slotId);
+    closeCancelModal();
+  };
   const totalCompletedSlots = completedBookings.reduce(
     (count, booking) => count + (booking.slots?.length || 0),
     0
@@ -50,7 +90,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          In Progress ({totalUncompletedSlots})
+          Upcoming Bookings ({totalUncompletedSlots})
         </button>
       </div>
 
@@ -111,7 +151,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                       >
                         {selectedTab === "completed"
                           ? "Completed"
-                          : "In Progress"}
+                          : "Upcoming"}
                       </span>
                     </td>
 
@@ -126,12 +166,24 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                             : "View Feedback"}
                         </Link>
                       ) : (
-                        <button
-                          className="px-4 py-2 bg-gray-500 text-white rounded-md text-sm font-medium"
-                          disabled
-                        >
-                          Give Feedback
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            className="px-4 py-2 bg-gray-500 text-white rounded-md text-sm font-medium"
+                            disabled
+                          >
+                            Give Feedback
+                          </button>
+                          <button
+                            type="button"
+                            className="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 disabled:opacity-60"
+                            onClick={() =>
+                              openCancelModal(booking._id, slot._id)
+                            }
+                            disabled={cancelling}
+                          >
+                            {cancelling ? "Cancelling..." : "Cancel"}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -150,6 +202,17 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
           No {selectedTab} lessons found
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={isCancelModalOpen}
+        onClose={closeCancelModal}
+        onConfirm={confirmCancel}
+        title="Cancel upcoming lesson?"
+        message="This will cancel the selected upcoming lesson. The student will then be able to request a refund according to the platform policy."
+        confirmText={cancelling ? "Cancelling..." : "Yes, cancel lesson"}
+        cancelText="Keep lesson"
+        variant="danger"
+      />
     </div>
   );
 };

@@ -71,7 +71,9 @@ export const StudentCard: React.FC<StudentCardProps> = ({
 
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Total Lessons: {totalBookings}</span>
+          <span className="text-gray-600">
+            Completed Lessons: {totalBookings}
+          </span>
         </div>
         <div className="flex justify-between text-sm mb-2">
           <span className="text-gray-600">Remaining Hour:</span>

@@ -52,7 +52,7 @@ export const StudentHeader = ({ studentInfo, lessonStats, loading }) => {
         </div>
         <div className="text-right">
           <p className="text-sm text-gray-600">
-            Total Lessons: {lessonStats.totalLessons}
+            Completed Lessons: {lessonStats.totalLessons}
           </p>
           <p className="text-sm text-gray-600">Lesson Hours: {totalHours}hrs</p>
         </div>

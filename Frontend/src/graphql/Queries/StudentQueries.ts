@@ -122,6 +122,7 @@ export const GET_STUDENT_DASHBOARD = gql`
           profileImage
         }
         slots {
+          _id
           date
           startTime
           endTime

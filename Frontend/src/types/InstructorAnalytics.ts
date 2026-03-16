@@ -11,6 +11,8 @@ export interface InstructorAnalytics {
   averageLessonsPerStudent: number;
   cancellationRate: number;
   attendanceRate: number;
+  totalLessonsGiven?: number;
+  lastLessonDate?: string | null;
 }
 
 export interface StudentBookingNew {

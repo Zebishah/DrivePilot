@@ -588,9 +588,9 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Cancellation Date
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+              {/* <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Instructor
-              </th>
+              </th> */}
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Status
               </th>
@@ -639,12 +639,12 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                       {formatCancellationDateTime(slot.cancellationDate)}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  {/* <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
                       {booking.instructorId.firstName}{" "}
                       {booking.instructorId.lastName}
                     </div>
-                  </td>
+                  </td> */}
                   <td className="px-6 py-4">
                     <StatusDropdown
                       currentStatus={slot.status}
