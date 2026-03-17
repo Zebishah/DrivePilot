@@ -22,10 +22,15 @@ const AdminAnalyticsTypeDefs = gql`
 
   type OverallStats {
     totalRegistrations: Int
+    studentRegistrations: Int
+    instructorRegistrations: Int
     totalLessonsBooked: Int
+    upcomingLessonsBooked: Int
+    completedLessonsBooked: Int
     reviewsGiven: Int
     lessonAttendance: Int
     attendanceRate: Float
+    averageReservedHoursPerStudent: Float
   }
 
   type ActiveUserDataPoint {

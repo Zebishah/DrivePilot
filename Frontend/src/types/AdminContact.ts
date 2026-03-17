@@ -52,10 +52,15 @@ export interface AnalyticsFilterInput {
 
 export interface OverallStats {
   totalRegistrations: number;
+  studentRegistrations?: number;
+  instructorRegistrations?: number;
   totalLessonsBooked: number;
+  upcomingLessonsBooked?: number;
+  completedLessonsBooked?: number;
   reviewsGiven: number;
   lessonAttendance: number;
   attendanceRate: number;
+  averageReservedHoursPerStudent?: number;
 }
 
 export interface ActiveUserDataPoint {

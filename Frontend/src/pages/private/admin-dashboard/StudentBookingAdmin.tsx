@@ -6,12 +6,8 @@ import {
   Clock,
   DollarSign,
   User,
-  Car,
-  MapPin,
   X,
-  AlertTriangle,
   Edit2,
-  Eye,
 } from "lucide-react";
 import {
   CancelBookingInput,
@@ -30,14 +26,12 @@ interface BookingsTableProps {
 
 // Status Dropdown Component
 interface StatusDropdownProps {
-  currentStatus: string;
   onStatusChange: (status: string) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
 
 const StatusDropdown: React.FC<StatusDropdownProps> = ({
-  currentStatus,
   onStatusChange,
   isOpen,
   onToggle,
@@ -240,12 +234,12 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                         </div>
                         <span
                           className={`px-2 py-1 text-xs rounded-full ${
-                            slot.status === "confirmed"
-                              ? "bg-green-100 text-green-800"
-                              : slot.status === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : slot.status === "cancelled"
-                                  ? "bg-red-100 text-red-800"
+                            (slot.status ?? "").toLowerCase() === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : (slot.status ?? "").toLowerCase() === "refund"
+                                ? "bg-blue-100 text-blue-800"
+                                : (slot.status ?? "").toLowerCase() === "completed"
+                                  ? "bg-green-100 text-green-800"
                                   : "bg-gray-100 text-gray-800"
                           }`}
                         >
@@ -464,13 +458,15 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     null,
   );
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(
-    null,
-  );
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "upcoming" | "completed" | "cancel"
+  >("all");
+  const [sortBy, setSortBy] = useState<
+    "date_desc" | "date_asc" | "status_upcoming" | "status_completed" | "status_cancel"
+  >("date_desc");
 
   const { data, loading, error, refetch } = useQuery(GET_ALL_STUDENT_BOOKINGS, {
     fetchPolicy: "cache-and-network",
@@ -479,10 +475,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   const [updateBookingStatus] = useMutation(UPDATE_BOOKING_STATUS, {
     onCompleted: () => {
       refetch();
-      setShowConfirmModal(false);
       setSelectedBooking(null);
       setSelectedSlotId(null);
-      setPendingStatusChange(null);
       setActiveDropdown(null);
     },
     onError: (error) => {
@@ -514,25 +508,18 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     if (newStatus === "cancelled") {
       setShowCancelModal(true);
     } else {
-      setPendingStatusChange(newStatus.toLowerCase());
-      setShowConfirmModal(true);
+      const input: UpdateBookingStatusInput = {
+        bookingId: booking._id,
+        slotId,
+        status: newStatus.toLowerCase() as UpdateBookingStatusInput["status"],
+      };
+      updateBookingStatus({ variables: { input } });
     }
     setActiveDropdown(null);
   };
 
-  const confirmStatusChange = () => {
-    if (!selectedBooking || !selectedSlotId || !pendingStatusChange) return;
-
-    const input: UpdateBookingStatusInput = {
-      bookingId: selectedBooking._id,
-      slotId: selectedSlotId,
-      status: pendingStatusChange as any,
-    };
-
-    updateBookingStatus({ variables: { input } });
-  };
-
-  const handleCancelBooking = (reason: string) => {
+  const handleCancelBooking = (_reason: string) => {
+    void _reason;
     if (!selectedBooking || !selectedSlotId) return;
 
     const input: CancelBookingInput = {
@@ -576,22 +563,107 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     );
   }
 
-  const bookings = (data?.getAllStudentBookings || [])
+  type DerivedStatus = "Upcoming" | "Completed" | "Cancel";
+  type SlotLike = {
+    _id: string;
+    status?: string;
+    date: string;
+    endTime: string;
+    startTime: string;
+  };
+  type Row = { booking: StudentBooking; slot: SlotLike; derivedStatus: DerivedStatus };
+
+  const getDerivedStatus = (slot: SlotLike): DerivedStatus => {
+    const raw = (slot.status ?? "").toLowerCase();
+    if (raw === "cancelled" || raw === "canceled" || raw === "refund")
+      return "Cancel";
+    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+    if (raw === "completed" || slotEnd <= new Date()) return "Completed";
+    return "Upcoming";
+  };
+
+  const getSlotTime = (slot: { date: string; startTime: string }) =>
+    new Date(`${slot.date}T${slot.startTime}`).getTime();
+
+  const statusOrder = (s: DerivedStatus) => {
+    if (s === "Upcoming") return 0;
+    if (s === "Completed") return 1;
+    return 2; // Cancel
+  };
+
+  const rows: Row[] = (data?.getAllStudentBookings || [])
     .flatMap((b: StudentBooking) =>
-      b.slots.map((s) => ({ booking: b, slot: s })),
+      b.slots.map((s) => ({
+        booking: b,
+        slot: s as SlotLike,
+        derivedStatus: getDerivedStatus(s as SlotLike),
+      })),
     )
-    .sort((a, b) => {
-      const aTime = new Date(`${a.slot.date}T${a.slot.startTime}`).getTime();
-      const bTime = new Date(`${b.slot.date}T${b.slot.startTime}`).getTime();
-      return bTime - aTime; // 🔑 newest first
+    .filter((r: Row) => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "upcoming") return r.derivedStatus === "Upcoming";
+      if (statusFilter === "completed") return r.derivedStatus === "Completed";
+      return r.derivedStatus === "Cancel";
+    })
+    .sort((a: Row, b: Row) => {
+      const aTime = getSlotTime(a.slot);
+      const bTime = getSlotTime(b.slot);
+
+      if (sortBy === "date_asc") return aTime - bTime;
+      if (sortBy === "date_desc") return bTime - aTime;
+
+      // Status sort = group by chosen status first, then by date (newest first)
+      const desired =
+        sortBy === "status_upcoming"
+          ? "Upcoming"
+          : sortBy === "status_completed"
+            ? "Completed"
+            : "Cancel";
+      const aRank = a.derivedStatus === desired ? 0 : 1;
+      const bRank = b.derivedStatus === desired ? 0 : 1;
+      if (aRank !== bRank) return aRank - bRank;
+
+      // Secondary grouping for remaining rows (stable-ish): Upcoming → Completed → Cancel, then date desc
+      const aGroup = statusOrder(a.derivedStatus);
+      const bGroup = statusOrder(b.derivedStatus);
+      if (aGroup !== bGroup) return aGroup - bGroup;
+      return bTime - aTime;
     });
 
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}
     >
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-medium text-gray-900">All Student</h2>
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+        <h2 className="text-lg font-medium text-gray-900">All Studentsdffsdfsd</h2>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">Filter:</span>
+          <select
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as typeof statusFilter)
+            }
+            className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white"
+          >
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="completed">Completed</option>
+            <option value="cancel">Cancel</option>
+          </select>
+
+          <span className="text-sm text-gray-600">Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white"
+          >
+            <option value="date_desc">Date: Newest → Oldest</option>
+            <option value="date_asc">Date: Oldest → Newest</option>
+            <option value="status_upcoming">Status: Upcoming</option>
+            <option value="status_completed">Status: Completed</option>
+            <option value="status_cancel">Status: Cancel</option>
+          </select>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -616,8 +688,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {bookings.map((booking) =>
-              booking.slots.map((slot, index) => (
+            {rows.map(({ booking, slot, derivedStatus }) => (
                 <tr
                   key={`${booking._id}-${slot._id}`}
                   className="hover:bg-gray-50 transition-colors duration-150"
@@ -663,21 +734,17 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                     <div className="flex items-center space-x-2">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
-                          slot.status === "Cancelled" ||
-                          slot.status === "cancelled"
+                          derivedStatus === "Cancel"
                             ? "bg-red-100 text-red-800"
-                            : slot.status === "Refund"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
+                            : derivedStatus === "Completed"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {slot.status === "cancelled"
-                          ? "cancelled"
-                          : slot.status}
+                        {derivedStatus}
                       </span>
 
                       <StatusDropdown
-                        currentStatus={slot.status}
                         onStatusChange={(newStatus) =>
                           handleStatusChange(booking, slot._id, newStatus)
                         }
@@ -708,13 +775,12 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                     </button>
                   </td>
                 </tr>
-              )),
-            )}
+            ))}
           </tbody>
         </table>
       </div>
 
-      {bookings.length === 0 && !loading && (
+      {rows.length === 0 && !loading && (
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center space-y-4">
             <Calendar className="h-12 w-12 text-gray-300" />

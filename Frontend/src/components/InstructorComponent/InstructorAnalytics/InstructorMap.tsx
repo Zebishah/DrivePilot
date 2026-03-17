@@ -32,10 +32,18 @@ export const InstructorMap: React.FC<InstructorMapProps> = ({
 
   useEffect(() => {
     const geocodeAddress = async () => {
-      if (!address) return;
+      setError(null);
+
+      // If there is no address yet, still show a default map
+      if (!address) {
+        setCoordinates({
+          lat: -12.0464,
+          lng: -77.0428,
+        });
+        return;
+      }
 
       setLoading(true);
-      setError(null);
 
       try {
         const response = await fetch(
@@ -72,50 +80,31 @@ export const InstructorMap: React.FC<InstructorMapProps> = ({
     geocodeAddress();
   }, [address]);
 
-  if (loading) {
-    return (
-      <div className={`bg-white rounded-2xl p-6 shadow-sm ${className}`}>
-        <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !coordinates) {
-    return (
-      <div className={`bg-white rounded-2xl p-6 shadow-sm ${className}`}>
-        <div className="h-64 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-500 mb-2">{error}</p>
-            <p className="text-gray-500 text-sm">Unable to display map</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
-      className={`h-full bg-white rounded-2xl overflow-hidden shadow-sm ${className}`}
+      className={`h-80 bg-white rounded-2xl overflow-hidden shadow-sm ${className}`}
     >
       <div className="h-full relative">
-        {coordinates && (
-          <MapContainer
-            center={[coordinates.lat, coordinates.lng]}
-            zoom={13}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={[coordinates.lat, coordinates.lng]} />
-          </MapContainer>
-        )}
-
-        {/* Location badge */}
+        <MapContainer
+          center={[
+            coordinates?.lat ?? -12.0464,
+            coordinates?.lng ?? -77.0428,
+          ]}
+          zoom={13}
+          style={{ height: "100%", width: "100%" }}
+          scrollWheelZoom={false}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Marker
+            position={[
+              coordinates?.lat ?? -12.0464,
+              coordinates?.lng ?? -77.0428,
+            ]}
+          />
+        </MapContainer>
 
         {/* Additional location markers as shown in the image */}
         <div className="absolute top-12 right-8 bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-[1000]">
