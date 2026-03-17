@@ -248,6 +248,9 @@ const studentBookingResolver = {
 
       const completedBookings = [];
       const uncompletedBookings = [];
+      const upcomingBookings = [];
+      const cancelledBookings = [];
+      const historyBookings = [];
 
       for (const booking of allBookings) {
         if (!booking.slots || booking.slots.length === 0) continue;
@@ -261,23 +264,28 @@ const studentBookingResolver = {
           },
         };
 
-        // Active slots: booked, not cancelled, not refund
-        const activeSlots = booking.slots.filter(
-          (slot) =>
-            slot.booked &&
-            slot.status !== "cancelled" &&
-            slot.status !== "refund",
-        );
+        // Booked slots only (any status) for categorisation
+        const bookedSlots = booking.slots.filter((slot) => slot.booked);
+        const upcomingSlots = [];
+        const cancelledSlots = [];
+        const historySlots = [];
 
-        // Completed slot = status === "completed" OR slot end time has passed
-        const completedSlots = activeSlots.filter((slot) => {
+        for (const slot of bookedSlots) {
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status === "completed" || slotEnd <= now;
-        });
-        const inProgressSlots = activeSlots.filter((slot) => {
-          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status !== "completed" && slotEnd > now;
-        });
+          const isCancelledOrRefund =
+            slot.status === "cancelled" || slot.status === "refund";
+          if (isCancelledOrRefund) {
+            cancelledSlots.push(slot);
+          } else if (slotEnd > now) {
+            upcomingSlots.push(slot);
+          } else {
+            historySlots.push(slot);
+          }
+        }
+
+        // Legacy: completed = history, uncompleted = upcoming (for lessonStats / TotalLessonsCard)
+        const completedSlots = historySlots;
+        const inProgressSlots = upcomingSlots;
 
         if (completedSlots.length > 0) {
           completedBookings.push({
@@ -291,9 +299,26 @@ const studentBookingResolver = {
             slots: inProgressSlots,
           });
         }
+        if (upcomingSlots.length > 0) {
+          upcomingBookings.push({
+            ...finalBookingBase,
+            slots: upcomingSlots,
+          });
+        }
+        if (cancelledSlots.length > 0) {
+          cancelledBookings.push({
+            ...finalBookingBase,
+            slots: cancelledSlots,
+          });
+        }
+        if (historySlots.length > 0) {
+          historyBookings.push({
+            ...finalBookingBase,
+            slots: historySlots,
+          });
+        }
 
-        // Stats and graph: count only completed slots so numbers
-        // clearly reflect actually completed lessons
+        // Stats and graph: count only completed slots (status completed or missed, or past and validated)
         for (const slot of completedSlots) {
           totalLessonCount += 1;
           const start = new Date(`${slot.date}T${slot.startTime}:00`);
@@ -336,6 +361,9 @@ const studentBookingResolver = {
         graphStats,
         completedBookings,
         uncompletedBookings,
+        upcomingBookings,
+        cancelledBookings,
+        historyBookings,
       };
     },
   },

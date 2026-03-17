@@ -56,8 +56,8 @@ export const BookingList: React.FC<BookingListProps> = ({
             return slot.status === "booked";
           } else if (status === "cancelled") {
             return slot.status === "cancelled";
-          } else if (status === "refund") {
-            return slot.status === "refund";
+          } else if (status === "missed") {
+            return slot.status === "missed";
           }
           return true;
         }),
@@ -80,14 +80,14 @@ export const BookingList: React.FC<BookingListProps> = ({
     const now = new Date();
     const upcoming: Booking[] = [];
     const cancelled: Booking[] = [];
-    const refund: Booking[] = [];
+    const missed: Booking[] = [];
     const completed: Booking[] = [];
     const abandoned: Booking[] = [];
 
     bookings.forEach((booking) => {
       const upcomingSlots: Slot[] = [];
       const cancelledSlots: Slot[] = [];
-      const refundSlots: Slot[] = [];
+      const missedSlots: Slot[] = [];
       const completedSlots: Slot[] = [];
       const abandonedSlots: Slot[] = [];
 
@@ -95,7 +95,9 @@ export const BookingList: React.FC<BookingListProps> = ({
         if (slot.status === "cancelled") {
           cancelledSlots.push(slot);
         } else if (slot.status === "refund") {
-          refundSlots.push(slot);
+          cancelledSlots.push(slot); // treat refund as cancelled for display
+        } else if (slot.status === "missed") {
+          missedSlots.push(slot);
         } else if (
           slot.status === "completed" ||
           getSlotEndDateTime(slot) <= now
@@ -122,24 +124,24 @@ export const BookingList: React.FC<BookingListProps> = ({
         upcoming.push({ ...booking, slots: upcomingSlots });
       if (cancelledSlots.length > 0)
         cancelled.push({ ...booking, slots: cancelledSlots });
-      if (refundSlots.length > 0)
-        refund.push({ ...booking, slots: refundSlots });
+      if (missedSlots.length > 0)
+        missed.push({ ...booking, slots: missedSlots });
       if (completedSlots.length > 0)
         completed.push({ ...booking, slots: completedSlots });
       if (abandonedSlots.length > 0)
         abandoned.push({ ...booking, slots: abandonedSlots });
     });
 
-    return { upcoming, cancelled, refund, completed, abandoned };
+    return { upcoming, cancelled, missed, completed, abandoned };
   };
 
-  const { upcoming, cancelled, refund, completed, abandoned } =
+  const { upcoming, cancelled, missed, completed, abandoned } =
     categorizeBookings(bookings);
 
   const slotCounts = {
     upcoming: upcoming.reduce((acc, b) => acc + b.slots.length, 0),
     cancelled: cancelled.reduce((acc, b) => acc + b.slots.length, 0),
-    refund: refund.reduce((acc, b) => acc + b.slots.length, 0),
+    missed: missed.reduce((acc, b) => acc + b.slots.length, 0),
     completed: completed.reduce((acc, b) => acc + b.slots.length, 0),
     abandoned: abandoned.reduce((acc, b) => acc + b.slots.length, 0),
   };
@@ -156,7 +158,7 @@ export const BookingList: React.FC<BookingListProps> = ({
       filteredBookings = cancelled;
       break;
     case 3:
-      filteredBookings = refund;
+      filteredBookings = missed;
       break;
     case 4:
       filteredBookings = completed;
@@ -204,7 +206,7 @@ export const BookingList: React.FC<BookingListProps> = ({
           <Tab label={`Upcoming (${slotCounts.upcoming})`} />
           <Tab label={`Abandoned (${slotCounts.abandoned})`} />
           <Tab label={`Cancelled (${slotCounts.cancelled})`} />
-          <Tab label={`Refund (${slotCounts.refund})`} />
+          <Tab label={`Missed (${slotCounts.missed})`} />
           <Tab label={`Completed (${slotCounts.completed})`} />
         </Tabs>
       </Box>
@@ -387,7 +389,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                                     : tabValue === 2
                                       ? "rgba(211, 47, 47, 0.15)"
                                       : tabValue === 3
-                                        ? "rgba(255, 152, 0, 0.15)"
+                                        ? "rgba(158, 158, 158, 0.2)"
                                         : tabValue === 4
                                           ? "rgba(0, 200, 83, 0.15)"
                                           : "rgba(0, 200, 83, 0.15)",
@@ -397,7 +399,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                                     : tabValue === 2
                                       ? "rgb(211, 47, 47)"
                                       : tabValue === 3
-                                        ? "rgb(255, 152, 0)"
+                                        ? "rgb(97, 97, 97)"
                                         : tabValue === 4
                                           ? "rgb(0, 170, 70)"
                                           : "rgb(0, 170, 70)",
@@ -410,7 +412,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                                     : tabValue === 2
                                       ? "rgba(211, 47, 47, 0.25)"
                                       : tabValue === 3
-                                        ? "rgba(255, 152, 0, 0.25)"
+                                        ? "rgba(158, 158, 158, 0.4)"
                                         : "rgba(0, 200, 83, 0.25)"
                                 }`,
                                 transition:
@@ -425,7 +427,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   : tabValue === 2
                                     ? "CANCELLED"
                                     : tabValue === 3
-                                      ? "REFUND"
+                                      ? "MISSED"
                                       : "COMPLETED"}
                             </Typography>
                           </Box>
@@ -547,7 +549,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                   : tabValue === 2
                     ? "Cancelled"
                     : tabValue === 3
-                      ? "Refund"
+                      ? "Missed"
                       : "Completed"}{" "}
               Slots Available
             </Typography>
