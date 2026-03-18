@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   ChevronDown,
@@ -25,8 +25,10 @@ interface BookingsTableProps {
   className?: string;
 }
 
+type SlotStatusOption = { value: string; label: string };
+
 // Status options (same as instructor: available, booked, completed, refund, cancelled, missed)
-const SLOT_STATUS_OPTIONS = [
+const SLOT_STATUS_OPTIONS: SlotStatusOption[] = [
   { value: "available", label: "Available" },
   { value: "booked", label: "Booked" },
   { value: "completed", label: "Completed" },
@@ -42,6 +44,7 @@ interface StatusDropdownProps {
   isOpen: boolean;
   onToggle: () => void;
   canCancel?: boolean;
+  lessonPassed: boolean;
 }
 
 const StatusDropdown: React.FC<StatusDropdownProps> = ({
@@ -50,8 +53,32 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   isOpen,
   onToggle,
   canCancel = true,
+  lessonPassed,
 }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const normalizedStatus = (currentStatus ?? "").toLowerCase();
+  // Disable only when status is final (completed/refund).
+  // Past lessons that are still not validated (e.g. booked) must stay editable.
+  const isDisabled = normalizedStatus === "completed" || normalizedStatus === "refund";
+
+  const allowedOptions = useMemo(() => {
+    // Rule: if cancelled => show refund only or missed
+    if (normalizedStatus === "cancelled") {
+      return SLOT_STATUS_OPTIONS.filter((o) =>
+        ["refund", "missed"].includes(o.value),
+      );
+    }
+
+    // Otherwise: show all except available, but:
+    // - do not allow marking completed unless lesson is in the past
+    // - allow cancelling/refund/missed for admin when slot is still editable
+    return SLOT_STATUS_OPTIONS.filter((o) => {
+      if (o.value === "available") return false;
+      if (!lessonPassed && o.value === "completed") return false;
+      if (!canCancel && o.value === "cancelled") return false;
+      return true;
+    });
+  }, [normalizedStatus, lessonPassed, canCancel]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59,7 +86,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        onToggle();
+        if (isOpen) onToggle();
       }
     };
 
@@ -75,8 +102,15 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={onToggle}
-        className="inline-flex items-center px-2 py-1 text-xs border border-gray-200 rounded-full bg-white hover:bg-gray-50"
+        type="button"
+        onClick={() => {
+          if (isDisabled) return;
+          onToggle();
+        }}
+        disabled={isDisabled}
+        className={`inline-flex items-center px-2 py-1 text-xs border border-gray-200 rounded-full bg-white ${
+          isDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+        }`}
       >
         Change status
         <ChevronDown
@@ -86,14 +120,10 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
         />
       </button>
 
-      {isOpen && (
+      {isOpen && !isDisabled && (
         <div className="absolute right-0 rounded-md mt-1 w-36 bg-white border border-gray-200 shadow-lg z-50">
           <div className="py-1">
-            {SLOT_STATUS_OPTIONS.filter((option) => {
-              if (!canCancel) return option.value === "refund";
-              if (option.value === "cancelled") return true;
-              return true;
-            }).map((option) => (
+            {allowedOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => onStatusChange(option.value)}
@@ -988,10 +1018,18 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
           <tbody className="bg-white divide-y divide-gray-100">
             {rows.map(({ booking, slot, derivedStatus }) => {
               const lessonPassed = hasLessonPassed(slot);
+              const rawStatus = (slot.status ?? "").toLowerCase();
+              const isStatusNotSetYet =
+                lessonPassed &&
+                derivedStatus === "Completed" &&
+                rawStatus !== "completed" &&
+                rawStatus !== "missed" &&
+                rawStatus !== "cancelled" &&
+                rawStatus !== "refund";
               const canCancel =
-                !lessonPassed &&
-                (slot.status ?? "").toLowerCase() !== "cancelled" &&
-                (slot.status ?? "").toLowerCase() !== "refund";
+                rawStatus !== "completed" &&
+                rawStatus !== "cancelled" &&
+                rawStatus !== "refund";
 
               return (
                 <tr
@@ -1046,11 +1084,13 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                           derivedStatus === "Cancel"
                             ? "bg-red-100 text-red-800"
                             : derivedStatus === "Completed"
-                              ? "bg-green-100 text-green-800"
+                              ? isStatusNotSetYet
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-green-100 text-green-800"
                               : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {derivedStatus}
+                        {isStatusNotSetYet ? "No Status Set Yet" : derivedStatus}
                       </span>
 
                       <StatusDropdown
@@ -1066,6 +1106,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                           );
                         }}
                         canCancel={canCancel}
+                        lessonPassed={lessonPassed}
                       />
                     </div>
                   </td>

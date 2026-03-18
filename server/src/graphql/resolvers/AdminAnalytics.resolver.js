@@ -263,6 +263,7 @@ const adminAnalyticsResolvers = {
         .populate("studentId")
         .populate("instructorId");
 
+      // Lesson-date keyed slots (used by revenue/bookings/earnings graphs)
       const slots = allBookings.flatMap((b) => {
         const activeSlotsInBooking = b.slots.filter(
           (s) => s.booked && s.status !== "cancelled" && s.status !== "refund",
@@ -301,6 +302,37 @@ const adminAnalyticsResolvers = {
           }));
       });
 
+      // Payment-date keyed slots (used ONLY for Active Users students line)
+      // A student becomes "active" on the day they actually paid/was charged.
+      const paidSlotsByPaymentDate = allBookings.flatMap((b) =>
+        (b.slots ?? [])
+          .filter(
+            (s) =>
+              s.booked &&
+              s.status !== "cancelled" &&
+              s.status !== "refund" &&
+              s.paymentStatus === "paid",
+          )
+          .map((s) => {
+            // Prefer slot-level chargedAt; fall back to booking createdAt if missing.
+            const chargedAt =
+              (s.chargedAt ? new Date(s.chargedAt) : null) ||
+              (b.createdAt ? new Date(b.createdAt) : null);
+            const paymentDate = chargedAt ? dayjs(chargedAt) : dayjs(s.date);
+            return {
+              ...s,
+              studentId: b.studentId,
+              bookingCreatedAt: b.createdAt,
+              paymentDate,
+            };
+          })
+          .filter((s) => {
+            // Keep only payments that happened within the selected time window
+            const paymentDateStr = s.paymentDate.format("YYYY-MM-DD");
+            return paymentDateStr >= fromStr && paymentDateStr <= toStr;
+          }),
+      );
+
       const allUsers = await User.find({
         role: { $in: ["Student", "Instructor"] }, // ✅ Only Students & Instructors
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
@@ -332,7 +364,19 @@ const adminAnalyticsResolvers = {
         const bucketStartDate = bucketStart.toDate();
         const bucketEndDate = bucketEnd.toDate();
 
-        // Active Users (paid interactions)
+        // Active Users:
+        // - Students: payment/charge date bucket (paid ≥ 1 lesson)
+        // - Instructors: delivered lesson date bucket (delivered ≥ 1 paid lesson)
+        const paidStudentBucketSlots = paidSlotsByPaymentDate.filter((s) => {
+          return (
+            (s.paymentDate.isAfter(bucketStart) ||
+              s.paymentDate.isSame(bucketStart, "day")) &&
+            (s.paymentDate.isBefore(bucketEnd) ||
+              s.paymentDate.isSame(bucketEnd, "day"))
+          );
+        });
+
+        // Other graphs keep using lesson date buckets
         const bucketSlots = slots.filter((s) => {
           return (
             (s.slotDate.isAfter(bucketStart) ||
@@ -348,9 +392,9 @@ const adminAnalyticsResolvers = {
             s.status === "completed" || (s.slotEnd && !s.slotEnd.isAfter(now)),
         );
 
-        // Students = paid for at least one lesson in the bucket
+        // Students = paid for at least one lesson in the bucket (by payment date)
         const studentsSet = new Set(
-          bucketSlots.map((s) => s.studentId?._id.toString()),
+          paidStudentBucketSlots.map((s) => s.studentId?._id.toString()),
         );
         // Instructors = delivered at least one paid lesson in the bucket
         const instructorsSet = new Set(

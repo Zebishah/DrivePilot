@@ -340,8 +340,10 @@ const instructorResolver = {
       }, 0);
 
       // Total earnings (net, after DSP commission): sum instructorAmount for
-      // completed lessons (including past-dated ones not manually marked),
-      // fallback to gross per-slot for legacy slots without instructorAmount
+      // completed lessons (including past-dated ones not manually marked).
+      // Fallbacks (legacy):
+      // - if chargeAmount + dspCommission exist: use (chargeAmount - dspCommission)
+      // - otherwise fall back to gross per-slot (best-effort)
       const totalEarnings = bookings.reduce((sum, booking) => {
         const completedInBooking = booking.slots.filter(
           isCompletedLessonSlot,
@@ -353,9 +355,17 @@ const instructorResolver = {
           booking.slots
             .filter(isCompletedLessonSlot)
             .reduce((slotSum, slot) => {
-              const net =
-                slot.instructorAmount != null && slot.instructorAmount >= 0
-                  ? slot.instructorAmount
+              const hasInstructorAmount =
+                slot.instructorAmount != null && slot.instructorAmount >= 0;
+              const hasCommissionSplit =
+                slot.chargeAmount != null &&
+                slot.dspCommission != null &&
+                !isNaN(Number(slot.chargeAmount)) &&
+                !isNaN(Number(slot.dspCommission));
+              const net = hasInstructorAmount
+                ? Number(slot.instructorAmount)
+                : hasCommissionSplit
+                  ? Number(slot.chargeAmount) - Number(slot.dspCommission)
                   : perSlotGross;
               return slotSum + net;
             }, 0)
@@ -363,7 +373,7 @@ const instructorResolver = {
       }, 0);
 
       // Last booking = most recent completed lesson (by slot end date/time)
-      const allSlotsWithBooking = bookings.flatMap((b) =>
+      const completedSlotsWithBooking = bookings.flatMap((b) =>
         b.slots.filter(isCompletedLessonSlot).map((s) => ({
           ...(s.toObject?.() || s),
           slotId: s._id,
@@ -371,9 +381,18 @@ const instructorResolver = {
         })),
       );
 
-      // Recent bookings: one entry per student (their most recent attended slot), sorted by that slot descending, max 10
+      // Recent bookings (carousel): one entry per student, using their most recent ACTIVE slot
+      // (upcoming or past), excluding cancelled/refund. Sorted by slot end date/time desc, max 10.
+      const activeSlotsWithBooking = bookings.flatMap((b) =>
+        b.slots.filter(isActiveSlot).map((s) => ({
+          ...(s.toObject?.() || s),
+          slotId: s._id,
+          booking: b,
+        })),
+      );
+
       const byStudentId = new Map();
-      for (const item of allSlotsWithBooking) {
+      for (const item of activeSlotsWithBooking) {
         const sid = item.booking.studentId?._id?.toString();
         if (!sid) continue;
         const existing = byStudentId.get(sid);
@@ -394,7 +413,15 @@ const instructorResolver = {
       const MAX_RECENT = 10;
       const recentSlots = sortedByRecent.slice(0, MAX_RECENT);
       const lastLessonDate =
-        sortedByRecent.length > 0 ? sortedByRecent[0].date : null;
+        completedSlotsWithBooking.length > 0
+          ? completedSlotsWithBooking
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(`${b.date}T${b.endTime}:00`).getTime() -
+                  new Date(`${a.date}T${a.endTime}:00`).getTime(),
+              )[0].date
+          : null;
 
       const buildBookingFromSlot = (lastSlot) => {
         const lastStudent = lastSlot.booking.studentId;
@@ -419,7 +446,17 @@ const instructorResolver = {
       };
 
       const recentBookings = recentSlots.map(buildBookingFromSlot);
-      const lastBooking = recentBookings[0] || null;
+      const lastBooking = completedSlotsWithBooking.length
+        ? buildBookingFromSlot(
+            completedSlotsWithBooking
+              .slice()
+              .sort(
+                (a, b) =>
+                  new Date(`${b.date}T${b.endTime}:00`).getTime() -
+                  new Date(`${a.date}T${a.endTime}:00`).getTime(),
+              )[0],
+          )
+        : recentBookings[0] || null;
 
       // Total lessons = active slots only (booked, not cancelled/refund)
       const totalLessons = bookings.reduce(

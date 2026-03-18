@@ -35,6 +35,7 @@ interface StatusDropdownProps {
     newStatus: string
   ) => void;
   disabled?: boolean;
+  lessonPassed: boolean;
 }
 
 interface ConfirmationModalProps {
@@ -47,21 +48,11 @@ interface ConfirmationModalProps {
 }
 
 const SLOT_STATUSES = [
-  {
-    value: "available",
-    label: "Available",
-    color: "bg-gray-100 text-gray-800",
-  },
   { value: "booked", label: "Booked", color: "bg-green-100 text-green-800" },
-  {
-    value: "completed",
-    label: "Completed",
-    color: "bg-blue-100 text-blue-800",
-  },
+  { value: "completed", label: "Completed", color: "bg-blue-100 text-blue-800" },
   { value: "refund", label: "Refund", color: "bg-yellow-100 text-yellow-800" },
   { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
   { value: "missed", label: "Missed", color: "bg-orange-100 text-orange-800" },
-  { value: "yet", label: "Yet", color: "bg-purple-100 text-purple-800" },
 ];
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -135,14 +126,54 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   bookingId,
   onStatusChange,
   disabled = false,
+  lessonPassed,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
 
-  const currentStatusObj =
-    SLOT_STATUSES.find((s) => s.value === currentStatus) || SLOT_STATUSES[0];
+  const normalizedStatus = (currentStatus ?? "").toLowerCase();
+
+  const isFinalDisabled =
+    normalizedStatus === "completed" || normalizedStatus === "refund";
+
+  // UI label rules (match admin logic)
+  const isStatusNotSetYet =
+    lessonPassed &&
+    normalizedStatus !== "completed" &&
+    normalizedStatus !== "missed" &&
+    normalizedStatus !== "cancelled" &&
+    normalizedStatus !== "refund";
+
+  const displayLabel =
+    normalizedStatus === "booked" && !lessonPassed
+      ? "Upcoming"
+      : isStatusNotSetYet
+        ? "No Status Set Yet"
+        : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
+          currentStatus;
+
+  const displayColor =
+    normalizedStatus === "booked" && !lessonPassed
+      ? "bg-yellow-100 text-yellow-800"
+      : isStatusNotSetYet
+        ? "bg-amber-100 text-amber-800"
+        : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
+          "bg-gray-100 text-gray-800";
+
+  const isActuallyDisabled = disabled || isFinalDisabled;
+
+  const allowedStatuses = (() => {
+    // cancelled => allow refund/missed only
+    if (normalizedStatus === "cancelled") return ["refund", "missed"];
+    // final statuses => no dropdown
+    if (isFinalDisabled) return [];
+    // default: only allow these transitions
+    const base = ["completed", "cancelled", "refund", "missed"];
+    // cannot mark completed before lesson has passed
+    return lessonPassed ? base : base.filter((s) => s !== "completed");
+  })();
 
   const handleStatusSelect = (newStatus: string) => {
     if (newStatus !== currentStatus) {
@@ -185,11 +216,14 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
       <button
         ref={buttonRef}
         type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`inline-flex items-center justify-between px-3 py-2 text-xs font-medium rounded-full ${currentStatusObj.color} hover:opacity-80 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]`}
+        disabled={isActuallyDisabled}
+        onClick={() => {
+          if (isActuallyDisabled) return;
+          setIsOpen((prev) => !prev);
+        }}
+        className={`inline-flex items-center justify-between px-3 py-2 text-xs font-medium rounded-full ${displayColor} hover:opacity-80 transition-opacity duration-150 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]`}
       >
-        <span>{currentStatusObj.label}</span>
+        <span>{displayLabel}</span>
         <ChevronDown
           className={`ml-2 h-3.5 w-3.5 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
@@ -198,7 +232,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
       </button>
 
       {/* Dropdown via Portal */}
-      {isOpen &&
+      {isOpen && allowedStatuses.length > 0 &&
         createPortal(
           <div
             ref={dropdownRef}
@@ -212,7 +246,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
             className="rounded-xl bg-white  shadow-xl ring-1 ring-black ring-opacity-5"
           >
             <div className="py-1 ">
-              {SLOT_STATUSES.map((status) => (
+              {SLOT_STATUSES.filter((s) => allowedStatuses.includes(s.value)).map(
+                (status) => (
                 <button
                   key={status.value}
                   onClick={() => handleStatusSelect(status.value)}
@@ -228,7 +263,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
                     {status.label}
                   </span>
                 </button>
-              ))}
+              ),
+              )}
             </div>
           </div>,
           document.body
@@ -539,6 +575,11 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     return `${dateStr} ${timeStr}`;
   };
 
+  const hasLessonPassed = (slot: { date: string; endTime: string }) => {
+    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
+    return slotEnd.getTime() <= Date.now();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -652,6 +693,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                       bookingId={booking._id}
                       onStatusChange={handleStatusChange}
                       disabled={updateLoading}
+                      lessonPassed={hasLessonPassed(slot)}
                     />
                   </td>
                   <td className="px-6 py-4">

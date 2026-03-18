@@ -956,7 +956,7 @@ export function AnalyticsDashboard() {
               />
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-visible">
             {isActiveUsersLoading ? (
               <GraphLoader height={300} />
             ) : (
@@ -970,6 +970,30 @@ export function AnalyticsDashboard() {
                   },
                   legend: { position: "top" as const },
                   grid: { strokeDashArray: 3 },
+                  tooltip: {
+                    shared: true,
+                    intersect: false,
+                    custom: ({ series, dataPointIndex, w }) => {
+                      const label =
+                        w?.globals?.categoryLabels?.[dataPointIndex] ??
+                        w?.globals?.labels?.[dataPointIndex] ??
+                        "";
+                      const students = series?.[0]?.[dataPointIndex] ?? 0;
+                      const instructors = series?.[1]?.[dataPointIndex] ?? 0;
+                      return `
+                        <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                          <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                          <div style="font-size:12px; margin-bottom:6px;">
+                            Students (paid ≥ 1 lesson): <b>${students}</b><br/>
+                            Instructors (delivered ≥ 1 paid lesson): <b>${instructors}</b>
+                          </div>
+                          <div style="font-size:11px; color:#6b7280;">
+                            Shows students who booked & paid for lessons and instructors who completed at least one paid lesson, over the selected time range.
+                          </div>
+                        </div>
+                      `;
+                    },
+                  },
                 }}
                 series={[
                   {
@@ -1015,7 +1039,7 @@ export function AnalyticsDashboard() {
               />
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-visible">
             {isAvgRevenueLoading ? (
               <GraphLoader height={300} />
             ) : (
@@ -1033,6 +1057,29 @@ export function AnalyticsDashboard() {
                   },
                   plotOptions: { bar: { borderRadius: 4 } },
                   dataLabels: { enabled: false }, // 🔥 turn off labels on bars
+                  tooltip: {
+                    y: {
+                      formatter: (val: number) => `CHF ${Number(val).toFixed(2)}`,
+                    },
+                    custom: ({ series, dataPointIndex, w }) => {
+                      const label =
+                        w?.globals?.categoryLabels?.[dataPointIndex] ??
+                        w?.globals?.labels?.[dataPointIndex] ??
+                        "";
+                      const value = series?.[0]?.[dataPointIndex] ?? 0;
+                      return `
+                        <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                          <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                          <div style="font-size:12px; margin-bottom:6px;">
+                            Average revenue per instructor: <b>CHF ${Number(value).toFixed(2)}</b>
+                          </div>
+                          <div style="font-size:11px; color:#6b7280;">
+                            Shows the average money earned by instructors (after commission) during the selected period.
+                          </div>
+                        </div>
+                      `;
+                    },
+                  },
                 }}
                 series={[
                   {
@@ -1073,7 +1120,7 @@ export function AnalyticsDashboard() {
               />
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-visible">
             {isAvgBookingsLoading ? (
               <GraphLoader height={300} />
             ) : (
@@ -1086,6 +1133,30 @@ export function AnalyticsDashboard() {
                   },
                   plotOptions: { bar: { borderRadius: 4 } },
                   dataLabels: { enabled: false }, // 🔥 turn off labels on bars
+                  tooltip: {
+                    y: {
+                      formatter: (val: number) =>
+                        `${Number(val).toFixed(2)} bookings`,
+                    },
+                    custom: ({ series, dataPointIndex, w }) => {
+                      const label =
+                        w?.globals?.categoryLabels?.[dataPointIndex] ??
+                        w?.globals?.labels?.[dataPointIndex] ??
+                        "";
+                      const value = series?.[0]?.[dataPointIndex] ?? 0;
+                      return `
+                        <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                          <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                          <div style="font-size:12px; margin-bottom:6px;">
+                            Average bookings per instructor: <b>${Number(value).toFixed(2)}</b>
+                          </div>
+                          <div style="font-size:11px; color:#6b7280;">
+                            Displays the average number of bookings received per instructor during the selected time frame.
+                          </div>
+                        </div>
+                      `;
+                    },
+                  },
                 }}
                 series={[
                   {
@@ -1126,7 +1197,7 @@ export function AnalyticsDashboard() {
               />
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-visible">
             {isTotalEarningsLoading ? (
               <GraphLoader height={250} />
             ) : (
@@ -1138,15 +1209,14 @@ export function AnalyticsDashboard() {
                     </div>
                     <div>
                       <div className="text-2xl font-bold">
-                        $
-                        {stats?.totalRegistrations
-                          ? (stats.totalRegistrations * 27.3).toFixed(1)
-                          : "0.0"}
+                        CHF{" "}
+                        {totalEarningsGraph
+                          .reduce((sum, d) => sum + (d.totalEarnings ?? 0), 0)
+                          .toFixed(2)}
                       </div>
-                      <div className="text-sm text-gray-500">Last Week</div>
-                    </div>
-                    <div className="text-green-600 text-sm font-medium">
-                      ↗ 163%
+                      <div className="text-sm text-gray-500">
+                        Selected period
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1159,6 +1229,30 @@ export function AnalyticsDashboard() {
                     },
                     plotOptions: { bar: { borderRadius: 4 } },
                     dataLabels: { enabled: false }, // 🔥 turn off labels on bars
+                    tooltip: {
+                      y: {
+                        formatter: (val: number) =>
+                          `CHF ${Number(val).toFixed(2)}`,
+                      },
+                      custom: ({ series, dataPointIndex, w }) => {
+                        const label =
+                          w?.globals?.categoryLabels?.[dataPointIndex] ??
+                          w?.globals?.labels?.[dataPointIndex] ??
+                          "";
+                        const value = series?.[0]?.[dataPointIndex] ?? 0;
+                        return `
+                          <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                            <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                            <div style="font-size:12px; margin-bottom:6px;">
+                              Total earnings (after commission): <b>CHF ${Number(value).toFixed(2)}</b>
+                            </div>
+                            <div style="font-size:11px; color:#6b7280;">
+                              Shows the total money earned by instructors (after DSP commission) from delivered paid lessons during the selected time frame.
+                            </div>
+                          </div>
+                        `;
+                      },
+                    },
                   }}
                   series={[
                     {

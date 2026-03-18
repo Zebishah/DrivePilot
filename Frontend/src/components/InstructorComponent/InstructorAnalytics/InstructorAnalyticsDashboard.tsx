@@ -182,14 +182,16 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             student={currentBooking?.studentId ?? null}
             totalLessons={currentBooking?.studentTotalLessons ?? 0}
             joiningDate={
-              currentBooking?.createdAt
-                ? new Date(
-                    Number(currentBooking.createdAt)
-                  ).toLocaleDateString()
+              currentBooking?.slots?.[0]?.date && currentBooking?.slots?.[0]?.startTime
+                ? `${currentBooking.slots[0].date}T${currentBooking.slots[0].startTime}:00`
                 : ""
             }
             satisfaction={100}
-            completionDate={analytics.lastLessonDate ?? undefined}
+            completionDate={
+              currentBooking?.slots?.[0]?.date && currentBooking?.slots?.[0]?.endTime
+                ? `${currentBooking.slots[0].date}T${currentBooking.slots[0].endTime}:00`
+                : undefined
+            }
             studentLocation={currentBooking?.studentLocation ?? null}
             recentCount={recentBookings.length}
             currentIndex={clampedIndex}

@@ -227,7 +227,7 @@ export const AvailabilityTab: React.FC = () => {
       const minutesDiff = differenceInMinutes(endTime, startTime);
       if (minutesDiff < 120) {
         toast.error(
-          "Please select a minimum range of 2 hours when using range mode."
+          "Oops! Availability slots need to be at least 1 hour long. Try selecting a longer time range"
         );
         return;
       }
