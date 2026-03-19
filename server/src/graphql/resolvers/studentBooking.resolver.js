@@ -241,12 +241,16 @@ const studentBookingResolver = {
 
       const now = new Date();
 
+      // These stats should reflect only actually completed lessons
       let totalLessonCount = 0;
       let totalDurationMinutes = 0;
       const graphMap = new Map();
 
       const completedBookings = [];
       const uncompletedBookings = [];
+      const upcomingBookings = [];
+      const cancelledBookings = [];
+      const historyBookings = [];
 
       for (const booking of allBookings) {
         if (!booking.slots || booking.slots.length === 0) continue;
@@ -260,34 +264,28 @@ const studentBookingResolver = {
           },
         };
 
-        // Active slots: booked, not cancelled, not refund
-        const activeSlots = booking.slots.filter(
-          (slot) =>
-            slot.booked &&
-            slot.status !== "cancelled" &&
-            slot.status !== "refund",
-        );
+        // Booked slots only (any status) for categorisation
+        const bookedSlots = booking.slots.filter((slot) => slot.booked);
+        const upcomingSlots = [];
+        const cancelledSlots = [];
+        const historySlots = [];
 
-        // Completed slot = status === "completed" OR slot end time has passed
-        const completedSlots = activeSlots.filter((slot) => {
+        for (const slot of bookedSlots) {
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status === "completed" || slotEnd <= now;
-        });
-        const inProgressSlots = activeSlots.filter((slot) => {
-          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status !== "completed" && slotEnd > now;
-        });
-
-        // Stats and graph: count only active slots
-        for (const slot of activeSlots) {
-          totalLessonCount += 1;
-          const start = new Date(`${slot.date}T${slot.startTime}:00`);
-          const end = new Date(`${slot.date}T${slot.endTime}:00`);
-          const duration = (end - start) / (1000 * 60);
-          totalDurationMinutes += duration;
-          const count = graphMap.get(slot.date) || 0;
-          graphMap.set(slot.date, count + 1);
+          const isCancelledOrRefund =
+            slot.status === "cancelled" || slot.status === "refund";
+          if (isCancelledOrRefund) {
+            cancelledSlots.push(slot);
+          } else if (slotEnd > now) {
+            upcomingSlots.push(slot);
+          } else {
+            historySlots.push(slot);
+          }
         }
+
+        // Legacy: completed = history, uncompleted = upcoming (for lessonStats / TotalLessonsCard)
+        const completedSlots = historySlots;
+        const inProgressSlots = upcomingSlots;
 
         if (completedSlots.length > 0) {
           completedBookings.push({
@@ -300,6 +298,35 @@ const studentBookingResolver = {
             ...finalBookingBase,
             slots: inProgressSlots,
           });
+        }
+        if (upcomingSlots.length > 0) {
+          upcomingBookings.push({
+            ...finalBookingBase,
+            slots: upcomingSlots,
+          });
+        }
+        if (cancelledSlots.length > 0) {
+          cancelledBookings.push({
+            ...finalBookingBase,
+            slots: cancelledSlots,
+          });
+        }
+        if (historySlots.length > 0) {
+          historyBookings.push({
+            ...finalBookingBase,
+            slots: historySlots,
+          });
+        }
+
+        // Stats and graph: count only completed slots (status completed or missed, or past and validated)
+        for (const slot of completedSlots) {
+          totalLessonCount += 1;
+          const start = new Date(`${slot.date}T${slot.startTime}:00`);
+          const end = new Date(`${slot.date}T${slot.endTime}:00`);
+          const duration = (end - start) / (1000 * 60);
+          totalDurationMinutes += duration;
+          const count = graphMap.get(slot.date) || 0;
+          graphMap.set(slot.date, count + 1);
         }
       }
 
@@ -334,6 +361,9 @@ const studentBookingResolver = {
         graphStats,
         completedBookings,
         uncompletedBookings,
+        upcomingBookings,
+        cancelledBookings,
+        historyBookings,
       };
     },
   },
@@ -1798,9 +1828,9 @@ const studentBookingResolver = {
           throw new Error("Slot not found in this booking");
         }
 
-        // Block marking as completed before the slot end time (skip in development for testing payout)
+        // Block marking as completed before the slot end time in all environments
         // Slot times are in business timezone (SLOT_TIMEZONE, default Europe/Zurich) so clients worldwide get correct "lesson ended" check
-        if (status === "completed" && process.env.NODE_ENV === "production") {
+        if (status === "completed") {
           const slot = booking.slots[slotIndex];
           const endTimeStr =
             slot.endTime && slot.endTime.split(":").length >= 3

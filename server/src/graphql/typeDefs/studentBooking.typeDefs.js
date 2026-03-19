@@ -46,6 +46,7 @@ const studentBookingTypeDefs = gql`
     review: Boolean
     paymentStatus: String
     chargeAmount: Float
+    instructorAmount: Float
     payoutStatus: String
     refundAmount: Float
     refundedAt: String
@@ -121,6 +122,9 @@ const studentBookingTypeDefs = gql`
     graphStats: [GraphPoint!]!
     completedBookings: [StudentBooking!]!
     uncompletedBookings: [StudentBooking!]!
+    upcomingBookings: [StudentBooking!]!
+    cancelledBookings: [StudentBooking!]!
+    historyBookings: [StudentBooking!]!
   }
 
   type StudentInfo {
@@ -168,6 +172,7 @@ const studentBookingTypeDefs = gql`
     review: Boolean
     paymentStatus: String
     chargeAmount: Float
+    instructorAmount: Float
     payoutStatus: String
     refundAmount: Float
     refundedAt: String

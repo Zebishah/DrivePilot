@@ -16,6 +16,7 @@ const { runT48ChargeJob } = require("./jobs/t48ChargeJob");
 const {
   runPendingBookingCleanupJob,
 } = require("./jobs/pendingBookingCleanupJob");
+const { runLessonEndReminderJob } = require("./jobs/lessonEndReminderJob");
 
 // ✅ Connect to MongoDB
 connectDB();
@@ -49,6 +50,17 @@ setInterval(() => {
 }, PENDING_CLEANUP_INTERVAL_MS);
 runPendingBookingCleanupJob().catch((err) =>
   console.error("[PendingBookingCleanupJob] Initial run error:", err),
+);
+
+// Lesson-end reminder: every 1 min — emails instructor to confirm lesson status
+const LESSON_REMINDER_INTERVAL_MS = 2 * 60 * 1000;
+setInterval(() => {
+  runLessonEndReminderJob().catch((err) =>
+    console.error("[LessonEndReminder] Error:", err),
+  );
+}, LESSON_REMINDER_INTERVAL_MS);
+runLessonEndReminderJob().catch((err) =>
+  console.error("[LessonEndReminder] Initial run error:", err),
 );
 
 // ✅ Initialize Express app and HTTP server

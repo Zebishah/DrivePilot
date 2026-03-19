@@ -123,9 +123,9 @@ const AdminBookingResolvers = {
           throw new Error("Slot not found");
         }
 
-        // Block marking as completed before the slot end time (skip in development for testing)
+        // Block marking as completed before the slot end time in all environments
         // Slot times are in business timezone (SLOT_TIMEZONE, default Europe/Zurich)
-        if (status === "completed" && process.env.NODE_ENV === "production") {
+        if (status === "completed") {
           const slot = booking.slots[slotIndex];
           const endTimeStr =
             slot.endTime && slot.endTime.split(":").length >= 3

@@ -29,10 +29,15 @@ export const GET_ADMIN_ANALYTICS = gql`
     getAdminAnalytics(filter: $filter) {
       overallStats {
         totalRegistrations
+        studentRegistrations
+        instructorRegistrations
         totalLessonsBooked
+        upcomingLessonsBooked
+        completedLessonsBooked
         reviewsGiven
         lessonAttendance
         attendanceRate
+        averageReservedHoursPerStudent
       }
       graphData {
         activeUsers {

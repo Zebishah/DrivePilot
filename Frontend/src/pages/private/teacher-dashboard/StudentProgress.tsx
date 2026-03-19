@@ -35,8 +35,15 @@ const StudentDashboard: React.FC = () => {
     return <NotFoundState />;
   }
 
-  const { studentInfo, lessonStats, completedBookings, uncompletedBookings } =
-    data.getStudentDashboardDetails;
+  const {
+    studentInfo,
+    lessonStats,
+    completedBookings,
+    uncompletedBookings,
+    upcomingBookings = [],
+    cancelledBookings = [],
+    historyBookings = [],
+  } = data.getStudentDashboardDetails;
   return (
     <div className="min-h-screen bg-gray-50 py-2 px-8">
       <BackButton variant="outline" label="Back" />
@@ -70,10 +77,11 @@ const StudentDashboard: React.FC = () => {
           />
         </div>
 
-        {/* Daily Progress */}
+        {/* Booking Management */}
         <DailyProgressTable
-          completedBookings={completedBookings}
-          uncompletedBookings={uncompletedBookings}
+          upcomingBookings={upcomingBookings}
+          cancelledBookings={cancelledBookings}
+          historyBookings={historyBookings}
           selectedTab={selectedTab}
           setSelectedTab={setSelectedTab}
         />

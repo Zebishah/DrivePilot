@@ -164,7 +164,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     },
   });
 
-  // Socket setup for typing events
+  // Socket setup for typing events and live message updates
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !conversation?._id || !otherParticipant?._id) {
@@ -194,6 +194,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       }
     };
 
+    const handleReceiveMessage = (msg: any) => {
+      if (!msg?.conversationId || !conversation?._id) return;
+      if (String(msg.conversationId) !== String(conversation._id)) return;
+
+      const normalized: MessageType = {
+        ...msg,
+        conversationId: msg.conversationId || conversation._id,
+      };
+
+      dispatch(
+        addMessage({
+          conversationId: conversation._id,
+          message: normalized,
+        })
+      );
+      scrollToBottom();
+    };
+
     const joinRoom = () => {
       socket.emit(
         "joinConversation",
@@ -208,12 +226,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
 
     joinRoom();
     socket.on("typing", handleTyping);
+    socket.on("receive_message", handleReceiveMessage);
 
     return () => {
       socket.emit("leaveConversation", conversation._id);
       socket.off("typing", handleTyping);
+      socket.off("receive_message", handleReceiveMessage);
     };
-  }, [conversation?._id, otherParticipant?._id]);
+  }, [conversation?._id, otherParticipant?._id, dispatch, scrollToBottom]);
 
   // Load messages when conversation changes
   useEffect(() => {

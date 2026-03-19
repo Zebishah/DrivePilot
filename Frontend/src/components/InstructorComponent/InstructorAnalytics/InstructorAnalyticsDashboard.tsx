@@ -1,16 +1,15 @@
-import React, { useEffect } from "react";
-import { Users, Calendar, DollarSign, Award } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Users, Calendar, DollarSign, BookOpen, Info } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { LastTrainedStudent } from "./LastTrainedStudent";
 
 import { InstructorMap } from "./InstructorMap";
 import { ProgressMetric } from "./ProgressMetric";
-import { AvailabilityTab } from "../../../pages/private/teacher-dashboard/tabs/AvailabilityTab";
 import { InstructorAnalytics } from "../../../types/InstructorAnalytics";
 import { gql, useQuery } from "@apollo/client";
 import { useAuth } from "../../../context/AuthContext";
-import { AvailabilityTabOverview } from "./AvailabilityCalendar";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { useNavigate } from "react-router-dom";
 
 const GET_INSTRUCTOR_ANALYTICS = gql`
   query GetInstructorAnalytics($instructorId: ID!) {
@@ -18,6 +17,8 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
       totalStudents
       activeBookings
       totalEarnings
+      totalLessonsGiven
+      lastLessonDate
       averageLessonsPerStudent
       cancellationRate
       attendanceRate
@@ -26,9 +27,36 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
         status
         createdAt
         studentId {
+          _id
           firstName
           lastName
           email
+          profileImage
+        }
+        instructorId {
+          firstName
+          lastName
+          email
+        }
+        slots {
+          date
+          startTime
+          endTime
+          status
+        }
+        studentTotalLessons
+        studentLocation
+      }
+      recentBookings {
+        _id
+        status
+        createdAt
+        studentId {
+          _id
+          firstName
+          lastName
+          email
+          profileImage
         }
         instructorId {
           firstName
@@ -56,19 +84,47 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
 
 export const InstructorAnalyticsDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data, loading, error, refetch } = useQuery(GET_INSTRUCTOR_ANALYTICS, {
     variables: { instructorId: user?.id },
     fetchPolicy: "no-cache",
   });
 
+  const recentBookings = (data?.getInstructorAnalytics as InstructorAnalytics)
+    ?.recentBookings ?? [];
+
+  const [currentRecentIndex, setCurrentRecentIndex] = useState(0);
+  const clampedIndex =
+    recentBookings.length > 0
+      ? Math.min(Math.max(0, currentRecentIndex), recentBookings.length - 1)
+      : 0;
+  const currentBooking = useMemo(
+    () => recentBookings[clampedIndex] ?? null,
+    [recentBookings, clampedIndex]
+  );
+
   useEffect(() => {
     if (user?.id) refetch();
   }, [user, refetch]);
 
+  useEffect(() => {
+    setCurrentRecentIndex(0);
+  }, [recentBookings.length]);
+
+  const handleNextRecent = () => {
+    if (recentBookings.length <= 1) return;
+    setCurrentRecentIndex((i) => (i + 1) % recentBookings.length);
+  };
+  const handleSelectRecentIndex = (index: number) => {
+    setCurrentRecentIndex(index);
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error) return <p>Error: {error.message}</p>;
+
   const analytics = data?.getInstructorAnalytics as InstructorAnalytics;
+
   return (
     <div className=" bg-gray-50 p-6 w-full ">
       <div className=" w-full space-y-6 ">
@@ -77,65 +133,80 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
           {" "}
           <div className="grid grid-rows-2 md:grid-rows-2 lg:grid-rows-2 gap-6 w-full ">
             <div className="flex gap-4 w-full ">
-              {" "}
               <StatsCard
                 title="Cumulative Students Count"
                 value={analytics?.totalStudents}
                 icon={Users}
                 bgColor="bg-red-200"
                 iconColor="bg-red-400"
+                tooltip="Total number of different students you’ve trained on DSP since joining the platform."
+                onClick={() => navigate("/teacher-dashboard/my-students")}
               />
               <StatsCard
-                title="Active Bookings"
+                title="Upcoming Bookings"
                 value={analytics?.activeBookings}
                 icon={Calendar}
                 bgColor="bg-purple-200"
                 iconColor="bg-purple-400"
+                tooltip="Number of future lessons you have scheduled with students."
+                onClick={() =>
+                  navigate("/teacher-dashboard/my-students", {
+                    state: { focus: "upcoming" },
+                  })
+                }
               />
             </div>
             <div className="flex gap-4 w-full">
-              {" "}
               <StatsCard
                 title="Money Earned"
                 value={`${String(analytics?.totalEarnings).slice(0, 6)}$`}
                 icon={DollarSign}
                 bgColor="bg-yellow-200"
                 iconColor="bg-yellow-400"
+                tooltip="Total amount earned from all completed lessons. Cancelled or pending lessons are not included."
               />
               <StatsCard
-                title="Licensed Students"
-                value={Math.floor(analytics?.studentsCount * 0.8) || 0} // Assuming 80% are licensed
-                icon={Award}
+                title="Total Lessons Given"
+                value={analytics?.totalLessonsGiven ?? 0}
+                icon={BookOpen}
                 bgColor="bg-teal-200"
                 iconColor="bg-teal-400"
+                tooltip="This is the total number of completed lessons you have conducted with students."
+                onClick={() =>
+                  navigate("/teacher-dashboard/bookingManagement")
+                }
               />
             </div>
           </div>
           <LastTrainedStudent
-            student={analytics.lastBooking?.studentId || null}
-            totalLessons={analytics.lastBooking?.studentTotalLessons || 0}
+            student={currentBooking?.studentId ?? null}
+            totalLessons={currentBooking?.studentTotalLessons ?? 0}
             joiningDate={
-              analytics.lastBooking?.createdAt
-                ? new Date(
-                    Number(analytics.lastBooking.createdAt)
-                  ).toLocaleDateString()
+              currentBooking?.slots?.[0]?.date && currentBooking?.slots?.[0]?.startTime
+                ? `${currentBooking.slots[0].date}T${currentBooking.slots[0].startTime}:00`
                 : ""
             }
             satisfaction={100}
-            completionDate={analytics.lastBooking?.slots[0]?.date}
-            studentLocation={analytics.lastBooking?.studentLocation}
+            completionDate={
+              currentBooking?.slots?.[0]?.date && currentBooking?.slots?.[0]?.endTime
+                ? `${currentBooking.slots[0].date}T${currentBooking.slots[0].endTime}:00`
+                : undefined
+            }
+            studentLocation={currentBooking?.studentLocation ?? null}
+            recentCount={recentBookings.length}
+            currentIndex={clampedIndex}
+            onNext={handleNextRecent}
+            onSelectIndex={handleSelectRecentIndex}
           />
         </div>
 
-        {/* Second Row: Last Trained Student and Available Days */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[40%] ">
-          <AvailabilityTabOverview />{" "}
-          <div className="h-full">
-            <InstructorMap address={analytics?.instructor?.address} />
-          </div>
+        {/* Map Row (keep map, calendar removed) */}
+        <div className="mt-6">
+          <InstructorMap
+            address={analytics?.instructor?.address}
+            className="h-80"
+          />
         </div>
-
-        {/* Third Row: Map */}
 
         {/* Bottom Row: Progress Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -145,7 +216,6 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             percentage={analytics.attendanceRate}
             value={`${Math.round(analytics.attendanceRate)}%`}
             color="green"
-            badge="Active"
           />
           <ProgressMetric
             title="Cancellation Rate"
@@ -153,7 +223,6 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             percentage={analytics.cancellationRate}
             value={`${Math.round(analytics.cancellationRate)}%`}
             color="red"
-            badge="Last Month"
           />
           <ProgressMetric
             title="Average Lessons Per Student"
@@ -161,6 +230,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             percentage={analytics.averageLessonsPerStudent}
             value={`${Math.round(analytics.averageLessonsPerStudent)}`}
             color="#99F6E4"
+            showProgressBar={false}
           />
         </div>
       </div>

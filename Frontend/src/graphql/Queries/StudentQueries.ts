@@ -72,68 +72,58 @@ export const GET_STUDENT_DASHBOARD = gql`
       }
       completedBookings {
         _id
-        studentId {
-          _id
-          firstName
-          lastName
-          email
-          description
-          profileImage
-        }
-        instructorId {
-          _id
-          firstName
-          lastName
-          email
-          description
-          profileImage
-        }
-        slots {
-          _id
-          date
-          startTime
-          endTime
-          booked
-          feedBackStatus
-        }
+        studentId { _id firstName lastName email description profileImage }
+        instructorId { _id firstName lastName email description profileImage }
+        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
         totalAmount
+        finalAmount
         status
         createdAt
         updatedAt
-
-        profileImage
       }
       uncompletedBookings {
         _id
-        studentId {
-          _id
-          firstName
-          lastName
-          email
-          description
-          profileImage
-        }
-        instructorId {
-          _id
-          firstName
-          lastName
-          email
-          description
-          profileImage
-        }
-        slots {
-          date
-          startTime
-          endTime
-          booked
-          feedBackStatus
-        }
+        studentId { _id firstName lastName email description profileImage }
+        instructorId { _id firstName lastName email description profileImage }
+        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
         totalAmount
+        finalAmount
         status
         createdAt
         updatedAt
-
-        profileImage
+      }
+      upcomingBookings {
+        _id
+        studentId { _id firstName lastName email description profileImage }
+        instructorId { _id firstName lastName email description profileImage }
+        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        totalAmount
+        finalAmount
+        status
+        createdAt
+        updatedAt
+      }
+      cancelledBookings {
+        _id
+        studentId { _id firstName lastName email description profileImage }
+        instructorId { _id firstName lastName email description profileImage }
+        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        totalAmount
+        finalAmount
+        status
+        createdAt
+        updatedAt
+      }
+      historyBookings {
+        _id
+        studentId { _id firstName lastName email description profileImage }
+        instructorId { _id firstName lastName email description profileImage }
+        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        totalAmount
+        finalAmount
+        status
+        createdAt
+        updatedAt
       }
     }
   }

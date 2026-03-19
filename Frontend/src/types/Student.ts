@@ -87,6 +87,9 @@ export interface Slot {
   endTime: string;
   status: string;
   paymentStatus?: string;
+  chargeAmount?: number;
+  instructorAmount?: number;
+  feedBackStatus?: string;
 }
 
 export interface Instructor {
@@ -99,15 +102,16 @@ export interface Instructor {
 
 export interface Booking {
   _id: string;
-  studentId: string;
+  studentId: string | { _id: string; firstName?: string; lastName?: string; email?: string; profileImage?: string };
   instructorId: Instructor;
   slots: Slot[];
   totalAmount: number;
+  finalAmount?: number;
   status: string;
   createdAt: string;
   updatedAt: string;
   feedBackStatus?: string;
-  bookerProfileImage: string;
+  bookerProfileImage?: string;
   /** Set when deferred checkout completed (card saved); used to exclude abandoned pending */
   stripeCustomerId?: string | null;
 }
@@ -118,6 +122,9 @@ export interface DashboardData {
   graphStats: GraphStats[];
   completedBookings: Booking[];
   uncompletedBookings: Booking[];
+  upcomingBookings?: Booking[];
+  cancelledBookings?: Booking[];
+  historyBookings?: Booking[];
 }
 export type DateFilter =
   | "this-week"

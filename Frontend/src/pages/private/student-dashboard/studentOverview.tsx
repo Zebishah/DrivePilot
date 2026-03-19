@@ -1,15 +1,6 @@
-import React, { useState, useEffect } from "react";
-import {
-  BookOpen,
-  Download,
-  User,
-  Clock,
-  Calendar,
-  X,
-  Loader2,
-  Eye,
-} from "lucide-react";
-import { gql, useQuery } from "@apollo/client";
+import { useState } from "react";
+import { BookOpen, User, Calendar, Eye, Info } from "lucide-react";
+import { useQuery } from "@apollo/client";
 import { Feedback, SlotLesson } from "../../../types/StudentDashboard";
 import {
   GET_STUDENT_DASHBOARD_STATS,
@@ -20,7 +11,7 @@ import { LoadingCard } from "../../../components/StudentComponents/StudentDashbo
 import { CircularProgress } from "../../../components/StudentComponents/StudentDashboard/CircularProgressDashboard";
 import { FeedbackModal } from "../../../components/StudentComponents/StudentDashboard/FeedBackModal";
 import { useAuth } from "../../../context/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function StudentOverview() {
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
@@ -28,6 +19,7 @@ export default function StudentOverview() {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const studentId = user?.id || "";
   // GraphQL Queries
@@ -133,47 +125,100 @@ export default function StudentOverview() {
           </>
         ) : (
           <>
-            <div className="bg-red-200 rounded-lg p-6  flex flex-col justify-center items-center">
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/student-dashboard/book", {
+                  state: { tab: "history" },
+                })
+              }
+              className="bg-red-200 rounded-lg p-6 flex flex-col justify-center items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-shadow hover:shadow-md"
+            >
               <div className="flex items-center justify-center bg-white rounded-full mb-2 p-4">
                 <BookOpen className="w-6 h-6 text-red-500" />
               </div>
-              <h3 className="text-sm font-medium text-gray-700 mb-1">
-                Total Lessons
-              </h3>
+              <div className="flex items-center gap-1 mb-1">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Total Lessons
+                </h3>
+                <span className="relative group inline-flex">
+                  <Info className="w-4 h-4 text-gray-600" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
+                    This is the total number of driving lessons you&apos;ve
+                    already completed with your instructors.
+                  </span>
+                </span>
+              </div>
               <p className="text-3xl font-bold text-gray-900">
                 {statsData?.getStudentDashboardStats?.totalLessons || 0}
               </p>
-            </div>
+            </button>
 
-            <div className="bg-purple-200 rounded-lg px-6   flex flex-col justify-center items-center">
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/student-dashboard/book", {
+                  state: { tab: "upcoming" },
+                })
+              }
+              className="bg-purple-200 rounded-lg px-6 flex flex-col justify-center items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 transition-shadow hover:shadow-md"
+            >
               <div className="flex items-center justify-center p-4 bg-white rounded-full mb-2">
                 <Calendar className="w-6 h-6 text-purple-500" />
               </div>
-              <h3 className="text-sm font-medium text-gray-700 mb-1">
-                Current Booking
-              </h3>
+              <div className="flex items-center gap-1 mb-1">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Upcoming Bookings
+                </h3>
+                <span className="relative group inline-flex">
+                  <Info className="w-4 h-4 text-gray-600" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
+                    This shows how many upcoming lessons you&apos;ve scheduled.
+                  </span>
+                </span>
+              </div>
               <p className="text-3xl font-bold text-gray-900">
                 {statsData?.getStudentDashboardStats?.currentBookings || 0}
               </p>
-            </div>
+            </button>
 
-            <div className="bg-yellow-200 rounded-lg p-6  flex flex-col justify-center items-center">
+            <button
+              type="button"
+              onClick={() => navigate("/student-dashboard/Feedback")}
+              className="bg-yellow-200 rounded-lg p-6 flex flex-col justify-center items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition-shadow hover:shadow-md"
+            >
               <div className="flex items-center justify-center p-4 bg-white rounded-full mb-2">
                 <User className="w-6 h-6 text-yellow-600" />
               </div>
-              <h3 className="text-sm font-medium text-gray-700 mb-1">
-                Total Instructors
-              </h3>
+              <div className="flex items-center gap-1 mb-1">
+                <h3 className="text-sm font-medium text-gray-700">
+                  Total Instructors
+                </h3>
+                <span className="relative group inline-flex">
+                  <Info className="w-4 h-4 text-gray-600" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
+                    This is the total number of different instructors you&apos;ve
+                    learned with.
+                  </span>
+                </span>
+              </div>
               <p className="text-3xl font-bold text-gray-900">
                 {statsData?.getStudentDashboardStats?.totalInstructors || 0}
               </p>
-            </div>
+            </button>
 
-            <div className="bg-cyan-200 rounded-lg p-6  flex flex-col justify-between items-center">
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-1">
+            <div className="bg-cyan-200 rounded-lg p-6 flex flex-col justify-between items-center">
+              <div className="flex items-center gap-1 mb-1">
+                <h3 className="text-sm font-medium text-gray-700">
                   Remaining Hours
                 </h3>
+                <span className="relative group inline-flex">
+                  <Info className="w-4 h-4 text-gray-600" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
+                    This estimate was provided by your most recent instructor
+                    based on your current progress.
+                  </span>
+                </span>
               </div>
               <CircularProgress
                 value={getRemainingHoursPercentage()}

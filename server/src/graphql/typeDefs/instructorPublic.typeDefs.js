@@ -125,9 +125,12 @@ const instructorTypeDefs = gql`
     activeBookings: Int!
     totalEarnings: Float!
     lastBooking: StudentBookingNew
+    recentBookings: [StudentBookingNew!]!
     averageLessonsPerStudent: Float!
     cancellationRate: Float!
     attendanceRate: Float!
+    totalLessonsGiven: Int
+    lastLessonDate: String
     instructor: Instructor!
   }
 

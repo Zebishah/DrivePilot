@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useApolloClient, useQuery } from "@apollo/client/react";
 import {
   CalendarIcon,
   FilterIcon,
@@ -14,8 +14,9 @@ import {
   TrendingUp,
   X,
   ChevronDown,
+  Info,
 } from "lucide-react";
-import { format } from "date-fns";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import dynamic from "next/dynamic";
 import {
   GET_ADMIN_ANALYTICS,
@@ -264,6 +265,8 @@ interface StatCardProps {
   color: string;
   isPercentage?: boolean;
   subtitle?: string;
+  secondarySubtitle?: string;
+  tooltip?: string;
 }
 
 function StatCard({
@@ -273,18 +276,33 @@ function StatCard({
   color,
   isPercentage = false,
   subtitle,
+  secondarySubtitle,
+  tooltip,
 }: StatCardProps) {
   return (
     <Card className={`${color} border-0`}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-white/80">{title}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-white/80">{title}</p>
+              {tooltip && (
+                <Info
+                  className="h-4 w-4 text-white/80 cursor-help"
+                  aria-label={tooltip}
+                />
+              )}
+            </div>
             <p className="text-3xl font-bold text-white">
               {isPercentage ? `${value.toFixed(1)}%` : value}
             </p>
             {subtitle !== undefined && (
-              <p className="text-xs text-white/70 mt-1">{subtitle}</p>
+              <p className="text-xs text-white/80 mt-1">{subtitle}</p>
+            )}
+            {secondarySubtitle !== undefined && (
+              <p className="text-xs text-white/80 mt-0.5">
+                {secondarySubtitle}
+              </p>
             )}
           </div>
           <div className="text-white/80">{icon}</div>
@@ -296,7 +314,7 @@ function StatCard({
 
 export function AnalyticsDashboard() {
   const [filters, setFilters] = useState<AnalyticsFilterInput>({
-    filterType: FilterType.LAST_MONTH,
+    filterType: FilterType.THIS_MONTH,
   });
 
   const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
@@ -304,6 +322,8 @@ export function AnalyticsDashboard() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showFromDatePicker, setShowFromDatePicker] = useState(false);
   const [showToDatePicker, setShowToDatePicker] = useState(false);
+  const now = useMemo(() => new Date(), []);
+  // NOTE: period dropdowns are per-graph; do not share this state globally
 
   const {
     data: analyticsData,
@@ -311,8 +331,8 @@ export function AnalyticsDashboard() {
     refetch,
   } = useQuery<{ getAdminAnalytics: AdminAnalytics }>(GET_ADMIN_ANALYTICS, {
     variables: { filter: filters },
-    fetchPolicy: "cache-first", // Changed from "cache-and-network"
-    notifyOnNetworkStatusChange: false,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
   });
 
   const { data: instructorsData, loading: instructorsLoading } = useQuery<{
@@ -320,6 +340,7 @@ export function AnalyticsDashboard() {
   }>(GET_ALL_INSTRUCTORS);
 
   const instructors = instructorsData?.getAllInstructors || [];
+  const apolloClient = useApolloClient();
 
   const applyFilters = useCallback(() => {
     const newFilters: AnalyticsFilterInput = {
@@ -337,15 +358,123 @@ export function AnalyticsDashboard() {
       newFilters.toDate = format(dateRange.to, "yyyy-MM-dd");
     }
 
+    // Global filter should update cards + all graphs.
+    // Also clear any per-graph period overrides by syncing them from the global response.
     setFilters(newFilters);
+    refetch({ filter: newFilters });
     setIsFilterOpen(false);
-  }, [filters.filterType, selectedInstructors, dateRange.from, dateRange.to]);
+  }, [
+    filters.filterType,
+    selectedInstructors,
+    dateRange.from,
+    dateRange.to,
+    refetch,
+  ]);
+
+  const fetchGraphDataForMonthYear = useCallback(
+    async (monthStr: string, yearStr: string) => {
+      const month = Number(monthStr);
+      const year = Number(yearStr);
+      if (!Number.isFinite(month) || !Number.isFinite(year)) return null;
+
+      const from = startOfMonth(new Date(year, month, 1));
+      const to = endOfMonth(from);
+
+      const filter: AnalyticsFilterInput = {
+        filterType: FilterType.CUSTOM,
+        fromDate: format(from, "yyyy-MM-dd"),
+        toDate: format(to, "yyyy-MM-dd"),
+        instructorIds:
+          selectedInstructors.length > 0 ? selectedInstructors : undefined,
+      };
+
+      const res = await apolloClient.query<{
+        getAdminAnalytics: AdminAnalytics;
+      }>({
+        query: GET_ADMIN_ANALYTICS,
+        variables: { filter },
+        fetchPolicy: "network-only",
+      });
+
+      return res.data?.getAdminAnalytics?.graphData ?? null;
+    },
+    [apolloClient, selectedInstructors],
+  );
+
+  const PeriodDropdowns = ({
+    month,
+    year,
+    setMonth,
+    setYear,
+    onChange,
+  }: {
+    month: string;
+    year: string;
+    setMonth: (v: string) => void;
+    setYear: (v: string) => void;
+    onChange: (m: string, y: string) => void;
+  }) => {
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 8 }, (_, i) => String(currentYear - i)); // currentYear .. currentYear-7
+
+    return (
+      <div className="flex items-center gap-2">
+        <select
+          value={month}
+          onChange={(e) => {
+            const next = e.target.value;
+            setMonth(next);
+            onChange(next, year);
+          }}
+          className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+          aria-label="Select month"
+        >
+          {months.map((m, idx) => (
+            <option key={m} value={String(idx)}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <select
+          value={year}
+          onChange={(e) => {
+            const next = e.target.value;
+            setYear(next);
+            onChange(month, next);
+          }}
+          className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+          aria-label="Select year"
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
 
   const clearFilters = () => {
-    setFilters({ filterType: FilterType.LAST_MONTH });
+    const newFilters: AnalyticsFilterInput = { filterType: FilterType.THIS_MONTH };
+    setFilters(newFilters);
     setSelectedInstructors([]);
     setDateRange({});
-    refetch();
+    refetch({ filter: newFilters });
   };
 
   const toggleInstructor = (instructorId: string) => {
@@ -358,6 +487,60 @@ export function AnalyticsDashboard() {
 
   const stats = analyticsData?.getAdminAnalytics.overallStats;
   const graphData = analyticsData?.getAdminAnalytics.graphData;
+
+  // Per-graph override state (so changing one graph period won't affect others/cards)
+  const [activeUsersGraph, setActiveUsersGraph] = useState(
+    graphData?.activeUsers ?? [],
+  );
+  const [avgRevenueGraph, setAvgRevenueGraph] = useState(
+    graphData?.averageRevenuePerInstructor ?? [],
+  );
+  const [avgBookingsGraph, setAvgBookingsGraph] = useState(
+    graphData?.bookingsPerInstructor ?? [],
+  );
+  const [totalEarningsGraph, setTotalEarningsGraph] = useState(
+    graphData?.totalEarnings ?? [],
+  );
+
+  const [activeUsersMonth, setActiveUsersMonth] = useState(
+    String(now.getMonth()),
+  );
+  const [activeUsersYear, setActiveUsersYear] = useState(String(now.getFullYear()));
+  const [avgRevenueMonth, setAvgRevenueMonth] = useState(String(now.getMonth()));
+  const [avgRevenueYear, setAvgRevenueYear] = useState(String(now.getFullYear()));
+  const [avgBookingsMonth, setAvgBookingsMonth] = useState(String(now.getMonth()));
+  const [avgBookingsYear, setAvgBookingsYear] = useState(String(now.getFullYear()));
+  const [totalEarningsMonth, setTotalEarningsMonth] = useState(String(now.getMonth()));
+  const [totalEarningsYear, setTotalEarningsYear] = useState(String(now.getFullYear()));
+
+  const [isActiveUsersLoading, setIsActiveUsersLoading] = useState(false);
+  const [isAvgRevenueLoading, setIsAvgRevenueLoading] = useState(false);
+  const [isAvgBookingsLoading, setIsAvgBookingsLoading] = useState(false);
+  const [isTotalEarningsLoading, setIsTotalEarningsLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (!graphData) return;
+    setActiveUsersGraph(graphData.activeUsers ?? []);
+    setAvgRevenueGraph(graphData.averageRevenuePerInstructor ?? []);
+    setAvgBookingsGraph(graphData.bookingsPerInstructor ?? []);
+    setTotalEarningsGraph(graphData.totalEarnings ?? []);
+    // Reset per-graph month/year selectors back to "current" after any global filter change,
+    // so we don't end up with mixed "global + per-graph" periods.
+    const m = String(now.getMonth());
+    const y = String(now.getFullYear());
+    setActiveUsersMonth(m);
+    setActiveUsersYear(y);
+    setAvgRevenueMonth(m);
+    setAvgRevenueYear(y);
+    setAvgBookingsMonth(m);
+    setAvgBookingsYear(y);
+    setTotalEarningsMonth(m);
+    setTotalEarningsYear(y);
+    setIsActiveUsersLoading(false);
+    setIsAvgRevenueLoading(false);
+    setIsAvgBookingsLoading(false);
+    setIsTotalEarningsLoading(false);
+  }, [graphData, now]);
 
   // Calculate collective totals from the conversion rates data
   const totalVisitors =
@@ -373,6 +556,16 @@ export function AnalyticsDashboard() {
       </div>
     );
   }
+
+  const GraphLoader = ({ height = 300 }: { height?: number }) => (
+    <div
+      className="w-full flex items-center justify-center"
+      style={{ height }}
+      aria-label="Loading chart"
+    >
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#5FC2D3]" />
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
@@ -608,19 +801,103 @@ export function AnalyticsDashboard() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Registrations"
-          value={stats?.totalRegistrations || 0}
-          icon={<Users className="h-8 w-8" />}
-          color="bg-gradient-to-r from-pink-400 to-pink-500"
-        />
-        <StatCard
-          title="Lessons Booked"
-          value={stats?.totalLessonsBooked || 0}
-          icon={<BookOpen className="h-8 w-8" />}
-          color="bg-gradient-to-r from-yellow-400 to-yellow-500"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <Card className="bg-gradient-to-r from-pink-400 to-pink-500 border-0">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p
+                    className="text-sm font-medium text-white/80"
+                    title="Sum of all students and instructors currently registered on DSP."
+                  >
+                    Total Registrations
+                  </p>
+                  <Info
+                    className="h-4 w-4 text-white/80 cursor-help"
+                    aria-label="Sum of all students and instructors currently registered on DSP."
+                  />
+                </div>
+                <p className="text-3xl font-bold text-white">
+                  {stats?.totalRegistrations || 0}
+                </p>
+                <div className="mt-2 flex flex-col gap-1 text-xs text-white/90">
+                  <button
+                    type="button"
+                    className="text-left underline underline-offset-2 hover:text-white"
+                    title="Click to view the full list of registered students."
+                    onClick={() => {
+                      window.location.href = "/admin-dashboard/StudentManagement";
+                    }}
+                  >
+                    Students ({stats?.studentRegistrations ?? 0})
+                  </button>
+                  <button
+                    type="button"
+                    className="text-left underline underline-offset-2 hover:text-white"
+                    title="Click to view the full list of registered instructors."
+                    onClick={() => {
+                      window.location.href =
+                        "/admin-dashboard/InstructorManagement";
+                    }}
+                  >
+                    Instructors ({stats?.instructorRegistrations ?? 0})
+                  </button>
+                </div>
+              </div>
+              <div className="text-white/80">
+                <Users className="h-8 w-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-r from-yellow-400 to-yellow-500 border-0">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-white/80">
+                    Lessons Booked
+                  </p>
+                  <Info
+                    className="h-4 w-4 text-white/80 cursor-help"
+                    aria-label="Total number of lessons booked by students on the platform. This includes both upcoming lessons and lessons already completed."
+                  />
+                </div>
+                <p className="text-3xl font-bold text-white">
+                  {stats?.totalLessonsBooked || 0}
+                </p>
+                <div className="mt-2 flex flex-col gap-1 text-xs text-white/90">
+                  <button
+                    type="button"
+                    className="text-left underline underline-offset-2 hover:text-white"
+                    title="Go to Booking Management"
+                    onClick={() => {
+                      window.location.href =
+                        "/admin-dashboard/bookingManagement";
+                    }}
+                  >
+                    Upcoming ({stats?.upcomingLessonsBooked ?? 0})
+                  </button>
+                  <button
+                    type="button"
+                    className="text-left underline underline-offset-2 hover:text-white"
+                    title="Go to Booking Management"
+                    onClick={() => {
+                      window.location.href =
+                        "/admin-dashboard/bookingManagement";
+                    }}
+                  >
+                    Completed ({stats?.completedLessonsBooked ?? 0})
+                  </button>
+                </div>
+              </div>
+              <div className="text-white/80">
+                <BookOpen className="h-8 w-8" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <StatCard
           title="Reviews Given"
           value={stats?.reviewsGiven || 0}
@@ -628,12 +905,30 @@ export function AnalyticsDashboard() {
           color="bg-gradient-to-r from-purple-400 to-purple-500"
         />
         <StatCard
-          title="Lessons Attendance"
+        title="Attendance Rate"
           value={stats?.attendanceRate || 0}
           icon={<TrendingUp className="h-8 w-8" />}
           color="bg-gradient-to-r from-blue-400 to-blue-500"
           isPercentage
-          subtitle={`${stats?.lessonAttendance ?? 0} lessons attended`}
+        subtitle={`Lessons Attended: ${stats?.lessonAttendance ?? 0}`}
+        secondarySubtitle={`Total Lessons Booked: ${
+          stats?.totalLessonsBooked ?? 0
+        }`}
+        tooltip="This percentage shows the number of lessons actually attended by students out of all the lessons they booked."
+        />
+        <StatCard
+          title="Avg Hours Reserved / Student"
+          value={
+            Number(
+              ((stats?.averageReservedHoursPerStudent ?? 0) as number).toFixed(
+                1,
+              ),
+            ) || 0
+          }
+          icon={<BookOpen className="h-8 w-8" />}
+          color="bg-gradient-to-r from-green-400 to-green-500"
+          subtitle="Average number of lesson hours each student reserved before obtaining their license."
+          tooltip="Total hours of all booked lessons divided by the number of students who booked lessons, within the selected period."
         />
       </div>
 
@@ -644,118 +939,238 @@ export function AnalyticsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Active Users
-              <div className="flex gap-2 text-sm">
-                <span className="text-gray-500">Last Month</span>
-                <span className="text-gray-500">Last 6 Month</span>
-                <span className="text-gray-500">Last Year</span>
-              </div>
+              <PeriodDropdowns
+                month={activeUsersMonth}
+                year={activeUsersYear}
+                setMonth={setActiveUsersMonth}
+                setYear={setActiveUsersYear}
+                onChange={async (m, y) => {
+                  setIsActiveUsersLoading(true);
+                  try {
+                    const gd = await fetchGraphDataForMonthYear(m, y);
+                    if (gd?.activeUsers) setActiveUsersGraph(gd.activeUsers);
+                  } finally {
+                    setIsActiveUsersLoading(false);
+                  }
+                }}
+              />
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Chart
-              options={{
-                chart: { type: "line" as const, toolbar: { show: false } },
-                colors: ["#008FFBD9", "#FFDB20"],
-                stroke: { curve: "smooth" as const, width: 3 },
-                xaxis: {
-                  categories: graphData?.activeUsers.map((d) => d.time) || [],
-                },
-                legend: { position: "top" as const },
-                grid: { strokeDashArray: 3 },
-              }}
-              series={[
-                {
-                  name: "Students(Active)",
-                  data:
-                    graphData?.activeUsers.map((d) => Math.round(d.students)) ||
-                    [],
-                },
-                {
-                  name: "Instructor(Active)",
-                  data:
-                    graphData?.activeUsers.map((d) =>
-                      Math.round(d.instructors),
-                    ) || [],
-                },
-              ]}
-              type="line"
-              height={300}
-            />
+          <CardContent className="overflow-visible">
+            {isActiveUsersLoading ? (
+              <GraphLoader height={300} />
+            ) : (
+              <Chart
+                options={{
+                  chart: { type: "line" as const, toolbar: { show: false } },
+                  colors: ["#008FFBD9", "#FFDB20"],
+                  stroke: { curve: "smooth" as const, width: 3 },
+                  xaxis: {
+                    categories: activeUsersGraph.map((d) => d.time) || [],
+                  },
+                  legend: { position: "top" as const },
+                  grid: { strokeDashArray: 3 },
+                  tooltip: {
+                    shared: true,
+                    intersect: false,
+                    custom: ({ series, dataPointIndex, w }) => {
+                      const label =
+                        w?.globals?.categoryLabels?.[dataPointIndex] ??
+                        w?.globals?.labels?.[dataPointIndex] ??
+                        "";
+                      const students = series?.[0]?.[dataPointIndex] ?? 0;
+                      const instructors = series?.[1]?.[dataPointIndex] ?? 0;
+                      return `
+                        <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                          <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                          <div style="font-size:12px; margin-bottom:6px;">
+                            Students (paid ≥ 1 lesson): <b>${students}</b><br/>
+                            Instructors (delivered ≥ 1 paid lesson): <b>${instructors}</b>
+                          </div>
+                          <div style="font-size:11px; color:#6b7280;">
+                            Shows students who booked & paid for lessons and instructors who completed at least one paid lesson, over the selected time range.
+                          </div>
+                        </div>
+                      `;
+                    },
+                  },
+                }}
+                series={[
+                  {
+                    name: "Students(Active)",
+                    data:
+                      activeUsersGraph.map((d) => Math.round(d.students)) || [],
+                  },
+                  {
+                    name: "Instructor(Active)",
+                    data:
+                      activeUsersGraph.map((d) =>
+                        Math.round(d.instructors),
+                      ) || [],
+                  },
+                ]}
+                type="line"
+                height={300}
+              />
+            )}
           </CardContent>
         </Card>
 
         {/* Average Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Average Revenue per Instructor</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              Average Revenue per Instructor
+              <PeriodDropdowns
+                month={avgRevenueMonth}
+                year={avgRevenueYear}
+                setMonth={setAvgRevenueMonth}
+                setYear={setAvgRevenueYear}
+                onChange={async (m, y) => {
+                  setIsAvgRevenueLoading(true);
+                  try {
+                    const gd = await fetchGraphDataForMonthYear(m, y);
+                    if (gd?.averageRevenuePerInstructor)
+                      setAvgRevenueGraph(gd.averageRevenuePerInstructor);
+                  } finally {
+                    setIsAvgRevenueLoading(false);
+                  }
+                }}
+              />
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Chart
-              options={{
-                chart: {
-                  type: "bar" as const,
-                  toolbar: { show: true },
-                  zoom: { enabled: true },
-                },
-                colors: ["#8DF9A5"],
-                xaxis: {
-                  type: "category", // ✅ required for zooming
-                  categories:
-                    graphData?.averageRevenuePerInstructor.map((d) => d.time) ||
-                    [],
-                },
-                plotOptions: { bar: { borderRadius: 4 } },
-                dataLabels: { enabled: false }, // 🔥 turn off labels on bars
-              }}
-              series={[
-                {
-                  name: "Revenue per Instructor",
-                  data:
-                    graphData?.averageRevenuePerInstructor.map((d) =>
-                      Math.round(d.averageRevenue),
-                    ) || [],
-                },
-              ]}
-              type="bar"
-              height={300}
-            />
+          <CardContent className="overflow-visible">
+            {isAvgRevenueLoading ? (
+              <GraphLoader height={300} />
+            ) : (
+              <Chart
+                options={{
+                  chart: {
+                    type: "bar" as const,
+                    toolbar: { show: true },
+                    zoom: { enabled: true },
+                  },
+                  colors: ["#8DF9A5"],
+                  xaxis: {
+                    type: "category", // ✅ required for zooming
+                    categories: avgRevenueGraph.map((d) => d.time) || [],
+                  },
+                  plotOptions: { bar: { borderRadius: 4 } },
+                  dataLabels: { enabled: false }, // 🔥 turn off labels on bars
+                  tooltip: {
+                    y: {
+                      formatter: (val: number) => `CHF ${Number(val).toFixed(2)}`,
+                    },
+                    custom: ({ series, dataPointIndex, w }) => {
+                      const label =
+                        w?.globals?.categoryLabels?.[dataPointIndex] ??
+                        w?.globals?.labels?.[dataPointIndex] ??
+                        "";
+                      const value = series?.[0]?.[dataPointIndex] ?? 0;
+                      return `
+                        <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                          <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                          <div style="font-size:12px; margin-bottom:6px;">
+                            Average revenue per instructor: <b>CHF ${Number(value).toFixed(2)}</b>
+                          </div>
+                          <div style="font-size:11px; color:#6b7280;">
+                            Shows the average money earned by instructors (after commission) during the selected period.
+                          </div>
+                        </div>
+                      `;
+                    },
+                  },
+                }}
+                series={[
+                  {
+                    name: "Revenue per Instructor",
+                    data:
+                      avgRevenueGraph.map((d) =>
+                        Math.round(d.averageRevenue),
+                      ) || [],
+                  },
+                ]}
+                type="bar"
+                height={300}
+              />
+            )}
           </CardContent>
         </Card>
 
-        {/* Bookings Per Instructor */}
+        {/* Average Bookings per Instructor */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Bookings Per Instructor
-              <Button variant="ghost" size="sm">
-                <FilterIcon className="h-4 w-4" />
-              </Button>
+              Average Bookings per Instructor
+              <PeriodDropdowns
+                month={avgBookingsMonth}
+                year={avgBookingsYear}
+                setMonth={setAvgBookingsMonth}
+                setYear={setAvgBookingsYear}
+                onChange={async (m, y) => {
+                  setIsAvgBookingsLoading(true);
+                  try {
+                    const gd = await fetchGraphDataForMonthYear(m, y);
+                    if (gd?.bookingsPerInstructor)
+                      setAvgBookingsGraph(gd.bookingsPerInstructor);
+                  } finally {
+                    setIsAvgBookingsLoading(false);
+                  }
+                }}
+              />
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Chart
-              options={{
-                chart: { type: "bar" as const, toolbar: { show: false } },
-                colors: ["#615FD3"],
-                xaxis: {
-                  categories:
-                    graphData?.bookingsPerInstructor.map((d) => d.time) || [],
-                },
-                plotOptions: { bar: { borderRadius: 4 } },
-                dataLabels: { enabled: false }, // 🔥 turn off labels on bars
-              }}
-              series={[
-                {
-                  name: "Bookings",
-                  data:
-                    graphData?.bookingsPerInstructor.map((d) =>
-                      Math.round(d.averageBookings),
-                    ) || [],
-                },
-              ]}
-              type="bar"
-              height={300}
-            />
+          <CardContent className="overflow-visible">
+            {isAvgBookingsLoading ? (
+              <GraphLoader height={300} />
+            ) : (
+              <Chart
+                options={{
+                  chart: { type: "bar" as const, toolbar: { show: false } },
+                  colors: ["#615FD3"],
+                  xaxis: {
+                    categories: avgBookingsGraph.map((d) => d.time) || [],
+                  },
+                  plotOptions: { bar: { borderRadius: 4 } },
+                  dataLabels: { enabled: false }, // 🔥 turn off labels on bars
+                  tooltip: {
+                    y: {
+                      formatter: (val: number) =>
+                        `${Number(val).toFixed(2)} bookings`,
+                    },
+                    custom: ({ series, dataPointIndex, w }) => {
+                      const label =
+                        w?.globals?.categoryLabels?.[dataPointIndex] ??
+                        w?.globals?.labels?.[dataPointIndex] ??
+                        "";
+                      const value = series?.[0]?.[dataPointIndex] ?? 0;
+                      return `
+                        <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                          <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                          <div style="font-size:12px; margin-bottom:6px;">
+                            Average bookings per instructor: <b>${Number(value).toFixed(2)}</b>
+                          </div>
+                          <div style="font-size:11px; color:#6b7280;">
+                            Displays the average number of bookings received per instructor during the selected time frame.
+                          </div>
+                        </div>
+                      `;
+                    },
+                  },
+                }}
+                series={[
+                  {
+                    name: "Bookings",
+                    data:
+                      avgBookingsGraph.map((d) =>
+                        Math.round(d.averageBookings),
+                      ) || [],
+                  },
+                ]}
+                type="bar"
+                height={300}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -764,53 +1179,95 @@ export function AnalyticsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Total Earning
-              <div className="flex gap-2 text-sm">
-                <span className="text-blue-600 font-medium">Last Week</span>
-                <span className="text-gray-500">Last Month</span>
-                <span className="text-gray-500">Last Year</span>
-              </div>
+              <PeriodDropdowns
+                month={totalEarningsMonth}
+                year={totalEarningsYear}
+                setMonth={setTotalEarningsMonth}
+                setYear={setTotalEarningsYear}
+                onChange={async (m, y) => {
+                  setIsTotalEarningsLoading(true);
+                  try {
+                    const gd = await fetchGraphDataForMonthYear(m, y);
+                    if (gd?.totalEarnings)
+                      setTotalEarningsGraph(gd.totalEarnings);
+                  } finally {
+                    setIsTotalEarningsLoading(false);
+                  }
+                }}
+              />
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    $
-                    {stats?.totalRegistrations
-                      ? (stats.totalRegistrations * 27.3).toFixed(1)
-                      : "0.0"}
+          <CardContent className="overflow-visible">
+            {isTotalEarningsLoading ? (
+              <GraphLoader height={250} />
+            ) : (
+              <>
+                <div className="mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <TrendingUp className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">
+                        CHF{" "}
+                        {totalEarningsGraph
+                          .reduce((sum, d) => sum + (d.totalEarnings ?? 0), 0)
+                          .toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Selected period
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500">Last Week</div>
                 </div>
-                <div className="text-green-600 text-sm font-medium">↗ 163%</div>
-              </div>
-            </div>
-            <Chart
-              options={{
-                chart: { type: "bar" as const, toolbar: { show: false } },
-                colors: ["#5FC2D3"],
-                xaxis: {
-                  categories: graphData?.totalEarnings.map((d) => d.time) || [],
-                },
-                plotOptions: { bar: { borderRadius: 4 } },
-                dataLabels: { enabled: false }, // 🔥 turn off labels on bars
-              }}
-              series={[
-                {
-                  name: "Total Earnings",
-                  data:
-                    graphData?.totalEarnings.map((d) =>
-                      Math.round(d.totalEarnings),
-                    ) || [],
-                },
-              ]}
-              type="bar"
-              height={250}
-            />
+                <Chart
+                  options={{
+                    chart: { type: "bar" as const, toolbar: { show: false } },
+                    colors: ["#5FC2D3"],
+                    xaxis: {
+                      categories: totalEarningsGraph.map((d) => d.time) || [],
+                    },
+                    plotOptions: { bar: { borderRadius: 4 } },
+                    dataLabels: { enabled: false }, // 🔥 turn off labels on bars
+                    tooltip: {
+                      y: {
+                        formatter: (val: number) =>
+                          `CHF ${Number(val).toFixed(2)}`,
+                      },
+                      custom: ({ series, dataPointIndex, w }) => {
+                        const label =
+                          w?.globals?.categoryLabels?.[dataPointIndex] ??
+                          w?.globals?.labels?.[dataPointIndex] ??
+                          "";
+                        const value = series?.[0]?.[dataPointIndex] ?? 0;
+                        return `
+                          <div style="padding:10px 12px; max-width: 320px; white-space: normal;">
+                            <div style="font-weight:600; margin-bottom:6px;">${label}</div>
+                            <div style="font-size:12px; margin-bottom:6px;">
+                              Total earnings (after commission): <b>CHF ${Number(value).toFixed(2)}</b>
+                            </div>
+                            <div style="font-size:11px; color:#6b7280;">
+                              Shows the total money earned by instructors (after DSP commission) from delivered paid lessons during the selected time frame.
+                            </div>
+                          </div>
+                        `;
+                      },
+                    },
+                  }}
+                  series={[
+                    {
+                      name: "Total Earnings",
+                      data:
+                        totalEarningsGraph.map((d) =>
+                          Math.round(d.totalEarnings),
+                        ) || [],
+                    },
+                  ]}
+                  type="bar"
+                  height={250}
+                />
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -819,7 +1276,7 @@ export function AnalyticsDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            Conversion Rates
+          Traffic Dashboard
             <div className="flex gap-2 text-sm">
               <span className="text-gray-500">Last Week</span>
               <span className="text-gray-500">Last Month</span>

@@ -74,3 +74,12 @@ Use **phase docs** to get the big picture; use **module docs** when you need to 
 - **Start here:** [DEVELOPER_INDEX.md](./DEVELOPER_INDEX.md)
 - **All deep module docs:** [modules/README.md](./modules/README.md)
 - **Admin dashboard deep docs:** [modules/admin-dashboard/README.md](./modules/admin-dashboard/README.md)
+
+## Docs UI
+
+This documentation can now be rendered as a VitePress site from the `docs/` folder:
+
+```bash
+pnpm install
+pnpm docs:dev
+```

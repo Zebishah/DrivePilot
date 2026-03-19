@@ -16,6 +16,8 @@ import {
   InputLabel,
   CircularProgress,
   Alert,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -29,6 +31,8 @@ import {
   isSameDay,
   isBefore,
   isToday,
+  addMinutes,
+  differenceInMinutes,
 } from "date-fns";
 import { useQuery, useMutation } from "@apollo/client";
 import {
@@ -115,6 +119,7 @@ export const AvailabilityTab: React.FC = () => {
   const [isAddSlotOpen, setIsAddSlotOpen] = useState(false);
   const [isAddingSlot, setIsAddingSlot] = useState(false);
   const [isDeletingSlot, setIsDeletingSlot] = useState<string | null>(null);
+  const [isRangeMode, setIsRangeMode] = useState(false);
 
   const today = startOfDay(new Date());
 
@@ -196,17 +201,45 @@ export const AvailabilityTab: React.FC = () => {
     setSelectedDate(null);
     setStartTime(null);
     setEndTime(null);
+    setIsRangeMode(false);
     setIsAddSlotOpen(true);
   };
 
   const handleAddSlot = async () => {
-    if (!selectedDate || !startTime || !endTime) {
+    if (!selectedDate || !startTime) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    if (isAfter(startTime, endTime)) {
-      toast.error("Start time must be before end time");
+    let effectiveEndTime: Date | null = endTime;
+
+    if (isRangeMode) {
+      if (!endTime) {
+        toast.error("Please select an end time in range mode");
+        return;
+      }
+
+      if (isAfter(startTime, endTime)) {
+        toast.error("Start time must be before end time");
+        return;
+      }
+
+      const minutesDiff = differenceInMinutes(endTime, startTime);
+      if (minutesDiff < 120) {
+        toast.error(
+          "Oops! Availability slots need to be at least 1 hour long. Try selecting a longer time range"
+        );
+        return;
+      }
+    } else {
+      // Single-slot mode: automatically create a 1-hour slot
+      const oneHourLater = addMinutes(startTime, 60);
+      effectiveEndTime = oneHourLater;
+      setEndTime(oneHourLater);
+    }
+
+    if (!effectiveEndTime) {
+      toast.error("End time could not be determined");
       return;
     }
 
@@ -227,7 +260,7 @@ export const AvailabilityTab: React.FC = () => {
           input: {
             date: format(selectedDate, "yyyy-MM-dd"),
             startTime: format(startTime, "HH:mm"),
-            endTime: format(endTime, "HH:mm"),
+            endTime: format(effectiveEndTime, "HH:mm"),
             status: "available",
           },
         },
@@ -246,6 +279,7 @@ export const AvailabilityTab: React.FC = () => {
     // setSelectedDate(null);
     setStartTime(null);
     setEndTime(null);
+    setIsRangeMode(false);
   };
 
   const handleDeleteSlot = async (id: string) => {
@@ -648,6 +682,16 @@ export const AvailabilityTab: React.FC = () => {
                     }}
                   />
                 </Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isRangeMode}
+                      onChange={(event) => setIsRangeMode(event.target.checked)}
+                      disabled={isAddingSlot}
+                    />
+                  }
+                  label="Select a range of slots"
+                />
                 <Box sx={{ display: "flex", gap: 2 }}>
                   {/* Start Time */}
                   <Box
@@ -660,7 +704,18 @@ export const AvailabilityTab: React.FC = () => {
                       label="Start Time"
                       value={startTime}
                       onChange={(newValue) => {
-                        if (newValue) setStartTime(newValue);
+                        if (!newValue) {
+                          setStartTime(null);
+                          if (!isRangeMode) {
+                            setEndTime(null);
+                          }
+                          return;
+                        }
+                        setStartTime(newValue);
+                        if (!isRangeMode) {
+                          const oneHourLater = addMinutes(newValue, 60);
+                          setEndTime(oneHourLater);
+                        }
                       }}
                       disabled={isAddingSlot}
                       ampm={false} // ✅ Force 24-hour format
@@ -680,36 +735,38 @@ export const AvailabilityTab: React.FC = () => {
                     />
                   </Box>
 
-                  {/* End Time */}
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-                  >
-                    <InputLabel sx={{ fontSize: "16px" }}>
-                      Select End Time
-                    </InputLabel>
-                    <TimePicker
-                      label="End Time"
-                      value={endTime}
-                      onChange={(newValue) => {
-                        if (newValue) setEndTime(newValue);
-                      }}
-                      disabled={isAddingSlot}
-                      ampm={false} // ✅ 24-hour clock
-                      minutesStep={5}
-                      format="HH:mm"
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          sx: {
-                            "& .MuiOutlinedInput-root": {
-                              padding: 1.1,
-                              borderRadius: 1.6,
+                  {/* End Time - only visible in range mode */}
+                  {isRangeMode && (
+                    <Box
+                      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                    >
+                      <InputLabel sx={{ fontSize: "16px" }}>
+                        Select End Time
+                      </InputLabel>
+                      <TimePicker
+                        label="End Time"
+                        value={endTime}
+                        onChange={(newValue) => {
+                          if (newValue) setEndTime(newValue);
+                        }}
+                        disabled={isAddingSlot}
+                        ampm={false} // ✅ 24-hour clock
+                        minutesStep={5}
+                        format="HH:mm"
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            sx: {
+                              "& .MuiOutlinedInput-root": {
+                                padding: 1.1,
+                                borderRadius: 1.6,
+                              },
                             },
                           },
-                        },
-                      }}
-                    />
-                  </Box>
+                        }}
+                      />
+                    </Box>
+                  )}
                 </Box>
               </Box>
             </LocalizationProvider>

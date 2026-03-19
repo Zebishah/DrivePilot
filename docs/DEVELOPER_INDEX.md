@@ -6,10 +6,26 @@ This folder contains documentation so a **new developer** can understand the who
 
 ## How we document
 
-- **No extra software** – everything is Markdown in the `docs/` folder. You can read it in any editor or render it with GitHub/GitLab, or with a static doc site (e.g. [Docsify](https://docsify.js.org/), [Docusaurus](https://docusaurus.io/)) if you want a searchable site later.
+- **Markdown-first + VitePress UI** - everything still lives in the `docs/` folder as Markdown, and it can now also be rendered as a proper docs site with VitePress.
 - **Two levels:** (1) **Top-level (phase) docs** – one doc per area (Admin, Student, Teacher, Auth, …): routes, screens, main components and GraphQL/backend. (2) **Deep (module) docs** – under `docs/modules/<module>/`: each feature has its own doc with **every** code file, **every** query/mutation/typeDef, **every** resolver, and frontend–API integration.
 - **Which module doc is this?** – Folder name = module (e.g. `admin-dashboard`), file name = feature (e.g. `overview-analytics`). So `modules/admin-dashboard/overview-analytics.md` = Admin Dashboard → Overview/Analytics. See [README.md](./README.md) for the full structure.
 - **Cross-references** – each doc points to concrete files and symbols (components, queries, mutations, resolvers) so you can jump straight into the code.
+
+## Run the docs UI
+
+From the `docs/` folder:
+
+```bash
+pnpm install
+pnpm docs:dev
+```
+
+For a production build:
+
+```bash
+pnpm docs:build
+pnpm docs:preview
+```
 
 ---
 
@@ -57,7 +73,7 @@ dsp/
 | Phase | Document | Contents |
 |-------|----------|----------|
 | **1** | [01_ADMIN_DASHBOARD.md](./01_ADMIN_DASHBOARD.md) | Admin dashboard: layout, routes, every screen (Overview, Admin Access, Documents, Instructor/Student/Booking management, Transactions, Refund requests, Help & Support). Frontend components, GraphQL operations, backend resolvers and types. |
-| **2** | *02_STUDENT_DASHBOARD.md* (planned) | Student dashboard: overview, book lesson, booking details, payment history, complete payment, search, reviews, chat. |
+| **2** | [02_STUDENT_DASHBOARD.md](./02_STUDENT_DASHBOARD.md) | Student dashboard: overview, search instructors, booked lessons, profile setting, help & support, payment history, progress tracking, feedback & rating, chat. Deep module docs are available under `modules/student-dashboard/`. |
 | **3** | *03_INSTRUCTOR_DASHBOARD.md* (planned) | Instructor (teacher) dashboard: overview, settings, booking management, transaction history, feedback, Stripe, chat. |
 | **4** | *04_AUTHENTICATION.md* (planned) | Auth: sign in/up, forgot/reset password, OTP, 2FA, social (Google/Facebook), signup links, protected routes. |
 | **5** | *05_PAYMENTS_AND_STRIPE.md* (planned) | Payments: checkout, T-48, refunds, payouts, webhooks, commission. (Can reuse/refine existing Stripe docs.) |
@@ -72,7 +88,7 @@ Each doc under `docs/modules/<module>/` covers **one feature** in depth: all fro
 | Module | Folder | Deep docs available |
 |--------|--------|-------------------|
 | Admin Dashboard | [modules/admin-dashboard/](./modules/admin-dashboard/) | [overview-analytics](./modules/admin-dashboard/overview-analytics.md), [admin-access](./modules/admin-dashboard/admin-access.md), [document-management](./modules/admin-dashboard/document-management.md), [instructor-management](./modules/admin-dashboard/instructor-management.md), [booking-management](./modules/admin-dashboard/booking-management.md), [student-management](./modules/admin-dashboard/student-management.md), [payment-management](./modules/admin-dashboard/payment-management.md), [refund-requests](./modules/admin-dashboard/refund-requests.md), [help-support](./modules/admin-dashboard/help-support.md) |
-| Student Dashboard | *modules/student-dashboard/* (planned) | — |
+| Student Dashboard | [modules/student-dashboard/](./modules/student-dashboard/) | [overview-analytics](./modules/student-dashboard/overview-analytics.md), [search-instructors](./modules/student-dashboard/search-instructors.md), [booked-lessons](./modules/student-dashboard/booked-lessons.md), [profile-setting](./modules/student-dashboard/profile-setting.md), [help-support](./modules/student-dashboard/help-support.md), [payment-history](./modules/student-dashboard/payment-history.md), [progress-tracking](./modules/student-dashboard/progress-tracking.md), [feedback-rating](./modules/student-dashboard/feedback-rating.md), [messages-chat](./modules/student-dashboard/messages-chat.md) |
 | Teacher Dashboard | [modules/teacher-dashboard/](./modules/teacher-dashboard/) | [overview-analytics](./modules/teacher-dashboard/overview-analytics.md), [profile-setting](./modules/teacher-dashboard/profile-setting.md), [profile-documents](./modules/teacher-dashboard/profile-documents.md), [profile-price-management](./modules/teacher-dashboard/profile-price-management.md), [profile-availability-calendar](./modules/teacher-dashboard/profile-availability-calendar.md), [profile-ratings-scores](./modules/teacher-dashboard/profile-ratings-scores.md), [profile-payment-management](./modules/teacher-dashboard/profile-payment-management.md), [help-support](./modules/teacher-dashboard/help-support.md), [feedback](./modules/teacher-dashboard/feedback.md), [my-students](./modules/teacher-dashboard/my-students.md), [booking-management](./modules/teacher-dashboard/booking-management.md), [messages-chat](./modules/teacher-dashboard/messages-chat.md), [transaction-history](./modules/teacher-dashboard/transaction-history.md) |
 | Auth | *modules/auth/* (planned) | — |
 | Payments | *modules/payments/* (planned) | — |
