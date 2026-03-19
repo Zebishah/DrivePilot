@@ -87,6 +87,8 @@ const studentBookingSchema = new mongoose.Schema(
         // --- Refund ---
         refundAmount: { type: Number },
         refundedAt: { type: Date },
+        // --- Lesson-end reminder ---
+        lessonEndReminderSent: { type: Boolean, default: false },
       },
     ],
     totalAmount: {

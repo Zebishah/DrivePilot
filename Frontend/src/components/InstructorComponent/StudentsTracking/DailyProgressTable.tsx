@@ -21,6 +21,10 @@ function getSlotEndTime(slot: { date: string; endTime: string }): number {
   return new Date(`${slot.date}T${slot.endTime}:00`).getTime();
 }
 
+function hasSlotEnded(slot: { date: string; endTime: string }): boolean {
+  return getSlotEndTime(slot) <= Date.now();
+}
+
 export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
   upcomingBookings,
   cancelledBookings,
@@ -107,7 +111,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
     upcomingBookings.forEach((booking) =>
       (booking.slots ?? []).forEach((slot, idx) => rows.push({ booking, slot, index: idx }))
     );
-    rows.sort((a, b) => getSlotEndTime(b.slot) - getSlotEndTime(a.slot));
+    rows.sort((a, b) => getSlotEndTime(a.slot) - getSlotEndTime(b.slot));
     return rows;
   }, [upcomingBookings]);
 
@@ -274,6 +278,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
             {selectedTab === "history" &&
               sortedHistory.map(({ booking, slot, index }) => {
                 const isNoStatus = slot.status === "booked";
+                const canValidateStatus = isNoStatus && hasSlotEnded(slot);
                 const slotPrice =
                   slot.chargeAmount != null ? Number(slot.chargeAmount) : null;
                 const finalPrice =
@@ -313,7 +318,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                       {finalPrice != null ? finalPrice.toFixed(2) : "—"}
                     </td>
                     <td className="py-4 px-4">
-                      {isNoStatus ? (
+                      {canValidateStatus ? (
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -345,6 +350,10 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                             ? "View Feedback"
                             : "Give Feedback"}
                         </Link>
+                      ) : isNoStatus ? (
+                        <span className="text-amber-600 text-sm font-medium">
+                          Awaiting lesson end
+                        </span>
                       ) : (
                         <span className="text-gray-400 text-sm">—</span>
                       )}

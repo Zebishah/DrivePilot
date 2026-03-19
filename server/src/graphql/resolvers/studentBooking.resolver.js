@@ -1828,9 +1828,9 @@ const studentBookingResolver = {
           throw new Error("Slot not found in this booking");
         }
 
-        // Block marking as completed before the slot end time (skip in development for testing payout)
+        // Block marking as completed before the slot end time in all environments
         // Slot times are in business timezone (SLOT_TIMEZONE, default Europe/Zurich) so clients worldwide get correct "lesson ended" check
-        if (status === "completed" && process.env.NODE_ENV === "production") {
+        if (status === "completed") {
           const slot = booking.slots[slotIndex];
           const endTimeStr =
             slot.endTime && slot.endTime.split(":").length >= 3
