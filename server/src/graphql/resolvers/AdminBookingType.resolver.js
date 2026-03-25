@@ -152,8 +152,13 @@ const AdminBookingResolvers = {
         booking.slots[slotIndex].booked =
           status === "booked" || status === "completed";
 
-        if (status === "cancelled" && oldStatus !== "cancelled") {
+        // UI treats both `cancelled` and `refund` as part of "Cancelled" lists.
+        if (
+          (status === "cancelled" || status === "refund") &&
+          oldStatus !== status
+        ) {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
+          booking.slots[slotIndex].cancelledBy = "admin";
         }
 
         // When marking completed: set completion and payout-eligible (same as instructor updateSlotStatus)
@@ -309,6 +314,7 @@ const AdminBookingResolvers = {
         slot.status = "cancelled";
         slot.booked = false;
         slot.cancellationDate = new Date();
+        slot.cancelledBy = "admin";
 
         const remainingBookedSlots = booking.slots.filter((s) => s.booked);
         booking.status = remainingBookedSlots.length

@@ -50,6 +50,8 @@ const studentBookingTypeDefs = gql`
     payoutStatus: String
     refundAmount: Float
     refundedAt: String
+    cancellationDate: String
+    cancelledBy: String
   }
 
   type PaymentMethod {
@@ -176,6 +178,8 @@ const studentBookingTypeDefs = gql`
     payoutStatus: String
     refundAmount: Float
     refundedAt: String
+    cancellationDate: String
+    cancelledBy: String
   }
 
   type PaymentInfo {

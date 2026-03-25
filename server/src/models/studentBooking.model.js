@@ -37,6 +37,7 @@ const studentBookingSchema = new mongoose.Schema(
           default: false,
         },
         cancellationDate: { type: Date },
+        cancelledBy: { type: String, enum: ["student", "instructor", "admin"] },
         review: {
           type: Boolean,
           default: false,
