@@ -74,7 +74,7 @@ export const GET_STUDENT_DASHBOARD = gql`
         _id
         studentId { _id firstName lastName email description profileImage }
         instructorId { _id firstName lastName email description profileImage }
-        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        slots { _id date startTime endTime booked feedBackStatus status paymentStatus chargeAmount instructorAmount }
         totalAmount
         finalAmount
         status
@@ -85,7 +85,7 @@ export const GET_STUDENT_DASHBOARD = gql`
         _id
         studentId { _id firstName lastName email description profileImage }
         instructorId { _id firstName lastName email description profileImage }
-        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        slots { _id date startTime endTime booked feedBackStatus status paymentStatus chargeAmount instructorAmount }
         totalAmount
         finalAmount
         status
@@ -96,7 +96,7 @@ export const GET_STUDENT_DASHBOARD = gql`
         _id
         studentId { _id firstName lastName email description profileImage }
         instructorId { _id firstName lastName email description profileImage }
-        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        slots { _id date startTime endTime booked feedBackStatus status paymentStatus chargeAmount instructorAmount }
         totalAmount
         finalAmount
         status
@@ -107,7 +107,7 @@ export const GET_STUDENT_DASHBOARD = gql`
         _id
         studentId { _id firstName lastName email description profileImage }
         instructorId { _id firstName lastName email description profileImage }
-        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        slots { _id date startTime endTime booked feedBackStatus status paymentStatus chargeAmount instructorAmount }
         totalAmount
         finalAmount
         status
@@ -118,7 +118,7 @@ export const GET_STUDENT_DASHBOARD = gql`
         _id
         studentId { _id firstName lastName email description profileImage }
         instructorId { _id firstName lastName email description profileImage }
-        slots { _id date startTime endTime booked feedBackStatus status chargeAmount instructorAmount }
+        slots { _id date startTime endTime booked feedBackStatus status paymentStatus chargeAmount instructorAmount }
         totalAmount
         finalAmount
         status

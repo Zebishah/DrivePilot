@@ -91,7 +91,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
   ];
 
   return (
-    <div className="lg:col-span-2 h-[85%] overflow-y-auto">
+    <div className="lg:col-span-2">
       <div className="bg-white rounded-lg shadow-sm p-6 h-full">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">

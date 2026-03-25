@@ -85,6 +85,7 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         review
         feedBackStatus
         cancellationDate
+        cancelledBy
         status
       }
       totalAmount

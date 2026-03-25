@@ -3,12 +3,22 @@ import {
   Typography,
   Card,
   CardContent,
-  Grid,
   Button,
   Tabs,
   Tab,
-  Stack,
   Pagination,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
+  Paper,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useState } from "react";
@@ -31,44 +41,50 @@ export const BookingList: React.FC<BookingListProps> = ({
 }) => {
   const [page, setPage] = useState(1);
   const [tabValue, setTabValue] = useState(0);
-  const ITEMS_PER_PAGE = 5;
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<
+    "all" | "no_status" | "completed" | "missed"
+  >("all");
+  const ITEMS_PER_PAGE = 10;
   const navigate = useNavigate();
-  const handlePageChange = (
-    event: React.ChangeEvent<unknown>,
-    value: number,
-  ) => {
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
     setPage(1);
-  };
-
-  const filterBookingsBySlotStatus = (bookings: Booking[], status: string) => {
-    if (status === "all") return bookings;
-
-    return bookings
-      .map((booking) => ({
-        ...booking,
-        slots: booking.slots.filter((slot) => {
-          if (status === "confirmed") {
-            return slot.status === "booked";
-          } else if (status === "cancelled") {
-            return slot.status === "cancelled";
-          } else if (status === "missed") {
-            return slot.status === "missed";
-          }
-          return true;
-        }),
-      }))
-      .filter((booking) => booking.slots.length > 0); // Only return bookings that have slots matching the filter
+    setHistoryStatusFilter("all");
   };
 
   const getSlotStartDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.startTime}`); // assumes date = "YYYY-MM-DD" and startTime = "HH:mm"
   const getSlotEndDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.endTime}`);
+  const getPaymentLabel = (row: BookingRow) => {
+    const slotPayment = String(row.slot.paymentStatus || "").toLowerCase();
+    const bookingHasAnyPaidSlot = (row.booking.slots ?? []).some(
+      (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
+    );
+    if (slotPayment === "paid" || bookingHasAnyPaidSlot) return "Paid";
+
+    const status = String(row.slot.status || "").toLowerCase();
+    const cancellationDateRaw = (row.slot as { cancellationDate?: string })
+      .cancellationDate;
+    const hasCancellationDate = Boolean(cancellationDateRaw);
+    const isCancelledLike = status === "cancelled" || status === "refund";
+
+    if (isCancelledLike && hasCancellationDate) {
+      const cancelledAtMs = new Date(String(cancellationDateRaw)).getTime();
+      const slotStartMs = getSlotStartDateTime(row.slot).getTime();
+      const msDiff = slotStartMs - cancelledAtMs;
+      const isWithin48hBeforeStart =
+        msDiff >= 0 && msDiff <= 48 * 60 * 60 * 1000;
+      if (isWithin48hBeforeStart) return "Unpaid (T-48)";
+    }
+
+    return "Unpaid";
+  };
 
   /** Stripe checkout started but never completed (no payment, no card saved) — do not show as upcoming */
   const isAbandonedPending = (booking: Booking) =>
@@ -76,112 +92,163 @@ export const BookingList: React.FC<BookingListProps> = ({
     !booking.stripeCustomerId &&
     !(booking.slots ?? []).some((s) => s.paymentStatus === "paid");
 
-  const categorizeBookings = (bookings: Booking[]) => {
+  type BookingTab = "upcoming" | "abandoned" | "cancelled" | "history";
+  type BookingRow = {
+    booking: Booking;
+    slot: Slot;
+    tab: BookingTab;
+    effectiveStatus: "upcoming" | "cancelled" | "missed" | "completed" | "no_status" | "abandoned";
+  };
+
+  const categorizeRows = (bookings: Booking[]) => {
     const now = new Date();
-    const upcoming: Booking[] = [];
-    const cancelled: Booking[] = [];
-    const missed: Booking[] = [];
-    const completed: Booking[] = [];
-    const abandoned: Booking[] = [];
+    const rows: BookingRow[] = [];
 
     bookings.forEach((booking) => {
-      const upcomingSlots: Slot[] = [];
-      const cancelledSlots: Slot[] = [];
-      const missedSlots: Slot[] = [];
-      const completedSlots: Slot[] = [];
-      const abandonedSlots: Slot[] = [];
-
       booking.slots.forEach((slot) => {
+        const slotEnd = getSlotEndDateTime(slot);
+
         if (slot.status === "cancelled") {
-          cancelledSlots.push(slot);
+          rows.push({
+            booking,
+            slot,
+            tab: "cancelled",
+            effectiveStatus: "cancelled",
+          });
         } else if (slot.status === "refund") {
-          cancelledSlots.push(slot); // treat refund as cancelled for display
+          rows.push({
+            booking,
+            slot,
+            tab: "cancelled",
+            effectiveStatus: "cancelled",
+          });
         } else if (slot.status === "missed") {
-          missedSlots.push(slot);
-        } else if (
-          slot.status === "completed" ||
-          getSlotEndDateTime(slot) <= now
-        ) {
-          completedSlots.push(slot);
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "missed",
+          });
+        } else if (slot.status === "completed") {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "completed",
+          });
         } else if (
           (slot.status === "booked" || slot.status === "confirmed") &&
-          getSlotEndDateTime(slot) > now &&
+          slotEnd <= now
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "no_status",
+          });
+        } else if (
+          (slot.status === "booked" || slot.status === "confirmed") &&
+          slotEnd > now &&
           isAbandonedPending(booking)
         ) {
-          abandonedSlots.push(slot);
+          rows.push({
+            booking,
+            slot,
+            tab: "abandoned",
+            effectiveStatus: "abandoned",
+          });
         } else if (
           (slot.status === "booked" || slot.status === "confirmed") &&
-          getSlotEndDateTime(slot) > now &&
+          slotEnd > now &&
           !isAbandonedPending(booking)
         ) {
-          upcomingSlots.push(slot);
-        } else {
-          completedSlots.push(slot);
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "upcoming",
+          });
         }
       });
-
-      if (upcomingSlots.length > 0)
-        upcoming.push({ ...booking, slots: upcomingSlots });
-      if (cancelledSlots.length > 0)
-        cancelled.push({ ...booking, slots: cancelledSlots });
-      if (missedSlots.length > 0)
-        missed.push({ ...booking, slots: missedSlots });
-      if (completedSlots.length > 0)
-        completed.push({ ...booking, slots: completedSlots });
-      if (abandonedSlots.length > 0)
-        abandoned.push({ ...booking, slots: abandonedSlots });
     });
 
-    return { upcoming, cancelled, missed, completed, abandoned };
+    return rows;
   };
 
-  const { upcoming, cancelled, missed, completed, abandoned } =
-    categorizeBookings(bookings);
+  const allRows = categorizeRows(bookings);
 
   const slotCounts = {
-    upcoming: upcoming.reduce((acc, b) => acc + b.slots.length, 0),
-    cancelled: cancelled.reduce((acc, b) => acc + b.slots.length, 0),
-    missed: missed.reduce((acc, b) => acc + b.slots.length, 0),
-    completed: completed.reduce((acc, b) => acc + b.slots.length, 0),
-    abandoned: abandoned.reduce((acc, b) => acc + b.slots.length, 0),
+    upcoming: allRows.filter((r) => r.tab === "upcoming").length,
+    abandoned: allRows.filter((r) => r.tab === "abandoned").length,
+    cancelled: allRows.filter((r) => r.tab === "cancelled").length,
+    missed: allRows.filter((r) => r.effectiveStatus === "missed").length,
+    history: allRows.filter((r) => r.tab === "history").length,
   };
 
-  let filteredBookings: Booking[] = [];
+  let filteredRows: BookingRow[] = [];
   switch (tabValue) {
     case 0:
-      filteredBookings = upcoming;
+      filteredRows = allRows.filter((r) => r.tab === "upcoming");
       break;
     case 1:
-      filteredBookings = abandoned;
+      filteredRows = allRows.filter((r) => r.tab === "abandoned");
       break;
     case 2:
-      filteredBookings = cancelled;
+      filteredRows = allRows.filter((r) => r.tab === "cancelled");
       break;
     case 3:
-      filteredBookings = missed;
+      filteredRows = allRows.filter((r) => r.effectiveStatus === "missed");
       break;
     case 4:
-      filteredBookings = completed;
+      filteredRows = allRows.filter((r) => r.tab === "history");
       break;
     default:
-      filteredBookings = upcoming;
+      filteredRows = allRows.filter((r) => r.tab === "upcoming");
   }
 
-  // Sort newest first
-  const sortedBookings = filteredBookings.sort((a, b) => {
-    const aLatest = Math.max(
-      ...a.slots.map((s) => getSlotEndDateTime(s).getTime()),
-    );
-    const bLatest = Math.max(
-      ...b.slots.map((s) => getSlotEndDateTime(s).getTime()),
-    );
-    return bLatest - aLatest;
+  if (tabValue === 4 && historyStatusFilter !== "all") {
+    filteredRows = filteredRows.filter((r) => {
+      if (historyStatusFilter === "no_status") return r.effectiveStatus === "no_status";
+      if (historyStatusFilter === "completed") return r.effectiveStatus === "completed";
+      if (historyStatusFilter === "missed") return r.effectiveStatus === "missed";
+      return true;
+    });
+  }
+
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    const diff = getSlotEndDateTime(a.slot).getTime() - getSlotEndDateTime(b.slot).getTime();
+    return sortOrder === "newest" ? -diff : diff;
   });
 
-  const currentBookings = sortedBookings.slice(
+  const currentRows = sortedRows.slice(
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE,
   );
+
+  const getDisplayStatus = (row: BookingRow) => {
+    if (row.tab === "upcoming") return "Upcoming";
+    if (row.tab === "abandoned") return "Abandoned";
+    if (row.tab === "cancelled") return "Cancelled";
+    if (row.effectiveStatus === "no_status") return "No Status Set Yet";
+    if (row.effectiveStatus === "completed") return "Completed";
+    return "Missed";
+  };
+
+  function getCancelledByLabel(cancelledBy?: string) {
+    if (cancelledBy === "student") return "Student";
+    if (cancelledBy === "instructor") return "Instructor";
+    if (cancelledBy === "admin") return "Admin";
+    return "Unknown";
+  }
+  const getStatusChipColor = (status: string) => {
+    if (status === "Upcoming") return "info";
+    if (status === "Cancelled") return "error";
+    if (status === "Missed") return "default";
+    if (status === "Completed") return "success";
+    if (status === "No Status Set Yet") return "warning";
+    return "default";
+  };
+
   return (
     <Card sx={{ mb: 3, mt: 2 }}>
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -207,320 +274,166 @@ export const BookingList: React.FC<BookingListProps> = ({
           <Tab label={`Abandoned (${slotCounts.abandoned})`} />
           <Tab label={`Cancelled (${slotCounts.cancelled})`} />
           <Tab label={`Missed (${slotCounts.missed})`} />
-          <Tab label={`Completed (${slotCounts.completed})`} />
+          <Tab label={`History (${slotCounts.history})`} />
         </Tabs>
       </Box>
 
       <CardContent>
-        {filteredBookings.length > 0 ? (
-          <>
-            <Stack spacing={2}>
-              {currentBookings.map((booking) => (
-                <Card
-                  key={booking._id}
-                  sx={{
-                    p: 2,
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                      boxShadow: 3,
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mb: 2,
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="h6">
-                        {booking.instructorId.firstName}{" "}
-                        {booking.instructorId.lastName}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        {booking.instructorId.email}
-                      </Typography>
-                    </Box>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<VisibilityIcon />}
-                      onClick={() => {
-                        navigate(
-                          `/student-dashboard/search/instructors/${booking.instructorId._id}`,
-                        );
-                      }}
-                      sx={{
-                        bgcolor: "#5fc2d3",
-                        color: "white",
-                        fontWeight: 600,
-                        borderRadius: 2,
-                        py: 1,
-                        fontSize: "0.8rem",
-                        textTransform: "none",
-                        transition: "all 0.3s ease",
-                        "&:hover": {
-                          bgcolor: "#4bb1c2",
-                          transform: "translateY(-1px)",
-                          boxShadow: "0 4px 12px rgba(95, 194, 211, 0.3)",
-                        },
-                        "&:active": {
-                          transform: "translateY(0)",
-                        },
-                      }}
-                    >
-                      View Instructor
-                    </Button>
-                  </Box>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 2, flexWrap: "wrap" }}>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Sort</InputLabel>
+            <Select
+              value={sortOrder}
+              label="Sort"
+              onChange={(e) => {
+                setSortOrder(e.target.value as "newest" | "oldest");
+                setPage(1);
+              }}
+            >
+              <MenuItem value="newest">Newest to oldest</MenuItem>
+              <MenuItem value="oldest">Oldest to newest</MenuItem>
+            </Select>
+          </FormControl>
 
-                  <Grid container spacing={2}>
-                    {booking.slots.map((slot, index) => (
-                      <Grid item xs={12} sm={4} key={index}>
-                        <Box
-                          sx={{
-                            p: 2,
-                            borderRadius: 3,
-                            background:
-                              "linear-gradient(135deg, rgba(95, 194, 211, 0.08) 0%, rgba(95, 194, 211, 0.15) 100%)",
-                            border: "1px solid rgba(95, 194, 211, 0.2)",
-                            position: "relative",
-                            overflow: "hidden",
-                            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                            "&:hover": {
-                              transform: "translateY(-3px) scale(1.02)",
-                              boxShadow: "0 8px 20px rgba(95, 194, 211, 0.25)",
-                              background:
-                                "linear-gradient(135deg, rgba(95, 194, 211, 0.12) 0%, rgba(95, 194, 211, 0.22) 100%)",
-                              border: "1px solid rgba(95, 194, 211, 0.35)",
-                              "&::before": {
-                                opacity: 1,
-                              },
-                              "& .slot-time": {
-                                color: "#4bb1c2",
-                              },
-                              "& .slot-date": {
-                                color: "#5fc2d3",
-                              },
-                              "& .status-badge": {
-                                transform: "scale(1.05)",
-                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-                              },
-                            },
-                            "&::before": {
-                              content: '""',
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              background:
-                                "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
-                              opacity: 0,
-                              transition: "opacity 0.3s ease",
-                              cursor: "pointer",
-                            },
-                            "&:active": {
-                              transform: "translateY(-1px) scale(1.01)",
-                            },
-                          }}
-                          onClick={() =>
-                            onBookingClick(booking, slot._id, slot)
-                          }
-                        >
-                          {/* Top row: time & date (left), status badge (right, aligned to top) */}
-                          <Box
+          {tabValue === 4 && (
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel>History Status</InputLabel>
+              <Select
+                value={historyStatusFilter}
+                label="History Status"
+                onChange={(e) => {
+                  setHistoryStatusFilter(
+                    e.target.value as "all" | "no_status" | "completed" | "missed",
+                  );
+                  setPage(1);
+                }}
+              >
+                <MenuItem value="all">All statuses</MenuItem>
+                <MenuItem value="no_status">No Status Set Yet</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="missed">Missed</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+        </Box>
+
+        {filteredRows.length > 0 ? (
+          <>
+            <TableContainer component={Paper} variant="outlined">
+              <Table
+                size="small"
+                sx={{
+                  "& .MuiTableCell-root": {
+                    py: 1.6,
+                    px: 2,
+                  },
+                }}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Instructor</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Time Slot</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Payment</TableCell>
+                    {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {currentRows.map((row) => {
+                    const statusLabel = getDisplayStatus(row);
+                    return (
+                      <TableRow key={`${row.booking._id}-${row.slot._id}`}>
+                        <TableCell>
+                          {row.booking.instructorId.firstName} {row.booking.instructorId.lastName}
+                        </TableCell>
+                        <TableCell>{row.booking.instructorId.email}</TableCell>
+                        <TableCell>
+                          {new Date(row.slot.date).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          {row.slot.startTime} - {row.slot.endTime}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={statusLabel}
+                            color={getStatusChipColor(statusLabel)}
+                            size="small"
+                            variant={statusLabel === "No Status Set Yet" ? "outlined" : "filled"}
                             sx={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              justifyContent: "space-between",
-                              width: "100%",
-                              position: "relative",
-                              zIndex: 1,
-                              mb: 2,
+                              px: 1.3,
+                              py: 0.7,
+                              borderRadius: 2.5,
+                              minHeight: 30,
+                              fontWeight: 600,
+                              "& .MuiChip-label": {
+                                px: 1.2,
+                                py: 0.25,
+                              },
                             }}
-                          >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 0.25,
-                              }}
-                            >
-                              <Typography
-                                variant="body2"
-                                fontWeight={600}
-                                className="slot-time"
-                                sx={{
-                                  color: "#2c5282",
-                                  transition: "color 0.3s ease",
-                                }}
-                              >
-                                {slot.startTime} - {slot.endTime}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                display="block"
-                                className="slot-date"
-                                sx={{
-                                  color: "rgba(44, 82, 130, 0.7)",
-                                  transition: "color 0.3s ease",
-                                  fontWeight: 500,
-                                }}
-                              >
-                                {new Date(slot.date).toLocaleDateString([], {
-                                  weekday: "short",
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </Typography>
-                            </Box>
-                            <Typography
-                              className="status-badge"
-                              sx={{
-                                px: 2,
-                                py: 0.8,
-                                borderRadius: 2,
-                                bgcolor:
-                                  tabValue === 1
-                                    ? "rgba(158, 158, 158, 0.2)"
-                                    : tabValue === 2
-                                      ? "rgba(211, 47, 47, 0.15)"
-                                      : tabValue === 3
-                                        ? "rgba(158, 158, 158, 0.2)"
-                                        : tabValue === 4
-                                          ? "rgba(0, 200, 83, 0.15)"
-                                          : "rgba(0, 200, 83, 0.15)",
-                                color:
-                                  tabValue === 1
-                                    ? "rgb(97, 97, 97)"
-                                    : tabValue === 2
-                                      ? "rgb(211, 47, 47)"
-                                      : tabValue === 3
-                                        ? "rgb(97, 97, 97)"
-                                        : tabValue === 4
-                                          ? "rgb(0, 170, 70)"
-                                          : "rgb(0, 170, 70)",
-                                fontWeight: 600,
-                                fontSize: "0.75rem",
-                                letterSpacing: "0.5px",
-                                border: `1px solid ${
-                                  tabValue === 1
-                                    ? "rgba(158, 158, 158, 0.4)"
-                                    : tabValue === 2
-                                      ? "rgba(211, 47, 47, 0.25)"
-                                      : tabValue === 3
-                                        ? "rgba(158, 158, 158, 0.4)"
-                                        : "rgba(0, 200, 83, 0.25)"
-                                }`,
-                                transition:
-                                  "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-                              }}
-                            >
-                              {tabValue === 0
-                                ? "UPCOMING"
-                                : tabValue === 1
-                                  ? "ABANDONED"
-                                  : tabValue === 2
-                                    ? "CANCELLED"
-                                    : tabValue === 3
-                                      ? "MISSED"
-                                      : "COMPLETED"}
-                            </Typography>
-                          </Box>
-                          {/* Bottom row: Paid/Unpaid (left), View Details (right) */}
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexDirection: "row",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              position: "relative",
-                              zIndex: 1,
-                            }}
-                          >
-                            {tabValue !== 2 && tabValue !== 3 ? (
-                              <Typography
-                                component="span"
-                                sx={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  px: 1.5,
-                                  py: 0.5,
-                                  borderRadius: 2,
-                                  fontWeight: 600,
-                                  fontSize: "0.7rem",
-                                  letterSpacing: "0.3px",
-                                  border: "1px solid",
-                                  ...(String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
-                                    ? {
-                                        bgcolor: "rgba(0, 200, 83, 0.12)",
-                                        color: "rgb(0, 150, 60)",
-                                        borderColor: "rgba(0, 200, 83, 0.4)",
-                                      }
-                                    : {
-                                        bgcolor: "rgba(255, 152, 0, 0.12)",
-                                        color: "rgb(200, 120, 0)",
-                                        borderColor: "rgba(255, 152, 0, 0.4)",
-                                      }),
-                                }}
-                              >
-                                {String((slot as { paymentStatus?: string }).paymentStatus) === "paid"
-                                  ? "Paid"
-                                  : "Unpaid (T-48)"}
-                              </Typography>
-                            ) : (
-                              <Box />
-                            )}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {getPaymentLabel(row)}
+                        </TableCell>
+                        {tabValue === 2 && (
+                          <TableCell>{getCancelledByLabel(
+                            (row.slot as { cancelledBy?: string }).cancelledBy,
+                          )}</TableCell>
+                        )}
+                        <TableCell align="right">
+                          <Box sx={{ display: "inline-flex", gap: 1 }}>
                             <Button
                               variant="outlined"
                               size="small"
                               startIcon={<VisibilityIcon />}
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                onBookingClick(booking, slot._id, slot);
-                              }}
+                              onClick={() => onBookingClick(row.booking, row.slot._id, row.slot)}
                               sx={{
-                                bgcolor: "rgba(95, 194, 211, 0.08)",
-                                color: "#5fc2d3",
-                                border: "1px solid #5fc2d3",
-                                fontWeight: 550,
-                                borderRadius: 2,
-                                py: 0.5,
-                                fontSize: "0.7rem",
-                                textTransform: "none",
-                                transition: "all 0.3s ease",
-                                "&:hover": {
-                                  bgcolor: "rgba(95, 194, 211, 0.15)",
-                                  borderColor: "#4bb1c2",
-                                  color: "#4bb1c2",
-                                  transform: "translateY(-1px)",
-                                  boxShadow:
-                                    "0 4px 12px rgba(95, 194, 211, 0.3)",
-                                },
-                                "&:active": {
-                                  transform: "translateY(0)",
-                                },
+                                borderRadius: 2.5,
+                                px: 1.8,
+                                py: 0.8,
+                                fontWeight: 600,
                               }}
                             >
                               View Details
                             </Button>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() =>
+                                navigate(
+                                  `/student-dashboard/search/instructors/${row.booking.instructorId._id}`,
+                                )
+                              }
+                              sx={{
+                                bgcolor: "#5fc2d3",
+                                "&:hover": { bgcolor: "#4bb1c2" },
+                                borderRadius: 2.5,
+                                px: 1.8,
+                                py: 0.8,
+                                fontWeight: 600,
+                              }}
+                            >
+                              View Instructor
+                            </Button>
                           </Box>
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Card>
-              ))}
-            </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
             <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
               <Pagination
-                count={Math.ceil(filteredBookings.length / ITEMS_PER_PAGE)}
+                count={Math.ceil(filteredRows.length / ITEMS_PER_PAGE)}
                 page={page}
                 onChange={handlePageChange}
                 color="primary"
@@ -550,7 +463,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                     ? "Cancelled"
                     : tabValue === 3
                       ? "Missed"
-                      : "Completed"}{" "}
+                      : "History"}{" "}
               Slots Available
             </Typography>
             {showNewBookingButton && (

@@ -94,7 +94,7 @@ const LessonBookingHistory: React.FC = () => {
 
   return (
     <div className="w-full mb-8 bg-white rounded-lg shadow-sm overflow-hidden">
-      <h2 className="p-5 m-0 text-lg font-semibold border-b border-gray-100">
+      {/* <h2 className="p-5 m-0 text-lg font-semibold border-b border-gray-100">
         Lesson booking history
       </h2>
       <div className="w-full">
@@ -158,7 +158,7 @@ const LessonBookingHistory: React.FC = () => {
             <p className="text-sm text-gray-500 mt-1">Your booking history will appear here.</p>
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 };

@@ -37,7 +37,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 ">
+    <div className="bg-white rounded-lg shadow-sm p-6 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
           Completed Lessons
@@ -51,7 +51,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
           <h1>No Bookings Found</h1>
         </div>
       )}
-      <div className="space-y-3 h-[85%] overflow-y-auto">
+      <div className="space-y-3 h-[350px] overflow-y-auto">
         {slotRows.map(({ booking, slot, isCompleted }) => {
           const minutes = slotMinutes(slot);
           return (

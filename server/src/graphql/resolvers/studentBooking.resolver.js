@@ -1780,8 +1780,9 @@ const studentBookingResolver = {
       return savedBooking;
     },
 
-    updateSlotStatus: async (_, { input }) => {
+    updateSlotStatus: async (_, { input }, { user }) => {
       try {
+        validateUser(user);
         const { bookingId, slotId, status } = input;
 
         // Validate status
@@ -1860,9 +1861,21 @@ const studentBookingResolver = {
         booking.slots[slotIndex].booked =
           status === "booked" || status === "completed";
 
-        // Set cancellation date if cancelling
-        if (status === "cancelled" && oldStatus !== "cancelled") {
+        // Set cancellation date / who cancelled.
+        // Important: UI treats both `cancelled` and `refund` as part of "Cancelled" lists.
+        // So we must store `cancelledBy` for both statuses.
+        if (
+          (status === "cancelled" || status === "refund") &&
+          oldStatus !== status
+        ) {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
+          const actor =
+            user?.role === "Instructor"
+              ? "instructor"
+              : user?.role === "Admin"
+                ? "admin"
+                : "student";
+          booking.slots[slotIndex].cancelledBy = actor;
         }
 
         // When marking completed: set completion and payout-eligible (see PAYOUT_DELAY_MS) for paid slots
@@ -2107,6 +2120,13 @@ const studentBookingResolver = {
         slot.status = "cancelled";
         slot.booked = false;
         slot.cancellationDate = new Date();
+        const actor =
+          user.role === "Instructor"
+            ? "instructor"
+            : user.role === "Admin"
+              ? "admin"
+              : "student";
+        slot.cancelledBy = actor;
 
         // 4. Check if all slots are cancelled to determine booking status
         const allSlotsCancelled = booking.slots.every(

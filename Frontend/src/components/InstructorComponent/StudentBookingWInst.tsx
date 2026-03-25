@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
   Calendar,
@@ -15,6 +15,15 @@ import { useAuth } from "../../context/AuthContext";
 import { GET_INSTRUCTOR_BOOKINGS_BY_ID } from "../../graphql/Queries/AdminBookingShowcase";
 import { UPDATE_SLOT_STATUS } from "../../graphql/mutations/studentBooking";
 import { createPortal } from "react-dom";
+import {
+  Pagination,
+  Tabs,
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from "@mui/material";
 interface BookingsTableProps {
   className?: string;
 }
@@ -457,17 +466,22 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
   );
 };
 
-type SpinnerSize = "sm" | "md" | "lg";
+// (Spinner helper removed — unused)
 
-const LoadingSpinner = ({ size = "lg" }: { size?: SpinnerSize }) => {
-  const sizeClasses: Record<SpinnerSize, string> = {
-    sm: "h-4 w-4",
-    md: "h-5 w-5",
-    lg: "h-6 w-6",
-  };
+type TabKey = "upcoming" | "abandoned" | "cancelled" | "missed" | "history";
+type SortOrder = "newest" | "oldest";
+type HistoryStatusFilter = "all" | "no_status" | "completed" | "missed";
 
-  return <Loader2 className={`animate-spin ${sizeClasses[size]}`} />;
-};
+function getSlotEndDateTime(slot: { date: string; endTime: string }) {
+  return new Date(`${slot.date}T${slot.endTime || "23:59"}:00`);
+}
+
+function getCancelledByLabel(cancelledBy?: string) {
+  if (cancelledBy === "student") return "Student";
+  if (cancelledBy === "instructor") return "Instructor";
+  if (cancelledBy === "admin") return "Admin";
+  return "Unknown";
+}
 
 const StudentBookingWInst: React.FC<BookingsTableProps> = ({
   className = "",
@@ -553,32 +567,161 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     });
   };
 
-  const formatCancellationDateTime = (timestamp: string | number) => {
-    if (!timestamp) return "-";
-
-    const date = new Date(Number(timestamp));
-
-    if (isNaN(date.getTime())) return "-";
-
-    const dateStr = date.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    const timeStr = date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    return `${dateStr} ${timeStr}`;
-  };
+  // (cancellation date formatter removed — unused in new table)
 
   const hasLessonPassed = (slot: { date: string; endTime: string }) => {
     const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
     return slotEnd.getTime() <= Date.now();
   };
+
+  const [tab, setTab] = useState<TabKey>("upcoming");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [historyStatusFilter, setHistoryStatusFilter] =
+    useState<HistoryStatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
+
+  const bookings: StudentBooking[] = useMemo(
+    () => data?.getInstructorBookingsById || [],
+    [data?.getInstructorBookingsById],
+  );
+
+  const getStatusLabel = () => {
+    if (!pendingStatusChange) return "";
+    const statusObj = SLOT_STATUSES.find(
+      (s) => s.value === pendingStatusChange.newStatus
+    );
+    return statusObj?.label || pendingStatusChange.newStatus;
+  };
+
+  type Row = { booking: StudentBooking; slot: StudentBooking["slots"][number] };
+
+  const allRows = useMemo(() => {
+    const now = new Date();
+    const rows: Array<
+      Row & {
+        tab: TabKey;
+        effectiveStatus:
+          | "upcoming"
+          | "cancelled"
+          | "missed"
+          | "completed"
+          | "abandoned"
+          | "no_status";
+      }
+    > = [];
+
+    for (const booking of bookings) {
+      for (const slot of booking.slots || []) {
+        const status = String(slot.status || "").toLowerCase();
+        const slotEnd = getSlotEndDateTime(slot);
+
+        if (status === "cancelled" || status === "refund") {
+          rows.push({
+            booking,
+            slot,
+            tab: "cancelled",
+            effectiveStatus: "cancelled",
+          });
+          continue;
+        }
+        if (status === "missed") {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "missed",
+          });
+          continue;
+        }
+        if (status === "completed") {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "completed",
+          });
+          continue;
+        }
+
+        if (slotEnd.getTime() > now.getTime()) {
+          // "Abandoned" = booking is still pending but the slot is in the future.
+          // We use booking.status to avoid changing existing slot status logic.
+          const bookingStatus = String(booking.status || "").toLowerCase();
+          if (bookingStatus === "pending") {
+            rows.push({
+              booking,
+              slot,
+              tab: "abandoned",
+              effectiveStatus: "abandoned",
+            });
+          } else {
+            rows.push({
+              booking,
+              slot,
+              tab: "upcoming",
+              effectiveStatus: "upcoming",
+            });
+          }
+        } else {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "no_status",
+          });
+        }
+      }
+    }
+
+    return rows;
+  }, [bookings]);
+
+  const counts = useMemo(() => {
+    return {
+      upcoming: allRows.filter((r) => r.tab === "upcoming").length,
+      abandoned: allRows.filter((r) => r.tab === "abandoned").length,
+      cancelled: allRows.filter((r) => r.tab === "cancelled").length,
+      missed: allRows.filter((r) => r.effectiveStatus === "missed")
+        .length,
+      history: allRows.filter((r) => r.tab === "history").length,
+    };
+  }, [allRows]);
+
+  const filteredSortedRows = useMemo(() => {
+    let rows =
+      tab === "missed"
+        ? allRows.filter((r) => r.effectiveStatus === "missed")
+        : allRows.filter((r) => r.tab === tab);
+
+    if (tab === "history" && historyStatusFilter !== "all") {
+      rows = rows.filter((r) => {
+        if (historyStatusFilter === "no_status")
+          return r.effectiveStatus === "no_status";
+        if (historyStatusFilter === "completed")
+          return r.effectiveStatus === "completed";
+        if (historyStatusFilter === "missed")
+          return r.effectiveStatus === "missed";
+        return true;
+      });
+    }
+
+    const sorted = [...rows].sort((a, b) => {
+      const diff =
+        getSlotEndDateTime(a.slot).getTime() - getSlotEndDateTime(b.slot).getTime();
+      return sortOrder === "newest" ? -diff : diff;
+    });
+    return sorted;
+  }, [allRows, tab, historyStatusFilter, sortOrder]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredSortedRows.length / ITEMS_PER_PAGE),
+  );
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filteredSortedRows.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredSortedRows, page]);
 
   if (loading) {
     return (
@@ -596,27 +739,111 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     );
   }
 
-  const bookings: StudentBooking[] = data?.getInstructorBookingsById || [];
-
-  const getStatusLabel = () => {
-    if (!pendingStatusChange) return "";
-    const statusObj = SLOT_STATUSES.find(
-      (s) => s.value === pendingStatusChange.newStatus
-    );
-    return statusObj?.label || pendingStatusChange.newStatus;
-  };
-
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
     >
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-medium text-gray-900">
-          All Student Bookings
-        </h2>
+        <h2 className="text-lg font-medium text-gray-900">Booking Management</h2>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="px-6 pt-4">
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <Tabs
+            value={
+              tab === "upcoming"
+                ? 0
+                : tab === "cancelled"
+                  ? 1
+                  : tab === "missed"
+                    ? 2
+                    : tab === "history"
+                      ? 3
+                      : 4
+            }
+            onChange={(_, newValue) => {
+              const nextTab: TabKey =
+                newValue === 0
+                  ? "upcoming"
+                  : newValue === 1
+                    ? "cancelled"
+                    : newValue === 2
+                      ? "missed"
+                      : newValue === 3
+                        ? "history"
+                        : "upcoming";
+                        
+              setTab(nextTab);
+              setPage(1);
+              setHistoryStatusFilter("all");
+            }}
+            sx={{
+              px: 2,
+              pt: 2,
+              "& .MuiTab-root": {
+                minWidth: 120,
+                fontWeight: 600,
+              },
+              "& .Mui-selected": {
+                color: "#5fc2d3 !important",
+              },
+              "& .MuiTabs-indicator": {
+                backgroundColor: "#5fc2d3",
+              },
+            }}
+          >
+            <Tab label={`Upcoming (${counts.upcoming})`} />
+         
+            <Tab label={`Cancelled (${counts.cancelled})`} />
+            <Tab label={`Missed (${counts.missed})`} />
+            <Tab label={`History (${counts.history})`} />
+          </Tabs>
+
+          <div className="flex flex-wrap gap-3 items-center">
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="booking-sort-label">Sort</InputLabel>
+              <Select
+                labelId="booking-sort-label"
+                value={sortOrder}
+                label="Sort"
+                onChange={(e) => {
+                  setSortOrder(e.target.value as SortOrder);
+                  setPage(1);
+                }}
+              >
+                <MenuItem value="newest">Newest to oldest</MenuItem>
+                <MenuItem value="oldest">Oldest to newest</MenuItem>
+              </Select>
+            </FormControl>
+
+            {tab === "history" && (
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel id="booking-history-status-label">
+                  History Status
+                </InputLabel>
+                <Select
+                  labelId="booking-history-status-label"
+                  value={historyStatusFilter}
+                  label="History Status"
+                  onChange={(e) => {
+                    setHistoryStatusFilter(
+                      e.target.value as HistoryStatusFilter,
+                    );
+                    setPage(1);
+                  }}
+                >
+                  <MenuItem value="all">All statuses</MenuItem>
+                  <MenuItem value="no_status">No Status Set Yet</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                  <MenuItem value="missed">Missed</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto mt-4">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -624,105 +851,135 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 Student
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Lesson Date
+                Email
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Cancellation Date
+                Date
               </th>
-              {/* <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Instructor
-              </th> */}
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Time Slot
+              </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Status
               </th>
+              {tab === "cancelled" && (
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                  Cancelled By
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                History
+                Action
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {bookings.map((booking) =>
-              booking.slots.map((slot) => (
-                <tr
-                  key={`${booking._id}-${slot._id}`}
-                  className="hover:bg-gray-50 transition-colors duration-150"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        {booking.studentId.profileImage ? (
-                          <img
-                            className="h-8 w-8 rounded-full object-cover"
-                            src={booking.studentId.profileImage}
-                            alt=""
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                            {booking.studentId.firstName.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {booking.studentId.firstName}{" "}
-                          {booking.studentId.lastName}
-                        </p>
-                      </div>
+            {pagedRows.map(({ booking, slot }) => (
+              <tr
+                key={`${booking._id}-${slot._id}`}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                <td className="px-6 py-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      {booking.studentId.profileImage ? (
+                        <img
+                          className="h-8 w-8 rounded-full object-cover"
+                          src={booking.studentId.profileImage}
+                          alt=""
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                          {booking.studentId.firstName.charAt(0)}
+                        </div>
+                      )}
                     </div>
-                  </td>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {booking.studentId.firstName} {booking.studentId.lastName}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-700">
+                    {booking.studentId.email}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">{formatDate(slot.date)}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">
+                    {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <StatusDropdown
+                    currentStatus={slot.status}
+                    slotId={slot._id}
+                    bookingId={booking._id}
+                    onStatusChange={handleStatusChange}
+                    disabled={updateLoading}
+                    lessonPassed={hasLessonPassed(slot)}
+                  />
+                </td>
+                {tab === "cancelled" && (
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      {formatDate(slot.date)} {formatTime(slot.startTime)}
+                      {getCancelledByLabel(
+                        (slot as { cancelledBy?: string }).cancelledBy,
+                      )}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {formatCancellationDateTime(slot.cancellationDate)}
-                    </div>
-                  </td>
-                  {/* <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {booking.instructorId.firstName}{" "}
-                      {booking.instructorId.lastName}
-                    </div>
-                  </td> */}
-                  <td className="px-6 py-4">
-                    <StatusDropdown
-                      currentStatus={slot.status}
-                      slotId={slot._id}
-                      bookingId={booking._id}
-                      onStatusChange={handleStatusChange}
-                      disabled={updateLoading}
-                      lessonPassed={hasLessonPassed(slot)}
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => {
-                        setSelectedBooking(booking);
-                        setShowDetailsModal(true);
-                      }}
-                      className="bg-[#5FC2D3] hover:bg-[#3c8e9c] text-white px-3 py-2.5 text-xs rounded-full transition-colors duration-150"
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
+                )}
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => {
+                      setSelectedBooking(booking);
+                      setShowDetailsModal(true);
+                    }}
+                    className="bg-[#5FC2D3] hover:bg-[#3c8e9c] text-white px-4 py-2.5 text-xs font-semibold rounded-full transition-colors duration-150"
+                  >
+                    View Details
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {bookings.length === 0 && !loading && (
+      {filteredSortedRows.length === 0 && !loading && (
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center space-y-4">
             <Calendar className="h-12 w-12 text-gray-300" />
-            <p className="text-gray-500 text-lg">No bookings found</p>
+            <p className="text-gray-500 text-lg">No lessons found</p>
             <p className="text-gray-400 text-sm">
-              Student bookings will appear here when they are created.
+              There are no lessons in this section.
             </p>
           </div>
+        </div>
+      )}
+
+      {filteredSortedRows.length > 0 && (
+        <div className="flex justify-center py-4">
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, v) => setPage(v)}
+            color="primary"
+            sx={{
+              "& .MuiPaginationItem-root": {
+                "&.Mui-selected": {
+                  bgcolor: "#5fc2d3",
+                  color: "white",
+                  "&:hover": {
+                    bgcolor: "#4bb1c2",
+                  },
+                },
+              },
+            }}
+          />
         </div>
       )}
 

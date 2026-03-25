@@ -86,6 +86,8 @@ export interface Slot {
   startTime: string;
   endTime: string;
   status: string;
+  cancellationDate?: string;
+  cancelledBy?: "student" | "instructor" | "admin";
   paymentStatus?: string;
   chargeAmount?: number;
   instructorAmount?: number;

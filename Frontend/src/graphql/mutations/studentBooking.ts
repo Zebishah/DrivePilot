@@ -208,6 +208,8 @@ export const GET_STUDENT_BOOKINGS = gql`
         endTime
         booked
         status
+        cancellationDate
+        cancelledBy
         paymentStatus
         chargeAmount
         payoutStatus

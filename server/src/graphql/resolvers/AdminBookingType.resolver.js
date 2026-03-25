@@ -82,18 +82,11 @@ const AdminBookingResolvers = {
       try {
         const { bookingId, slotId, status } = input;
 
-        const validStatuses = [
-          "available",
-          "booked",
-          "completed",
-          "refund",
-          "cancelled",
-          "missed",
-          "yet",
-        ];
-        if (!validStatuses.includes(status)) {
+        // Admin panel is refund-only for booking management.
+        // Statuses are controlled by instructor flow and reflected here.
+        if (status !== "refund") {
           throw new Error(
-            `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+            "Admin can only process refunds. Slot status must be managed from Instructor panel.",
           );
         }
 
@@ -146,14 +139,23 @@ const AdminBookingResolvers = {
         }
 
         const oldStatus = booking.slots[slotIndex].status;
+        const oldStatusNormalized = String(oldStatus || "").toLowerCase();
+        if (oldStatusNormalized !== "cancelled") {
+          throw new Error("Refund can only be processed for cancelled slots.");
+        }
 
         // Update the specific slot
         booking.slots[slotIndex].status = status;
         booking.slots[slotIndex].booked =
           status === "booked" || status === "completed";
 
-        if (status === "cancelled" && oldStatus !== "cancelled") {
+        // UI treats both `cancelled` and `refund` as part of "Cancelled" lists.
+        if (
+          (status === "cancelled" || status === "refund") &&
+          oldStatus !== status
+        ) {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
+          booking.slots[slotIndex].cancelledBy = "admin";
         }
 
         // When marking completed: set completion and payout-eligible (same as instructor updateSlotStatus)
@@ -309,6 +311,7 @@ const AdminBookingResolvers = {
         slot.status = "cancelled";
         slot.booked = false;
         slot.cancellationDate = new Date();
+        slot.cancelledBy = "admin";
 
         const remainingBookedSlots = booking.slots.filter((s) => s.booked);
         booking.status = remainingBookedSlots.length
