@@ -47,14 +47,11 @@ export const BookingList: React.FC<BookingListProps> = ({
   >("all");
   const ITEMS_PER_PAGE = 10;
   const navigate = useNavigate();
-  const handlePageChange = (
-    event: React.ChangeEvent<unknown>,
-    value: number,
-  ) => {
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
     setPage(1);
     setHistoryStatusFilter("all");
@@ -64,6 +61,30 @@ export const BookingList: React.FC<BookingListProps> = ({
     new Date(`${slot.date}T${slot.startTime}`); // assumes date = "YYYY-MM-DD" and startTime = "HH:mm"
   const getSlotEndDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.endTime}`);
+  const getPaymentLabel = (row: BookingRow) => {
+    const slotPayment = String(row.slot.paymentStatus || "").toLowerCase();
+    const bookingHasAnyPaidSlot = (row.booking.slots ?? []).some(
+      (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
+    );
+    if (slotPayment === "paid" || bookingHasAnyPaidSlot) return "Paid";
+
+    const status = String(row.slot.status || "").toLowerCase();
+    const cancellationDateRaw = (row.slot as { cancellationDate?: string })
+      .cancellationDate;
+    const hasCancellationDate = Boolean(cancellationDateRaw);
+    const isCancelledLike = status === "cancelled" || status === "refund";
+
+    if (isCancelledLike && hasCancellationDate) {
+      const cancelledAtMs = new Date(String(cancellationDateRaw)).getTime();
+      const slotStartMs = getSlotStartDateTime(row.slot).getTime();
+      const msDiff = slotStartMs - cancelledAtMs;
+      const isWithin48hBeforeStart =
+        msDiff >= 0 && msDiff <= 48 * 60 * 60 * 1000;
+      if (isWithin48hBeforeStart) return "Unpaid (T-48)";
+    }
+
+    return "Unpaid";
+  };
 
   /** Stripe checkout started but never completed (no payment, no card saved) — do not show as upcoming */
   const isAbandonedPending = (booking: Booking) =>
@@ -359,7 +380,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                           />
                         </TableCell>
                         <TableCell>
-                          {row.slot.paymentStatus === "paid" ? "Paid" : "Unpaid (T-48)"}
+                          {getPaymentLabel(row)}
                         </TableCell>
                         {tabValue === 2 && (
                           <TableCell>{getCancelledByLabel(

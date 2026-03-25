@@ -82,18 +82,11 @@ const AdminBookingResolvers = {
       try {
         const { bookingId, slotId, status } = input;
 
-        const validStatuses = [
-          "available",
-          "booked",
-          "completed",
-          "refund",
-          "cancelled",
-          "missed",
-          "yet",
-        ];
-        if (!validStatuses.includes(status)) {
+        // Admin panel is refund-only for booking management.
+        // Statuses are controlled by instructor flow and reflected here.
+        if (status !== "refund") {
           throw new Error(
-            `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+            "Admin can only process refunds. Slot status must be managed from Instructor panel.",
           );
         }
 
@@ -146,6 +139,10 @@ const AdminBookingResolvers = {
         }
 
         const oldStatus = booking.slots[slotIndex].status;
+        const oldStatusNormalized = String(oldStatus || "").toLowerCase();
+        if (oldStatusNormalized !== "cancelled") {
+          throw new Error("Refund can only be processed for cancelled slots.");
+        }
 
         // Update the specific slot
         booking.slots[slotIndex].status = status;
