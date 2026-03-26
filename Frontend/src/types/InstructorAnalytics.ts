@@ -1,10 +1,12 @@
 export interface InstructorAnalytics {
-  instructorId: string;
-  name: string;
-  email: string;
-  address: string;
-  studentsCount: number;
-  activeBookingsCount: number;
+  instructorId?: string;
+  name?: string;
+  email?: string;
+  address?: string;
+  studentsCount?: number;
+  activeBookingsCount?: number;
+  totalStudents: number;
+  activeBookings: number;
   totalEarnings: number;
   lastBooking: StudentBookingNew | null;
   recentBookings: StudentBookingNew[];
@@ -13,6 +15,7 @@ export interface InstructorAnalytics {
   attendanceRate: number;
   totalLessonsGiven?: number;
   lastLessonDate?: string | null;
+  instructor?: Instructor;
 }
 
 export interface StudentBookingNew {
@@ -25,6 +28,10 @@ export interface StudentBookingNew {
   status: string;
   createdAt: string;
   updatedAt: string;
+  studentTotalLessons?: number;
+  studentLocation?: string | null;
+  studentJoiningDate?: string | null;
+  lastAttendanceDate?: string | null;
 }
 
 export interface SlotNew {
@@ -42,6 +49,7 @@ export interface UserNew {
   lastName: string;
   email: string;
   profileImage?: string;
+  createdAt?: string;
 }
 
 export interface Instructor {

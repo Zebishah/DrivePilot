@@ -146,6 +146,8 @@ const instructorTypeDefs = gql`
     updatedAt: String
     studentTotalLessons: Int
     studentLocation: String
+    studentJoiningDate: String
+    lastAttendanceDate: String
   }
 
   type SlotNew {
@@ -163,6 +165,7 @@ const instructorTypeDefs = gql`
     lastName: String
     email: String
     profileImage: String
+    createdAt: String
   }
 
   type Query {

@@ -188,7 +188,7 @@ export default function Sidebar({
                     onClick={() => {
                       if (item.text === "Messages") {
                         dispatch(clearUnreadMessages());
-                        localStorage.setItem("unreadMessages", "false");
+                        localStorage.setItem("unreadMessages", "0");
                       }
                     }}
                   >
@@ -210,7 +210,7 @@ export default function Sidebar({
                       }}
                     />
                     {((item.badge && item.badge > 0) ||
-                      (item.text === "Messages" && unreadMessages)) && (
+                      (item.text === "Messages" && unreadMessages > 0)) && (
                       <Box
                         sx={{
                           position: "absolute",
@@ -230,7 +230,7 @@ export default function Sidebar({
                           px: 0.5,
                         }}
                       >
-                        {item.badge ? item.badge : ""}
+                        {item.badge ? item.badge : unreadMessages}
                       </Box>
                     )}
                   </ListItemButton>

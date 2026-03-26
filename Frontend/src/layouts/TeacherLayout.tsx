@@ -1,6 +1,6 @@
 "use client";
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, CssBaseline, ThemeProvider, createTheme, Alert } from "@mui/material";
 import {
   LayoutGrid,
@@ -60,6 +60,8 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
 
   // ✅ Initialize socket for instructor (check for both cases)
   useEffect(() => {
@@ -189,14 +191,31 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     dispatch(setConversations(conversationsData));
   }, [data, dispatch, user]);
 
-  // Socket setup for chat
+  // Socket setup — re-join all chat rooms on (re)connect so messages aren't missed after idle/tab sleep
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !conversations.length) return;
 
-    conversations.forEach((conv) => {
-      socket.emit("joinConversation", conv._id);
-    });
+    const joinAllConversationRooms = () => {
+      conversationsRef.current.forEach((conv) => {
+        socket.emit("joinConversation", conv._id);
+      });
+    };
+
+    joinAllConversationRooms();
+
+    const handleSocketConnect = () => {
+      joinAllConversationRooms();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && socket.connected) {
+        joinAllConversationRooms();
+      }
+    };
+
+    socket.on("connect", handleSocketConnect);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const handleReceiveMessage = (msg: any) => {
       if (!msg?.conversationId || !msg?.sender || !msg?.receiver) return;
@@ -225,8 +244,12 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
             : new Date().toISOString(),
       };
       dispatch(addMessage({ conversationId: message.conversationId, message }));
+      const senderId = String(message.sender._id ?? "");
+      const currentUserId = String(user?.id ?? "");
       if (
-        message.sender._id !== user?.id &&
+        senderId &&
+        currentUserId &&
+        senderId !== currentUserId &&
         !location.pathname.includes("/chat")
       ) {
         dispatch(setHasUnreadMessages());
@@ -236,6 +259,8 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     socket.on("receive_message", handleReceiveMessage);
 
     return () => {
+      socket.off("connect", handleSocketConnect);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       conversations.forEach((conv) => {
         socket.emit("leaveConversation", conv._id);
       });

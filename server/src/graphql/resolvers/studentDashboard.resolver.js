@@ -32,7 +32,8 @@ const studentDashboardResolver = {
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
           const isCompleted = slot.status === "completed" || slotEnd <= now;
 
-          if (slot.status !== "cancelled") totalLessons++;
+          // Total lessons on student overview must count only validated completed lessons.
+          if (slot.status === "completed") totalLessons++;
 
           if (slot.booked) bookedLessons++;
 
@@ -120,8 +121,21 @@ const studentDashboardResolver = {
       return allLessons;
     },
     getStudentFeedbacks: async (_, { studentId }) => {
-      const feedbacks = await LessonFeedBack.find({ studentId }).lean();
-      return feedbacks;
+      const feedbacks = await LessonFeedBack.find({ studentId })
+        .populate("instructorId", "firstName lastName profileImage email")
+        .lean();
+      return feedbacks.map((feedback) => {
+        const instructor = feedback.instructorId || null;
+        return {
+          ...feedback,
+          instructorId: instructor?._id || feedback.instructorId,
+          instructorEmail: instructor?.email || feedback.instructorEmail || "",
+          instructorName: instructor
+            ? `${instructor.firstName || ""} ${instructor.lastName || ""}`.trim()
+            : "",
+          instructorProfileImage: instructor?.profileImage || "",
+        };
+      });
     },
   },
   Mutation: {

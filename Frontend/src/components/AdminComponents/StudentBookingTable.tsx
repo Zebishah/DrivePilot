@@ -1,22 +1,16 @@
 import React, { useState } from "react";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import {
   Calendar,
   Clock,
   DollarSign,
   User,
   X,
-  Loader2,
 } from "lucide-react";
 import {
   StudentBooking,
-  UpdateBookingStatusInput,
 } from "../../types/AdminBookingShowcase";
 import { GET_ALL_STUDENT_BOOKINGS } from "../../graphql/Queries/AdminBookingShowcase";
-import {
-  UPDATE_BOOKING_STATUS,
-} from "../../graphql/mutations/AdminBookingsShowcase";
-import toast from "react-hot-toast";
 
 interface BookingsTableProps {
   className?: string;
@@ -228,27 +222,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
     </div>
   );
 };
-type SpinnerSize = "sm" | "md" | "lg";
-
-const LoadingSpinner = ({ size = "lg" }: { size?: SpinnerSize }) => {
-  const sizeClasses: Record<SpinnerSize, string> = {
-    sm: "h-4 w-4",
-    md: "h-5 w-5",
-    lg: "h-6 w-6",
-  };
-
-  return <Loader2 className={`animate-spin ${sizeClasses[size]}`} />;
-};
-
-// Loading Overlay Component
-const LoadingOverlay = ({ message = "Processing..." }) => (
-  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-xl">
-    <div className="flex flex-col items-center space-y-3">
-      <LoadingSpinner size="lg" />
-      <p className="text-sm font-medium text-gray-600">{message}</p>
-    </div>
-  </div>
-);
 // Refund UI intentionally omitted from this page (admin is view-only here)
 
 // Main Component
@@ -258,10 +231,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   const [selectedBooking, setSelectedBooking] = useState<StudentBooking | null>(
     null,
   );
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "upcoming" | "completed" | "cancelled" | "missed"
+    | "all"
+    | "upcoming"
+    | "completed"
+    | "cancelled"
+    | "missed"
+    | "no_status_set_yet"
   >("all");
   const [sortBy, setSortBy] = useState<
     | "date_desc"
@@ -271,7 +248,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     | "status_cancelled"
     | "status_missed"
   >("date_desc");
-  const { data, loading, error, refetch } = useQuery(GET_ALL_STUDENT_BOOKINGS, {
+  const { data, loading, error } = useQuery(GET_ALL_STUDENT_BOOKINGS, {
     fetchPolicy: "cache-and-network",
   });
 
@@ -310,7 +287,12 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   }
 
   const bookings: StudentBooking[] = data?.getAllStudentBookings || [];
-  type DerivedStatus = "Upcoming" | "Completed" | "Cancelled" | "Missed";
+  type DerivedStatus =
+    | "Upcoming"
+    | "Completed"
+    | "Cancelled"
+    | "Missed"
+    | "No Status Set Yet";
   type Row = { booking: StudentBooking; slot: StudentBooking["slots"][number]; derivedStatus: DerivedStatus };
 
   const getDerivedStatus = (
@@ -322,7 +304,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       return "Cancelled";
     if (raw === "completed") return "Completed";
     const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    if (slotEnd <= new Date()) return "Completed";
+    if (slotEnd <= new Date()) return "No Status Set Yet";
     return "Upcoming";
   };
 
@@ -333,7 +315,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     if (s === "Upcoming") return 0;
     if (s === "Completed") return 1;
     if (s === "Cancelled") return 2;
-    return 3; // Missed
+    if (s === "Missed") return 3;
+    return 4; // No Status Set Yet
   };
 
   const rows: Row[] = bookings
@@ -345,7 +328,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       if (statusFilter === "upcoming") return r.derivedStatus === "Upcoming";
       if (statusFilter === "completed") return r.derivedStatus === "Completed";
       if (statusFilter === "cancelled") return r.derivedStatus === "Cancelled";
-      return r.derivedStatus === "Missed";
+      if (statusFilter === "missed") return r.derivedStatus === "Missed";
+      return r.derivedStatus === "No Status Set Yet";
     })
     .sort((a, b) => {
       const aTime = getSlotTime(a.slot);
@@ -396,10 +380,6 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     return `${dateStr} ${timeStr}`;
   };
 
-  const hasLessonPassed = (slot: { date: string; endTime: string }) => {
-    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    return slotEnd.getTime() <= Date.now();
-  };
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
@@ -420,6 +400,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
             <option value="missed">Missed</option>
+            <option value="no_status_set_yet">No Status Set Yet</option>
           </select>
 
           <span className="text-sm text-gray-600">Sort:</span>
@@ -464,16 +445,6 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {rows.map(({ booking, slot, derivedStatus }) => {
-              const lessonPassed = hasLessonPassed(slot);
-              const rawStatus = (slot.status ?? "").toLowerCase();
-              const isStatusNotSetYet =
-                lessonPassed &&
-                derivedStatus === "Completed" &&
-                rawStatus !== "completed" &&
-                rawStatus !== "missed" &&
-                rawStatus !== "cancelled" &&
-                rawStatus !== "refund";
-
               return (
                 <tr
                   key={`${booking._id}-${slot._id}`}
@@ -528,14 +499,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                             ? "bg-red-100 text-red-800"
                             : derivedStatus === "Missed"
                               ? "bg-orange-100 text-orange-800"
+                            : derivedStatus === "No Status Set Yet"
+                              ? "bg-amber-100 text-amber-800"
                             : derivedStatus === "Completed"
-                              ? isStatusNotSetYet
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-green-100 text-green-800"
+                              ? "bg-green-100 text-green-800"
                               : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {isStatusNotSetYet ? "No Status Set Yet" : derivedStatus}
+                        {derivedStatus}
                       </span>
                     </div>
                   </td>

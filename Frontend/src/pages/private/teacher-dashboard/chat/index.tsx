@@ -45,7 +45,7 @@ const InstructorChatPage: React.FC = () => {
     }
     // Clear unread messages when entering chat page
     dispatch(clearUnreadMessages());
-    localStorage.setItem("unreadMessages", "false");
+    localStorage.setItem("unreadMessages", "0");
   }, [conversations, selectedConversation, studentIdFromState, dispatch]);
 
   useEffect(() => {

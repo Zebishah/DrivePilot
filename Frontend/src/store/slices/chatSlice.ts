@@ -32,14 +32,14 @@ interface ChatState {
   conversations: Conversation[];
   selectedConversation: Conversation | null;
   messagesByConversation: { [conversationId: string]: MessageType[] };
-  unreadMessages: boolean;
+  unreadMessages: number;
 }
 
 const initialState: ChatState = {
   conversations: [],
   selectedConversation: null,
   messagesByConversation: {},
-  unreadMessages: localStorage.getItem("unreadMessages") === "true",
+  unreadMessages: Number(localStorage.getItem("unreadMessages") || 0),
 };
 
 const chatSlice = createSlice({
@@ -231,15 +231,16 @@ const chatSlice = createSlice({
       };
       console.log("🧹 Cleared messages for conversation:", action.payload);
     },
-    setHasUnreadMessages: (state) => {
-      state.unreadMessages = true;
-      localStorage.setItem("unreadMessages", "true");
-      console.log("🔔 Set unread messages to true");
+    setHasUnreadMessages: (state, action: PayloadAction<number | undefined>) => {
+      const incrementBy = action.payload ?? 1;
+      state.unreadMessages += incrementBy;
+      localStorage.setItem("unreadMessages", String(state.unreadMessages));
+      console.log("🔔 Incremented unread messages:", state.unreadMessages);
     },
     clearUnreadMessages: (state) => {
-      state.unreadMessages = false;
-      localStorage.setItem("unreadMessages", "false");
-      console.log("🔔 Cleared unread messages");
+      state.unreadMessages = 0;
+      localStorage.setItem("unreadMessages", "0");
+      console.log("🔔 Cleared unread messages count");
     },
   },
 });

@@ -102,7 +102,7 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
       <div className="space-y-5 ">
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">
-            Total Lessons: {totalLessons}
+          Total lessons (Given and upcoming) : {totalLessons}
           </span>
           <span className="text-sm text-green-600 flex items-center opacity-0">
             <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
@@ -118,7 +118,8 @@ export const LastTrainedStudent: React.FC<LastTrainedStudentProps> = ({
 
           {completionDate && (
             <div className="text-sm text-gray-600">
-              Completion Date: {new Date(completionDate).toLocaleDateString()}
+              Last attendance date:{" "}
+              {new Date(completionDate).toLocaleDateString()}
             </div>
           )}
         </div>

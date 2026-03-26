@@ -224,9 +224,11 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                   </th>
                 </>
               )}
+              {selectedTab !== "upcoming" && (
               <th className="text-left py-3 px-4 font-medium text-gray-900">
                 Action
               </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -244,7 +246,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                       Upcoming
                     </span>
                   </td>
-                  <td className="py-4 px-4">
+                  {/* <td className="py-4 px-4">
                     <button
                       type="button"
                       className="px-4 py-2 bg-red-500 text-white rounded-md text-sm font-medium hover:bg-red-600 disabled:opacity-60"
@@ -253,7 +255,7 @@ export const DailyProgressTable: React.FC<DailyProgressTableProps> = ({
                     >
                       {cancelling ? "Cancelling..." : "Cancel"}
                     </button>
-                  </td>
+                  </td> */}
                 </tr>
               ))}
 
