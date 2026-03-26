@@ -61,6 +61,7 @@ import AdminTransactionsPage from "../pages/private/admin-dashboard/AdminTransac
 import AdminRefundRequestsPage from "../pages/private/admin-dashboard/AdminRefundRequestsPage";
 import StudentBookingWInst from "../components/InstructorComponent/StudentBookingWInst";
 import FeedBackAndRating from "../components/StudentComponents/ReviewTab/OnlyReviewsTab";
+import FeedbackDetailsPage from "../components/StudentComponents/ReviewTab/FeedbackDetailsPage";
 import StudentPaymentHistoryPage from "../pages/private/student-dashboard/StudentPaymentHistoryPage";
 import InstructorTransactionHistoryPage from "../pages/private/teacher-dashboard/InstructorTransactionHistoryPage";
 
@@ -125,6 +126,7 @@ const router = createBrowserRouter([
       { path: "help-support", element: <FAQPage /> },
       { path: "reviews", element: <Dashboard /> },
       { path: "Feedback", element: <FeedBackAndRating /> },
+      { path: "feedback-details", element: <FeedbackDetailsPage /> },
       { path: "review-form", element: <ReviewForm /> },
       { path: "review-display", element: <ReviewDisplay /> },
       { path: "allBookingSlots", element: <AllBookingSlotsPage /> },

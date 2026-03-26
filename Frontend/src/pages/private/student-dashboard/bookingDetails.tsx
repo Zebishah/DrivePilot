@@ -730,13 +730,13 @@ const BookingDetails: React.FC = () => {
             <strong>Description:</strong>{" "}
             {description || "No description available"}
           </Typography>
-          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+          {/* <Typography variant="body2" color="error" sx={{ mt: 2 }}>
             <strong>Attention:</strong>
             {""} This doesn't apply to your current case, but just so you know —
             cancellations made less than 48 hours before a lesson are
             non-refundable, except in exceptional circumstances (e.g. medical
             emergencies).
-          </Typography>
+          </Typography> */}
         </CardContent>
       </Card>
 

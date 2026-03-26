@@ -29,6 +29,8 @@ const studentDashboardTypeDefs = gql`
     instructorId: ID
     studentId: ID
     instructorEmail: String
+    instructorName: String
+    instructorProfileImage: String
     feedbackTags: [String]
     hoursRemaining: String
     message: String

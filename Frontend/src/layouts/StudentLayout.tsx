@@ -1,6 +1,6 @@
 "use client";
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import Sidebar, { type MenuItem } from "../components/common/SideBar";
 import Navbar from "../components/common/DashNavBar";
@@ -62,6 +62,9 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
+  const conversationsRef = useRef(conversations);
+  conversationsRef.current = conversations;
+
   useEffect(() => {
     if (user?.role === "Student") {
       console.log("🔌 Initializing socket for student:", user.id);
@@ -168,14 +171,31 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     dispatch(setConversations(newConversations));
   }, [data, dispatch, user]);
 
-  // Socket setup
+  // Socket setup — re-join all chat rooms on (re)connect so messages aren't missed after idle/tab sleep
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !conversations.length) return;
 
-    conversations.forEach((conv) => {
-      socket.emit("joinConversation", conv._id);
-    });
+    const joinAllConversationRooms = () => {
+      conversationsRef.current.forEach((conv) => {
+        socket.emit("joinConversation", conv._id);
+      });
+    };
+
+    joinAllConversationRooms();
+
+    const handleSocketConnect = () => {
+      joinAllConversationRooms();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && socket.connected) {
+        joinAllConversationRooms();
+      }
+    };
+
+    socket.on("connect", handleSocketConnect);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const handleReceiveMessage = (msg: any) => {
       if (!msg?.conversationId || !msg?.sender || !msg?.receiver) return;
@@ -204,18 +224,23 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             : new Date().toISOString(),
       };
       dispatch(addMessage({ conversationId: message.conversationId, message }));
+      const senderId = String(message.sender._id ?? "");
+      const currentUserId = String(user?.id ?? "");
       if (
-        message.sender._id !== user?.id &&
+        senderId &&
+        currentUserId &&
+        senderId !== currentUserId &&
         !location.pathname.includes("/chat")
       ) {
         dispatch(setHasUnreadMessages());
-        localStorage.setItem("unreadMessages", "true");
       }
     };
 
     socket.on("receive_message", handleReceiveMessage);
 
     return () => {
+      socket.off("connect", handleSocketConnect);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       conversations.forEach((conv) => {
         socket.emit("leaveConversation", conv._id);
       });

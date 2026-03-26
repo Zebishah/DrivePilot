@@ -59,3 +59,22 @@ export const GET_STUDENT_LESSON_HOURS = gql`
     }
   }
 `;
+
+export const GET_STUDENT_FEEDBACKS_LIST = gql`
+  query GetStudentFeedbacksList($studentId: ID!) {
+    getStudentFeedbacks(studentId: $studentId) {
+      _id
+      lessonId
+      bookingId
+      instructorId
+      instructorEmail
+      instructorName
+      instructorProfileImage
+      feedbackTags
+      hoursRemaining
+      message
+      createdAt
+      updatedAt
+    }
+  }
+`;

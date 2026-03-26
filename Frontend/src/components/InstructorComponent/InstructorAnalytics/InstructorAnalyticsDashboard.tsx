@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Users, Calendar, DollarSign, BookOpen, Info } from "lucide-react";
+import { Users, Calendar, DollarSign, BookOpen } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { LastTrainedStudent } from "./LastTrainedStudent";
 
@@ -71,6 +71,8 @@ const GET_INSTRUCTOR_ANALYTICS = gql`
         }
         studentTotalLessons
         studentLocation
+        studentJoiningDate
+        lastAttendanceDate
       }
       instructor {
         firstName
@@ -91,8 +93,12 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
     fetchPolicy: "no-cache",
   });
 
-  const recentBookings = (data?.getInstructorAnalytics as InstructorAnalytics)
-    ?.recentBookings ?? [];
+  const recentBookings = useMemo(
+    () =>
+      ((data?.getInstructorAnalytics as InstructorAnalytics)?.recentBookings ??
+        []),
+    [data],
+  );
 
   const [currentRecentIndex, setCurrentRecentIndex] = useState(0);
   const clampedIndex =
@@ -150,7 +156,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
                 iconColor="bg-purple-400"
                 tooltip="Number of future lessons you have scheduled with students."
                 onClick={() =>
-                  navigate("/teacher-dashboard/my-students", {
+                  navigate("/teacher-dashboard/bookingManagement", {
                     state: { focus: "upcoming" },
                   })
                 }
@@ -181,17 +187,9 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
           <LastTrainedStudent
             student={currentBooking?.studentId ?? null}
             totalLessons={currentBooking?.studentTotalLessons ?? 0}
-            joiningDate={
-              currentBooking?.slots?.[0]?.date && currentBooking?.slots?.[0]?.startTime
-                ? `${currentBooking.slots[0].date}T${currentBooking.slots[0].startTime}:00`
-                : ""
-            }
+            joiningDate={currentBooking?.studentJoiningDate ?? undefined}
             satisfaction={100}
-            completionDate={
-              currentBooking?.slots?.[0]?.date && currentBooking?.slots?.[0]?.endTime
-                ? `${currentBooking.slots[0].date}T${currentBooking.slots[0].endTime}:00`
-                : undefined
-            }
+            completionDate={currentBooking?.lastAttendanceDate ?? undefined}
             studentLocation={currentBooking?.studentLocation ?? null}
             recentCount={recentBookings.length}
             currentIndex={clampedIndex}
@@ -203,7 +201,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
         {/* Map Row (keep map, calendar removed) */}
         <div className="mt-6">
           <InstructorMap
-            address={analytics?.instructor?.address}
+            address={analytics?.instructor?.address || ""}
             className="h-80"
           />
         </div>

@@ -327,6 +327,9 @@ const instructorResolver = {
       };
       // Attended uses the same definition as completed lessons here
       const isAttendedSlot = isCompletedLessonSlot;
+      // Strict completed lessons (explicitly validated by instructor)
+      const isValidatedCompletedSlot = (s) =>
+        isActiveSlot(s) && s.status === "completed";
       // Upcoming/active booking = active slot not yet completed
       const isUpcomingSlot = (s) => {
         if (!isActiveSlot(s)) return false;
@@ -381,6 +384,35 @@ const instructorResolver = {
         })),
       );
 
+      // Strict "attended lesson" for Last attendance date (slot-level):
+      // - evaluate each slot independently (not whole booking)
+      // - slot must be active (not cancelled/refund)
+      // - slot must be marked completed by instructor
+      const isStrictAttendedSlot = (s) => {
+        if (!isActiveSlot(s)) return false;
+        return s.status === "completed";
+      };
+      const strictAttendedSlotsWithBooking = bookings.flatMap((b) =>
+        b.slots.filter(isStrictAttendedSlot).map((s) => ({
+          ...(s.toObject?.() || s),
+          slotId: s._id,
+          booking: b,
+        })),
+      );
+      const lastAttendanceByStudent = new Map();
+      for (const item of strictAttendedSlotsWithBooking) {
+        const sid = item.booking.studentId?._id?.toString();
+        if (!sid) continue;
+        const itemTime = new Date(`${item.date}T${item.endTime}:00`).getTime();
+        const existing = lastAttendanceByStudent.get(sid);
+        const existingTime = existing
+          ? new Date(`${existing.date}T${existing.endTime}:00`).getTime()
+          : -Infinity;
+        if (!existing || itemTime > existingTime) {
+          lastAttendanceByStudent.set(sid, item);
+        }
+      }
+
       // Recent bookings (carousel): one entry per student, using their most recent ACTIVE slot
       // (upcoming or past), excluding cancelled/refund. Sorted by slot end date/time desc, max 10.
       const activeSlotsWithBooking = bookings.flatMap((b) =>
@@ -425,6 +457,10 @@ const instructorResolver = {
 
       const buildBookingFromSlot = (lastSlot) => {
         const lastStudent = lastSlot.booking.studentId;
+        const studentIdStr = lastStudent?._id?.toString();
+        const studentLastAttendance = studentIdStr
+          ? lastAttendanceByStudent.get(studentIdStr)
+          : null;
         const studentTotalLessons = bookings.reduce((sum, b) => {
           if (b.studentId?._id?.toString() !== lastStudent?._id?.toString())
             return sum;
@@ -442,6 +478,14 @@ const instructorResolver = {
           updatedAt: lastSlot.booking.updatedAt,
           studentTotalLessons,
           studentLocation: lastStudent?.location || null,
+          studentJoiningDate: lastStudent?.createdAt
+            ? new Date(lastStudent.createdAt).toISOString()
+            : null,
+          lastAttendanceDate: studentLastAttendance
+            ? new Date(
+                `${studentLastAttendance.date}T${studentLastAttendance.endTime}:00`,
+              ).toISOString()
+            : null,
         };
       };
 
@@ -458,14 +502,20 @@ const instructorResolver = {
           )
         : recentBookings[0] || null;
 
-      // Total lessons = active slots only (booked, not cancelled/refund)
-      const totalLessons = bookings.reduce(
-        (sum, b) => sum + b.slots.filter(isActiveSlot).length,
+      // Average lessons per student must use only completed lessons
+      // and only students who have at least one completed lesson.
+      const completedLessonsForAverage = bookings.reduce(
+        (sum, b) => sum + b.slots.filter(isValidatedCompletedSlot).length,
         0,
       );
-
-      const averageLessonsPerStudent = totalStudents
-        ? totalLessons / totalStudents
+      const studentsWithCompletedLessons = new Set(
+        bookings
+          .filter((b) => b.slots.some(isValidatedCompletedSlot))
+          .map((b) => b.studentId?._id?.toString()),
+      );
+      const completedStudentsCount = studentsWithCompletedLessons.size;
+      const averageLessonsPerStudent = completedStudentsCount
+        ? completedLessonsForAverage / completedStudentsCount
         : 0;
 
       const attendedLessons = bookings.reduce(
@@ -490,7 +540,7 @@ const instructorResolver = {
         ? (cancelledLessons / totalBookedLessons) * 100
         : 0;
 
-      const totalLessonsGiven = attendedLessons;
+      const totalLessonsGiven = completedLessonsForAverage;
 
       return {
         totalStudents,

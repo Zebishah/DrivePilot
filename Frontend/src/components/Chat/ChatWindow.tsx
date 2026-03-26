@@ -224,11 +224,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       );
     };
 
+    const handleSocketConnect = () => {
+      joinRoom();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && socket.connected) {
+        joinRoom();
+      }
+    };
+
     joinRoom();
+    socket.on("connect", handleSocketConnect);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     socket.on("typing", handleTyping);
     socket.on("receive_message", handleReceiveMessage);
 
     return () => {
+      socket.off("connect", handleSocketConnect);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       socket.emit("leaveConversation", conversation._id);
       socket.off("typing", handleTyping);
       socket.off("receive_message", handleReceiveMessage);
