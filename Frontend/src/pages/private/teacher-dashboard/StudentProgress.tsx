@@ -1,9 +1,10 @@
 import React from "react";
+import { useParams } from "react-router-dom";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 
 import { ProgressChart } from "../../../components/InstructorComponent/StudentsTracking/ProgressChart";
 
-import { DailyProgressTable } from "../../../components/InstructorComponent/StudentsTracking/DailyProgressTable";
+import StudentBookingWInst from "../../../components/InstructorComponent/StudentBookingWInst";
 import { LoadingState } from "../../../components/InstructorComponent/StudentsTracking/LoadingState";
 import { ErrorState } from "../../../components/InstructorComponent/StudentsTracking/ErrorState";
 import { NotFoundState } from "../../../components/InstructorComponent/StudentsTracking/NotFoundState";
@@ -12,9 +13,8 @@ import { useStudentDashboard } from "../../../hooks/UseStudentDashboard";
 import { TotalLessonsCard } from "../../../components/InstructorComponent/StudentsTracking/TotalLessonCard";
 import { formatDuration } from "../../../components/InstructorComponent/common/FormatDuration";
 const StudentDashboard: React.FC = () => {
+  const { studentId } = useParams<{ studentId: string }>();
   const {
-    selectedTab,
-    setSelectedTab,
     dateFilter,
     setDateFilter,
     loading,
@@ -40,9 +40,6 @@ const StudentDashboard: React.FC = () => {
     lessonStats,
     completedBookings,
     uncompletedBookings,
-    upcomingBookings = [],
-    cancelledBookings = [],
-    historyBookings = [],
   } = data.getStudentDashboardDetails;
   return (
     <div className="min-h-screen bg-gray-50 py-2 px-8">
@@ -77,14 +74,10 @@ const StudentDashboard: React.FC = () => {
           />
         </div>
 
-        {/* Booking Management */}
-        <DailyProgressTable
-          upcomingBookings={upcomingBookings}
-          cancelledBookings={cancelledBookings}
-          historyBookings={historyBookings}
-          selectedTab={selectedTab}
-          setSelectedTab={setSelectedTab}
-        />
+        {/* Booking Management — same component & logic as main instructor Booking Management, filtered to this student */}
+        <div className="mt-6">
+          <StudentBookingWInst filterStudentId={studentId} />
+        </div>
       </div>
     </div>
   );

@@ -46,6 +46,7 @@ const AdminBookingTypeDefs = gql`
     feedBackStatus: FeedbackStatusAdmin!
     cancellationDate: String # Add this field
     cancelledBy: String # student | instructor | admin
+    paymentStatus: String
   }
 
   type PaymentMethodAdmin {
@@ -63,6 +64,7 @@ const AdminBookingTypeDefs = gql`
     paymentMethod: PaymentMethodAdmin!
     status: BookingStatusAdmin!
     cancellationDate: String # Add this field
+    stripeCustomerId: String
     createdAt: String!
     updatedAt: String!
   }

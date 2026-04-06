@@ -28,8 +28,36 @@ import {
   type AdminAnalytics,
   type Instructor,
 } from "../../../types/AdminContact";
+import { Tooltip } from "@mui/material";
 // Dynamically import ApexCharts to avoid SSR issues
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
+
+/** Native `title` / `aria-label` on SVG does not show hover hints; MUI Tooltip does. */
+function StatInfoTooltip({ text }: { text: string }) {
+  return (
+    <Tooltip
+      title={text}
+      arrow
+      placement="top"
+      enterTouchDelay={0}
+      slotProps={{
+        tooltip: {
+          sx: {
+            maxWidth: 300,
+            fontSize: "0.8125rem",
+            lineHeight: 1.45,
+            bgcolor: "rgba(17, 24, 39, 0.92)",
+          },
+        },
+      }}
+    >
+      {/* Native title is a production-safe fallback if MUI popper styles fail to mount */}
+      <span className="inline-flex shrink-0" title={text} aria-label={text}>
+        <Info className="h-4 w-4 text-white/80 cursor-help" aria-hidden />
+      </span>
+    </Tooltip>
+  );
+}
 
 interface CardProps {
   children: ReactNode;
@@ -286,12 +314,7 @@ function StatCard({
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-white/80">{title}</p>
-              {tooltip && (
-                <Info
-                  className="h-4 w-4 text-white/80 cursor-help"
-                  aria-label={tooltip}
-                />
-              )}
+              {tooltip && <StatInfoTooltip text={tooltip} />}
             </div>
             <p className="text-3xl font-bold text-white">
               {isPercentage ? `${value.toFixed(1)}%` : value}
@@ -400,6 +423,100 @@ export function AnalyticsDashboard() {
     },
     [apolloClient, selectedInstructors],
   );
+  const monthShortLabels = useMemo(
+    () => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    [],
+  );
+
+  const fetchAvgRevenueYearMonthwise = useCallback(
+    async (yearStr: string) => {
+      const monthResults = await Promise.all(
+        Array.from({ length: 12 }, async (_, monthIdx) => {
+          const gd = await fetchGraphDataForMonthYear(String(monthIdx), yearStr);
+          const points = gd?.averageRevenuePerInstructor ?? [];
+          const avgRevenue =
+            points.length > 0
+              ? points.reduce((sum, p) => sum + Number(p.averageRevenue || 0), 0) /
+                points.length
+              : 0;
+          return {
+            time: monthShortLabels[monthIdx],
+            averageRevenue: Number(avgRevenue.toFixed(2)),
+          };
+        }),
+      );
+      return monthResults;
+    },
+    [fetchGraphDataForMonthYear, monthShortLabels],
+  );
+  const fetchActiveUsersYearMonthwise = useCallback(
+    async (yearStr: string) => {
+      const monthResults = await Promise.all(
+        Array.from({ length: 12 }, async (_, monthIdx) => {
+          const gd = await fetchGraphDataForMonthYear(String(monthIdx), yearStr);
+          const points = gd?.activeUsers ?? [];
+          const students =
+            points.length > 0
+              ? points.reduce((sum, p) => sum + Number(p.students || 0), 0) /
+                points.length
+              : 0;
+          const instructors =
+            points.length > 0
+              ? points.reduce((sum, p) => sum + Number(p.instructors || 0), 0) /
+                points.length
+              : 0;
+          return {
+            time: monthShortLabels[monthIdx],
+            students: Number(students.toFixed(2)),
+            instructors: Number(instructors.toFixed(2)),
+          };
+        }),
+      );
+      return monthResults;
+    },
+    [fetchGraphDataForMonthYear, monthShortLabels],
+  );
+  const fetchAvgBookingsYearMonthwise = useCallback(
+    async (yearStr: string) => {
+      const monthResults = await Promise.all(
+        Array.from({ length: 12 }, async (_, monthIdx) => {
+          const gd = await fetchGraphDataForMonthYear(String(monthIdx), yearStr);
+          const points = gd?.bookingsPerInstructor ?? [];
+          const avgBookings =
+            points.length > 0
+              ? points.reduce((sum, p) => sum + Number(p.averageBookings || 0), 0) /
+                points.length
+              : 0;
+          return {
+            time: monthShortLabels[monthIdx],
+            averageBookings: Number(avgBookings.toFixed(2)),
+          };
+        }),
+      );
+      return monthResults;
+    },
+    [fetchGraphDataForMonthYear, monthShortLabels],
+  );
+  const fetchTotalEarningsYearMonthwise = useCallback(
+    async (yearStr: string) => {
+      const monthResults = await Promise.all(
+        Array.from({ length: 12 }, async (_, monthIdx) => {
+          const gd = await fetchGraphDataForMonthYear(String(monthIdx), yearStr);
+          const points = gd?.totalEarnings ?? [];
+          const totalEarnings = points.reduce(
+            (sum, p) => sum + Number(p.totalEarnings || 0),
+            0,
+          );
+          return {
+            time: monthShortLabels[monthIdx],
+            totalEarnings: Number(totalEarnings.toFixed(2)),
+          };
+        }),
+      );
+      return monthResults;
+    },
+    [fetchGraphDataForMonthYear, monthShortLabels],
+  );
 
   const PeriodDropdowns = ({
     month,
@@ -407,12 +524,14 @@ export function AnalyticsDashboard() {
     setMonth,
     setYear,
     onChange,
+    disableMonth = false,
   }: {
     month: string;
     year: string;
     setMonth: (v: string) => void;
     setYear: (v: string) => void;
     onChange: (m: string, y: string) => void;
+    disableMonth?: boolean;
   }) => {
     const months = [
       "January",
@@ -435,12 +554,13 @@ export function AnalyticsDashboard() {
       <div className="flex items-center gap-2">
         <select
           value={month}
+          disabled={disableMonth}
           onChange={(e) => {
             const next = e.target.value;
             setMonth(next);
             onChange(next, year);
           }}
-          className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+          className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Select month"
         >
           {months.map((m, idx) => (
@@ -506,12 +626,24 @@ export function AnalyticsDashboard() {
     String(now.getMonth()),
   );
   const [activeUsersYear, setActiveUsersYear] = useState(String(now.getFullYear()));
+  const [activeUsersViewMode, setActiveUsersViewMode] = useState<
+    "monthly" | "yearly_monthwise"
+  >("monthly");
   const [avgRevenueMonth, setAvgRevenueMonth] = useState(String(now.getMonth()));
   const [avgRevenueYear, setAvgRevenueYear] = useState(String(now.getFullYear()));
+  const [avgRevenueViewMode, setAvgRevenueViewMode] = useState<
+    "monthly" | "yearly_monthwise"
+  >("monthly");
   const [avgBookingsMonth, setAvgBookingsMonth] = useState(String(now.getMonth()));
   const [avgBookingsYear, setAvgBookingsYear] = useState(String(now.getFullYear()));
+  const [avgBookingsViewMode, setAvgBookingsViewMode] = useState<
+    "monthly" | "yearly_monthwise"
+  >("monthly");
   const [totalEarningsMonth, setTotalEarningsMonth] = useState(String(now.getMonth()));
   const [totalEarningsYear, setTotalEarningsYear] = useState(String(now.getFullYear()));
+  const [totalEarningsViewMode, setTotalEarningsViewMode] = useState<
+    "monthly" | "yearly_monthwise"
+  >("monthly");
 
   const [isActiveUsersLoading, setIsActiveUsersLoading] = useState(false);
   const [isAvgRevenueLoading, setIsAvgRevenueLoading] = useState(false);
@@ -530,12 +662,16 @@ export function AnalyticsDashboard() {
     const y = String(now.getFullYear());
     setActiveUsersMonth(m);
     setActiveUsersYear(y);
+    setActiveUsersViewMode("monthly");
     setAvgRevenueMonth(m);
     setAvgRevenueYear(y);
+    setAvgRevenueViewMode("monthly");
     setAvgBookingsMonth(m);
     setAvgBookingsYear(y);
+    setAvgBookingsViewMode("monthly");
     setTotalEarningsMonth(m);
     setTotalEarningsYear(y);
+    setTotalEarningsViewMode("monthly");
     setIsActiveUsersLoading(false);
     setIsAvgRevenueLoading(false);
     setIsAvgBookingsLoading(false);
@@ -807,16 +943,10 @@ export function AnalyticsDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <p
-                    className="text-sm font-medium text-white/80"
-                    title="Sum of all students and instructors currently registered on DSP."
-                  >
+                  <p className="text-sm font-medium text-white/80">
                     Total Registrations
                   </p>
-                  <Info
-                    className="h-4 w-4 text-white/80 cursor-help"
-                    aria-label="Sum of all students and instructors currently registered on DSP."
-                  />
+                  <StatInfoTooltip text="Sum of all students and instructors currently registered on DSP." />
                 </div>
                 <p className="text-3xl font-bold text-white">
                   {stats?.totalRegistrations || 0}
@@ -859,10 +989,7 @@ export function AnalyticsDashboard() {
                   <p className="text-sm font-medium text-white/80">
                     Lessons Booked
                   </p>
-                  <Info
-                    className="h-4 w-4 text-white/80 cursor-help"
-                    aria-label="Total number of lessons booked by students on the platform. This includes both upcoming lessons and lessons already completed."
-                  />
+                  <StatInfoTooltip text="Total number of lessons booked by students on the platform. This includes both upcoming lessons and lessons already completed." />
                 </div>
                 <p className="text-3xl font-bold text-white">
                   {stats?.totalLessonsBooked || 0}
@@ -939,21 +1066,62 @@ export function AnalyticsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Active Users
-              <PeriodDropdowns
-                month={activeUsersMonth}
-                year={activeUsersYear}
-                setMonth={setActiveUsersMonth}
-                setYear={setActiveUsersYear}
-                onChange={async (m, y) => {
-                  setIsActiveUsersLoading(true);
-                  try {
-                    const gd = await fetchGraphDataForMonthYear(m, y);
-                    if (gd?.activeUsers) setActiveUsersGraph(gd.activeUsers);
-                  } finally {
-                    setIsActiveUsersLoading(false);
-                  }
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeUsersViewMode}
+                  onChange={(e) => {
+                    const nextMode = e.target.value as
+                      | "monthly"
+                      | "yearly_monthwise";
+                    setActiveUsersViewMode(nextMode);
+                    setIsActiveUsersLoading(true);
+                    void (async () => {
+                      try {
+                        if (nextMode === "yearly_monthwise") {
+                          const series = await fetchActiveUsersYearMonthwise(
+                            activeUsersYear,
+                          );
+                          setActiveUsersGraph(series as typeof activeUsersGraph);
+                        } else {
+                          const gd = await fetchGraphDataForMonthYear(
+                            activeUsersMonth,
+                            activeUsersYear,
+                          );
+                          setActiveUsersGraph(gd?.activeUsers ?? []);
+                        }
+                      } finally {
+                        setIsActiveUsersLoading(false);
+                      }
+                    })();
+                  }}
+                  className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+                  aria-label="Select active users view"
+                >
+                  <option value="monthly">Monthly (days wise)</option>
+                  <option value="yearly_monthwise">Yearly (month-wise)</option>
+                </select>
+                <PeriodDropdowns
+                  month={activeUsersMonth}
+                  year={activeUsersYear}
+                  setMonth={setActiveUsersMonth}
+                  setYear={setActiveUsersYear}
+                  disableMonth={activeUsersViewMode === "yearly_monthwise"}
+                  onChange={async (m, y) => {
+                    setIsActiveUsersLoading(true);
+                    try {
+                      if (activeUsersViewMode === "yearly_monthwise") {
+                        const series = await fetchActiveUsersYearMonthwise(y);
+                        setActiveUsersGraph(series as typeof activeUsersGraph);
+                      } else {
+                        const gd = await fetchGraphDataForMonthYear(m, y);
+                        setActiveUsersGraph(gd?.activeUsers ?? []);
+                      }
+                    } finally {
+                      setIsActiveUsersLoading(false);
+                    }
+                  }}
+                />
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-visible">
@@ -1021,22 +1189,68 @@ export function AnalyticsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Average Revenue per Instructor
-              <PeriodDropdowns
-                month={avgRevenueMonth}
-                year={avgRevenueYear}
-                setMonth={setAvgRevenueMonth}
-                setYear={setAvgRevenueYear}
-                onChange={async (m, y) => {
-                  setIsAvgRevenueLoading(true);
-                  try {
-                    const gd = await fetchGraphDataForMonthYear(m, y);
-                    if (gd?.averageRevenuePerInstructor)
-                      setAvgRevenueGraph(gd.averageRevenuePerInstructor);
-                  } finally {
-                    setIsAvgRevenueLoading(false);
-                  }
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={avgRevenueViewMode}
+                  onChange={(e) => {
+                    const nextMode = e.target.value as
+                      | "monthly"
+                      | "yearly_monthwise";
+                    setAvgRevenueViewMode(nextMode);
+                    setIsAvgRevenueLoading(true);
+                    void (async () => {
+                      try {
+                        if (nextMode === "yearly_monthwise") {
+                          const series = await fetchAvgRevenueYearMonthwise(
+                            avgRevenueYear,
+                          );
+                          setAvgRevenueGraph(series as typeof avgRevenueGraph);
+                        } else {
+                          const gd = await fetchGraphDataForMonthYear(
+                            avgRevenueMonth,
+                            avgRevenueYear,
+                          );
+                          if (gd?.averageRevenuePerInstructor) {
+                            setAvgRevenueGraph(gd.averageRevenuePerInstructor);
+                          } else {
+                            setAvgRevenueGraph([]);
+                          }
+                        }
+                      } finally {
+                        setIsAvgRevenueLoading(false);
+                      }
+                    })();
+                  }}
+                  className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+                  aria-label="Select average revenue view"
+                >
+                  <option value="monthly">Monthly (days wise)</option>
+                  <option value="yearly_monthwise">Yearly (month-wise)</option>
+                </select>
+                <PeriodDropdowns
+                  month={avgRevenueMonth}
+                  year={avgRevenueYear}
+                  setMonth={setAvgRevenueMonth}
+                  setYear={setAvgRevenueYear}
+                  disableMonth={avgRevenueViewMode === "yearly_monthwise"}
+                  onChange={async (m, y) => {
+                    setIsAvgRevenueLoading(true);
+                    try {
+                      if (avgRevenueViewMode === "yearly_monthwise") {
+                        const series = await fetchAvgRevenueYearMonthwise(y);
+                        setAvgRevenueGraph(series as typeof avgRevenueGraph);
+                      } else {
+                        const gd = await fetchGraphDataForMonthYear(m, y);
+                        if (gd?.averageRevenuePerInstructor)
+                          setAvgRevenueGraph(gd.averageRevenuePerInstructor);
+                        else setAvgRevenueGraph([]);
+                      }
+                    } finally {
+                      setIsAvgRevenueLoading(false);
+                    }
+                  }}
+                />
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-visible">
@@ -1102,22 +1316,62 @@ export function AnalyticsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Average Bookings per Instructor
-              <PeriodDropdowns
-                month={avgBookingsMonth}
-                year={avgBookingsYear}
-                setMonth={setAvgBookingsMonth}
-                setYear={setAvgBookingsYear}
-                onChange={async (m, y) => {
-                  setIsAvgBookingsLoading(true);
-                  try {
-                    const gd = await fetchGraphDataForMonthYear(m, y);
-                    if (gd?.bookingsPerInstructor)
-                      setAvgBookingsGraph(gd.bookingsPerInstructor);
-                  } finally {
-                    setIsAvgBookingsLoading(false);
-                  }
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={avgBookingsViewMode}
+                  onChange={(e) => {
+                    const nextMode = e.target.value as
+                      | "monthly"
+                      | "yearly_monthwise";
+                    setAvgBookingsViewMode(nextMode);
+                    setIsAvgBookingsLoading(true);
+                    void (async () => {
+                      try {
+                        if (nextMode === "yearly_monthwise") {
+                          const series = await fetchAvgBookingsYearMonthwise(
+                            avgBookingsYear,
+                          );
+                          setAvgBookingsGraph(series as typeof avgBookingsGraph);
+                        } else {
+                          const gd = await fetchGraphDataForMonthYear(
+                            avgBookingsMonth,
+                            avgBookingsYear,
+                          );
+                          setAvgBookingsGraph(gd?.bookingsPerInstructor ?? []);
+                        }
+                      } finally {
+                        setIsAvgBookingsLoading(false);
+                      }
+                    })();
+                  }}
+                  className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+                  aria-label="Select average bookings view"
+                >
+                  <option value="monthly">Monthly (days wise)</option>
+                  <option value="yearly_monthwise">Yearly (month-wise)</option>
+                </select>
+                <PeriodDropdowns
+                  month={avgBookingsMonth}
+                  year={avgBookingsYear}
+                  setMonth={setAvgBookingsMonth}
+                  setYear={setAvgBookingsYear}
+                  disableMonth={avgBookingsViewMode === "yearly_monthwise"}
+                  onChange={async (m, y) => {
+                    setIsAvgBookingsLoading(true);
+                    try {
+                      if (avgBookingsViewMode === "yearly_monthwise") {
+                        const series = await fetchAvgBookingsYearMonthwise(y);
+                        setAvgBookingsGraph(series as typeof avgBookingsGraph);
+                      } else {
+                        const gd = await fetchGraphDataForMonthYear(m, y);
+                        setAvgBookingsGraph(gd?.bookingsPerInstructor ?? []);
+                      }
+                    } finally {
+                      setIsAvgBookingsLoading(false);
+                    }
+                  }}
+                />
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-visible">
@@ -1179,22 +1433,62 @@ export function AnalyticsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Total Earning
-              <PeriodDropdowns
-                month={totalEarningsMonth}
-                year={totalEarningsYear}
-                setMonth={setTotalEarningsMonth}
-                setYear={setTotalEarningsYear}
-                onChange={async (m, y) => {
-                  setIsTotalEarningsLoading(true);
-                  try {
-                    const gd = await fetchGraphDataForMonthYear(m, y);
-                    if (gd?.totalEarnings)
-                      setTotalEarningsGraph(gd.totalEarnings);
-                  } finally {
-                    setIsTotalEarningsLoading(false);
-                  }
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <select
+                  value={totalEarningsViewMode}
+                  onChange={(e) => {
+                    const nextMode = e.target.value as
+                      | "monthly"
+                      | "yearly_monthwise";
+                    setTotalEarningsViewMode(nextMode);
+                    setIsTotalEarningsLoading(true);
+                    void (async () => {
+                      try {
+                        if (nextMode === "yearly_monthwise") {
+                          const series = await fetchTotalEarningsYearMonthwise(
+                            totalEarningsYear,
+                          );
+                          setTotalEarningsGraph(series as typeof totalEarningsGraph);
+                        } else {
+                          const gd = await fetchGraphDataForMonthYear(
+                            totalEarningsMonth,
+                            totalEarningsYear,
+                          );
+                          setTotalEarningsGraph(gd?.totalEarnings ?? []);
+                        }
+                      } finally {
+                        setIsTotalEarningsLoading(false);
+                      }
+                    })();
+                  }}
+                  className="h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+                  aria-label="Select total earnings view"
+                >
+                  <option value="monthly">Monthly (days wise)</option>
+                  <option value="yearly_monthwise">Yearly (month-wise)</option>
+                </select>
+                <PeriodDropdowns
+                  month={totalEarningsMonth}
+                  year={totalEarningsYear}
+                  setMonth={setTotalEarningsMonth}
+                  setYear={setTotalEarningsYear}
+                  disableMonth={totalEarningsViewMode === "yearly_monthwise"}
+                  onChange={async (m, y) => {
+                    setIsTotalEarningsLoading(true);
+                    try {
+                      if (totalEarningsViewMode === "yearly_monthwise") {
+                        const series = await fetchTotalEarningsYearMonthwise(y);
+                        setTotalEarningsGraph(series as typeof totalEarningsGraph);
+                      } else {
+                        const gd = await fetchGraphDataForMonthYear(m, y);
+                        setTotalEarningsGraph(gd?.totalEarnings ?? []);
+                      }
+                    } finally {
+                      setIsTotalEarningsLoading(false);
+                    }
+                  }}
+                />
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-visible">

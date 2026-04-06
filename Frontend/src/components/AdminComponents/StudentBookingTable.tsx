@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import {
   Calendar,
   Clock,
@@ -7,10 +7,48 @@ import {
   User,
   X,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   StudentBooking,
 } from "../../types/AdminBookingShowcase";
 import { GET_ALL_STUDENT_BOOKINGS } from "../../graphql/Queries/AdminBookingShowcase";
+import { UPDATE_BOOKING_STATUS } from "../../graphql/mutations/AdminBookingsShowcase";
+import ConfirmationModal from "./ConfirmationModal";
+
+/** Parse slot end for comparison (HH:mm → HH:mm:00). */
+function getSlotEndDateForAdmin(slot: { date: string; endTime: string }) {
+  const et = slot.endTime || "23:59";
+  const normalized =
+    et.includes(":") && et.split(":").length === 2 ? `${et}:00` : et;
+  return new Date(`${slot.date}T${normalized}`);
+}
+
+export type AdminLessonDisplayStatus =
+  | "Upcoming"
+  | "Completed"
+  | "Cancelled"
+  | "Missed"
+  | "No Status Set Yet";
+
+/** Derived only from slot data + time (matches instructor-side truth; never shows raw "booked"). */
+export function getAdminLessonDisplayStatus(
+  slot: StudentBooking["slots"][number],
+): AdminLessonDisplayStatus {
+  const raw = (slot.status ?? "").toLowerCase();
+  if (raw === "missed") return "Missed";
+  if (raw === "cancelled" || raw === "canceled") return "Cancelled";
+  if (raw === "refund") return "Cancelled";
+  if (raw === "completed") return "Completed";
+  const slotEnd = getSlotEndDateForAdmin(slot);
+  if (slotEnd.getTime() > Date.now()) return "Upcoming";
+  return "No Status Set Yet";
+}
+
+export function adminSlotEligibleForRefund(
+  slot: StudentBooking["slots"][number],
+): boolean {
+  return (slot.status ?? "").toLowerCase() === "cancelled";
+}
 
 interface BookingsTableProps {
   className?: string;
@@ -44,16 +82,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
       minute: "2-digit",
       hour12: true,
     });
-  };
-
-  const getAdminDisplayStatus = (slot: StudentBooking["slots"][number]) => {
-    const raw = (slot.status ?? "").toLowerCase();
-    if (raw === "missed") return "Missed";
-    if (raw === "cancelled" || raw === "canceled" || raw === "refund")
-      return "Cancelled";
-    if (raw === "completed") return "Completed";
-    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    return slotEnd <= new Date() ? "Completed" : "Upcoming";
   };
 
   return (
@@ -146,7 +174,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 <h4 className="font-medium text-gray-900 mb-3">Lesson Slots</h4>
                 <div className="space-y-2">
                   {booking.slots.map((slot) => {
-                    const displayStatus = getAdminDisplayStatus(slot);
+                    const displayStatus = getAdminLessonDisplayStatus(slot);
                     return (
                     <div key={slot._id} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center justify-between">
@@ -168,12 +196,14 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                         <span
                           className={`px-2 py-1 text-xs rounded-full ${
                             displayStatus === "Cancelled"
-                                ? "bg-yellow-100 text-yellow-800"
-                              : displayStatus === "Completed"
-                                ? "bg-blue-100 text-blue-800"
-                                : displayStatus === "Missed"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-green-100 text-green-800"
+                              ? "bg-red-100 text-red-800"
+                              : displayStatus === "Missed"
+                                ? "bg-orange-100 text-orange-800"
+                                : displayStatus === "No Status Set Yet"
+                                  ? "bg-amber-100 text-amber-800"
+                                : displayStatus === "Completed"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
                           {displayStatus}
@@ -222,7 +252,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
     </div>
   );
 };
-// Refund UI intentionally omitted from this page (admin is view-only here)
 
 // Main Component
 const StudentBookingTable: React.FC<BookingsTableProps> = ({
@@ -232,6 +261,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     null,
   );
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [refundTarget, setRefundTarget] = useState<{
+    bookingId: string;
+    slotId: string;
+  } | null>(null);
   const [statusFilter, setStatusFilter] = useState<
     | "all"
     | "upcoming"
@@ -252,7 +285,20 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     fetchPolicy: "cache-and-network",
   });
 
-  // Refund mutation intentionally not exposed from this page.
+  const [updateBookingStatus, { loading: refundLoading }] = useMutation(
+    UPDATE_BOOKING_STATUS,
+    {
+      refetchQueries: ["GetAllStudentBookings"],
+      awaitRefetchQueries: true,
+      onCompleted: () => {
+        toast.success("Refund processed for this slot.");
+        setRefundTarget(null);
+      },
+      onError: (err) => {
+        toast.error(err.message || "Failed to process refund.");
+      },
+    },
+  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -287,25 +333,11 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
   }
 
   const bookings: StudentBooking[] = data?.getAllStudentBookings || [];
-  type DerivedStatus =
-    | "Upcoming"
-    | "Completed"
-    | "Cancelled"
-    | "Missed"
-    | "No Status Set Yet";
-  type Row = { booking: StudentBooking; slot: StudentBooking["slots"][number]; derivedStatus: DerivedStatus };
-
-  const getDerivedStatus = (
-    slot: StudentBooking["slots"][number],
-  ): DerivedStatus => {
-    const raw = (slot.status ?? "").toLowerCase();
-    if (raw === "missed") return "Missed";
-    if (raw === "cancelled" || raw === "canceled" || raw === "refund")
-      return "Cancelled";
-    if (raw === "completed") return "Completed";
-    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    if (slotEnd <= new Date()) return "No Status Set Yet";
-    return "Upcoming";
+  type DerivedStatus = AdminLessonDisplayStatus;
+  type Row = {
+    booking: StudentBooking;
+    slot: StudentBooking["slots"][number];
+    derivedStatus: DerivedStatus;
   };
 
   const getSlotTime = (slot: { date: string; startTime: string }) =>
@@ -321,7 +353,11 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
 
   const rows: Row[] = bookings
     .flatMap((b) =>
-      b.slots.map((s) => ({ booking: b, slot: s, derivedStatus: getDerivedStatus(s) })),
+      b.slots.map((s) => ({
+        booking: b,
+        slot: s,
+        derivedStatus: getAdminLessonDisplayStatus(s),
+      })),
     )
     .filter((r) => {
       if (statusFilter === "all") return true;
@@ -512,8 +548,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                   </td>
 
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedBooking(booking);
                           setShowDetailsModal(true);
@@ -522,6 +559,20 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                       >
                         View Details
                       </button>
+                      {/* {adminSlotEligibleForRefund(slot) && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRefundTarget({
+                              bookingId: booking._id,
+                              slotId: slot._id,
+                            })
+                          }
+                          className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2.5 text-xs rounded-full transition-colors duration-150"
+                        >
+                          Refund
+                        </button>
+                      )} */}
                     </div>
                   </td>
                 </tr>
@@ -553,7 +604,26 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
         booking={selectedBooking}
       />
 
-      {/* Refund action removed from this page */}
+      <ConfirmationModal
+        isOpen={Boolean(refundTarget)}
+        onClose={() => !refundLoading && setRefundTarget(null)}
+        onConfirm={() => {
+          if (!refundTarget) return;
+          void updateBookingStatus({
+            variables: {
+              input: {
+                bookingId: refundTarget.bookingId,
+                slotId: refundTarget.slotId,
+                status: "refund",
+              },
+            },
+          });
+        }}
+        title="Process refund"
+        message="This marks the cancelled lesson as refunded in the system. Slot statuses are otherwise set from the instructor panel."
+        confirmText={refundLoading ? "Processing…" : "Confirm refund"}
+        variant="danger"
+      />
     </div>
   );
 };
