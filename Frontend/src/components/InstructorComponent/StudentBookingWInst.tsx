@@ -26,7 +26,16 @@ import {
 } from "@mui/material";
 interface BookingsTableProps {
   className?: string;
+  /** When set, only bookings for this student are listed (same UI as main Booking Management). */
+  filterStudentId?: string;
 }
+
+type BookingTabKey =
+  | "upcoming"
+  | "abandoned"
+  | "cancelled"
+  | "missed"
+  | "history";
 
 interface ViewDetailsModalProps {
   isOpen: boolean;
@@ -45,6 +54,8 @@ interface StatusDropdownProps {
   ) => void;
   disabled?: boolean;
   lessonPassed: boolean;
+  /** Active list tab — used so "Abandoned" rows do not show as "Upcoming". */
+  listTab?: BookingTabKey;
 }
 
 interface ConfirmationModalProps {
@@ -136,6 +147,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   onStatusChange,
   disabled = false,
   lessonPassed,
+  listTab,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -156,32 +168,50 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
     normalizedStatus !== "refund";
 
   const displayLabel =
-    normalizedStatus === "booked" && !lessonPassed
-      ? "Upcoming"
-      : isStatusNotSetYet
-        ? "No Status Set Yet"
-        : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
-          currentStatus;
+    listTab === "abandoned"
+      ? "Abandoned"
+      : normalizedStatus === "booked" && !lessonPassed
+        ? "Upcoming"
+        : isStatusNotSetYet
+          ? "No Status Set Yet"
+          : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
+            currentStatus;
 
   const displayColor =
-    normalizedStatus === "booked" && !lessonPassed
-      ? "bg-yellow-100 text-yellow-800"
-      : isStatusNotSetYet
-        ? "bg-amber-100 text-amber-800"
-        : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
-          "bg-gray-100 text-gray-800";
+    listTab === "abandoned"
+      ? "bg-slate-200 text-slate-800"
+      : normalizedStatus === "booked" && !lessonPassed
+        ? "bg-yellow-100 text-yellow-800"
+        : isStatusNotSetYet
+          ? "bg-amber-100 text-amber-800"
+          : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
+            "bg-gray-100 text-gray-800";
 
   const isActuallyDisabled = disabled || isFinalDisabled;
 
   const allowedStatuses = (() => {
-    // cancelled => allow refund/missed only
-    if (normalizedStatus === "cancelled") return ["refund", "missed"];
-    // final statuses => no dropdown
+    // Final statuses are non-editable from this table.
     if (isFinalDisabled) return [];
-    // default: only allow these transitions
-    const base = ["completed", "cancelled", "refund", "missed"];
-    // cannot mark completed before lesson has passed
-    return lessonPassed ? base : base.filter((s) => s !== "completed");
+
+    // Refund is not an instructor action.
+    if (listTab === "upcoming" || listTab === "abandoned") {
+      // Future lessons: only cancel is allowed.
+      return ["cancelled"];
+    }
+
+    if (listTab === "history") {
+      // Past lessons: instructor can only validate attendance outcome.
+      // No cancel/refund from History.
+      return ["completed", "missed"];
+    }
+
+    if (listTab === "cancelled") {
+      // Keep cancelled rows non-editable here.
+      return [];
+    }
+
+    // Fallback: match history behavior.
+    return lessonPassed ? ["completed", "missed"] : ["cancelled"];
   })();
 
   const handleStatusSelect = (newStatus: string) => {
@@ -468,7 +498,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
 
 // (Spinner helper removed — unused)
 
-type TabKey = "upcoming" | "abandoned" | "cancelled" | "missed" | "history";
 type SortOrder = "newest" | "oldest";
 type HistoryStatusFilter = "all" | "no_status" | "completed" | "missed";
 
@@ -485,6 +514,7 @@ function getCancelledByLabel(cancelledBy?: string) {
 
 const StudentBookingWInst: React.FC<BookingsTableProps> = ({
   className = "",
+  filterStudentId,
 }) => {
   const [selectedBooking, setSelectedBooking] = useState<StudentBooking | null>(
     null
@@ -567,6 +597,20 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     });
   };
 
+  /** Per-lesson share of booking total (matches student Booked Lessons table) */
+  const formatLessonPriceChf = (booking: StudentBooking) => {
+    const slotCount = booking.slots?.length || 1;
+    const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return "—";
+    const perLesson = total / slotCount;
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(perLesson);
+  };
+
   // (cancellation date formatter removed — unused in new table)
 
   const hasLessonPassed = (slot: { date: string; endTime: string }) => {
@@ -574,7 +618,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     return slotEnd.getTime() <= Date.now();
   };
 
-  const [tab, setTab] = useState<TabKey>("upcoming");
+  const [tab, setTab] = useState<BookingTabKey>("upcoming");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [historyStatusFilter, setHistoryStatusFilter] =
     useState<HistoryStatusFilter>("all");
@@ -585,6 +629,12 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     () => data?.getInstructorBookingsById || [],
     [data?.getInstructorBookingsById],
   );
+
+  const filteredBookings = useMemo(() => {
+    const id = filterStudentId?.trim();
+    if (!id) return bookings;
+    return bookings.filter((b) => String(b.studentId?._id) === id);
+  }, [bookings, filterStudentId]);
 
   const getStatusLabel = () => {
     if (!pendingStatusChange) return "";
@@ -600,7 +650,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     const now = new Date();
     const rows: Array<
       Row & {
-        tab: TabKey;
+        tab: BookingTabKey;
         effectiveStatus:
           | "upcoming"
           | "cancelled"
@@ -611,12 +661,19 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
       }
     > = [];
 
-    for (const booking of bookings) {
+    const isAbandonedPending = (booking: StudentBooking) =>
+      String(booking.status || "").toLowerCase() === "pending" &&
+      !booking.stripeCustomerId &&
+      !(booking.slots ?? []).some(
+        (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
+      );
+
+    for (const booking of filteredBookings) {
       for (const slot of booking.slots || []) {
-        const status = String(slot.status || "").toLowerCase();
+        const st = String(slot.status || "").toLowerCase();
         const slotEnd = getSlotEndDateTime(slot);
 
-        if (status === "cancelled" || status === "refund") {
+        if (st === "cancelled") {
           rows.push({
             booking,
             slot,
@@ -625,7 +682,16 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           });
           continue;
         }
-        if (status === "missed") {
+        if (st === "refund") {
+          rows.push({
+            booking,
+            slot,
+            tab: "cancelled",
+            effectiveStatus: "cancelled",
+          });
+          continue;
+        }
+        if (st === "missed") {
           rows.push({
             booking,
             slot,
@@ -634,7 +700,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           });
           continue;
         }
-        if (status === "completed") {
+        if (st === "completed") {
           rows.push({
             booking,
             slot,
@@ -643,39 +709,48 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           });
           continue;
         }
-
-        if (slotEnd.getTime() > now.getTime()) {
-          // "Abandoned" = booking is still pending but the slot is in the future.
-          // We use booking.status to avoid changing existing slot status logic.
-          const bookingStatus = String(booking.status || "").toLowerCase();
-          if (bookingStatus === "pending") {
-            rows.push({
-              booking,
-              slot,
-              tab: "abandoned",
-              effectiveStatus: "abandoned",
-            });
-          } else {
-            rows.push({
-              booking,
-              slot,
-              tab: "upcoming",
-              effectiveStatus: "upcoming",
-            });
-          }
-        } else {
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() <= now.getTime()
+        ) {
           rows.push({
             booking,
             slot,
             tab: "history",
             effectiveStatus: "no_status",
           });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          isAbandonedPending(booking)
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "abandoned",
+            effectiveStatus: "abandoned",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          !isAbandonedPending(booking)
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "upcoming",
+          });
         }
       }
     }
 
     return rows;
-  }, [bookings]);
+  }, [filteredBookings]);
 
   const counts = useMemo(() => {
     return {
@@ -747,32 +822,32 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         <h2 className="text-lg font-medium text-gray-900">Booking Management</h2>
       </div>
 
-      <div className="px-6 pt-4">
+      <div className=" pt-4">
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <Tabs
             value={
               tab === "upcoming"
                 ? 0
-                : tab === "cancelled"
+                : tab === "abandoned"
                   ? 1
-                  : tab === "missed"
+                  : tab === "cancelled"
                     ? 2
-                    : tab === "history"
+                    : tab === "missed"
                       ? 3
                       : 4
             }
             onChange={(_, newValue) => {
-              const nextTab: TabKey =
+              const nextTab: BookingTabKey =
                 newValue === 0
                   ? "upcoming"
                   : newValue === 1
-                    ? "cancelled"
+                    ? "abandoned"
                     : newValue === 2
-                      ? "missed"
+                      ? "cancelled"
                       : newValue === 3
-                        ? "history"
-                        : "upcoming";
-                        
+                        ? "missed"
+                        : "history";
+
               setTab(nextTab);
               setPage(1);
               setHistoryStatusFilter("all");
@@ -793,7 +868,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             }}
           >
             <Tab label={`Upcoming (${counts.upcoming})`} />
-         
+            <Tab label={`Abandoned (${counts.abandoned})`} />
             <Tab label={`Cancelled (${counts.cancelled})`} />
             <Tab label={`Missed (${counts.missed})`} />
             <Tab label={`History (${counts.history})`} />
@@ -843,6 +918,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         </div>
       </div>
 
+      {filteredSortedRows.length > 0 && (
       <div className="overflow-x-auto mt-4">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -861,6 +937,9 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Status
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Lesson price (CHF)
               </th>
               {tab === "cancelled" && (
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -921,7 +1000,13 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                     onStatusChange={handleStatusChange}
                     disabled={updateLoading}
                     lessonPassed={hasLessonPassed(slot)}
+                    listTab={tab}
                   />
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900 tabular-nums">
+                    {formatLessonPriceChf(booking)}
+                  </div>
                 </td>
                 {tab === "cancelled" && (
                   <td className="px-6 py-4">
@@ -948,12 +1033,25 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           </tbody>
         </table>
       </div>
+      )}
 
       {filteredSortedRows.length === 0 && !loading && (
         <div className="text-center py-12">
           <div className="flex flex-col items-center justify-center space-y-4">
             <Calendar className="h-12 w-12 text-gray-300" />
-            <p className="text-gray-500 text-lg">No lessons found</p>
+            <p className="text-gray-500 text-lg">
+              No{" "}
+              {tab === "upcoming"
+                ? "Upcoming"
+                : tab === "abandoned"
+                  ? "Abandoned"
+                  : tab === "cancelled"
+                    ? "Cancelled"
+                    : tab === "missed"
+                      ? "Missed"
+                      : "History"}{" "}
+              slots available
+            </p>
             <p className="text-gray-400 text-sm">
               There are no lessons in this section.
             </p>

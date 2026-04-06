@@ -57,33 +57,21 @@ export const BookingList: React.FC<BookingListProps> = ({
     setHistoryStatusFilter("all");
   };
 
-  const getSlotStartDateTime = (slot: Slot) =>
-    new Date(`${slot.date}T${slot.startTime}`); // assumes date = "YYYY-MM-DD" and startTime = "HH:mm"
   const getSlotEndDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.endTime}`);
-  const getPaymentLabel = (row: BookingRow) => {
-    const slotPayment = String(row.slot.paymentStatus || "").toLowerCase();
-    const bookingHasAnyPaidSlot = (row.booking.slots ?? []).some(
-      (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
-    );
-    if (slotPayment === "paid" || bookingHasAnyPaidSlot) return "Paid";
 
-    const status = String(row.slot.status || "").toLowerCase();
-    const cancellationDateRaw = (row.slot as { cancellationDate?: string })
-      .cancellationDate;
-    const hasCancellationDate = Boolean(cancellationDateRaw);
-    const isCancelledLike = status === "cancelled" || status === "refund";
-
-    if (isCancelledLike && hasCancellationDate) {
-      const cancelledAtMs = new Date(String(cancellationDateRaw)).getTime();
-      const slotStartMs = getSlotStartDateTime(row.slot).getTime();
-      const msDiff = slotStartMs - cancelledAtMs;
-      const isWithin48hBeforeStart =
-        msDiff >= 0 && msDiff <= 48 * 60 * 60 * 1000;
-      if (isWithin48hBeforeStart) return "Unpaid (T-48)";
-    }
-
-    return "Unpaid";
+  /** Per-lesson price for this booking (total ÷ number of slots), in CHF */
+  const formatLessonPrice = (booking: Booking) => {
+    const slotCount = booking.slots?.length || 1;
+    const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return "—";
+    const perLesson = total / slotCount;
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(perLesson);
   };
 
   /** Stripe checkout started but never completed (no payment, no card saved) — do not show as upcoming */
@@ -243,7 +231,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   const getStatusChipColor = (status: string) => {
     if (status === "Upcoming") return "info";
     if (status === "Cancelled") return "error";
-    if (status === "Missed") return "default";
+    if (status === "Missed") return "warning";
     if (status === "Completed") return "success";
     if (status === "No Status Set Yet") return "warning";
     return "default";
@@ -336,7 +324,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <TableCell>Date</TableCell>
                     <TableCell>Time Slot</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Payment</TableCell>
+                    <TableCell>Lesson price (CHF)</TableCell>
                     {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -379,9 +367,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                             }}
                           />
                         </TableCell>
-                        <TableCell>
-                          {getPaymentLabel(row)}
-                        </TableCell>
+                        <TableCell>{formatLessonPrice(row.booking)}</TableCell>
                         {tabValue === 2 && (
                           <TableCell>{getCancelledByLabel(
                             (row.slot as { cancelledBy?: string }).cancelledBy,

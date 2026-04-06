@@ -5,9 +5,6 @@ import { DashboardData, DateFilter } from "../types/Student";
 import { GET_STUDENT_DASHBOARD } from "../graphql/Queries/StudentQueries";
 
 export const useStudentDashboard = () => {
-  const [selectedTab, setSelectedTab] = useState<"upcoming" | "cancelled" | "history">(
-    "upcoming"
-  );
   const { studentId } = useParams<{ studentId: string }>();
   const [dateFilter, setDateFilter] = useState<DateFilter>("this-month");
 
@@ -76,8 +73,6 @@ export const useStudentDashboard = () => {
   }, [data?.getStudentDashboardDetails.graphStats, dateFilter]);
 
   return {
-    selectedTab,
-    setSelectedTab,
     dateFilter,
     setDateFilter,
     loading,

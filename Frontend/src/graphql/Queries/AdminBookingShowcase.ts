@@ -55,6 +55,7 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
     getInstructorBookingsById(instructorId: $instructorId) {
       _id
       studentId {
+        _id
         firstName
         lastName
         email
@@ -87,6 +88,7 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         cancellationDate
         cancelledBy
         status
+        paymentStatus
       }
       totalAmount
       finalAmount
@@ -95,6 +97,7 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         cardNumber
       }
       status
+      stripeCustomerId
       createdAt
       updatedAt
     }

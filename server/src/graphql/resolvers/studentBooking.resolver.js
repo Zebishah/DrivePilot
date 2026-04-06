@@ -264,8 +264,10 @@ const studentBookingResolver = {
           },
         };
 
-        // Booked slots only (any status) for categorisation
-        const bookedSlots = booking.slots.filter((slot) => slot.booked);
+        // Use all booking slots for categorisation.
+        // `booked` becomes false for statuses like missed/cancelled/refund,
+        // and filtering by `booked` would hide them from History.
+        const bookedSlots = booking.slots || [];
         const upcomingSlots = [];
         const cancelledSlots = [];
         const historySlots = [];
@@ -318,8 +320,9 @@ const studentBookingResolver = {
           });
         }
 
-        // Stats and graph: count only completed slots (status completed or missed, or past and validated)
-        for (const slot of completedSlots) {
+        // Stats and graph: only lessons the instructor marked completed (same as Total Lessons card)
+        for (const slot of historySlots) {
+          if (slot.status !== "completed") continue;
           totalLessonCount += 1;
           const start = new Date(`${slot.date}T${slot.startTime}:00`);
           const end = new Date(`${slot.date}T${slot.endTime}:00`);

@@ -284,10 +284,10 @@ export default function StudentOverview() {
                       className={`text-sm font-medium ${
                         lesson.isCompleted
                           ? "text-green-600"
-                          : "text-orange-600"
+                          : "text-yellow-600"
                       }`}
                     >
-                      {lesson.isCompleted ? "Completed" : "In Progress"}
+                      {lesson.isCompleted ? "Completed" : "Upcoming"}
                     </span>
                   </div>
                 ))
@@ -347,10 +347,10 @@ export default function StudentOverview() {
                           className={`text-sm font-medium ${
                             lesson.isCompleted
                               ? "text-green-600"
-                              : "text-orange-600"
+                              : "text-yellow-600"
                           }`}
                         >
-                          {lesson.isCompleted ? "Completed" : "In Progress"}
+                          {lesson.isCompleted ? "Completed" : "Upcoming"}
                         </span>
                       </div>
                     ))

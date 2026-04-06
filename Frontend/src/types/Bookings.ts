@@ -45,4 +45,5 @@ export interface StudentBooking {
   feedBackStatus: BookingStatus;
   createdAt: string;
   updatedAt: string;
+  stripeCustomerId?: string | null;
 }
