@@ -1054,7 +1054,7 @@ export function AnalyticsDashboard() {
           }
           icon={<BookOpen className="h-8 w-8" />}
           color="bg-gradient-to-r from-green-400 to-green-500"
-          subtitle="Average number of lesson hours each student reserved before obtaining their license."
+          subtitle="Average number of lesson hours each student reserved "
           tooltip="Total hours of all booked lessons divided by the number of students who booked lessons, within the selected period."
         />
       </div>

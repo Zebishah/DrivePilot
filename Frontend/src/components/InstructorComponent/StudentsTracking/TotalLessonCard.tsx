@@ -38,6 +38,25 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
     return (end.getTime() - start.getTime()) / (1000 * 60);
   };
 
+  const formatLessonDate = (date: string) =>
+    new Date(date).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+  const formatLessonPrice = (booking: Booking) => {
+    const slotCount = booking.slots?.length || 1;
+    const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return "—";
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(total / slotCount);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 h-full">
       <div className="flex items-center justify-between mb-4">
@@ -61,7 +80,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
               key={`${booking._id}-${slot._id || slot.date}-${slot.startTime}`}
               className="flex items-center justify-between p-3 rounded-lg bg-blue-50"
             >
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <div className="w-6 h-6 bg-gray-300 rounded flex items-center justify-center">
                   <svg
                     className="w-4 h-4 text-gray-600"
@@ -71,9 +90,15 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
                     <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
                   </svg>
                 </div>
-                <span className="text-sm font-medium text-gray-900">
-                  Lesson {index + 1} ({formatDuration(minutes)})
-                </span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Lesson {index + 1} ({formatDuration(minutes)})
+                  </p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {formatLessonDate(slot.date)} | {slot.startTime} -{" "}
+                    {slot.endTime} | {formatLessonPrice(booking)}
+                  </p>
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-xs text-gray-500">Completed</div>
