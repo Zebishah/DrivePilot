@@ -29,6 +29,7 @@ export interface BookingSlot {
   review: boolean;
   status: "available" | "booked" | "cancelled" | "refund" | "completed" | "missed" | "yet";
   cancellationDate?: string;
+  completionMarkedAt?: string;
 }
 
 export interface PaymentMethod {

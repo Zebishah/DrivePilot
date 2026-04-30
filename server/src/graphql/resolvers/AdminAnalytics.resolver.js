@@ -105,7 +105,7 @@ const adminAnalyticsResolvers = {
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
       });
 
-      // Attended lessons: active slots in range where status === "completed" OR slot end time has passed
+      // Attended lessons: active slots in range explicitly marked completed
       const nowDate = now.toDate();
       const attendedLessonsAgg = await studentBookingModel.aggregate([
         { $match: matchInstructor },
@@ -126,10 +126,7 @@ const adminAnalyticsResolvers = {
             "slots.date": { $gte: fromStr, $lte: toStr },
             "slots.booked": true,
             "slots.status": { $nin: ["cancelled", "refund"] },
-            $or: [
-              { "slots.status": "completed" },
-              { slotEndDateTime: { $lte: nowDate } },
-            ],
+            "slots.status": "completed",
           },
         },
         { $count: "count" },
@@ -386,10 +383,9 @@ const adminAnalyticsResolvers = {
           );
         });
 
-        // Delivered lessons (paid) = completed by status OR slot end has passed
+        // Delivered lessons (paid) = explicitly marked completed
         const deliveredBucketSlots = bucketSlots.filter(
-          (s) =>
-            s.status === "completed" || (s.slotEnd && !s.slotEnd.isAfter(now)),
+          (s) => s.status === "completed",
         );
 
         // Students = paid for at least one lesson in the bucket (by payment date)

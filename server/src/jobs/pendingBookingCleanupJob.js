@@ -11,9 +11,14 @@ function isAbandonedPending(booking) {
   return true;
 }
 
-const STALE_MINUTES = 30;
+const STALE_MINUTES =
+  parseInt(process.env.PENDING_CLEANUP_STALE_MINUTES || String(24 * 60), 10) ||
+  24 * 60;
 
 async function runPendingBookingCleanupJob() {
+  console.log(
+    `[PendingBookingCleanupJob] Tick at ${new Date().toISOString()} — staleThreshold=${STALE_MINUTES}min`,
+  );
   const cutoff = new Date(Date.now() - STALE_MINUTES * 60 * 1000);
   const cursor = StudentBooking.find({
     status: "pending",

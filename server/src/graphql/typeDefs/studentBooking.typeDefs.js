@@ -51,6 +51,7 @@ const studentBookingTypeDefs = gql`
     refundAmount: Float
     refundedAt: String
     cancellationDate: String
+    completionMarkedAt: String
     cancelledBy: String
   }
 
@@ -179,6 +180,7 @@ const studentBookingTypeDefs = gql`
     refundAmount: Float
     refundedAt: String
     cancellationDate: String
+    completionMarkedAt: String
     cancelledBy: String
   }
 

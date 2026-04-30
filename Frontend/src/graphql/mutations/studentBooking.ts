@@ -209,6 +209,7 @@ export const GET_STUDENT_BOOKINGS = gql`
         booked
         status
         cancellationDate
+        completionMarkedAt
         cancelledBy
         paymentStatus
         chargeAmount

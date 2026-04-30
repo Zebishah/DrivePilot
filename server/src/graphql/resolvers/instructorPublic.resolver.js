@@ -312,29 +312,34 @@ const instructorResolver = {
       );
 
       const totalStudents = uniqueStudents.size;
-      const now = new Date();
-
       // Helper: active slot = booked, not cancelled, not refund
       const isActiveSlot = (s) =>
         s.booked && s.status !== "cancelled" && s.status !== "refund";
-      // Completed lesson for earnings & counts:
-      // - non-cancelled/refund
-      // - AND either explicitly marked completed OR its end time is in the past
-      const isCompletedLessonSlot = (s) => {
-        if (!isActiveSlot(s)) return false;
-        const slotEnd = new Date(`${s.date}T${s.endTime}:00`);
-        return s.status === "completed" || slotEnd <= now;
-      };
-      // Attended uses the same definition as completed lessons here
-      const isAttendedSlot = isCompletedLessonSlot;
-      // Strict completed lessons (explicitly validated by instructor)
+      const isCancelledOrRefund = (s) =>
+        String(s.status).toLowerCase() === "cancelled" ||
+        String(s.status).toLowerCase() === "refund";
+      // Earning-eligible lessons: explicitly marked completed or missed.
+      // Date passed alone must never count as completed/earned.
+      const isEarningEligibleSlot = (s) =>
+        !isCancelledOrRefund(s) &&
+        (String(s.status).toLowerCase() === "completed" ||
+          String(s.status).toLowerCase() === "missed");
+      // Strict completed lessons (explicitly validated by instructor only)
       const isValidatedCompletedSlot = (s) =>
         isActiveSlot(s) && s.status === "completed";
+      // Missed lessons explicitly marked by instructor
+      const isValidatedMissedSlot = (s) =>
+        isActiveSlot(s) && s.status === "missed";
       // Upcoming/active booking = active slot not yet completed
+      const now = new Date();
       const isUpcomingSlot = (s) => {
         if (!isActiveSlot(s)) return false;
         const slotEnd = new Date(`${s.date}T${s.endTime}:00`);
-        return s.status !== "completed" && slotEnd > now;
+        return (
+          s.status !== "completed" &&
+          s.status !== "missed" &&
+          slotEnd > now
+        );
       };
 
       // Active bookings = upcoming slots (not yet completed)
@@ -343,20 +348,18 @@ const instructorResolver = {
       }, 0);
 
       // Total earnings (net, after DSP commission): sum instructorAmount for
-      // completed lessons (including past-dated ones not manually marked).
+      // lessons explicitly marked completed or missed.
       // Fallbacks (legacy):
       // - if chargeAmount + dspCommission exist: use (chargeAmount - dspCommission)
       // - otherwise fall back to gross per-slot (best-effort)
       const totalEarnings = bookings.reduce((sum, booking) => {
-        const completedInBooking = booking.slots.filter(
-          isCompletedLessonSlot,
-        ).length;
+        const completedInBooking = booking.slots.filter(isEarningEligibleSlot).length;
         if (completedInBooking === 0) return sum;
         const perSlotGross = (booking.finalAmount || 0) / completedInBooking;
         return (
           sum +
           booking.slots
-            .filter(isCompletedLessonSlot)
+            .filter(isEarningEligibleSlot)
             .reduce((slotSum, slot) => {
               const hasInstructorAmount =
                 slot.instructorAmount != null && slot.instructorAmount >= 0;
@@ -375,9 +378,9 @@ const instructorResolver = {
         );
       }, 0);
 
-      // Last booking = most recent completed lesson (by slot end date/time)
+      // Last booking = most recent explicitly completed lesson (by slot end date/time)
       const completedSlotsWithBooking = bookings.flatMap((b) =>
-        b.slots.filter(isCompletedLessonSlot).map((s) => ({
+        b.slots.filter(isValidatedCompletedSlot).map((s) => ({
           ...(s.toObject?.() || s),
           slotId: s._id,
           booking: b,
@@ -518,19 +521,44 @@ const instructorResolver = {
         ? completedLessonsForAverage / completedStudentsCount
         : 0;
 
+      // Attendance/Cancellation formulas (business definition):
+      // Attendance Rate (%) = attended lessons / total lessons booked
+      // Cancellation Rate (%) = cancelled lessons / total lessons booked
+      // Keep denominator aligned with Booking Management tabs:
+      // upcoming/abandoned/history(no-status) => booked|confirmed
+      // plus completed/missed/cancelled/refund
+      const isDashboardCountedSlot = (s) =>
+        [
+          "booked",
+          "confirmed",
+          "completed",
+          "missed",
+          "cancelled",
+          "refund",
+        ].includes(String(s.status).toLowerCase());
+
+      const totalBookedLessons = bookings.reduce(
+        (sum, b) =>
+          sum +
+          b.slots.filter(
+            (s) => isDashboardCountedSlot(s),
+          ).length,
+        0,
+      );
+
       const attendedLessons = bookings.reduce(
-        (sum, b) => sum + b.slots.filter(isCompletedLessonSlot).length,
+        (sum, b) => sum + b.slots.filter(isValidatedCompletedSlot).length,
         0,
       );
 
       const cancelledLessons = bookings.reduce(
         (sum, b) =>
-          sum + b.slots.filter((s) => s.status === "cancelled").length,
+          sum +
+          b.slots.filter(
+            (s) => String(s.status).toLowerCase() === "cancelled",
+          ).length,
         0,
       );
-
-      // Total booked lessons = attended + cancelled (we currently don't model other end states)
-      const totalBookedLessons = attendedLessons + cancelledLessons;
 
       const attendanceRate = totalBookedLessons
         ? (attendedLessons / totalBookedLessons) * 100

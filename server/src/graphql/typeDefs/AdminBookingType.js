@@ -45,6 +45,7 @@ const AdminBookingTypeDefs = gql`
     status: SlotStatusAdmin!
     feedBackStatus: FeedbackStatusAdmin!
     cancellationDate: String # Add this field
+    completionMarkedAt: String
     cancelledBy: String # student | instructor | admin
     paymentStatus: String
   }

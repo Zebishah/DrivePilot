@@ -60,8 +60,22 @@ export const BookingList: React.FC<BookingListProps> = ({
   const getSlotEndDateTime = (slot: Slot) =>
     new Date(`${slot.date}T${slot.endTime}`);
 
-  /** Per-lesson price for this booking (total ÷ number of slots), in CHF */
+  /** Base lesson price per slot (uses totalAmount), in CHF */
   const formatLessonPrice = (booking: Booking) => {
+    const slotCount = booking.slots?.length || 1;
+    const total = Number(booking.totalAmount ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return "—";
+    const perLesson = total / slotCount;
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(perLesson);
+  };
+
+  /** Final lesson price per slot after discount (uses finalAmount), in CHF */
+  const formatFinalPrice = (booking: Booking) => {
     const slotCount = booking.slots?.length || 1;
     const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
     if (!Number.isFinite(total) || total <= 0) return "—";
@@ -236,6 +250,20 @@ export const BookingList: React.FC<BookingListProps> = ({
     if (status === "No Status Set Yet") return "warning";
     return "default";
   };
+  const formatCompletionDate = (slot: Slot) => {
+    if (String(slot.status || "").toLowerCase() !== "completed") return "—";
+    if (!slot.completionMarkedAt) return "—";
+    const numericTs = Number(slot.completionMarkedAt);
+    const d = Number.isFinite(numericTs)
+      ? new Date(numericTs)
+      : new Date(slot.completionMarkedAt);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   return (
     <Card sx={{ mb: 3, mt: 2 }}>
@@ -324,7 +352,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <TableCell>Date</TableCell>
                     <TableCell>Time Slot</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Completion Date</TableCell>
                     <TableCell>Lesson price (CHF)</TableCell>
+                    <TableCell>Final Price (CHF)</TableCell>
                     {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -367,7 +397,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                             }}
                           />
                         </TableCell>
+                        <TableCell>{formatCompletionDate(row.slot)}</TableCell>
                         <TableCell>{formatLessonPrice(row.booking)}</TableCell>
+                        <TableCell>{formatFinalPrice(row.booking)}</TableCell>
                         {tabValue === 2 && (
                           <TableCell>{getCancelledByLabel(
                             (row.slot as { cancelledBy?: string }).cancelledBy,

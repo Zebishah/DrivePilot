@@ -308,10 +308,12 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
       s.paymentStatus === "payment_failed",
   );
   const firstPendingSlot = pendingPaymentSlots[0];
-  const completePaymentLink =
+  const computedCompletePaymentLink =
     firstPendingSlot && bookingData.id
       ? `${completePaymentBaseUrl}/student-dashboard/complete-payment?bookingId=${bookingData.id}&slotId=${firstPendingSlot._id}`
       : `${completePaymentBaseUrl}/student-dashboard/book`;
+  const completePaymentLink =
+    bookingData.completePaymentLink || computedCompletePaymentLink;
   const dashboardBookUrl = `${completePaymentBaseUrl}/student-dashboard/book`;
 
   // Generate slots HTML

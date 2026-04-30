@@ -164,8 +164,6 @@ const studentBookingResolver = {
     getCompletedStudentBookings: async (_, __, { user }) => {
       validateUser(user);
 
-      const now = new Date();
-
       const allBookings = await StudentBooking.find({
         instructorId: user?.id,
         status: { $in: ["confirmed", "semi_cancelled", "completed"] },
@@ -178,7 +176,7 @@ const studentBookingResolver = {
       for (const booking of allBookings) {
         if (!booking.slots?.length) continue;
 
-        // ✅ gather all slots that are completed (time passed or instructor marked completed), and were booked (exclude cancelled/refund)
+        // ✅ gather only slots explicitly marked completed, and booked (exclude cancelled/refund)
         const completedSlots = booking.slots.filter((slot) => {
           if (
             !slot.booked ||
@@ -186,8 +184,7 @@ const studentBookingResolver = {
             slot.status === "refund"
           )
             return false;
-          const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status === "completed" || slotEndDateTime <= now;
+          return slot.status === "completed";
         });
 
         if (completedSlots.length) {

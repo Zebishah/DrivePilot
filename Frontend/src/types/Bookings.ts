@@ -17,6 +17,7 @@ export interface Slot {
   booked: boolean;
   status: string;
   paymentStatus?: string;
+  completionMarkedAt?: string;
 }
 
 export interface PaymentMethod {

@@ -83,6 +83,23 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
       hour12: true,
     });
   };
+  const formatCompletionDate = (
+    completionMarkedAt: string | undefined,
+    status: string | undefined,
+  ) => {
+    if (String(status || "").toLowerCase() !== "completed") return "-";
+    if (!completionMarkedAt) return "-";
+    const numericTs = Number(completionMarkedAt);
+    const date = Number.isFinite(numericTs)
+      ? new Date(numericTs)
+      : new Date(completionMarkedAt);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -475,6 +492,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Completion Date
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 History
               </th>
             </tr>
@@ -544,6 +564,11 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                       >
                         {derivedStatus}
                       </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      {formatCompletionDate(slot.completionMarkedAt, slot.status)}
                     </div>
                   </td>
 

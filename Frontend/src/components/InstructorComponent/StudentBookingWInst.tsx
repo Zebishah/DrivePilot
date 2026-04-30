@@ -334,7 +334,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
       hour12: true,
     });
   };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -596,9 +595,37 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
       hour12: true,
     });
   };
+  const formatCompletionDate = (completionMarkedAt?: string, status?: string) => {
+    if (String(status || "").toLowerCase() !== "completed") return "-";
+    if (!completionMarkedAt) return "-";
+    const numericTs = Number(completionMarkedAt);
+    const d = Number.isFinite(numericTs)
+      ? new Date(numericTs)
+      : new Date(completionMarkedAt);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
-  /** Per-lesson share of booking total (matches student Booked Lessons table) */
+  /** Base lesson price per slot (uses totalAmount), in CHF */
   const formatLessonPriceChf = (booking: StudentBooking) => {
+    const slotCount = booking.slots?.length || 1;
+    const total = Number(booking.totalAmount ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return "—";
+    const perLesson = total / slotCount;
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(perLesson);
+  };
+
+  /** Final lesson price per slot after discount (uses finalAmount), in CHF */
+  const formatFinalPriceChf = (booking: StudentBooking) => {
     const slotCount = booking.slots?.length || 1;
     const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
     if (!Number.isFinite(total) || total <= 0) return "—";
@@ -695,7 +722,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           rows.push({
             booking,
             slot,
-            tab: "history",
+            tab: "missed",
             effectiveStatus: "missed",
           });
           continue;
@@ -939,7 +966,13 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Completion Date
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Lesson price (CHF)
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Final Price (CHF)
               </th>
               {tab === "cancelled" && (
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -1004,8 +1037,21 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   />
                 </td>
                 <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">
+                    {formatCompletionDate(
+                      (slot as { completionMarkedAt?: string }).completionMarkedAt,
+                      slot.status,
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
                   <div className="text-sm text-gray-900 tabular-nums">
                     {formatLessonPriceChf(booking)}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900 tabular-nums">
+                    {formatFinalPriceChf(booking)}
                   </div>
                 </td>
                 {tab === "cancelled" && (

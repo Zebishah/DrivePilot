@@ -16,6 +16,9 @@ const { runT48ChargeJob } = require("./jobs/t48ChargeJob");
 const {
   runPendingBookingCleanupJob,
 } = require("./jobs/pendingBookingCleanupJob");
+const {
+  runAbandonedCheckoutReminderJob,
+} = require("./jobs/abandonedCheckoutReminderJob");
 const { runLessonEndReminderJob } = require("./jobs/lessonEndReminderJob");
 
 // ✅ Connect to MongoDB
@@ -41,8 +44,8 @@ runT48ChargeJob().catch((err) =>
   console.error("[T48ChargeJob] Initial run error:", err),
 );
 
-// Abandoned Stripe checkout cleanup: every 30 min
-const PENDING_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+// Abandoned Stripe checkout cleanup: run daily
+const PENDING_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 setInterval(() => {
   runPendingBookingCleanupJob().catch((err) =>
     console.error("[PendingBookingCleanupJob] Error:", err),
@@ -50,6 +53,17 @@ setInterval(() => {
 }, PENDING_CLEANUP_INTERVAL_MS);
 runPendingBookingCleanupJob().catch((err) =>
   console.error("[PendingBookingCleanupJob] Initial run error:", err),
+);
+
+// Abandoned checkout reminder: every 10 min (single reminder per pending booking)
+const ABANDONED_REMINDER_INTERVAL_MS = 10 * 60 * 1000;
+setInterval(() => {
+  runAbandonedCheckoutReminderJob().catch((err) =>
+    console.error("[AbandonedCheckoutReminderJob] Error:", err),
+  );
+}, ABANDONED_REMINDER_INTERVAL_MS);
+runAbandonedCheckoutReminderJob().catch((err) =>
+  console.error("[AbandonedCheckoutReminderJob] Initial run error:", err),
 );
 
 // Lesson-end reminder: every 1 min — emails instructor to confirm lesson status
