@@ -335,10 +335,11 @@ export const BookingList: React.FC<BookingListProps> = ({
 
         {filteredRows.length > 0 ? (
           <>
-            <TableContainer component={Paper} variant="outlined">
+            <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "auto" }}>
               <Table
                 size="small"
                 sx={{
+                  minWidth: 1024,
                   "& .MuiTableCell-root": {
                     py: 1.6,
                     px: 2,
@@ -350,11 +351,11 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <TableCell>Instructor</TableCell>
                     <TableCell>Email</TableCell>
                     <TableCell>Date</TableCell>
-                    <TableCell>Time Slot</TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>Time slot</TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>Lesson price (CHF)</TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>Final Price (CHF)</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Completion Date</TableCell>
-                    <TableCell>Lesson price (CHF)</TableCell>
-                    <TableCell>Final Price (CHF)</TableCell>
                     {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -375,8 +376,14 @@ export const BookingList: React.FC<BookingListProps> = ({
                             year: "numeric",
                           })}
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>
                           {row.slot.startTime} - {row.slot.endTime}
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                          {formatLessonPrice(row.booking)}
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                          {formatFinalPrice(row.booking)}
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -398,8 +405,6 @@ export const BookingList: React.FC<BookingListProps> = ({
                           />
                         </TableCell>
                         <TableCell>{formatCompletionDate(row.slot)}</TableCell>
-                        <TableCell>{formatLessonPrice(row.booking)}</TableCell>
-                        <TableCell>{formatFinalPrice(row.booking)}</TableCell>
                         {tabValue === 2 && (
                           <TableCell>{getCancelledByLabel(
                             (row.slot as { cancelledBy?: string }).cancelledBy,

@@ -1829,6 +1829,22 @@ const studentBookingResolver = {
           throw new Error("Slot not found in this booking");
         }
 
+        const oldStatus = booking.slots[slotIndex].status;
+        const oldLower = String(oldStatus || "").toLowerCase();
+        const newLower = String(status || "").toLowerCase();
+
+        // Instructors/students cannot change a final lesson outcome; Admin may correct data.
+        if (user?.role !== "Admin") {
+          if (
+            ["completed", "missed", "refund"].includes(oldLower) &&
+            newLower !== oldLower
+          ) {
+            throw new UserInputError(
+              "This lesson outcome is final and cannot be changed. Contact support if a correction is needed.",
+            );
+          }
+        }
+
         // Block marking as completed before the slot end time in all environments
         // Slot times are in business timezone (SLOT_TIMEZONE, default Europe/Zurich) so clients worldwide get correct "lesson ended" check
         if (status === "completed") {
@@ -1850,9 +1866,6 @@ const studentBookingResolver = {
             );
           }
         }
-
-        // Store old status for comparison
-        const oldStatus = booking.slots[slotIndex].status;
 
         // Update the specific slot
         booking.slots[slotIndex].status = status;

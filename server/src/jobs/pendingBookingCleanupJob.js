@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const StudentBooking = require("../models/studentBooking.model");
 const teacherAvailabilityModel = require("../models/teacherAvailability.model");
+const {
+  getPendingCleanupStaleMinutes,
+} = require("../utils/pendingBookingHoldMinutes");
 
 /** Abandoned pending: checkout started but payment/card never completed */
 function isAbandonedPending(booking) {
@@ -11,15 +14,12 @@ function isAbandonedPending(booking) {
   return true;
 }
 
-const STALE_MINUTES =
-  parseInt(process.env.PENDING_CLEANUP_STALE_MINUTES || String(24 * 60), 10) ||
-  24 * 60;
-
 async function runPendingBookingCleanupJob() {
+  const staleMinutes = getPendingCleanupStaleMinutes();
   console.log(
-    `[PendingBookingCleanupJob] Tick at ${new Date().toISOString()} — staleThreshold=${STALE_MINUTES}min`,
+    `[PendingBookingCleanupJob] Tick at ${new Date().toISOString()} — staleThreshold=${staleMinutes}min`,
   );
-  const cutoff = new Date(Date.now() - STALE_MINUTES * 60 * 1000);
+  const cutoff = new Date(Date.now() - staleMinutes * 60 * 1000);
   const cursor = StudentBooking.find({
     status: "pending",
     createdAt: { $lt: cutoff },

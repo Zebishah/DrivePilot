@@ -157,7 +157,9 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const normalizedStatus = (currentStatus ?? "").toLowerCase();
 
   const isFinalDisabled =
-    normalizedStatus === "completed" || normalizedStatus === "refund";
+    normalizedStatus === "completed" ||
+    normalizedStatus === "missed" ||
+    normalizedStatus === "refund";
 
   // UI label rules (match admin logic)
   const isStatusNotSetYet =
@@ -947,7 +949,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
 
       {filteredSortedRows.length > 0 && (
       <div className="overflow-x-auto mt-4">
-        <table className="w-full">
+        <table className="w-full min-w-[1024px] border-collapse">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -959,20 +961,20 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Date
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Time Slot
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 whitespace-nowrap">
+                Time slot
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 whitespace-nowrap">
+                Lesson price (CHF)
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 whitespace-nowrap">
+                Final Price (CHF)
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Completion Date
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Lesson price (CHF)
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Final Price (CHF)
               </th>
               {tab === "cancelled" && (
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -1020,9 +1022,19 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900">{formatDate(slot.date)}</div>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
                     {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 tabular-nums">
+                    {formatLessonPriceChf(booking)}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 tabular-nums">
+                    {formatFinalPriceChf(booking)}
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -1042,16 +1054,6 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                       (slot as { completionMarkedAt?: string }).completionMarkedAt,
                       slot.status,
                     )}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900 tabular-nums">
-                    {formatLessonPriceChf(booking)}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900 tabular-nums">
-                    {formatFinalPriceChf(booking)}
                   </div>
                 </td>
                 {tab === "cancelled" && (

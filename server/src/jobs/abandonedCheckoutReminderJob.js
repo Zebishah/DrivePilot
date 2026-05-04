@@ -1,5 +1,9 @@
 const nodemailer = require("nodemailer");
 const StudentBooking = require("../models/studentBooking.model");
+const {
+  getPendingCleanupStaleMinutes,
+  describeHoldDurationMinutes,
+} = require("../utils/pendingBookingHoldMinutes");
 
 const FRONTEND_BASE = (
   process.env.FRONTEND_URL ||
@@ -7,12 +11,9 @@ const FRONTEND_BASE = (
   "http://localhost:5173"
 ).replace(/\/$/, "");
 
-// Reminder is sent after this many minutes from booking creation.
+// First reminder: not before this many minutes after booking creation (avoid instant mail).
 const REMINDER_AFTER_MINUTES =
   parseInt(process.env.ABANDONED_REMINDER_AFTER_MINUTES || "10", 10) || 10;
-// Do not send reminders for bookings that are already too close to auto-cancel cleanup.
-const CLEANUP_STALE_MINUTES =
-  parseInt(process.env.ABANDONED_CLEANUP_STALE_MINUTES || "30", 10) || 30;
 
 /** Abandoned pending: checkout started but payment/card was never completed */
 function isAbandonedPending(booking) {
@@ -48,7 +49,7 @@ function buildReminderEmailHtml({
   instructorName,
   slots,
   resumeUrl,
-  holdUntilMinutes,
+  holdDurationPhrase,
 }) {
   const slotsHtml = (slots || [])
     .map(
@@ -73,7 +74,7 @@ function buildReminderEmailHtml({
           ${slotsHtml}
         </ul>
         <p style="margin: 0 0 18px 0; color: #555;">
-          Reservations are held for about ${holdUntilMinutes} minutes from booking start before being automatically released.
+          If checkout is not completed within <strong>${holdDurationPhrase}</strong> from when you started this booking, your slot will be automatically released and this attempt will be cancelled.
         </p>
         <a href="${resumeUrl}" style="display: inline-block; background: #5FC2D3; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 7px; font-weight: 700;">
           Continue Checkout
@@ -88,12 +89,15 @@ function buildReminderEmailHtml({
 
 async function runAbandonedCheckoutReminderJob() {
   const now = new Date();
+  const holdStaleMinutes = getPendingCleanupStaleMinutes();
   const minAgeCutoff = new Date(now.getTime() - REMINDER_AFTER_MINUTES * 60 * 1000);
-  const maxAgeCutoff = new Date(now.getTime() - CLEANUP_STALE_MINUTES * 60 * 1000);
+  // Still inside the hold window (same cutoff as pendingBookingCleanupJob uses for release).
+  const maxAgeCutoff = new Date(now.getTime() - holdStaleMinutes * 60 * 1000);
+  const holdDurationPhrase = describeHoldDurationMinutes(holdStaleMinutes);
 
   try {
     console.log(
-      `[AbandonedCheckoutReminderJob] Tick at ${now.toISOString()} — reminderAfter=${REMINDER_AFTER_MINUTES}min, cleanupStale=${CLEANUP_STALE_MINUTES}min`,
+      `[AbandonedCheckoutReminderJob] Tick at ${now.toISOString()} — reminderAfter=${REMINDER_AFTER_MINUTES}min, holdUntilCleanup=${holdStaleMinutes}min`,
     );
 
     const candidates = await StudentBooking.find({
@@ -150,7 +154,7 @@ async function runAbandonedCheckoutReminderJob() {
         instructorName,
         slots: booking.slots || [],
         resumeUrl,
-        holdUntilMinutes: CLEANUP_STALE_MINUTES,
+        holdDurationPhrase,
       });
 
       try {

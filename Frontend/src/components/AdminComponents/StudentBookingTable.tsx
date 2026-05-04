@@ -333,6 +333,24 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     });
   };
 
+  const formatCompletionDate = (
+    completionMarkedAt: string | undefined,
+    status: string | undefined,
+  ) => {
+    if (String(status || "").toLowerCase() !== "completed") return "-";
+    if (!completionMarkedAt) return "-";
+    const numericTs = Number(completionMarkedAt);
+    const date = Number.isFinite(numericTs)
+      ? new Date(numericTs)
+      : new Date(completionMarkedAt);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
