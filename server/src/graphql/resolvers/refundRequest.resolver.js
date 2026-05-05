@@ -10,6 +10,7 @@ const {
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,
 } = require("../../services/stripeService");
+const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -36,6 +37,9 @@ const refundRequestResolver = {
     processedBy: (parent) => toId(parent.processedBy),
     requestedAt: (parent) => toIsoString(parent.requestedAt),
     processedAt: (parent) => toIsoString(parent.processedAt),
+    message: (parent) => String(parent?.message ?? ""),
+    attachments: (parent) =>
+      Array.isArray(parent?.attachments) ? parent.attachments : [],
   },
 
   Query: {
@@ -58,9 +62,41 @@ const refundRequestResolver = {
   },
 
   Mutation: {
-    async requestRefund(_, { bookingId, slotId }, { user }) {
+    async requestRefund(
+      _,
+      { bookingId, slotId, message, attachments = [] },
+      { user },
+    ) {
       if (!user || user.role !== "Student") {
         throw new ForbiddenError("Not authorized");
+      }
+      const trimmedMessage = String(message || "").trim();
+      if (!trimmedMessage) {
+        throw new UserInputError("Refund justification message is required.");
+      }
+      const normalizedAttachments = (attachments || []).map((f) => ({
+        url: String(f?.url || "").trim(),
+        fileName: String(f?.fileName || "").trim(),
+        mimeType: String(f?.mimeType || "").trim().toLowerCase(),
+      }));
+      const allowedAttachmentMimePrefixes = ["image/"];
+      const allowedAttachmentMimes = ["application/pdf"];
+      for (const f of normalizedAttachments) {
+        if (!f.url || !f.fileName || !f.mimeType) {
+          throw new UserInputError(
+            "Each attachment must include url, fileName, and mimeType.",
+          );
+        }
+        const isAllowed =
+          allowedAttachmentMimes.includes(f.mimeType) ||
+          allowedAttachmentMimePrefixes.some((prefix) =>
+            f.mimeType.startsWith(prefix),
+          );
+        if (!isAllowed) {
+          throw new UserInputError(
+            "Only PDF and image files are allowed as refund attachments.",
+          );
+        }
       }
 
       const slotIdStr = String(slotId);
@@ -150,20 +186,32 @@ const refundRequestResolver = {
           .filter(Boolean)
           .join(" ") || "Instructor";
 
-      const refundRequest = await RefundRequest.create({
-        bookingId: booking._id,
-        slotId: slotIdStr,
-        studentId: booking.studentId._id,
-        instructorId: booking.instructorId._id,
-        amount: slot.chargeAmount,
-        currency: DEFAULT_CURRENCY.toUpperCase(),
-        status: "pending",
-        studentName,
-        instructorName,
-        slotDate: slot.date,
-        slotStartTime: slot.startTime,
-        slotEndTime: slot.endTime,
-      });
+      let refundRequest;
+      try {
+        refundRequest = await RefundRequest.create({
+          bookingId: booking._id,
+          slotId: slotIdStr,
+          studentId: booking.studentId._id,
+          instructorId: booking.instructorId._id,
+          amount: slot.chargeAmount,
+          currency: DEFAULT_CURRENCY.toUpperCase(),
+          status: "pending",
+          message: trimmedMessage,
+          attachments: normalizedAttachments,
+          studentName,
+          instructorName,
+          slotDate: slot.date,
+          slotStartTime: slot.startTime,
+          slotEndTime: slot.endTime,
+        });
+      } catch (err) {
+        if (err?.code === 11000) {
+          throw new UserInputError(
+            "A refund request already exists for this lesson.",
+          );
+        }
+        throw err;
+      }
 
       return refundRequest;
     },
@@ -182,8 +230,8 @@ const refundRequestResolver = {
       }
 
       const booking = await StudentBooking.findById(refundRequest.bookingId)
-        .populate("instructorId", "_id firstName lastName")
-        .populate("studentId", "_id firstName lastName");
+        .populate("instructorId", "_id firstName lastName email")
+        .populate("studentId", "_id firstName lastName email");
 
       if (!booking) throw new UserInputError("Booking not found");
       const slot = booking.slots.id(refundRequest.slotId);
@@ -385,6 +433,18 @@ const refundRequestResolver = {
       refundRequest.processedBy = user.id;
       refundRequest.stripeRefundId = refundId;
       await refundRequest.save();
+      try {
+        await notifyBookingParties(
+          booking,
+          "booking_refunded",
+          user?.email || process.env.ADMIN_EMAIL,
+        );
+      } catch (mailErr) {
+        console.error(
+          "[RefundRequest] Failed to send refund notification emails:",
+          mailErr,
+        );
+      }
 
       return refundRequest;
     },

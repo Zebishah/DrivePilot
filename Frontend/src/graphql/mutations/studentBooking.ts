@@ -332,21 +332,28 @@ export const CANCEL_BOOKING = gql`
 `;
 
 export const REQUEST_REFUND = gql`
-  mutation RequestRefund($bookingId: ID!, $slotId: ID!) {
-    requestRefund(bookingId: $bookingId, slotId: $slotId) {
-      _id
+  mutation RequestRefund(
+    $bookingId: ID!
+    $slotId: ID!
+    $message: String!
+    $attachments: [RefundAttachmentInput!]
+  ) {
+    requestRefund(
+      bookingId: $bookingId
+      slotId: $slotId
+      message: $message
+      attachments: $attachments
+    ) {
+      id
       status
-      slots {
-        _id
-        date
-        startTime
-        endTime
-        status
-        paymentStatus
-        refundAmount
-        refundedAt
+      bookingId
+      slotId
+      message
+      attachments {
+        url
+        fileName
+        mimeType
       }
-      updatedAt
     }
   }
 `;

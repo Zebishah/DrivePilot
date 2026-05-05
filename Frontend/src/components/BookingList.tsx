@@ -29,6 +29,8 @@ import { useNavigate } from "react-router-dom";
 interface BookingListProps {
   bookings: Booking[];
   onBookingClick: (booking: Booking, id: string, slot: Slot) => void;
+  onRequestRefund?: (booking: Booking, slot: Slot) => void;
+  refundRequestStateMap?: Record<string, "pending" | "approved" | "rejected">;
   showNewBookingButton?: boolean;
   onNewBooking?: () => void;
 }
@@ -36,6 +38,8 @@ interface BookingListProps {
 export const BookingList: React.FC<BookingListProps> = ({
   bookings,
   onBookingClick,
+  onRequestRefund,
+  refundRequestStateMap = {},
   showNewBookingButton = true,
   onNewBooking,
 }) => {
@@ -99,7 +103,14 @@ export const BookingList: React.FC<BookingListProps> = ({
     booking: Booking;
     slot: Slot;
     tab: BookingTab;
-    effectiveStatus: "upcoming" | "cancelled" | "missed" | "completed" | "no_status" | "abandoned";
+    effectiveStatus:
+      | "upcoming"
+      | "cancelled"
+      | "refunded"
+      | "missed"
+      | "completed"
+      | "no_status"
+      | "abandoned";
   };
 
   const categorizeRows = (bookings: Booking[]) => {
@@ -122,7 +133,7 @@ export const BookingList: React.FC<BookingListProps> = ({
             booking,
             slot,
             tab: "cancelled",
-            effectiveStatus: "cancelled",
+            effectiveStatus: "refunded",
           });
         } else if (slot.status === "missed") {
           rows.push({
@@ -230,7 +241,10 @@ export const BookingList: React.FC<BookingListProps> = ({
   const getDisplayStatus = (row: BookingRow) => {
     if (row.tab === "upcoming") return "Upcoming";
     if (row.tab === "abandoned") return "Abandoned";
-    if (row.tab === "cancelled") return "Cancelled";
+    if (row.tab === "cancelled") {
+      if (row.effectiveStatus === "refunded") return "Refunded";
+      return "Cancelled";
+    }
     if (row.effectiveStatus === "no_status") return "No Status Set Yet";
     if (row.effectiveStatus === "completed") return "Completed";
     return "Missed";
@@ -243,6 +257,7 @@ export const BookingList: React.FC<BookingListProps> = ({
     return "Unknown";
   }
   const getStatusChipColor = (status: string) => {
+    if (status === "Refunded") return "warning";
     if (status === "Upcoming") return "info";
     if (status === "Cancelled") return "error";
     if (status === "Missed") return "warning";
@@ -250,14 +265,33 @@ export const BookingList: React.FC<BookingListProps> = ({
     if (status === "No Status Set Yet") return "warning";
     return "default";
   };
+  const parseFlexibleDate = (value?: string) => {
+    if (!value) return null;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      const d = new Date(numeric < 1_000_000_000_000 ? numeric * 1000 : numeric);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d;
+    return null;
+  };
+  const formatCancellationDateTime = (value?: string) => {
+    const d = parseFlexibleDate(value);
+    if (!d) return "—";
+    return d.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
   const formatCompletionDate = (slot: Slot) => {
     if (String(slot.status || "").toLowerCase() !== "completed") return "—";
     if (!slot.completionMarkedAt) return "—";
-    const numericTs = Number(slot.completionMarkedAt);
-    const d = Number.isFinite(numericTs)
-      ? new Date(numericTs)
-      : new Date(slot.completionMarkedAt);
-    if (Number.isNaN(d.getTime())) return "—";
+    const d = parseFlexibleDate(slot.completionMarkedAt);
+    if (!d) return "—";
     return d.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "2-digit",
@@ -355,7 +389,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <TableCell sx={{ whiteSpace: "nowrap" }}>Lesson price (CHF)</TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap" }}>Final Price (CHF)</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Completion Date</TableCell>
+                    <TableCell>
+                      {tabValue === 2 ? "Cancellation Time" : "Completion Date"}
+                    </TableCell>
                     {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
@@ -404,7 +440,16 @@ export const BookingList: React.FC<BookingListProps> = ({
                             }}
                           />
                         </TableCell>
-                        <TableCell>{formatCompletionDate(row.slot)}</TableCell>
+                        <TableCell>
+                          {tabValue === 2
+                            ? formatCancellationDateTime(
+                                (row.slot as { cancellationDate?: string; refundedAt?: string })
+                                  .cancellationDate ||
+                                  (row.slot as { cancellationDate?: string; refundedAt?: string })
+                                    .refundedAt,
+                              )
+                            : formatCompletionDate(row.slot)}
+                        </TableCell>
                         {tabValue === 2 && (
                           <TableCell>{getCancelledByLabel(
                             (row.slot as { cancelledBy?: string }).cancelledBy,
@@ -426,6 +471,40 @@ export const BookingList: React.FC<BookingListProps> = ({
                             >
                               View Details
                             </Button>
+                            {tabValue === 2 && onRequestRefund && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                disabled={(() => {
+                                  const refundKey = `${row.booking._id}:${row.slot._id}`;
+                                  const requestStatus = refundRequestStateMap[refundKey];
+                                  const slotStatus = String(row.slot.status || "").toLowerCase();
+                                  const slotIsPaid =
+                                    String((row.slot as { paymentStatus?: string }).paymentStatus || "")
+                                      .toLowerCase() === "paid" ||
+                                    (row.slot as { chargeAmount?: number }).chargeAmount != null;
+                                  const slotEnd = getSlotEndDateTime(row.slot);
+                                  const lessonPassed = slotEnd.getTime() < Date.now();
+                                  return (
+                                    slotStatus !== "cancelled" ||
+                                    !slotIsPaid ||
+                                    lessonPassed ||
+                                    Boolean(requestStatus)
+                                  );
+                                })()}
+                                onClick={() => onRequestRefund(row.booking, row.slot)}
+                                sx={{
+                                  bgcolor: "#8b5cf6",
+                                  "&:hover": { bgcolor: "#7c3aed" },
+                                  borderRadius: 2.5,
+                                  px: 1.8,
+                                  py: 0.8,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Request Refund
+                              </Button>
+                            )}
                             <Button
                               variant="contained"
                               size="small"

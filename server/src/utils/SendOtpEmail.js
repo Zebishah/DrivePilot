@@ -537,6 +537,33 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
         </div>
       `;
       break;
+    case "booking_refunded":
+      subject = "Refund Completed - DSP";
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+          </div>
+          <div style="color: #333333; line-height: 1.6;">
+            <h2 style="color: #f59e0b; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">Refund Completed</h2>
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #1f2937; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${
+                bookingData.id || "N/A"
+              }</h3>
+              <p style="color: rgba(0,0,0,0.75); margin: 0; font-size: 16px; text-align: center;">A cancelled lesson has been refunded.</p>
+            </div>
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">Refunded lesson details</h3>
+              ${slotsHtml}
+            </div>
+            <p style="margin-bottom: 25px; font-size: 16px;">This refund is now reflected in your dashboard status as Refunded.</p>
+          </div>
+          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
     case "booking_completed":
       subject = "✅ Booking Completed - DSP";
       message = `

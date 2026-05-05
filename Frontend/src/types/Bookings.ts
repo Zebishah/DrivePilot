@@ -18,6 +18,10 @@ export interface Slot {
   status: string;
   paymentStatus?: string;
   completionMarkedAt?: string;
+  cancellationDate?: string;
+  cancelledBy?: "student" | "instructor" | "admin";
+  chargeAmount?: number;
+  refundedAt?: string;
 }
 
 export interface PaymentMethod {

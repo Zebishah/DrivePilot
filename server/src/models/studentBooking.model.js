@@ -69,6 +69,10 @@ const studentBookingSchema = new mongoose.Schema(
         },
         // Per-slot Stripe PaymentIntent for T-48 charging
         paymentIntentId: { type: String },
+        // Connected account charge/payment ID (often `py_...`) for strict refund mapping
+        connectChargeId: { type: String },
+        // Transfer ID (`tr_...`) to correlate connect charge events
+        transferId: { type: String },
         chargedAt: { type: Date },
         /** Number of T-48 charge attempts; after max retries slot is marked payment_failed */
         paymentRetryCount: { type: Number, default: 0 },

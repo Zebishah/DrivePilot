@@ -23,6 +23,7 @@ import {
   GET_STUDENT_BOOKINGS,
   CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
 } from "../../../graphql/mutations/studentBooking";
+import { GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest";
 import { BookingList } from "../../../components/BookingList";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
@@ -76,6 +77,9 @@ const BookLesson: React.FC = () => {
   });
   const [createCheckoutForPending, { loading: checkoutPendingLoading }] =
     useMutation(CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING);
+  const { data: refundData } = useQuery(GET_MY_REFUND_REQUESTS, {
+    fetchPolicy: "network-only",
+  });
 
   const [loadingCheckoutBookingId, setLoadingCheckoutBookingId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -148,6 +152,16 @@ const BookLesson: React.FC = () => {
       },
     });
   };
+  const handleRequestRefundFromList = (booking: Booking, slot: Slot) => {
+    navigate("/student-dashboard/refund-request", {
+      state: {
+        bookingId: booking._id,
+        slotId: slot._id,
+        slot,
+        instructor: booking.instructorId,
+      },
+    });
+  };
 
   const handlePageChange = (
     event: React.ChangeEvent<unknown>,
@@ -161,6 +175,19 @@ const BookLesson: React.FC = () => {
     setPage(1); // Reset to first page when changing tabs
   };
   const bookings = data?.getStudentBookings || [];
+  const myRefundRequests = refundData?.getMyRefundRequests ?? [];
+  const refundRequestStateMap: Record<string, "pending" | "approved" | "rejected"> =
+    myRefundRequests.reduce(
+      (
+        acc: Record<string, "pending" | "approved" | "rejected">,
+        r: { bookingId: string; slotId: string; status: "pending" | "approved" | "rejected" },
+      ) => {
+        const key = `${r.bookingId}:${r.slotId}`;
+        acc[key] = r.status;
+        return acc;
+      },
+      {},
+    );
   const filterBookingsByStatus = (bookings: Booking[], status: string) => {
     if (status === "all") return bookings;
     return bookings.filter(
@@ -737,6 +764,8 @@ const BookLesson: React.FC = () => {
       <BookingList
         bookings={bookings}
         onBookingClick={handleBookingClick}
+        onRequestRefund={handleRequestRefundFromList}
+        refundRequestStateMap={refundRequestStateMap}
         showNewBookingButton={!selectedAvailability}
         onNewBooking={() => navigate("/student-dashboard/search")}
       />

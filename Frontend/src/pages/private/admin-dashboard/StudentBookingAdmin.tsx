@@ -39,7 +39,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const statusOptions = [
-    { value: "refund", label: "Refund" },
+    { value: "refund", label: "Refunded" },
     { value: "cancelled", label: "Cancel" },
   ];
 
@@ -123,6 +123,12 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
       minute: "2-digit",
       hour12: true,
     });
+  };
+  const getDisplayStatus = (status?: string) => {
+    const normalized = String(status || "").toLowerCase();
+    if (normalized === "refund") return "Refunded";
+    if (!normalized) return "No Status Set Yet";
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   };
 
   return (
@@ -243,7 +249,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                                   : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {slot.status}
+                          {getDisplayStatus(slot.status)}
                         </span>
                       </div>
                     </div>

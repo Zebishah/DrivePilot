@@ -21,11 +21,25 @@ const refundRequestTypeDefs = gql`
     processedBy: ID
     stripeRefundId: String
     rejectionReason: String
+    message: String!
+    attachments: [RefundAttachment!]!
     studentName: String
     instructorName: String
     slotDate: String
     slotStartTime: String
     slotEndTime: String
+  }
+
+  type RefundAttachment {
+    url: String!
+    fileName: String!
+    mimeType: String!
+  }
+
+  input RefundAttachmentInput {
+    url: String!
+    fileName: String!
+    mimeType: String!
   }
 
   extend type Query {
@@ -34,7 +48,12 @@ const refundRequestTypeDefs = gql`
   }
 
   extend type Mutation {
-    requestRefund(bookingId: ID!, slotId: ID!): RefundRequest!
+    requestRefund(
+      bookingId: ID!
+      slotId: ID!
+      message: String!
+      attachments: [RefundAttachmentInput!]
+    ): RefundRequest!
     approveRefundRequest(id: ID!): RefundRequest!
     rejectRefundRequest(id: ID!, rejectionReason: String): RefundRequest!
   }

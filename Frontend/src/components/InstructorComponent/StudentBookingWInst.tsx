@@ -70,7 +70,7 @@ interface ConfirmationModalProps {
 const SLOT_STATUSES = [
   { value: "booked", label: "Booked", color: "bg-green-100 text-green-800" },
   { value: "completed", label: "Completed", color: "bg-blue-100 text-blue-800" },
-  { value: "refund", label: "Refund", color: "bg-yellow-100 text-yellow-800" },
+  { value: "refund", label: "Refunded", color: "bg-yellow-100 text-yellow-800" },
   { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
   { value: "missed", label: "Missed", color: "bg-orange-100 text-orange-800" },
 ];
@@ -424,6 +424,13 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 <div className="space-y-2">
                   {booking.slots.map((slot) => (
                     <div key={slot._id} className="bg-gray-50 rounded-lg p-3">
+                      {(() => {
+                        const normalized = String(slot.status || "").toLowerCase();
+                        const displayStatus =
+                          normalized === "refund"
+                            ? "Refunded"
+                            : normalized.charAt(0).toUpperCase() + normalized.slice(1);
+                        return (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-2">
@@ -451,8 +458,25 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                               : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {slot.status}
+                          {displayStatus}
                         </span>
+                      </div>
+                        );
+                      })()}
+                      <div className="mt-2 text-xs text-gray-600">
+                        Cancelled by:{" "}
+                        {getCancelledByLabel(
+                          (slot as { cancelledBy?: string }).cancelledBy,
+                        )}{" "}
+                        • Cancelled at:{" "}
+                        {formatCancellationDateTime(
+                          (
+                            slot as { cancellationDate?: string; refundedAt?: string }
+                          ).cancellationDate ||
+                            (
+                              slot as { cancellationDate?: string; refundedAt?: string }
+                            ).refundedAt,
+                        )}
                       </div>
                     </div>
                   ))}
@@ -511,6 +535,21 @@ function getCancelledByLabel(cancelledBy?: string) {
   if (cancelledBy === "instructor") return "Instructor";
   if (cancelledBy === "admin") return "Admin";
   return "Unknown";
+}
+function formatCancellationDateTime(value?: string) {
+  if (!value) return "-";
+  const numeric = Number(value);
+  const date = Number.isFinite(numeric)
+    ? new Date(numeric < 1_000_000_000_000 ? numeric * 1000 : numeric)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const StudentBookingWInst: React.FC<BookingsTableProps> = ({
@@ -683,6 +722,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         effectiveStatus:
           | "upcoming"
           | "cancelled"
+          | "refunded"
           | "missed"
           | "completed"
           | "abandoned"
@@ -716,7 +756,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             booking,
             slot,
             tab: "cancelled",
-            effectiveStatus: "cancelled",
+            effectiveStatus: "refunded",
           });
           continue;
         }
@@ -974,7 +1014,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Completion Date
+                {tab === "cancelled" ? "Cancellation Time" : "Completion Date"}
               </th>
               {tab === "cancelled" && (
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -1050,10 +1090,19 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900">
-                    {formatCompletionDate(
-                      (slot as { completionMarkedAt?: string }).completionMarkedAt,
-                      slot.status,
-                    )}
+                    {tab === "cancelled"
+                      ? formatCancellationDateTime(
+                          (
+                            slot as { cancellationDate?: string; refundedAt?: string }
+                          ).cancellationDate ||
+                            (
+                              slot as { cancellationDate?: string; refundedAt?: string }
+                            ).refundedAt,
+                        )
+                      : formatCompletionDate(
+                          (slot as { completionMarkedAt?: string }).completionMarkedAt,
+                          slot.status,
+                        )}
                   </div>
                 </td>
                 {tab === "cancelled" && (

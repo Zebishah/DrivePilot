@@ -36,6 +36,8 @@ export const GET_ALL_STUDENT_BOOKINGS = gql`
         review
         feedBackStatus
         cancellationDate
+        refundedAt
+        cancelledBy
         completionMarkedAt
         status
       }
@@ -87,6 +89,7 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         review
         feedBackStatus
         cancellationDate
+        refundedAt
         completionMarkedAt
         cancelledBy
         status

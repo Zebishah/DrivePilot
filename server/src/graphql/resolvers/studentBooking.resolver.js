@@ -5,8 +5,8 @@ const {
   getSlotStartTimestampUtc,
 } = require("../../utils/slotTimezone");
 
-// Payout delay after lesson completed: 1 min for testing; for production use 3 * 24 * 60 * 60 * 1000 (3 days)
-const PAYOUT_DELAY_MS = 1 * 60 * 1000;
+// Testing mode: immediate payout eligibility after lesson completion outcome.
+const PAYOUT_DELAY_MS = 0;
 const {
   AuthenticationError,
   UserInputError,
@@ -45,6 +45,7 @@ const {
   confirmPaymentIntent,
   createRefund,
   getTransferIdFromPaymentIntent,
+  getChargeIdFromPaymentIntent,
   createTransferReversal,
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,
@@ -395,6 +396,8 @@ const studentBookingResolver = {
           validatedInput.paymentMethod?.paymentMethodId;
 
         let stripePaymentIntentId = null;
+        let stripeTransferId = null;
+        let stripeChargeId = null;
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
         const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
@@ -443,6 +446,12 @@ const studentBookingResolver = {
             );
           }
           stripePaymentIntentId = paymentResult.paymentIntentId;
+          stripeTransferId = await getTransferIdFromPaymentIntent(
+            stripePaymentIntentId,
+          ).catch(() => null);
+          stripeChargeId = await getChargeIdFromPaymentIntent(
+            stripePaymentIntentId,
+          ).catch(() => null);
         }
 
         const enrichedSlots = validatedInput.slots.map((slot) => {
@@ -455,6 +464,9 @@ const studentBookingResolver = {
           if (isCardPayment && stripePaymentIntentId) {
             const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
               getCommissionSplit(perSlotAmount, instructor, platformSettings);
+            base.paymentIntentId = stripePaymentIntentId;
+            if (stripeChargeId) base.connectChargeId = stripeChargeId;
+            if (stripeTransferId) base.transferId = stripeTransferId;
             base.paymentStatus = "paid";
             base.chargeAmount = perSlotAmount;
             base.dspCommission = slotDsp;
@@ -1062,6 +1074,12 @@ const studentBookingResolver = {
         typeof paymentIntent === "object" && paymentIntent?.id
           ? paymentIntent.id
           : session.payment_intent;
+      const transferId = piId
+        ? await getTransferIdFromPaymentIntent(piId).catch(() => null)
+        : null;
+      const chargeId = piId
+        ? await getChargeIdFromPaymentIntent(piId).catch(() => null)
+        : null;
       const platformSettingsConfirm = await getPlatformCommissionForSplit();
       const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
         getCommissionSplit(perSlotAmount, instructor, platformSettingsConfirm);
@@ -1076,6 +1094,9 @@ const studentBookingResolver = {
           $set: {
             status: "confirmed",
             stripePaymentIntentId: piId,
+            "slots.$[].paymentIntentId": piId,
+            ...(chargeId ? { "slots.$[].connectChargeId": chargeId } : {}),
+            ...(transferId ? { "slots.$[].transferId": transferId } : {}),
             "slots.$[].paymentStatus": "paid",
             "slots.$[].chargeAmount": perSlotAmount,
             "slots.$[].dspCommission": slotDsp,
@@ -1877,10 +1898,7 @@ const studentBookingResolver = {
         // Set cancellation date / who cancelled.
         // Important: UI treats both `cancelled` and `refund` as part of "Cancelled" lists.
         // So we must store `cancelledBy` for both statuses.
-        if (
-          (status === "cancelled" || status === "refund") &&
-          oldStatus !== status
-        ) {
+        if (status === "cancelled" && oldStatus !== status) {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
           const actor =
             user?.role === "Instructor"
@@ -1891,8 +1909,9 @@ const studentBookingResolver = {
           booking.slots[slotIndex].cancelledBy = actor;
         }
 
-        // When marking completed: set completion and payout-eligible (see PAYOUT_DELAY_MS) for paid slots
-        if (status === "completed") {
+        // When marking completed/missed: set completion and payout-eligible (see PAYOUT_DELAY_MS) for paid slots.
+        // Missed follows the same payout flow as completed.
+        if (status === "completed" || status === "missed") {
           const now = new Date();
           booking.slots[slotIndex].completionMarkedAt = now;
           const payoutEligibleAt = new Date(now.getTime() + PAYOUT_DELAY_MS);

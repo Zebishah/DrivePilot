@@ -27,6 +27,7 @@ export type AdminLessonDisplayStatus =
   | "Upcoming"
   | "Completed"
   | "Cancelled"
+  | "Refunded"
   | "Missed"
   | "No Status Set Yet";
 
@@ -37,7 +38,7 @@ export function getAdminLessonDisplayStatus(
   const raw = (slot.status ?? "").toLowerCase();
   if (raw === "missed") return "Missed";
   if (raw === "cancelled" || raw === "canceled") return "Cancelled";
-  if (raw === "refund") return "Cancelled";
+  if (raw === "refund") return "Refunded";
   if (raw === "completed") return "Completed";
   const slotEnd = getSlotEndDateForAdmin(slot);
   if (slotEnd.getTime() > Date.now()) return "Upcoming";
@@ -48,6 +49,12 @@ export function adminSlotEligibleForRefund(
   slot: StudentBooking["slots"][number],
 ): boolean {
   return (slot.status ?? "").toLowerCase() === "cancelled";
+}
+function getCancelledByLabel(cancelledBy?: string) {
+  if (cancelledBy === "student") return "Student";
+  if (cancelledBy === "instructor") return "Instructor";
+  if (cancelledBy === "admin") return "Admin";
+  return "Unknown";
 }
 
 interface BookingsTableProps {
@@ -83,21 +90,16 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
       hour12: true,
     });
   };
-  const formatCompletionDate = (
-    completionMarkedAt: string | undefined,
-    status: string | undefined,
-  ) => {
-    if (String(status || "").toLowerCase() !== "completed") return "-";
-    if (!completionMarkedAt) return "-";
-    const numericTs = Number(completionMarkedAt);
-    const date = Number.isFinite(numericTs)
-      ? new Date(numericTs)
-      : new Date(completionMarkedAt);
+  const formatCancellationDateTime = (value?: string) => {
+    if (!value) return "-";
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleDateString("en-GB", {
+    return date.toLocaleString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -214,6 +216,8 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           className={`px-2 py-1 text-xs rounded-full ${
                             displayStatus === "Cancelled"
                               ? "bg-red-100 text-red-800"
+                              : displayStatus === "Refunded"
+                                ? "bg-violet-100 text-violet-800"
                               : displayStatus === "Missed"
                                 ? "bg-orange-100 text-orange-800"
                                 : displayStatus === "No Status Set Yet"
@@ -225,6 +229,14 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                         >
                           {displayStatus}
                         </span>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-600">
+                        Cancelled by: {getCancelledByLabel(slot.cancelledBy)}
+                        {" • "}
+                        Cancelled at:{" "}
+                        {formatCancellationDateTime(
+                          slot.cancellationDate || slot.refundedAt,
+                        )}
                       </div>
                     </div>
                   )})}
@@ -287,6 +299,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     | "upcoming"
     | "completed"
     | "cancelled"
+    | "refunded"
     | "missed"
     | "no_status_set_yet"
   >("all");
@@ -382,8 +395,9 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     if (s === "Upcoming") return 0;
     if (s === "Completed") return 1;
     if (s === "Cancelled") return 2;
-    if (s === "Missed") return 3;
-    return 4; // No Status Set Yet
+    if (s === "Refunded") return 3;
+    if (s === "Missed") return 4;
+    return 5; // No Status Set Yet
   };
 
   const rows: Row[] = bookings
@@ -399,6 +413,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       if (statusFilter === "upcoming") return r.derivedStatus === "Upcoming";
       if (statusFilter === "completed") return r.derivedStatus === "Completed";
       if (statusFilter === "cancelled") return r.derivedStatus === "Cancelled";
+      if (statusFilter === "refunded") return r.derivedStatus === "Refunded";
       if (statusFilter === "missed") return r.derivedStatus === "Missed";
       return r.derivedStatus === "No Status Set Yet";
     })
@@ -417,8 +432,24 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             : sortBy === "status_cancelled"
               ? "Cancelled"
               : "Missed";
-      const aRank = a.derivedStatus === desired ? 0 : 1;
-      const bRank = b.derivedStatus === desired ? 0 : 1;
+      const isCancelledGroup = (v: DerivedStatus) =>
+        v === "Cancelled" || v === "Refunded";
+      const aRank =
+        desired === "Cancelled"
+          ? isCancelledGroup(a.derivedStatus)
+            ? 0
+            : 1
+          : a.derivedStatus === desired
+            ? 0
+            : 1;
+      const bRank =
+        desired === "Cancelled"
+          ? isCancelledGroup(b.derivedStatus)
+            ? 0
+            : 1
+          : b.derivedStatus === desired
+            ? 0
+            : 1;
       if (aRank !== bRank) return aRank - bRank;
 
       const aGroup = statusOrder(a.derivedStatus);
@@ -426,13 +457,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       if (aGroup !== bGroup) return aGroup - bGroup;
       return bTime - aTime;
     });
-  const formatCancellationDateTime = (
-    timestamp: string | number | undefined,
-  ) => {
-    if (timestamp === undefined || timestamp === null || timestamp === "")
+  const formatCancellationDateTime = (value: string | number | undefined) => {
+    if (value === undefined || value === null || value === "")
       return "-";
-
-    const date = new Date(Number(timestamp));
+    const date = new Date(value);
 
     // Check if date is valid
     if (isNaN(date.getTime())) return "-";
@@ -470,6 +498,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             <option value="upcoming">Upcoming</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+            <option value="refunded">Refunded</option>
             <option value="missed">Missed</option>
             <option value="no_status_set_yet">No Status Set Yet</option>
           </select>
@@ -500,8 +529,11 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Lesson Date
               </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                Cancellation Date/Time
+              </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Cancellation Date
+                Cancelled By
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Instructor
@@ -554,7 +586,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      {formatCancellationDateTime(slot.cancellationDate)}
+                      {formatCancellationDateTime(
+                        slot.cancellationDate || slot.refundedAt,
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      {getCancelledByLabel(slot.cancelledBy)}
                     </div>
                   </td>
 
@@ -571,6 +610,8 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                         className={`inline-flex px-3 py-2 text-xs font-medium rounded-full ${
                           derivedStatus === "Cancelled"
                             ? "bg-red-100 text-red-800"
+                            : derivedStatus === "Refunded"
+                              ? "bg-violet-100 text-violet-800"
                             : derivedStatus === "Missed"
                               ? "bg-orange-100 text-orange-800"
                             : derivedStatus === "No Status Set Yet"
