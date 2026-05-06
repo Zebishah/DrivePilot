@@ -262,7 +262,7 @@ const studentBookingTypeDefs = gql`
     # For T-48 3DS fallback: student completes a pending off-session PaymentIntent
     completeT48SlotPayment(paymentIntentId: ID!): StudentBooking!
     # Get client secret for a requires_action T-48 PaymentIntent so student can confirm it via Stripe.js
-    getT48ClientSecret(bookingId: ID!, slotId: ID!): String!
+    getT48ClientSecret(bookingId: ID!, slotId: ID!): String
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
     rescheduleBookingSlot(input: RescheduleBookingSlotInput!): StudentBooking!

@@ -22,9 +22,31 @@ import {
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useState } from "react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { Booking } from "../types/Student";
 import { Slot } from "../types/Bookings";
 import { useNavigate } from "react-router-dom";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+/** Must match server `SLOT_TIMEZONE` / `slotTimezone.js` default (lesson wall-clock is business TZ). */
+const SLOT_BUSINESS_TIMEZONE =
+  import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+
+function parseSlotStartUtcMs(slot: Slot): number {
+  const raw = typeof slot.startTime === "string" ? slot.startTime : "";
+  const normalized = raw.length === 5 ? `${raw}:00` : raw;
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalized}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
 
 interface BookingListProps {
   bookings: Booking[];
@@ -337,6 +359,50 @@ export const BookingList: React.FC<BookingListProps> = ({
     });
   };
 
+  const getPaymentDisplay = (slot: Slot) => {
+    const paymentStatus = String(slot.paymentStatus || "").toLowerCase();
+    if (paymentStatus === "paid") {
+      return { label: "Paid", color: "success" as const };
+    }
+    if (paymentStatus === "requires_action" || paymentStatus === "payment_failed") {
+      return { label: "Action Required", color: "warning" as const };
+    }
+    if (paymentStatus === "refunded") {
+      return { label: "Refunded", color: "default" as const };
+    }
+    if (paymentStatus === "pending_payment") {
+      const startMs = parseSlotStartUtcMs(slot);
+      const t48 = startMs - 48 * 60 * 60 * 1000;
+      if (Number.isFinite(t48) && Date.now() >= t48) {
+        return { label: "Due Now (T-48)", color: "warning" as const };
+      }
+      return { label: "Pending (T-48)", color: "info" as const };
+    }
+    return { label: "—", color: "default" as const };
+  };
+
+  const formatT48Instant = (t48Ms: number, timeZone?: string) =>
+    new Date(t48Ms).toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      ...(timeZone ? { timeZone } : {}),
+    });
+
+  const getT48Display = (slot: Slot) => {
+    const startMs = parseSlotStartUtcMs(slot);
+    if (!Number.isFinite(startMs)) return null;
+    const t48Ms = startMs - 48 * 60 * 60 * 1000;
+    if (Number.isNaN(new Date(t48Ms).getTime())) return null;
+    return {
+      yourTime: formatT48Instant(t48Ms),
+      switzerlandTime: formatT48Instant(t48Ms, SLOT_BUSINESS_TIMEZONE),
+    };
+  };
+
   return (
     <Card sx={{ mb: 3, mt: 2 }}>
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -427,6 +493,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <TableCell sx={{ whiteSpace: "nowrap" }}>Lesson price (CHF)</TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap" }}>Final Price (CHF)</TableCell>
                     <TableCell>Status</TableCell>
+                    <TableCell>Payment</TableCell>
                     <TableCell>
                       {tabValue === 2 ? "Cancellation Time" : "Info"}
                     </TableCell>
@@ -437,6 +504,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                 <TableBody>
                   {currentRows.map((row) => {
                     const statusLabel = getDisplayStatus(row);
+                    const t48Lines = getT48Display(row.slot);
                     return (
                       <>
                         <TableRow key={`${row.booking._id}-${row.slot._id}`}>
@@ -478,6 +546,45 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 },
                               }}
                             />
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                              <Chip
+                                label={getPaymentDisplay(row.slot).label}
+                                color={getPaymentDisplay(row.slot).color}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  px: 1.1,
+                                  py: 0.6,
+                                  borderRadius: 2.5,
+                                  minHeight: 30,
+                                  fontWeight: 600,
+                                  width: "fit-content",
+                                }}
+                              />
+                              {["pending_payment"].includes(
+                                String(row.slot.paymentStatus || "").toLowerCase(),
+                              ) &&
+                                t48Lines && (
+                                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ lineHeight: 1.2 }}
+                                    >
+                                      T-48 at (your local time): {t48Lines.yourTime}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ lineHeight: 1.2 }}
+                                    >
+                                      T-48 at (Switzerland / lesson time): {t48Lines.switzerlandTime}
+                                    </Typography>
+                                  </Box>
+                                )}
+                            </Box>
                           </TableCell>
                           <TableCell sx={{ minWidth: 280 }}>
                             {tabValue === 2
@@ -589,7 +696,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                         </TableRow>
                         {row.effectiveStatus === "awaiting_payment" && (
                           <TableRow>
-                            <TableCell colSpan={tabValue === 2 ? 10 : 9} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
+                            <TableCell colSpan={tabValue === 2 ? 11 : 10} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
                               <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
                                 Please complete your payment before {formatPaymentDeadline(row.slot)}. Otherwise, your lesson will be automatically cancelled.
                               </Typography>

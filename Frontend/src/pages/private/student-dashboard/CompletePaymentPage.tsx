@@ -79,6 +79,11 @@ export const CompletePaymentPage: React.FC = () => {
         });
         if (cancelled) return;
         const clientSecret = data?.getT48ClientSecret;
+        // Backend returns null when slot is already paid (e.g. user returns from 3DS after webhook).
+        // Treat that as success so the user sees a clean confirmation, not an error.
+        if (clientSecret === null) {
+          return { id: "already-paid" } as unknown as { id: string };
+        }
         if (!clientSecret) {
           throw new Error("Could not get payment details. Please try again from your dashboard.");
         }

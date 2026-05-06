@@ -37,7 +37,7 @@ runInstructorPayoutJob().catch((err) =>
 );
 
 // Run T-48 charge job: 5 min for testing; adjust for production as needed
-const T48_JOB_INTERVAL_MS = 5 * 60 * 1000;
+const T48_JOB_INTERVAL_MS = 1 * 60 * 1000;
 setInterval(() => {
   runT48ChargeJob().catch((err) => console.error("[T48ChargeJob] Error:", err));
 }, T48_JOB_INTERVAL_MS);

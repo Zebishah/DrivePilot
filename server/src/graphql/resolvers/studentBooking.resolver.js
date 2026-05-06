@@ -1377,12 +1377,48 @@ const studentBookingResolver = {
       if (!slot) {
         throw new UserInputError("Slot not found.");
       }
-      if (
-        slot.paymentStatus !== "requires_action" &&
-        slot.paymentStatus !== "payment_failed"
-      ) {
+      // If already paid (e.g. user just returned from 3DS or webhook fired first), do NOT throw —
+      // return null so the frontend renders the success state smoothly.
+      if (slot.paymentStatus === "paid") {
+        return null;
+      }
+
+      let slotNeedsCompletion =
+        slot.paymentStatus === "requires_action" ||
+        slot.paymentStatus === "payment_failed";
+
+      // Self-heal state drift: if DB status is stale but PI still needs action, allow completion.
+      if (!slotNeedsCompletion && slot.paymentIntentId) {
+        try {
+          const existingPi = await retrievePaymentIntent(slot.paymentIntentId);
+          const piStatus = String(existingPi?.status || "");
+          if (piStatus === "succeeded") {
+            return null; // Stripe finalized payment; frontend will treat as success
+          }
+          if (
+            ["requires_action", "requires_confirmation", "requires_payment_method"].includes(
+              piStatus,
+            )
+          ) {
+            slotNeedsCompletion = true;
+            await StudentBooking.updateOne(
+              { _id: bookingId, "slots._id": slotId },
+              {
+                $set: {
+                  "slots.$.paymentStatus": "requires_action",
+                  updatedAt: new Date(),
+                },
+              },
+            );
+          }
+        } catch (_) {
+          // Best-effort read only; fall through to standard validation message.
+        }
+      }
+
+      if (!slotNeedsCompletion) {
         throw new UserInputError(
-          "This slot does not require payment completion or has already been paid.",
+          "This slot does not require payment completion right now. Please refresh Booked lessons and try again.",
         );
       }
       // Do not allow completing 3DS/payment if lesson date passed or instructor marked completed/missed
