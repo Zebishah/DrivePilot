@@ -94,6 +94,11 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         cancelledBy
         status
         paymentStatus
+        paymentReminderStartedAt
+        paymentReminderDeadlineAt
+        paymentReminder1SentAt
+        paymentReminder2SentAt
+        paymentReminder3SentAt
       }
       totalAmount
       finalAmount

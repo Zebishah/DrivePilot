@@ -7,13 +7,8 @@ const {
 const { createTransaction } = require("../services/transactionService");
 const { Admin, Instructor } = require("../models/User");
 const { getCommissionSplit } = require("../services/stripeService");
-const { sendBookingEmail } = require("../utils/SendOtpEmail");
 const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
-const FRONTEND_BASE = (
-  process.env.FRONTEND_URL ||
-  process.env.Frontend_URL ||
-  "http://localhost:5173"
-).replace(/\/$/, "");
+const { sendStudentReminderEmail } = require("./t48PaymentReminderJob");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -38,60 +33,6 @@ function slotStillPendingFilter(bookingId, slotId) {
  * Uses idempotency keys, conditional updates, and retry logic to avoid double charge and races.
  */
 async function runT48ChargeJob() {
-  const sendStudentPaymentActionEmail = async (bookingId, slotId) => {
-    try {
-      const fullBooking = await StudentBooking.findById(bookingId)
-        .populate(
-          "instructorId",
-          "_id firstName lastName email phone description profileImage address",
-        )
-        .populate(
-          "studentId",
-          "_id firstName lastName email phone profileImage homeAddress",
-        )
-        .lean();
-      if (!fullBooking?.studentId?.email) return;
-
-      const slot = (fullBooking.slots || []).find(
-        (s) => String(s._id) === String(slotId),
-      );
-      if (!slot) return;
-
-      const studentOnlyRecipients = [
-        {
-          email: fullBooking.studentId.email,
-          role: "student",
-          name:
-            `${fullBooking.studentId.firstName || ""} ${fullBooking.studentId.lastName || ""}`.trim() ||
-            "Student",
-        },
-      ];
-
-      const completePaymentLink = `${FRONTEND_BASE}/student-dashboard/complete-payment?bookingId=${fullBooking._id}&slotId=${slot._id}`;
-      await sendBookingEmail(
-        studentOnlyRecipients,
-        {
-          id: fullBooking._id,
-          status: fullBooking.status,
-          slots: [slot],
-          totalAmount: fullBooking.totalAmount,
-          finalAmount: fullBooking.finalAmount,
-          studentAddress: fullBooking.studentId?.homeAddress,
-          instructorAddress: fullBooking.instructorId?.address,
-          student: fullBooking.studentId,
-          instructor: fullBooking.instructorId,
-          completePaymentLink,
-        },
-        "payment_requires_action",
-      );
-    } catch (emailErr) {
-      console.error(
-        "[T48ChargeJob] Failed to send payment_requires_action email:",
-        emailErr,
-      );
-    }
-  };
-
   const now = new Date();
   const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
@@ -225,8 +166,7 @@ async function runT48ChargeJob() {
           );
           if (r.modifiedCount) {
             requiresAction += 1;
-            // Payment action link should be sent only to the student who must complete 3DS/payment.
-            await sendStudentPaymentActionEmail(booking._id, slot._id);
+            await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
           continue;
         }
@@ -245,6 +185,7 @@ async function runT48ChargeJob() {
               `[T48ChargeJob] Slot ${slot._id}: payment status "${paymentResult.status}" — marked payment_failed.`,
             );
             failed += 1;
+            await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
           continue;
         }
@@ -406,7 +347,7 @@ async function runT48ChargeJob() {
               `[T48ChargeJob] Slot ${slot._id}: requires_action (3DS). Marked slot; student must complete payment.`,
             );
             requiresAction += 1;
-            await sendStudentPaymentActionEmail(booking._id, slot._id);
+            await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
           continue;
         }
@@ -440,6 +381,7 @@ async function runT48ChargeJob() {
               `[T48ChargeJob] Slot ${slot._id}: max retries reached; marked payment_failed.`,
             );
             failed += 1;
+            await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
         }
       }

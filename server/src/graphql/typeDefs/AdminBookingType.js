@@ -49,6 +49,11 @@ const AdminBookingTypeDefs = gql`
     completionMarkedAt: String
     cancelledBy: String # student | instructor | admin
     paymentStatus: String
+    paymentReminderStartedAt: String
+    paymentReminderDeadlineAt: String
+    paymentReminder1SentAt: String
+    paymentReminder2SentAt: String
+    paymentReminder3SentAt: String
   }
 
   type PaymentMethodAdmin {

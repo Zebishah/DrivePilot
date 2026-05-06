@@ -53,6 +53,11 @@ const studentBookingTypeDefs = gql`
     cancellationDate: String
     completionMarkedAt: String
     cancelledBy: String
+    paymentReminderStartedAt: String
+    paymentReminderDeadlineAt: String
+    paymentReminder1SentAt: String
+    paymentReminder2SentAt: String
+    paymentReminder3SentAt: String
   }
 
   type PaymentMethod {
@@ -182,6 +187,11 @@ const studentBookingTypeDefs = gql`
     cancellationDate: String
     completionMarkedAt: String
     cancelledBy: String
+    paymentReminderStartedAt: String
+    paymentReminderDeadlineAt: String
+    paymentReminder1SentAt: String
+    paymentReminder2SentAt: String
+    paymentReminder3SentAt: String
   }
 
   type PaymentInfo {
@@ -200,6 +210,13 @@ const studentBookingTypeDefs = gql`
     bookingId: ID!
     studentId: ID!
     slotId: ID!
+  }
+  input RescheduleBookingSlotInput {
+    bookingId: ID!
+    slotId: ID!
+    newDate: String!
+    newStartTime: String!
+    newEndTime: String!
   }
   type BookingResponse {
     _id: ID!
@@ -248,6 +265,7 @@ const studentBookingTypeDefs = gql`
     getT48ClientSecret(bookingId: ID!, slotId: ID!): String!
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
+    rescheduleBookingSlot(input: RescheduleBookingSlotInput!): StudentBooking!
     markBookingsAsViewed: Boolean!
     updateSlotStatus(input: UpdateSlotStatusInput!): StudentBooking!
   }

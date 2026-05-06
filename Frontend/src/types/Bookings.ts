@@ -22,6 +22,11 @@ export interface Slot {
   cancelledBy?: "student" | "instructor" | "admin";
   chargeAmount?: number;
   refundedAt?: string;
+  paymentReminderStartedAt?: string;
+  paymentReminderDeadlineAt?: string;
+  paymentReminder1SentAt?: string;
+  paymentReminder2SentAt?: string;
+  paymentReminder3SentAt?: string;
 }
 
 export interface PaymentMethod {

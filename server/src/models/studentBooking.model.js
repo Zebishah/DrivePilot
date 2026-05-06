@@ -94,6 +94,12 @@ const studentBookingSchema = new mongoose.Schema(
         refundedAt: { type: Date },
         // --- Lesson-end reminder ---
         lessonEndReminderSent: { type: Boolean, default: false },
+        // --- T-48 payment follow-up reminders ---
+        paymentReminderStartedAt: { type: Date },
+        paymentReminderDeadlineAt: { type: Date },
+        paymentReminder1SentAt: { type: Date },
+        paymentReminder2SentAt: { type: Date },
+        paymentReminder3SentAt: { type: Date },
       },
     ],
     totalAmount: {

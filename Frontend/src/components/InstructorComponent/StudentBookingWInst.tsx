@@ -56,6 +56,7 @@ interface StatusDropdownProps {
   lessonPassed: boolean;
   /** Active list tab — used so "Abandoned" rows do not show as "Upcoming". */
   listTab?: BookingTabKey;
+  paymentStatus?: string;
 }
 
 interface ConfirmationModalProps {
@@ -148,6 +149,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   disabled = false,
   lessonPassed,
   listTab,
+  paymentStatus,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -155,6 +157,10 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
 
   const normalizedStatus = (currentStatus ?? "").toLowerCase();
+  const normalizedPaymentStatus = (paymentStatus ?? "").toLowerCase();
+  const isAwaitingPayment =
+    normalizedPaymentStatus === "requires_action" ||
+    normalizedPaymentStatus === "payment_failed";
 
   const isFinalDisabled =
     normalizedStatus === "completed" ||
@@ -172,6 +178,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const displayLabel =
     listTab === "abandoned"
       ? "Abandoned"
+      : isAwaitingPayment
+        ? "Awaiting Payment"
       : normalizedStatus === "booked" && !lessonPassed
         ? "Upcoming"
         : isStatusNotSetYet
@@ -182,6 +190,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const displayColor =
     listTab === "abandoned"
       ? "bg-slate-200 text-slate-800"
+      : isAwaitingPayment
+        ? "bg-amber-100 text-amber-800"
       : normalizedStatus === "booked" && !lessonPassed
         ? "bg-yellow-100 text-yellow-800"
         : isStatusNotSetYet
@@ -189,13 +199,17 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
           : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
             "bg-gray-100 text-gray-800";
 
-  const isActuallyDisabled = disabled || isFinalDisabled;
+  const isActuallyDisabled = disabled || isFinalDisabled || isAwaitingPayment;
 
   const allowedStatuses = (() => {
     // Final statuses are non-editable from this table.
     if (isFinalDisabled) return [];
 
     // Refund is not an instructor action.
+    if (isAwaitingPayment) {
+      return [];
+    }
+
     if (listTab === "upcoming" || listTab === "abandoned") {
       // Future lessons: only cancel is allowed.
       return ["cancelled"];
@@ -464,6 +478,13 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                         );
                       })()}
                       <div className="mt-2 text-xs text-gray-600">
+                        {(slot.paymentStatus === "requires_action" ||
+                          slot.paymentStatus === "payment_failed") && (
+                          <div className="mb-1 rounded-md bg-amber-50 px-2 py-1 text-amber-800">
+                            The student's payment has not been completed. The student must complete the payment before{" "}
+                            {getPaymentDeadlineLabel(slot)}. Otherwise, the lesson will be automatically cancelled.
+                          </div>
+                        )}
                         Cancelled by:{" "}
                         {getCancelledByLabel(
                           (slot as { cancelledBy?: string }).cancelledBy,
@@ -549,6 +570,22 @@ function formatCancellationDateTime(value?: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function getPaymentDeadlineLabel(slot: StudentBooking["slots"][number]) {
+  const deadline = slot.paymentReminderDeadlineAt
+    ? new Date(slot.paymentReminderDeadlineAt)
+    : slot.paymentReminderStartedAt
+      ? new Date(new Date(slot.paymentReminderStartedAt).getTime() + 24 * 60 * 60 * 1000)
+      : null;
+  if (!deadline || Number.isNaN(deadline.getTime())) return "[HH:MM, DD/MM/YYYY]";
+  return deadline.toLocaleString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -726,7 +763,8 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           | "missed"
           | "completed"
           | "abandoned"
-          | "no_status";
+          | "no_status"
+          | "awaiting_payment";
       }
     > = [];
 
@@ -740,6 +778,9 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     for (const booking of filteredBookings) {
       for (const slot of booking.slots || []) {
         const st = String(slot.status || "").toLowerCase();
+        const paySt = String(slot.paymentStatus || "").toLowerCase();
+        const isAwaitingPayment =
+          paySt === "requires_action" || paySt === "payment_failed";
         const slotEnd = getSlotEndDateTime(slot);
 
         if (st === "cancelled") {
@@ -806,7 +847,22 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         if (
           (st === "booked" || st === "confirmed") &&
           slotEnd.getTime() > now.getTime() &&
-          !isAbandonedPending(booking)
+          !isAbandonedPending(booking) &&
+          isAwaitingPayment
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "awaiting_payment",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          !isAbandonedPending(booking) &&
+          !isAwaitingPayment
         ) {
           rows.push({
             booking,
@@ -1027,11 +1083,13 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {pagedRows.map(({ booking, slot }) => (
-              <tr
-                key={`${booking._id}-${slot._id}`}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
+            {pagedRows.map(({ booking, slot }) => {
+              const isAwaitingPayment =
+                String(slot.paymentStatus || "").toLowerCase() === "requires_action" ||
+                String(slot.paymentStatus || "").toLowerCase() === "payment_failed";
+              return (
+              <React.Fragment key={`${booking._id}-${slot._id}`}>
+              <tr className="hover:bg-gray-50 transition-colors duration-150">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
@@ -1080,6 +1138,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 <td className="px-6 py-4">
                   <StatusDropdown
                     currentStatus={slot.status}
+                    paymentStatus={slot.paymentStatus}
                     slotId={slot._id}
                     bookingId={booking._id}
                     onStatusChange={handleStatusChange}
@@ -1126,7 +1185,19 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   </button>
                 </td>
               </tr>
-            ))}
+              {isAwaitingPayment && (
+                <tr>
+                  <td
+                    colSpan={tab === "cancelled" ? 10 : 9}
+                    className="px-6 py-3 text-xs font-medium text-amber-800 bg-amber-50"
+                  >
+                    The student&apos;s payment has not been completed. The student must complete the payment before{" "}
+                    {getPaymentDeadlineLabel(slot)}. Otherwise, the lesson will be automatically cancelled.
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
+            )})}
           </tbody>
         </table>
       </div>

@@ -1853,9 +1853,20 @@ const studentBookingResolver = {
         const oldStatus = booking.slots[slotIndex].status;
         const oldLower = String(oldStatus || "").toLowerCase();
         const newLower = String(status || "").toLowerCase();
+        const slotPaymentStatus = String(
+          booking.slots[slotIndex].paymentStatus || "",
+        ).toLowerCase();
+        const paymentPendingForSlot =
+          slotPaymentStatus === "requires_action" ||
+          slotPaymentStatus === "payment_failed";
 
         // Instructors/students cannot change a final lesson outcome; Admin may correct data.
         if (user?.role !== "Admin") {
+          if (paymentPendingForSlot && newLower !== "cancelled") {
+            throw new UserInputError(
+              "This lesson is awaiting payment. Status cannot be updated until payment is completed.",
+            );
+          }
           if (
             ["completed", "missed", "refund"].includes(oldLower) &&
             newLower !== oldLower
@@ -2228,6 +2239,233 @@ const studentBookingResolver = {
         } catch (emailError) {
           console.error(
             "Failed to send booking cancellation emails:",
+            emailError,
+          );
+        }
+
+        return booking;
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
+    },
+    rescheduleBookingSlot: async (_, { input }, { user }) => {
+      validateUser(user);
+      const { bookingId, slotId, newDate, newStartTime, newEndTime } = input;
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const booking = await StudentBooking.findById(bookingId)
+          .populate("instructorId", "_id firstName lastName email phone")
+          .populate("studentId", "_id firstName lastName email phone")
+          .session(session);
+
+        if (!booking) {
+          throw new UserInputError("Booking not found.");
+        }
+
+        const isOwner = String(booking.studentId?._id) === String(user.id);
+        const isAdmin = user?.role === "Admin";
+        if (!isOwner && !isAdmin) {
+          throw new AuthenticationError(
+            "Not authorized to reschedule this booking.",
+          );
+        }
+
+        const slot = booking.slots.id(slotId);
+        if (!slot) {
+          throw new UserInputError("Slot not found in booking.");
+        }
+
+        const currentStatus = String(slot.status || "").toLowerCase();
+        if (["completed", "missed", "refund", "cancelled"].includes(currentStatus)) {
+          throw new UserInputError(
+            "This lesson cannot be rescheduled in its current status.",
+          );
+        }
+
+        const paymentStatus = String(slot.paymentStatus || "").toLowerCase();
+        if (["requires_action", "payment_failed"].includes(paymentStatus)) {
+          throw new UserInputError(
+            "This lesson is awaiting payment and cannot be rescheduled until payment is resolved.",
+          );
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const oldSlotDate = new Date(slot.date);
+        oldSlotDate.setHours(0, 0, 0, 0);
+        if (oldSlotDate < today) {
+          throw new UserInputError(
+            "Reschedule is only allowed before the lesson date passes.",
+          );
+        }
+
+        const newSlotStartMs = getSlotStartTimestampUtc(newDate, newStartTime);
+        if (!Number.isFinite(newSlotStartMs)) {
+          throw new UserInputError("Invalid new slot time.");
+        }
+        const newSlotDate = new Date(newDate);
+        newSlotDate.setHours(0, 0, 0, 0);
+        if (newSlotDate < today) {
+          throw new UserInputError("New slot date cannot be in the past.");
+        }
+
+        const sameSlot =
+          slot.date === newDate &&
+          slot.startTime === newStartTime &&
+          slot.endTime === newEndTime;
+        if (sameSlot) {
+          throw new UserInputError(
+            "Please choose a different slot to reschedule.",
+          );
+        }
+
+        const conflictingBooking = await StudentBooking.findOne({
+          _id: { $ne: booking._id },
+          studentId: booking.studentId._id,
+          status: { $ne: "cancelled" },
+          slots: {
+            $elemMatch: {
+              date: newDate,
+              booked: true,
+              status: { $nin: ["cancelled", "refund"] },
+              startTime: { $lt: newEndTime },
+              endTime: { $gt: newStartTime },
+            },
+          },
+        }).session(session);
+
+        if (conflictingBooking) {
+          throw new UserInputError(
+            "You already have another booking at this time.",
+          );
+        }
+
+        const teacherId = booking.instructorId._id;
+
+        const oldDayAvailability = await teacherAvailabilityModel
+          .findOne({
+            teacherId,
+            date: new Date(slot.date),
+          })
+          .session(session);
+        const sameDayMove = String(slot.date) === String(newDate);
+        const newDayAvailability = sameDayMove
+          ? oldDayAvailability
+          : await teacherAvailabilityModel
+              .findOne({
+                teacherId,
+                date: new Date(newDate),
+              })
+              .session(session);
+
+        if (!newDayAvailability) {
+          throw new UserInputError(
+            "The selected slot is no longer available for this instructor.",
+          );
+        }
+
+        const targetAvailableSlot = (newDayAvailability.availableSlots || []).find(
+          (s) =>
+            s.date === newDate &&
+            s.startTime === newStartTime &&
+            s.endTime === newEndTime &&
+            s.booked === false,
+        );
+
+        if (!targetAvailableSlot) {
+          throw new UserInputError(
+            "The selected slot is no longer available. Please choose another.",
+          );
+        }
+
+        if (oldDayAvailability) {
+          oldDayAvailability.slots = (oldDayAvailability.slots || []).filter(
+            (s) => String(s.id) !== String(slotId),
+          );
+
+          const existingAvailable = (oldDayAvailability.availableSlots || []).find(
+            (s) =>
+              s.date === slot.date &&
+              s.startTime === slot.startTime &&
+              s.endTime === slot.endTime,
+          );
+          if (existingAvailable) {
+            existingAvailable.booked = false;
+            existingAvailable.status = "available";
+          } else {
+            oldDayAvailability.availableSlots.push({
+              id: new mongoose.Types.ObjectId().toString(),
+              date: slot.date,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              booked: false,
+              status: "available",
+            });
+          }
+
+          const oldHasAvailable = oldDayAvailability.availableSlots.some(
+            (s) => s.booked === false,
+          );
+          oldDayAvailability.status = oldHasAvailable ? "available" : "booked";
+          if (!sameDayMove) {
+            await oldDayAvailability.save({ session });
+          }
+        }
+
+        targetAvailableSlot.booked = true;
+        targetAvailableSlot.status = "booked";
+
+        const alreadyInBooked = (newDayAvailability.slots || []).find(
+          (s) => String(s.id) === String(slotId),
+        );
+        if (!alreadyInBooked) {
+          newDayAvailability.slots.push({
+            id: String(slotId),
+            bookingId: String(booking._id),
+            date: newDate,
+            startTime: newStartTime,
+            endTime: newEndTime,
+            booked: true,
+            status: "booked",
+          });
+        } else {
+          alreadyInBooked.date = newDate;
+          alreadyInBooked.startTime = newStartTime;
+          alreadyInBooked.endTime = newEndTime;
+          alreadyInBooked.booked = true;
+          alreadyInBooked.status = "booked";
+        }
+
+        const newHasAvailable = newDayAvailability.availableSlots.some(
+          (s) => s.booked === false,
+        );
+        newDayAvailability.status = newHasAvailable ? "available" : "booked";
+        await newDayAvailability.save({ session });
+
+        slot.date = newDate;
+        slot.startTime = newStartTime;
+        slot.endTime = newEndTime;
+        slot.status = "booked";
+        slot.booked = true;
+        slot.cancellationDate = undefined;
+        slot.cancelledBy = undefined;
+
+        booking.updatedAt = new Date();
+        await booking.save({ session });
+
+        await session.commitTransaction();
+
+        try {
+          await notifyBookingParties(booking, "booking_status_updated");
+        } catch (emailError) {
+          console.error(
+            "Failed to send reschedule notification emails:",
             emailError,
           );
         }

@@ -110,7 +110,32 @@ export const BookingList: React.FC<BookingListProps> = ({
       | "missed"
       | "completed"
       | "no_status"
-      | "abandoned";
+      | "abandoned"
+      | "awaiting_payment";
+  };
+
+  const slotNeedsPayment = (slot: Slot) =>
+    slot.paymentStatus === "requires_action" ||
+    slot.paymentStatus === "payment_failed";
+
+  const getPaymentDeadlineDate = (slot: Slot) => {
+    if (slot.paymentReminderDeadlineAt) return new Date(slot.paymentReminderDeadlineAt);
+    if (slot.paymentReminderStartedAt) {
+      return new Date(new Date(slot.paymentReminderStartedAt).getTime() + 24 * 60 * 60 * 1000);
+    }
+    return null;
+  };
+
+  const formatPaymentDeadline = (slot: Slot) => {
+    const d = getPaymentDeadlineDate(slot);
+    if (!d || Number.isNaN(d.getTime())) return "the deadline";
+    return d.toLocaleString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const categorizeRows = (bookings: Booking[]) => {
@@ -158,6 +183,17 @@ export const BookingList: React.FC<BookingListProps> = ({
             slot,
             tab: "history",
             effectiveStatus: "no_status",
+          });
+        } else if (
+          (slot.status === "booked" || slot.status === "confirmed") &&
+          slotEnd > now &&
+          slotNeedsPayment(slot)
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "awaiting_payment",
           });
         } else if (
           (slot.status === "booked" || slot.status === "confirmed") &&
@@ -239,6 +275,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   );
 
   const getDisplayStatus = (row: BookingRow) => {
+    if (row.effectiveStatus === "awaiting_payment") return "Awaiting Payment";
     if (row.tab === "upcoming") return "Upcoming";
     if (row.tab === "abandoned") return "Abandoned";
     if (row.tab === "cancelled") {
@@ -259,6 +296,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   const getStatusChipColor = (status: string) => {
     if (status === "Refunded") return "warning";
     if (status === "Upcoming") return "info";
+    if (status === "Awaiting Payment") return "warning";
     if (status === "Cancelled") return "error";
     if (status === "Missed") return "warning";
     if (status === "Completed") return "success";
@@ -390,7 +428,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                     <TableCell sx={{ whiteSpace: "nowrap" }}>Final Price (CHF)</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>
-                      {tabValue === 2 ? "Cancellation Time" : "Completion Date"}
+                      {tabValue === 2 ? "Cancellation Time" : "Info"}
                     </TableCell>
                     {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
                     <TableCell align="right">Actions</TableCell>
@@ -400,133 +438,165 @@ export const BookingList: React.FC<BookingListProps> = ({
                   {currentRows.map((row) => {
                     const statusLabel = getDisplayStatus(row);
                     return (
-                      <TableRow key={`${row.booking._id}-${row.slot._id}`}>
-                        <TableCell>
-                          {row.booking.instructorId.firstName} {row.booking.instructorId.lastName}
-                        </TableCell>
-                        <TableCell>{row.booking.instructorId.email}</TableCell>
-                        <TableCell>
-                          {new Date(row.slot.date).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </TableCell>
-                        <TableCell sx={{ whiteSpace: "nowrap" }}>
-                          {row.slot.startTime} - {row.slot.endTime}
-                        </TableCell>
-                        <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                          {formatLessonPrice(row.booking)}
-                        </TableCell>
-                        <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                          {formatFinalPrice(row.booking)}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={statusLabel}
-                            color={getStatusChipColor(statusLabel)}
-                            size="small"
-                            variant={statusLabel === "No Status Set Yet" ? "outlined" : "filled"}
-                            sx={{
-                              px: 1.3,
-                              py: 0.7,
-                              borderRadius: 2.5,
-                              minHeight: 30,
-                              fontWeight: 600,
-                              "& .MuiChip-label": {
-                                px: 1.2,
-                                py: 0.25,
-                              },
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {tabValue === 2
-                            ? formatCancellationDateTime(
-                                (row.slot as { cancellationDate?: string; refundedAt?: string })
-                                  .cancellationDate ||
-                                  (row.slot as { cancellationDate?: string; refundedAt?: string })
-                                    .refundedAt,
-                              )
-                            : formatCompletionDate(row.slot)}
-                        </TableCell>
-                        {tabValue === 2 && (
-                          <TableCell>{getCancelledByLabel(
-                            (row.slot as { cancelledBy?: string }).cancelledBy,
-                          )}</TableCell>
-                        )}
-                        <TableCell align="right">
-                          <Box sx={{ display: "inline-flex", gap: 1 }}>
-                            <Button
-                              variant="outlined"
+                      <>
+                        <TableRow key={`${row.booking._id}-${row.slot._id}`}>
+                          <TableCell>
+                            {row.booking.instructorId.firstName} {row.booking.instructorId.lastName}
+                          </TableCell>
+                          <TableCell>{row.booking.instructorId.email}</TableCell>
+                          <TableCell>
+                            {new Date(row.slot.date).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                            {row.slot.startTime} - {row.slot.endTime}
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                            {formatLessonPrice(row.booking)}
+                          </TableCell>
+                          <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                            {formatFinalPrice(row.booking)}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={statusLabel}
+                              color={getStatusChipColor(statusLabel)}
                               size="small"
-                              startIcon={<VisibilityIcon />}
-                              onClick={() => onBookingClick(row.booking, row.slot._id, row.slot)}
+                              variant={statusLabel === "No Status Set Yet" ? "outlined" : "filled"}
                               sx={{
+                                px: 1.3,
+                                py: 0.7,
                                 borderRadius: 2.5,
-                                px: 1.8,
-                                py: 0.8,
+                                minHeight: 30,
                                 fontWeight: 600,
+                                "& .MuiChip-label": {
+                                  px: 1.2,
+                                  py: 0.25,
+                                },
                               }}
-                            >
-                              View Details
-                            </Button>
-                            {tabValue === 2 && onRequestRefund && (
+                            />
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 280 }}>
+                            {tabValue === 2
+                              ? formatCancellationDateTime(
+                                  (row.slot as { cancellationDate?: string; refundedAt?: string })
+                                    .cancellationDate ||
+                                    (row.slot as { cancellationDate?: string; refundedAt?: string })
+                                      .refundedAt,
+                                )
+                              : formatCompletionDate(row.slot)}
+                          </TableCell>
+                          {tabValue === 2 && (
+                            <TableCell>{getCancelledByLabel(
+                              (row.slot as { cancelledBy?: string }).cancelledBy,
+                            )}</TableCell>
+                          )}
+                          <TableCell align="right">
+                            <Box sx={{ display: "inline-flex", gap: 1 }}>
+                              {row.effectiveStatus === "awaiting_payment" && (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() =>
+                                    navigate(
+                                      `/student-dashboard/complete-payment?bookingId=${row.booking._id}&slotId=${row.slot._id}`,
+                                    )
+                                  }
+                                  sx={{
+                                    bgcolor: "#f59e0b",
+                                    "&:hover": { bgcolor: "#d97706" },
+                                    borderRadius: 2.5,
+                                    px: 1.8,
+                                    py: 0.8,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  Complete Checkout
+                                </Button>
+                              )}
                               <Button
-                                variant="contained"
+                                variant="outlined"
                                 size="small"
-                                disabled={(() => {
-                                  const refundKey = `${row.booking._id}:${row.slot._id}`;
-                                  const requestStatus = refundRequestStateMap[refundKey];
-                                  const slotStatus = String(row.slot.status || "").toLowerCase();
-                                  const slotIsPaid =
-                                    String((row.slot as { paymentStatus?: string }).paymentStatus || "")
-                                      .toLowerCase() === "paid" ||
-                                    (row.slot as { chargeAmount?: number }).chargeAmount != null;
-                                  const slotEnd = getSlotEndDateTime(row.slot);
-                                  const lessonPassed = slotEnd.getTime() < Date.now();
-                                  return (
-                                    slotStatus !== "cancelled" ||
-                                    !slotIsPaid ||
-                                    lessonPassed ||
-                                    Boolean(requestStatus)
-                                  );
-                                })()}
-                                onClick={() => onRequestRefund(row.booking, row.slot)}
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => onBookingClick(row.booking, row.slot._id, row.slot)}
                                 sx={{
-                                  bgcolor: "#8b5cf6",
-                                  "&:hover": { bgcolor: "#7c3aed" },
                                   borderRadius: 2.5,
                                   px: 1.8,
                                   py: 0.8,
                                   fontWeight: 600,
                                 }}
                               >
-                                Request Refund
+                                View Details
                               </Button>
-                            )}
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={() =>
-                                navigate(
-                                  `/student-dashboard/search/instructors/${row.booking.instructorId._id}`,
-                                )
-                              }
-                              sx={{
-                                bgcolor: "#5fc2d3",
-                                "&:hover": { bgcolor: "#4bb1c2" },
-                                borderRadius: 2.5,
-                                px: 1.8,
-                                py: 0.8,
-                                fontWeight: 600,
-                              }}
-                            >
-                              View Instructor
-                            </Button>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
+                              {tabValue === 2 && onRequestRefund && (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  disabled={(() => {
+                                    const refundKey = `${row.booking._id}:${row.slot._id}`;
+                                    const requestStatus = refundRequestStateMap[refundKey];
+                                    const slotStatus = String(row.slot.status || "").toLowerCase();
+                                    const slotIsPaid =
+                                      String((row.slot as { paymentStatus?: string }).paymentStatus || "")
+                                        .toLowerCase() === "paid" ||
+                                      (row.slot as { chargeAmount?: number }).chargeAmount != null;
+                                    const slotEnd = getSlotEndDateTime(row.slot);
+                                    const lessonPassed = slotEnd.getTime() < Date.now();
+                                    return (
+                                      slotStatus !== "cancelled" ||
+                                      !slotIsPaid ||
+                                      lessonPassed ||
+                                      Boolean(requestStatus)
+                                    );
+                                  })()}
+                                  onClick={() => onRequestRefund(row.booking, row.slot)}
+                                  sx={{
+                                    bgcolor: "#8b5cf6",
+                                    "&:hover": { bgcolor: "#7c3aed" },
+                                    borderRadius: 2.5,
+                                    px: 1.8,
+                                    py: 0.8,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  Request Refund
+                                </Button>
+                              )}
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() =>
+                                  navigate(
+                                    `/student-dashboard/search/instructors/${row.booking.instructorId._id}`,
+                                  )
+                                }
+                                sx={{
+                                  bgcolor: "#5fc2d3",
+                                  "&:hover": { bgcolor: "#4bb1c2" },
+                                  borderRadius: 2.5,
+                                  px: 1.8,
+                                  py: 0.8,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                View Instructor
+                              </Button>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                        {row.effectiveStatus === "awaiting_payment" && (
+                          <TableRow>
+                            <TableCell colSpan={tabValue === 2 ? 10 : 9} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
+                              <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
+                                Please complete your payment before {formatPaymentDeadline(row.slot)}. Otherwise, your lesson will be automatically cancelled.
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     );
                   })}
                 </TableBody>

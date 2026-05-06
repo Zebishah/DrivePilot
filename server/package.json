@@ -5,7 +5,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "npx nodemon src/index.js"
+    "dev": "npx nodemon src/index.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@graphql-tools/merge": "^9.0.24",

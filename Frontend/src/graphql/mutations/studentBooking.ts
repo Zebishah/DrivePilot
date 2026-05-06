@@ -216,6 +216,11 @@ export const GET_STUDENT_BOOKINGS = gql`
         payoutStatus
         refundAmount
         refundedAt
+        paymentReminderStartedAt
+        paymentReminderDeadlineAt
+        paymentReminder1SentAt
+        paymentReminder2SentAt
+        paymentReminder3SentAt
       }
       paymentMethod {
         type
@@ -325,6 +330,26 @@ export const CANCEL_BOOKING = gql`
         paymentStatus
         refundAmount
         refundedAt
+      }
+      updatedAt
+    }
+  }
+`;
+
+export const RESCHEDULE_BOOKING_SLOT = gql`
+  mutation RescheduleBookingSlot($input: RescheduleBookingSlotInput!) {
+    rescheduleBookingSlot(input: $input) {
+      _id
+      status
+      slots {
+        _id
+        date
+        startTime
+        endTime
+        status
+        paymentStatus
+        cancellationDate
+        cancelledBy
       }
       updatedAt
     }

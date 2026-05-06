@@ -20,6 +20,7 @@ const {
   runAbandonedCheckoutReminderJob,
 } = require("./jobs/abandonedCheckoutReminderJob");
 const { runLessonEndReminderJob } = require("./jobs/lessonEndReminderJob");
+const { runT48PaymentReminderJob } = require("./jobs/t48PaymentReminderJob");
 
 // ✅ Connect to MongoDB
 connectDB();
@@ -42,6 +43,17 @@ setInterval(() => {
 }, T48_JOB_INTERVAL_MS);
 runT48ChargeJob().catch((err) =>
   console.error("[T48ChargeJob] Initial run error:", err),
+);
+
+// T-48 follow-up reminders: 12h + 18h nudges and 24h auto-cancel
+const T48_REMINDER_JOB_INTERVAL_MS = 10 * 60 * 1000;
+setInterval(() => {
+  runT48PaymentReminderJob().catch((err) =>
+    console.error("[T48PaymentReminderJob] Error:", err),
+  );
+}, T48_REMINDER_JOB_INTERVAL_MS);
+runT48PaymentReminderJob().catch((err) =>
+  console.error("[T48PaymentReminderJob] Initial run error:", err),
 );
 
 // Abandoned Stripe checkout cleanup: run daily
