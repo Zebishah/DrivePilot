@@ -316,6 +316,116 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
     bookingData.completePaymentLink || computedCompletePaymentLink;
   const dashboardBookUrl = `${completePaymentBaseUrl}/student-dashboard/book`;
 
+  const buildPaymentAlertEmailForRole = (recipient, paymentType) => {
+    const isRequiresAction = paymentType === "payment_requires_action";
+    const isStudent = recipient.role === "student";
+    const isInstructor = recipient.role === "instructor";
+    const headingColor = isRequiresAction ? "#ff9800" : "#dc3545";
+
+    if (isStudent) {
+      return {
+        subject: isRequiresAction
+          ? "Action required: complete payment for your upcoming lesson"
+          : "Payment failed for your upcoming lesson",
+        message: `
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
+            </div>
+            <div style="color: #333333; line-height: 1.6;">
+              <h2 style="color: ${headingColor}; font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center;">
+                ${
+                  isRequiresAction
+                    ? "Additional authentication required"
+                    : "Payment failed"
+                }
+              </h2>
+              <p style="margin-bottom: 16px; font-size: 16px;">
+                ${
+                  isRequiresAction
+                    ? "We tried to process your payment, but your bank requires an extra 3D Secure confirmation."
+                    : "We were unable to process your payment for an upcoming lesson."
+                }
+              </p>
+              <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
+                ${slotsHtml}
+              </div>
+              <p style="margin-bottom: 20px; font-size: 16px;">
+                Please open your booked lessons dashboard and complete payment there.
+              </p>
+              <div style="text-align: center; margin-bottom: 24px;">
+                <a href="${dashboardBookUrl}" style="display: inline-block; background: linear-gradient(135deg, ${headingColor} 0%, ${
+                  isRequiresAction ? "#f57c00" : "#c82333"
+                } 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Go to booked lessons</a>
+              </div>
+              <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
+                If you're not logged in, sign in first and then go to your booked lessons to complete payment.
+              </p>
+            </div>
+            <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
+              <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+            </div>
+          </div>
+        `,
+      };
+    }
+
+    if (isInstructor) {
+      return {
+        subject: isRequiresAction
+          ? "Student payment pending authentication (T-48)"
+          : "Student payment failed (T-48)",
+        message: `
+          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
+            <h2 style="color: ${headingColor}; font-size: 20px; margin-bottom: 16px;">Student payment status update</h2>
+            <p style="font-size: 15px; color: #333;">
+              ${
+                isRequiresAction
+                  ? "A student's lesson payment requires 3D Secure authentication."
+                  : "A student's lesson payment attempt failed."
+              }
+            </p>
+            <p style="font-size: 15px; color: #333;">
+              The student has been notified to complete payment from their booked lessons dashboard.
+            </p>
+            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-top: 16px;">
+              <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
+              ${slotsHtml}
+            </div>
+          </div>
+        `,
+      };
+    }
+
+    return {
+      subject: isRequiresAction
+        ? "Payment requires action (student notified)"
+        : "Payment failed (student notified)",
+      message: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
+          <h2 style="color: ${headingColor}; font-size: 20px; margin-bottom: 16px;">T-48 payment status update</h2>
+          <p style="font-size: 15px; color: #333;">
+            ${
+              isRequiresAction
+                ? "A student payment requires 3D Secure authentication."
+                : "A student payment attempt failed."
+            }
+          </p>
+          <p style="font-size: 15px; color: #333;">
+            The student-only action email has been sent with dashboard instructions.
+          </p>
+          <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-top: 16px;">
+            <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
+            ${slotsHtml}
+          </div>
+        </div>
+      `,
+    };
+  };
+
   // Generate slots HTML
   const slotsHtml = bookingData.slots
     .map(
@@ -663,9 +773,84 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
         </div>
       `;
       break;
+    case "booking_rescheduled":
+      const rescheduledSlot = bookingData.slots?.[0] || {};
+      const hasPreviousSlot =
+        rescheduledSlot.previousDate &&
+        rescheduledSlot.previousStartTime &&
+        rescheduledSlot.previousEndTime;
+      const rescheduledBy = String(rescheduledSlot.rescheduledBy || "student");
+      const actorLabel = rescheduledBy === "admin" ? "Admin" : "Student";
+      subject = `Lesson Rescheduled by ${actorLabel}`;
+      message = `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 8px;">Driving School Platform</h1>
+            <h2 style="color: #0f766e; font-size: 22px; margin: 0;">${actorLabel} rescheduled a lesson</h2>
+          </div>
+          <div style="color: #333333; line-height: 1.6; font-size: 15px;">
+            <p style="margin-bottom: 14px;">
+              The lesson time was changed by ${actorLabel.toLowerCase()}. Please review the updated time and be prepared for the new slot.
+            </p>
+            <p style="margin-bottom: 10px;"><strong>Booking ID:</strong> #${bookingData.id || "N/A"}</p>
+            <p style="margin-bottom: 18px;"><strong>Student:</strong> ${
+              bookingData.student?.firstName || ""
+            } ${bookingData.student?.lastName || ""}</p>
+            ${
+              hasPreviousSlot
+                ? `
+              <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                <h3 style="font-size: 15px; margin: 0 0 8px 0; color: #9a3412;">Previous lesson time</h3>
+                <p style="margin: 0;">${formatDate(rescheduledSlot.previousDate)} • ${formatTime(
+                    rescheduledSlot.previousStartTime,
+                  )} - ${formatTime(rescheduledSlot.previousEndTime)}</p>
+              </div>
+            `
+                : ""
+            }
+            <div style="background-color: #ecfeff; border: 1px solid #a5f3fc; border-radius: 8px; padding: 14px;">
+              <h3 style="font-size: 15px; margin: 0 0 8px 0; color: #155e75;">New lesson time</h3>
+              <p style="margin: 0;">${formatDate(rescheduledSlot.date)} • ${formatTime(
+                rescheduledSlot.startTime,
+              )} - ${formatTime(rescheduledSlot.endTime)}</p>
+            </div>
+          </div>
+          <div style="border-top: 1px solid #eaeaea; margin-top: 24px; padding-top: 16px; text-align: center; color: #777; font-size: 13px;">
+            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+      break;
   }
 
-  // Send emails to all recipients
+  const isPaymentAlertType =
+    type === "payment_requires_action" || type === "payment_failed";
+
+  if (isPaymentAlertType) {
+    const emailPromises = recipients.map((recipient) => {
+      const roleAware = buildPaymentAlertEmailForRole(recipient, type);
+      const mailOptions = {
+        from: `"Drive School" <${process.env.EMAIL_USER}>`,
+        to: recipient.email,
+        subject: roleAware.subject,
+        html: roleAware.message,
+      };
+      return transporter.sendMail(mailOptions);
+    });
+
+    try {
+      await Promise.all(emailPromises);
+      console.log(
+        `Role-based payment notification emails sent successfully to ${recipients.length} recipients`,
+      );
+    } catch (error) {
+      console.error("Error sending payment notification emails:", error);
+      throw error;
+    }
+    return;
+  }
+
+  // Send emails to all recipients (non-payment event types)
   const emailPromises = recipients.map((recipient) => {
     const mailOptions = {
       from: `"Drive School" <${process.env.EMAIL_USER}>`,

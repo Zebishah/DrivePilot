@@ -1,9 +1,30 @@
 const mongoose = require("mongoose");
 const dayjs = require("dayjs");
+const customParseFormat = require("dayjs/plugin/customParseFormat");
 const { User, Instructor } = require("../../models/User");
 const studentBookingModel = require("../../models/studentBooking.model");
 const { Review } = require("../../models/Reviews");
 const Visitor = require("../../models/Visitors");
+dayjs.extend(customParseFormat);
+
+function parseSlotDateFlexible(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  const candidates = [
+    "YYYY-MM-DD",
+    "DD/MM/YYYY",
+    "MM/DD/YYYY",
+    "YYYY/MM/DD",
+    "D/M/YYYY",
+    "M/D/YYYY",
+  ];
+  for (const fmt of candidates) {
+    const parsed = dayjs(str, fmt, true);
+    if (parsed.isValid()) return parsed.startOf("day");
+  }
+  const fallback = dayjs(str);
+  return fallback.isValid() ? fallback.startOf("day") : null;
+}
 
 // Resolvers
 const adminAnalyticsResolvers = {
@@ -271,32 +292,41 @@ const adminAnalyticsResolvers = {
 
         return b.slots
           .filter((s) => {
-            const slotDate = dayjs(s.date);
-            const slotDateStr = slotDate.format("YYYY-MM-DD");
+            const slotDate = parseSlotDateFlexible(s.date);
+            if (!slotDate) return false;
+            const normalizedStatus = String(s.status || "")
+              .trim()
+              .toLowerCase();
+            const normalizedPaymentStatus = String(s.paymentStatus || "")
+              .trim()
+              .toLowerCase();
             return (
-              slotDateStr >= fromStr &&
-              slotDateStr <= toStr &&
+              (slotDate.isAfter(from, "day") || slotDate.isSame(from, "day")) &&
+              (slotDate.isBefore(to, "day") || slotDate.isSame(to, "day")) &&
               s.booked &&
-              s.status !== "cancelled" &&
-              s.status !== "refund" &&
+              normalizedStatus !== "cancelled" &&
+              normalizedStatus !== "refund" &&
               // Only paid interactions count for admin graphs
-              s.paymentStatus === "paid"
+              normalizedPaymentStatus === "paid"
             );
           })
-          .map((s) => ({
-            ...s,
-            studentId: b.studentId,
-            instructorId: b.instructorId,
-            slotDate: dayjs(s.date),
-            slotEnd: dayjs(`${s.date}T${s.endTime}`),
-            pricePerSlot,
-            instructorAmount:
-              s.instructorAmount != null
-                ? Number(s.instructorAmount)
-                : s.chargeAmount != null && s.dspCommission != null
-                  ? Number(s.chargeAmount) - Number(s.dspCommission)
-                  : pricePerSlot, // legacy fallback (gross)
-          }));
+          .map((s) => {
+            const slotObj = s?.toObject ? s.toObject() : s;
+            return {
+              ...slotObj,
+              studentId: b.studentId,
+              instructorId: b.instructorId,
+              slotDate: parseSlotDateFlexible(slotObj.date),
+              slotEnd: dayjs(`${slotObj.date}T${slotObj.endTime}`),
+              pricePerSlot,
+              instructorAmount:
+                slotObj.instructorAmount != null
+                  ? Number(slotObj.instructorAmount)
+                  : slotObj.chargeAmount != null && slotObj.dspCommission != null
+                    ? Number(slotObj.chargeAmount) - Number(slotObj.dspCommission)
+                    : pricePerSlot, // legacy fallback (gross)
+            };
+          });
       });
 
       // Payment-date keyed slots (used ONLY for Active Users students line)
@@ -306,18 +336,22 @@ const adminAnalyticsResolvers = {
           .filter(
             (s) =>
               s.booked &&
-              s.status !== "cancelled" &&
-              s.status !== "refund" &&
-              s.paymentStatus === "paid",
+              !["cancelled", "refund"].includes(
+                String(s.status || "").trim().toLowerCase(),
+              ) &&
+              String(s.paymentStatus || "").trim().toLowerCase() === "paid",
           )
           .map((s) => {
+            const slotObj = s?.toObject ? s.toObject() : s;
             // Prefer slot-level chargedAt; fall back to booking createdAt if missing.
             const chargedAt =
-              (s.chargedAt ? new Date(s.chargedAt) : null) ||
+              (slotObj.chargedAt ? new Date(slotObj.chargedAt) : null) ||
               (b.createdAt ? new Date(b.createdAt) : null);
-            const paymentDate = chargedAt ? dayjs(chargedAt) : dayjs(s.date);
+            const paymentDate = chargedAt
+              ? dayjs(chargedAt)
+              : parseSlotDateFlexible(slotObj.date) || dayjs(b.createdAt);
             return {
-              ...s,
+              ...slotObj,
               studentId: b.studentId,
               bookingCreatedAt: b.createdAt,
               paymentDate,
@@ -385,7 +419,7 @@ const adminAnalyticsResolvers = {
 
         // Delivered lessons (paid) = explicitly marked completed
         const deliveredBucketSlots = bucketSlots.filter(
-          (s) => s.status === "completed",
+          (s) => String(s.status || "").trim().toLowerCase() === "completed",
         );
 
         // Students = paid for at least one lesson in the bucket (by payment date)

@@ -33,11 +33,34 @@ import { GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest
 import { GET_INSTRUCTOR_PROFILE } from "../../../graphql/mutations/instructorPublic";
 import toast from "react-hot-toast";
 import advancedFormat from "dayjs/plugin/advancedFormat";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import dayjs from "dayjs";
 dayjs.extend(advancedFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 import { Slot } from "../../../types/Bookings";
+
+const SLOT_BUSINESS_TIMEZONE =
+  import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+
+function normalizeSlotTime(timeStr: string) {
+  if (!timeStr) return "00:00:00";
+  return timeStr.split(":").length === 2 ? `${timeStr}:00` : timeStr;
+}
+
+function getSlotStartUtcMs(dateStr: string, timeStr: string) {
+  const parsed = dayjs.tz(
+    `${dateStr} ${normalizeSlotTime(timeStr)}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  return parsed.isValid() ? parsed.valueOf() : NaN;
+}
+
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -309,6 +332,23 @@ const BookingDetails: React.FC = () => {
       return !sameAsCurrent;
     });
   })();
+  const selectedRescheduleSlot = availableRescheduleSlots.find(
+    (s: { id: string }) => s.id === selectedRescheduleSlotId,
+  );
+  const selectedRescheduleStartMs = selectedRescheduleSlot
+    ? getSlotStartUtcMs(selectedRescheduleSlot.date, selectedRescheduleSlot.startTime)
+    : NaN;
+  const selectedRescheduleInT48Window =
+    Number.isFinite(selectedRescheduleStartMs) &&
+    selectedRescheduleStartMs - Date.now() <= FORTY_EIGHT_HOURS_MS;
+  const selectedRescheduleChargeAtMs =
+    Number.isFinite(selectedRescheduleStartMs)
+      ? selectedRescheduleStartMs - FORTY_EIGHT_HOURS_MS
+      : NaN;
+  const currentSlotPaymentStatus = String(
+    (currentSlot as { paymentStatus?: string } | undefined)?.paymentStatus || "",
+  ).toLowerCase();
+  const isCurrentSlotPendingPayment = currentSlotPaymentStatus === "pending_payment";
 
   const handleConfirmReschedule = async () => {
     try {
@@ -325,6 +365,14 @@ const BookingDetails: React.FC = () => {
         setRescheduleError("Selected slot is no longer available. Please choose another.");
         return;
       }
+      const selectedStartMs = getSlotStartUtcMs(
+        selectedSlot.date,
+        selectedSlot.startTime,
+      );
+      const dueNowAfterReschedule =
+        currentSlotPaymentStatus === "pending_payment" &&
+        Number.isFinite(selectedStartMs) &&
+        selectedStartMs - Date.now() <= FORTY_EIGHT_HOURS_MS;
 
       setRescheduleLoading(true);
       setRescheduleError("");
@@ -339,7 +387,13 @@ const BookingDetails: React.FC = () => {
           },
         },
       });
-      toast.success("Lesson rescheduled successfully.");
+      if (dueNowAfterReschedule) {
+        toast.success(
+          "Lesson rescheduled. Payment is now due and will be attempted shortly.",
+        );
+      } else {
+        toast.success("Lesson rescheduled successfully.");
+      }
       setIsRescheduleDialogOpen(false);
       navigate("/student-dashboard/book", { replace: true });
     } catch (err: unknown) {
@@ -1203,6 +1257,28 @@ const BookingDetails: React.FC = () => {
               <Alert severity="info" sx={{ mt: 1.5 }}>
                 Choose a new available slot. Your lesson will be moved directly without cancelling the full booking.
               </Alert>
+              {isCurrentSlotPendingPayment && !selectedRescheduleSlot && (
+                <Alert severity="info" sx={{ mt: 1.5 }}>
+                  This lesson is on deferred payment. After you choose a new slot:
+                  if it starts within 48 hours, payment becomes due immediately;
+                  otherwise it stays deferred until T-48.
+                </Alert>
+              )}
+              {isCurrentSlotPendingPayment && selectedRescheduleSlot && selectedRescheduleInT48Window && (
+                <Alert severity="warning" sx={{ mt: 1.5 }}>
+                  Due now: this selected time is within 48 hours, so payment will
+                  be attempted on the next T-48 job tick (about 1 minute).
+                </Alert>
+              )}
+              {isCurrentSlotPendingPayment &&
+                selectedRescheduleSlot &&
+                !selectedRescheduleInT48Window &&
+                Number.isFinite(selectedRescheduleChargeAtMs) && (
+                  <Alert severity="success" sx={{ mt: 1.5 }}>
+                    Still deferred: payment remains pending and will be attempted at{" "}
+                    {new Date(selectedRescheduleChargeAtMs).toLocaleString()}.
+                  </Alert>
+                )}
               <Box
                 sx={{
                   bgcolor: "#f7fafc",
@@ -1310,7 +1386,9 @@ const BookingDetails: React.FC = () => {
               {rescheduleLoading ? (
                 <CircularProgress size={20} />
               ) : (
-                "Confirm Reschedule"
+                isCurrentSlotPendingPayment && selectedRescheduleInT48Window
+                  ? "Confirm Reschedule (Due now)"
+                  : "Confirm Reschedule"
               )}
             </Button>
           )}

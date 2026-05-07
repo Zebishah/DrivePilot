@@ -24,6 +24,22 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const SLOT_BUSINESS_TIMEZONE =
+  import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+function normalizeSlotTime(timeStr?: string) {
+  if (!timeStr) return "00:00:00";
+  return timeStr.split(":").length === 2 ? `${timeStr}:00` : timeStr;
+}
 interface BookingsTableProps {
   className?: string;
   /** When set, only bookings for this student are listed (same UI as main Booking Management). */
@@ -482,7 +498,8 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           slot.paymentStatus === "payment_failed") && (
                           <div className="mb-1 rounded-md bg-amber-50 px-2 py-1 text-amber-800">
                             The student's payment has not been completed. The student must complete the payment before{" "}
-                            {getPaymentDeadlineLabel(slot)}. Otherwise, the lesson will be automatically cancelled.
+                            {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
+                            {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
                           </div>
                         )}
                         Cancelled by:{" "}
@@ -573,19 +590,42 @@ function formatCancellationDateTime(value?: string) {
   });
 }
 
-function getPaymentDeadlineLabel(slot: StudentBooking["slots"][number]) {
+function getPaymentDeadlineLabelByTimezone(
+  slot: StudentBooking["slots"][number],
+  timeZone?: string,
+) {
+  const reminderBase =
+    slot.paymentReminderStartedAt ||
+    (slot as { paymentReminder1SentAt?: string }).paymentReminder1SentAt ||
+    (slot as { chargedAt?: string }).chargedAt;
   const deadline = slot.paymentReminderDeadlineAt
     ? new Date(slot.paymentReminderDeadlineAt)
-    : slot.paymentReminderStartedAt
-      ? new Date(new Date(slot.paymentReminderStartedAt).getTime() + 24 * 60 * 60 * 1000)
+    : reminderBase
+      ? new Date(new Date(reminderBase).getTime() + TWENTY_FOUR_HOURS_MS)
       : null;
-  if (!deadline || Number.isNaN(deadline.getTime())) return "[HH:MM, DD/MM/YYYY]";
-  return deadline.toLocaleString("en-GB", {
+  const slotStartTz = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.startTime)}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const derivedDeadline =
+    slotStartTz.isValid()
+      ? new Date(slotStartTz.valueOf() - FORTY_EIGHT_HOURS_MS + TWENTY_FOUR_HOURS_MS)
+      : null;
+  const effectiveDeadline =
+    deadline && !Number.isNaN(deadline.getTime())
+      ? deadline
+      : derivedDeadline && !Number.isNaN(derivedDeadline.getTime())
+        ? derivedDeadline
+        : null;
+  if (!effectiveDeadline) return "-";
+  return effectiveDeadline.toLocaleString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    ...(timeZone ? { timeZone } : {}),
   });
 }
 
@@ -1192,7 +1232,8 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                     className="px-6 py-3 text-xs font-medium text-amber-800 bg-amber-50"
                   >
                     The student&apos;s payment has not been completed. The student must complete the payment before{" "}
-                    {getPaymentDeadlineLabel(slot)}. Otherwise, the lesson will be automatically cancelled.
+                    {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
+                    {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
                   </td>
                 </tr>
               )}

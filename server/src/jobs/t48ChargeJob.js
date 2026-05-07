@@ -12,6 +12,7 @@ const { sendStudentReminderEmail } = require("./t48PaymentReminderJob");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
+const PAYMENT_REMINDER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** Query to match a specific slot that is still pending_payment (prevents race / double-process) */
 function slotStillPendingFilter(bookingId, slotId) {
@@ -24,6 +25,12 @@ function slotStillPendingFilter(bookingId, slotId) {
       },
     },
   };
+}
+
+function buildReminderStartAndDeadline(now = new Date()) {
+  const startedAt = now;
+  const deadlineAt = new Date(startedAt.getTime() + PAYMENT_REMINDER_WINDOW_MS);
+  return { startedAt, deadlineAt };
 }
 
 /**
@@ -152,6 +159,9 @@ async function runT48ChargeJob() {
         });
 
         if (paymentResult.requiresAction) {
+          const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
+            new Date(),
+          );
           console.log(
             `[T48ChargeJob] Slot ${slot._id}: requires_action (3DS). Marked slot; student must complete payment.`,
           );
@@ -161,6 +171,9 @@ async function runT48ChargeJob() {
               $set: {
                 "slots.$.paymentStatus": "requires_action",
                 "slots.$.paymentIntentId": paymentResult.paymentIntentId,
+                "slots.$.paymentReminderStartedAt": startedAt,
+                "slots.$.paymentReminderDeadlineAt": deadlineAt,
+                "slots.$.paymentReminder1SentAt": startedAt,
               },
             },
           );
@@ -172,11 +185,17 @@ async function runT48ChargeJob() {
         }
 
         if (paymentResult.status !== "succeeded") {
+          const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
+            new Date(),
+          );
           const r = await StudentBooking.updateOne(
             slotStillPendingFilter(booking._id, slot._id),
             {
               $set: {
                 "slots.$.paymentStatus": "payment_failed",
+                "slots.$.paymentReminderStartedAt": startedAt,
+                "slots.$.paymentReminderDeadlineAt": deadlineAt,
+                "slots.$.paymentReminder1SentAt": startedAt,
               },
             },
           );
@@ -325,6 +344,9 @@ async function runT48ChargeJob() {
             : null);
 
         if (requiresAuth) {
+          const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
+            new Date(),
+          );
           let piIdToUse = paymentIntentId;
           if (paymentIntentId) {
             try {
@@ -336,6 +358,9 @@ async function runT48ChargeJob() {
           }
           const updateFields = {
             "slots.$.paymentStatus": "requires_action",
+            "slots.$.paymentReminderStartedAt": startedAt,
+            "slots.$.paymentReminderDeadlineAt": deadlineAt,
+            "slots.$.paymentReminder1SentAt": startedAt,
           };
           if (piIdToUse) updateFields["slots.$.paymentIntentId"] = piIdToUse;
           const r = await StudentBooking.updateOne(
@@ -368,11 +393,17 @@ async function runT48ChargeJob() {
             );
           }
         } else {
+          const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
+            new Date(),
+          );
           const failResult = await StudentBooking.updateOne(
             slotStillPendingFilter(booking._id, slot._id),
             {
               $set: {
                 "slots.$.paymentStatus": "payment_failed",
+                "slots.$.paymentReminderStartedAt": startedAt,
+                "slots.$.paymentReminderDeadlineAt": deadlineAt,
+                "slots.$.paymentReminder1SentAt": startedAt,
               },
             },
           );

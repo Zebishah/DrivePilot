@@ -28,7 +28,7 @@ async function getPlatformCommissionForSplit() {
 }
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
-const { notifyBookingParties } = require("../../utils/SendOtpEmail");
+const { notifyBookingParties, sendBookingEmail } = require("../../utils/SendOtpEmail");
 const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
 const { createTransaction } = require("../../services/transactionService");
@@ -2316,6 +2316,11 @@ const studentBookingResolver = {
         if (!slot) {
           throw new UserInputError("Slot not found in booking.");
         }
+        const previousSlotSnapshot = {
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        };
 
         const currentStatus = String(slot.status || "").toLowerCase();
         if (["completed", "missed", "refund", "cancelled"].includes(currentStatus)) {
@@ -2496,6 +2501,43 @@ const studentBookingResolver = {
         await booking.save({ session });
 
         await session.commitTransaction();
+
+        // Dedicated instructor alert when student/admin reschedules a lesson.
+        if ((isOwner || isAdmin) && booking?.instructorId?.email) {
+          try {
+            const actorRole = isAdmin ? "admin" : "student";
+            await sendBookingEmail(
+              [
+                {
+                  email: booking.instructorId.email,
+                  role: "instructor",
+                  name: `${booking.instructorId.firstName || ""} ${booking.instructorId.lastName || ""}`.trim(),
+                },
+              ],
+              {
+                id: booking._id,
+                status: booking.status,
+                slots: [
+                  {
+                    ...slot.toObject(),
+                    previousDate: previousSlotSnapshot.date,
+                    previousStartTime: previousSlotSnapshot.startTime,
+                    previousEndTime: previousSlotSnapshot.endTime,
+                    rescheduledBy: actorRole,
+                  },
+                ],
+                student: booking.studentId,
+                instructor: booking.instructorId,
+              },
+              "booking_rescheduled",
+            );
+          } catch (emailError) {
+            console.error(
+              "Failed to send instructor reschedule alert email:",
+              emailError,
+            );
+          }
+        }
 
         try {
           await notifyBookingParties(booking, "booking_status_updated");

@@ -2,8 +2,10 @@ const mongoose = require("mongoose");
 const StudentBooking = require("../models/studentBooking.model");
 const teacherAvailabilityModel = require("../models/teacherAvailability.model");
 const { sendBookingEmail } = require("../utils/SendOtpEmail");
+const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 
 const GRACE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 const SECOND_REMINDER_AFTER_MS = 12 * 60 * 60 * 1000;
 const THIRD_REMINDER_AFTER_MS = 18 * 60 * 60 * 1000;
 
@@ -224,7 +226,12 @@ async function runT48PaymentReminderJob() {
       const startedAt =
         slot.paymentReminderStartedAt ||
         slot.paymentReminder1SentAt ||
-        slot.chargedAt;
+        slot.chargedAt ||
+        (() => {
+          const slotStartMs = getSlotStartTimestampUtc(slot.date, slot.startTime);
+          if (!Number.isFinite(slotStartMs)) return null;
+          return new Date(slotStartMs - FORTY_EIGHT_HOURS_MS);
+        })();
       if (!startedAt) continue;
 
       const milestones = buildReminderMilestones(startedAt);
