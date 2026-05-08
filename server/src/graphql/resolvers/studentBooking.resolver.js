@@ -5,8 +5,8 @@ const {
   getSlotStartTimestampUtc,
 } = require("../../utils/slotTimezone");
 
-// Testing mode: immediate payout eligibility after lesson completion outcome.
-const PAYOUT_DELAY_MS = 0;
+// Production payout delay: 3 days after lesson completion/missed outcome.
+const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const {
   AuthenticationError,
   UserInputError,

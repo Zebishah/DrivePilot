@@ -40,6 +40,84 @@ function normalizeSlotTime(timeStr?: string) {
   if (!timeStr) return "00:00:00";
   return timeStr.split(":").length === 2 ? `${timeStr}:00` : timeStr;
 }
+
+function parseSlotEndMs(slot: { date: string; endTime: string }) {
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.endTime || "23:59:59")}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function parseSlotStartMs(slot: { date: string; startTime: string }) {
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.startTime || "00:00:00")}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function formatSlotDateForViewer(slot: { date: string; startTime: string }) {
+  const startMs = parseSlotStartMs(slot);
+  if (!Number.isFinite(startMs)) return slot.date;
+  return new Date(startMs).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatSlotTimeForViewer(slot: {
+  date: string;
+  startTime: string;
+  endTime: string;
+}) {
+  const startMs = parseSlotStartMs(slot);
+  const endMs = parseSlotEndMs(slot);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function formatSlotTimeForBusinessTimezone(slot: {
+  date: string;
+  startTime: string;
+  endTime: string;
+}) {
+  const startMs = parseSlotStartMs(slot);
+  const endMs = parseSlotEndMs(slot);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  return `${startLabel} - ${endLabel}`;
+}
 interface BookingsTableProps {
   className?: string;
   /** When set, only bookings for this student are listed (same UI as main Booking Management). */
@@ -174,9 +252,16 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
 
   const normalizedStatus = (currentStatus ?? "").toLowerCase();
   const normalizedPaymentStatus = (paymentStatus ?? "").toLowerCase();
+  const isCancelledLike =
+    normalizedStatus === "cancelled" || normalizedStatus === "refund";
+  const isTerminalStatus =
+    isCancelledLike ||
+    normalizedStatus === "completed" ||
+    normalizedStatus === "missed";
   const isAwaitingPayment =
-    normalizedPaymentStatus === "requires_action" ||
-    normalizedPaymentStatus === "payment_failed";
+    !isTerminalStatus &&
+    (normalizedPaymentStatus === "requires_action" ||
+      normalizedPaymentStatus === "payment_failed");
 
   const isFinalDisabled =
     normalizedStatus === "completed" ||
@@ -185,6 +270,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
 
   // UI label rules (match admin logic)
   const isStatusNotSetYet =
+    listTab === "history" &&
     lessonPassed &&
     normalizedStatus !== "completed" &&
     normalizedStatus !== "missed" &&
@@ -194,8 +280,13 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const displayLabel =
     listTab === "abandoned"
       ? "Abandoned"
+      : isCancelledLike
+        ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
+          "Cancelled"
       : isAwaitingPayment
         ? "Awaiting Payment"
+      : listTab === "upcoming" && normalizedStatus === "booked"
+        ? "Upcoming"
       : normalizedStatus === "booked" && !lessonPassed
         ? "Upcoming"
         : isStatusNotSetYet
@@ -206,8 +297,13 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const displayColor =
     listTab === "abandoned"
       ? "bg-slate-200 text-slate-800"
+      : isCancelledLike
+        ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
+          "bg-red-100 text-red-800"
       : isAwaitingPayment
         ? "bg-amber-100 text-amber-800"
+      : listTab === "upcoming" && normalizedStatus === "booked"
+        ? "bg-yellow-100 text-yellow-800"
       : normalizedStatus === "booked" && !lessonPassed
         ? "bg-yellow-100 text-yellow-800"
         : isStatusNotSetYet
@@ -351,21 +447,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
 }) => {
   if (!isOpen || !booking) return null;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -466,14 +547,20 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {formatDate(slot.date)}
+                              {formatSlotDateForViewer({
+                                date: slot.date,
+                                startTime: slot.startTime,
+                              })}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {formatTime(slot.startTime)} -{" "}
-                              {formatTime(slot.endTime)}
+                              {formatSlotTimeForViewer({
+                                date: slot.date,
+                                startTime: slot.startTime,
+                                endTime: slot.endTime,
+                              })}
                             </span>
                           </div>
                         </div>
@@ -565,7 +652,8 @@ type SortOrder = "newest" | "oldest";
 type HistoryStatusFilter = "all" | "no_status" | "completed" | "missed";
 
 function getSlotEndDateTime(slot: { date: string; endTime: string }) {
-  return new Date(`${slot.date}T${slot.endTime || "23:59"}:00`);
+  const ms = parseSlotEndMs(slot);
+  return Number.isFinite(ms) ? new Date(ms) : new Date(NaN);
 }
 
 function getCancelledByLabel(cancelledBy?: string) {
@@ -698,21 +786,6 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
   const formatCompletionDate = (completionMarkedAt?: string, status?: string) => {
     if (String(status || "").toLowerCase() !== "completed") return "-";
     if (!completionMarkedAt) return "-";
@@ -759,8 +832,8 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
   // (cancellation date formatter removed — unused in new table)
 
   const hasLessonPassed = (slot: { date: string; endTime: string }) => {
-    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    return slotEnd.getTime() <= Date.now();
+    const ms = parseSlotEndMs(slot);
+    return Number.isFinite(ms) ? ms <= Date.now() : false;
   };
 
   const [tab, setTab] = useState<BookingTabKey>("upcoming");
@@ -1124,9 +1197,18 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {pagedRows.map(({ booking, slot }) => {
+              const rowStatus = String(slot.status || "").toLowerCase();
+              const rowPaymentStatus = String(slot.paymentStatus || "").toLowerCase();
               const isAwaitingPayment =
-                String(slot.paymentStatus || "").toLowerCase() === "requires_action" ||
-                String(slot.paymentStatus || "").toLowerCase() === "payment_failed";
+                (rowStatus === "booked" || rowStatus === "confirmed") &&
+                (rowPaymentStatus === "requires_action" ||
+                  rowPaymentStatus === "payment_failed");
+              const isPaymentRelatedCancelled =
+                tab === "cancelled" &&
+                (rowStatus === "cancelled" || rowStatus === "refund") &&
+                (rowPaymentStatus === "requires_action" ||
+                  rowPaymentStatus === "payment_failed" ||
+                  rowPaymentStatus === "pending_payment");
               return (
               <React.Fragment key={`${booking._id}-${slot._id}`}>
               <tr className="hover:bg-gray-50 transition-colors duration-150">
@@ -1158,12 +1240,28 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">{formatDate(slot.date)}</div>
+                  <div className="text-sm text-gray-900">
+                    {formatSlotDateForViewer({
+                      date: slot.date,
+                      startTime: slot.startTime,
+                    })}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                    {formatSlotTimeForViewer({
+                      date: slot.date,
+                      startTime: slot.startTime,
+                      endTime: slot.endTime,
+                    })}
                   </div>
+                    <div className="text-xs text-gray-500">
+                      ({`Switzerland: ${formatSlotTimeForBusinessTimezone({
+                        date: slot.date,
+                        startTime: slot.startTime,
+                        endTime: slot.endTime,
+                      })}`})
+                    </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900 tabular-nums">
@@ -1234,6 +1332,17 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                     The student&apos;s payment has not been completed. The student must complete the payment before{" "}
                     {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
                     {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
+                  </td>
+                </tr>
+              )}
+              {isPaymentRelatedCancelled && (
+                <tr>
+                  <td
+                    colSpan={tab === "cancelled" ? 10 : 9}
+                    className="px-6 py-3 text-xs font-medium text-red-800 bg-red-50"
+                  >
+                    This lesson was cancelled and is no longer available because
+                    the student's payment was not completed on time.
                   </td>
                 </tr>
               )}

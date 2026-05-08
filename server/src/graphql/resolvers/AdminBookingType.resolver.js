@@ -5,8 +5,8 @@ const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
 
 const { User, Student, Instructor } = require("../../models/User");
 
-// Testing mode: immediate payout eligibility after lesson completion outcome.
-const PAYOUT_DELAY_MS = 0;
+// Production payout delay: 3 days after lesson completion/missed outcome.
+const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = require("../../models/StudentBooking");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");

@@ -48,6 +48,18 @@ function parseSlotStartUtcMs(slot: Slot): number {
   return Number.isFinite(ms) ? ms : NaN;
 }
 
+function parseSlotEndUtcMs(slot: Slot): number {
+  const raw = typeof slot.endTime === "string" ? slot.endTime : "";
+  const normalized = raw.length === 5 ? `${raw}:00` : raw || "23:59:59";
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalized}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
 interface BookingListProps {
   bookings: Booking[];
   onBookingClick: (booking: Booking, id: string, slot: Slot) => void;
@@ -83,8 +95,66 @@ export const BookingList: React.FC<BookingListProps> = ({
     setHistoryStatusFilter("all");
   };
 
-  const getSlotEndDateTime = (slot: Slot) =>
-    new Date(`${slot.date}T${slot.endTime}`);
+  const getSlotEndDateTime = (slot: Slot) => {
+    const ms = parseSlotEndUtcMs(slot);
+    return Number.isFinite(ms) ? new Date(ms) : new Date(NaN);
+  };
+
+  const formatSlotDateForViewer = (slot: Slot) => {
+    const ms = parseSlotStartUtcMs(slot);
+    if (!Number.isFinite(ms)) {
+      return new Date(slot.date).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+    return new Date(ms).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatSlotTimeForViewer = (slot: Slot) => {
+    const startMs = parseSlotStartUtcMs(slot);
+    const endMs = parseSlotEndUtcMs(slot);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+      return `${slot.startTime} - ${slot.endTime}`;
+    }
+    const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${startLabel} - ${endLabel}`;
+  };
+
+  const formatSlotTimeForSwiss = (slot: Slot) => {
+    const startMs = parseSlotStartUtcMs(slot);
+    const endMs = parseSlotEndUtcMs(slot);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+      return `${slot.startTime} - ${slot.endTime}`;
+    }
+    const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: SLOT_BUSINESS_TIMEZONE,
+    });
+    const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: SLOT_BUSINESS_TIMEZONE,
+    });
+    return `${startLabel} - ${endLabel}`;
+  };
 
   /** Base lesson price per slot (uses totalAmount), in CHF */
   const formatLessonPrice = (booking: Booking) => {
@@ -360,7 +430,17 @@ export const BookingList: React.FC<BookingListProps> = ({
   };
 
   const getPaymentDisplay = (slot: Slot) => {
+    const slotStatus = String(slot.status || "").toLowerCase();
     const paymentStatus = String(slot.paymentStatus || "").toLowerCase();
+    const isCancelledLike = slotStatus === "cancelled" || slotStatus === "refund";
+    if (
+      isCancelledLike &&
+      (paymentStatus === "requires_action" ||
+        paymentStatus === "payment_failed" ||
+        paymentStatus === "pending_payment")
+    ) {
+      return { label: "Not Paid In Time", color: "error" as const };
+    }
     if (paymentStatus === "paid") {
       return { label: "Paid", color: "success" as const };
     }
@@ -505,6 +585,16 @@ export const BookingList: React.FC<BookingListProps> = ({
                   {currentRows.map((row) => {
                     const statusLabel = getDisplayStatus(row);
                     const t48Lines = getT48Display(row.slot);
+                    const rowStatus = String(row.slot.status || "").toLowerCase();
+                    const rowPaymentStatus = String(
+                      row.slot.paymentStatus || "",
+                    ).toLowerCase();
+                    const isPaymentRelatedCancelled =
+                      row.tab === "cancelled" &&
+                      (rowStatus === "cancelled" || rowStatus === "refund") &&
+                      (rowPaymentStatus === "requires_action" ||
+                        rowPaymentStatus === "payment_failed" ||
+                        rowPaymentStatus === "pending_payment");
                     return (
                       <>
                         <TableRow key={`${row.booking._id}-${row.slot._id}`}>
@@ -513,14 +603,17 @@ export const BookingList: React.FC<BookingListProps> = ({
                           </TableCell>
                           <TableCell>{row.booking.instructorId.email}</TableCell>
                           <TableCell>
-                            {new Date(row.slot.date).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            {formatSlotDateForViewer(row.slot)}
                           </TableCell>
                           <TableCell sx={{ whiteSpace: "nowrap" }}>
-                            {row.slot.startTime} - {row.slot.endTime}
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                              <Typography variant="body2">
+                                {formatSlotTimeForViewer(row.slot)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                ({`Switzerland: ${formatSlotTimeForSwiss(row.slot)}`})
+                              </Typography>
+                            </Box>
                           </TableCell>
                           <TableCell sx={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
                             {formatLessonPrice(row.booking)}
@@ -699,6 +792,22 @@ export const BookingList: React.FC<BookingListProps> = ({
                             <TableCell colSpan={tabValue === 2 ? 11 : 10} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
                               <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
                                 Please complete your payment before {formatPaymentDeadline(row.slot)}. Otherwise, your lesson will be automatically cancelled.
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {isPaymentRelatedCancelled && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={tabValue === 2 ? 11 : 10}
+                              sx={{ py: 1.2, bgcolor: "#fef2f2" }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{ fontWeight: 600, color: "#991b1b" }}
+                              >
+                                This slot is cancelled and not available because
+                                payment was not completed before the deadline.
                               </Typography>
                             </TableCell>
                           </TableRow>

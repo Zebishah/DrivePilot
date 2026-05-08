@@ -348,6 +348,8 @@ export function AnalyticsDashboard() {
   const [showFromDatePicker, setShowFromDatePicker] = useState(false);
   const [showToDatePicker, setShowToDatePicker] = useState(false);
   const now = useMemo(() => new Date(), []);
+  const defaultGraphMonth = useMemo(() => String(now.getMonth()), [now]);
+  const defaultGraphYear = useMemo(() => String(now.getFullYear()), [now]);
   // NOTE: period dropdowns are per-graph; do not share this state globally
 
   const {
@@ -621,6 +623,15 @@ export function AnalyticsDashboard() {
     },
     [ALL_MONTHS, ALL_YEARS],
   );
+  const getAverageUnitLabel = useCallback(
+    (monthValue: string, yearValue: string) => {
+      const aggregation = getAggregationLabel(monthValue, yearValue);
+      if (aggregation === "Daily") return "day";
+      if (aggregation === "Monthly") return "month";
+      return "year";
+    },
+    [getAggregationLabel],
+  );
 
   const clearFilters = () => {
     const newFilters: AnalyticsFilterInput = { filterType: FilterType.THIS_MONTH };
@@ -741,27 +752,29 @@ export function AnalyticsDashboard() {
     [],
   );
 
-  const loadGraphsForPeriod = useCallback(
+  const fetchGraphsForPeriod = useCallback(
     async (monthValue: string, yearValue: string) => {
       const yearsToUse =
         yearValue === ALL_YEARS ? availableYears : [yearValue];
       if (yearsToUse.length === 0) {
-        setActiveUsersGraph([]);
-        setAvgRevenueGraph([]);
-        setAvgBookingsGraph([]);
-        setTotalEarningsGraph([]);
-        setTrafficGraph([]);
-        return;
+        return {
+          activeUsers: [],
+          averageRevenuePerInstructor: [],
+          bookingsPerInstructor: [],
+          totalEarnings: [],
+          conversionRates: [],
+        };
       }
 
       if (monthValue !== ALL_MONTHS && yearValue !== ALL_YEARS) {
         const gd = await fetchGraphDataForMonthYear(monthValue, yearValue);
-        setActiveUsersGraph(gd?.activeUsers ?? []);
-        setAvgRevenueGraph(gd?.averageRevenuePerInstructor ?? []);
-        setAvgBookingsGraph(gd?.bookingsPerInstructor ?? []);
-        setTotalEarningsGraph(gd?.totalEarnings ?? []);
-        setTrafficGraph(gd?.conversionRates ?? []);
-        return;
+        return {
+          activeUsers: gd?.activeUsers ?? [],
+          averageRevenuePerInstructor: gd?.averageRevenuePerInstructor ?? [],
+          bookingsPerInstructor: gd?.bookingsPerInstructor ?? [],
+          totalEarnings: gd?.totalEarnings ?? [],
+          conversionRates: gd?.conversionRates ?? [],
+        };
       }
 
       if (monthValue === ALL_MONTHS && yearValue !== ALL_YEARS) {
@@ -780,27 +793,27 @@ export function AnalyticsDashboard() {
             };
           }),
         );
-        setActiveUsersGraph(
-          byMonth.map((p) => ({ time: p.time, ...p.active })),
-        );
-        setAvgRevenueGraph(
-          byMonth.map((p) => ({ time: p.time, averageRevenue: p.revenue })),
-        );
-        setAvgBookingsGraph(
-          byMonth.map((p) => ({ time: p.time, averageBookings: p.bookings })),
-        );
-        setTotalEarningsGraph(
-          byMonth.map((p) => ({ time: p.time, totalEarnings: p.earnings })),
-        );
-        setTrafficGraph(
-          byMonth.map((p) => ({
+        return {
+          activeUsers: byMonth.map((p) => ({ time: p.time, ...p.active })),
+          averageRevenuePerInstructor: byMonth.map((p) => ({
+            time: p.time,
+            averageRevenue: p.revenue,
+          })),
+          bookingsPerInstructor: byMonth.map((p) => ({
+            time: p.time,
+            averageBookings: p.bookings,
+          })),
+          totalEarnings: byMonth.map((p) => ({
+            time: p.time,
+            totalEarnings: p.earnings,
+          })),
+          conversionRates: byMonth.map((p) => ({
             time: p.time,
             visitors: p.conversion.visitors,
             registrations: p.conversion.registrations,
             rate: p.conversion.rate,
           })),
-        );
-        return;
+        };
       }
 
       if (monthValue !== ALL_MONTHS && yearValue === ALL_YEARS) {
@@ -819,25 +832,27 @@ export function AnalyticsDashboard() {
           }),
         );
         const sorted = byYear.sort((a, b) => Number(a.time) - Number(b.time));
-        setActiveUsersGraph(sorted.map((p) => ({ time: p.time, ...p.active })));
-        setAvgRevenueGraph(
-          sorted.map((p) => ({ time: p.time, averageRevenue: p.revenue })),
-        );
-        setAvgBookingsGraph(
-          sorted.map((p) => ({ time: p.time, averageBookings: p.bookings })),
-        );
-        setTotalEarningsGraph(
-          sorted.map((p) => ({ time: p.time, totalEarnings: p.earnings })),
-        );
-        setTrafficGraph(
-          sorted.map((p) => ({
+        return {
+          activeUsers: sorted.map((p) => ({ time: p.time, ...p.active })),
+          averageRevenuePerInstructor: sorted.map((p) => ({
+            time: p.time,
+            averageRevenue: p.revenue,
+          })),
+          bookingsPerInstructor: sorted.map((p) => ({
+            time: p.time,
+            averageBookings: p.bookings,
+          })),
+          totalEarnings: sorted.map((p) => ({
+            time: p.time,
+            totalEarnings: p.earnings,
+          })),
+          conversionRates: sorted.map((p) => ({
             time: p.time,
             visitors: p.conversion.visitors,
             registrations: p.conversion.registrations,
             rate: p.conversion.rate,
           })),
-        );
-        return;
+        };
       }
 
       const byYearAllMonths = await Promise.all(
@@ -857,24 +872,27 @@ export function AnalyticsDashboard() {
         }),
       );
       const sorted = byYearAllMonths.sort((a, b) => Number(a.time) - Number(b.time));
-      setActiveUsersGraph(sorted.map((p) => ({ time: p.time, ...p.active })));
-      setAvgRevenueGraph(
-        sorted.map((p) => ({ time: p.time, averageRevenue: p.revenue })),
-      );
-      setAvgBookingsGraph(
-        sorted.map((p) => ({ time: p.time, averageBookings: p.bookings })),
-      );
-      setTotalEarningsGraph(
-        sorted.map((p) => ({ time: p.time, totalEarnings: p.earnings })),
-      );
-      setTrafficGraph(
-        sorted.map((p) => ({
+      return {
+        activeUsers: sorted.map((p) => ({ time: p.time, ...p.active })),
+        averageRevenuePerInstructor: sorted.map((p) => ({
+          time: p.time,
+          averageRevenue: p.revenue,
+        })),
+        bookingsPerInstructor: sorted.map((p) => ({
+          time: p.time,
+          averageBookings: p.bookings,
+        })),
+        totalEarnings: sorted.map((p) => ({
+          time: p.time,
+          totalEarnings: p.earnings,
+        })),
+        conversionRates: sorted.map((p) => ({
           time: p.time,
           visitors: p.conversion.visitors,
           registrations: p.conversion.registrations,
           rate: p.conversion.rate,
         })),
-      );
+      };
     },
     [
       ALL_MONTHS,
@@ -897,13 +915,21 @@ export function AnalyticsDashboard() {
     setIsAvgBookingsLoading(true);
     setIsTotalEarningsLoading(true);
     setIsTrafficLoading(true);
-    void loadGraphsForPeriod(activeUsersMonth, activeUsersYear).finally(() => {
-      setIsActiveUsersLoading(false);
-      setIsAvgRevenueLoading(false);
-      setIsAvgBookingsLoading(false);
-      setIsTotalEarningsLoading(false);
-      setIsTrafficLoading(false);
-    });
+    void fetchGraphsForPeriod(activeUsersMonth, activeUsersYear)
+      .then((gd) => {
+        setActiveUsersGraph(gd.activeUsers ?? []);
+        setAvgRevenueGraph(gd.averageRevenuePerInstructor ?? []);
+        setAvgBookingsGraph(gd.bookingsPerInstructor ?? []);
+        setTotalEarningsGraph(gd.totalEarnings ?? []);
+        setTrafficGraph(gd.conversionRates ?? []);
+      })
+      .finally(() => {
+        setIsActiveUsersLoading(false);
+        setIsAvgRevenueLoading(false);
+        setIsAvgBookingsLoading(false);
+        setIsTotalEarningsLoading(false);
+        setIsTrafficLoading(false);
+      });
     // Intentionally run once: chart filters are independent from global top-right filters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -955,14 +981,6 @@ export function AnalyticsDashboard() {
     trafficGraph.reduce((sum, d) => sum + Number(d.registrations || 0), 0) ||
     0;
 
-  if (analyticsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   const GraphLoader = ({ height = 300 }: { height?: number }) => (
     <div
       className="w-full flex items-center justify-center"
@@ -971,6 +989,19 @@ export function AnalyticsDashboard() {
     >
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#5FC2D3]" />
     </div>
+  );
+
+  const StatsCardLoader = () => (
+    <Card className="border border-gray-200">
+      <CardContent className="p-6">
+        <div className="animate-pulse">
+          <div className="h-4 w-32 rounded bg-gray-200 mb-3" />
+          <div className="h-8 w-20 rounded bg-gray-300 mb-4" />
+          <div className="h-3 w-40 rounded bg-gray-200 mb-2" />
+          <div className="h-3 w-36 rounded bg-gray-200" />
+        </div>
+      </CardContent>
+    </Card>
   );
 
   return (
@@ -1208,6 +1239,16 @@ export function AnalyticsDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {analyticsLoading ? (
+          <>
+            <StatsCardLoader />
+            <StatsCardLoader />
+            <StatsCardLoader />
+            <StatsCardLoader />
+            <StatsCardLoader />
+          </>
+        ) : (
+          <>
         <Card className="bg-gradient-to-r from-pink-400 to-pink-500 border-0">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -1327,6 +1368,8 @@ export function AnalyticsDashboard() {
           subtitle="Average number of lesson hours each student reserved "
           tooltip="Total hours of all booked lessons divided by the number of students who booked lessons, within the selected period."
         />
+          </>
+        )}
       </div>
 
       {/* Charts Grid */}
@@ -1345,7 +1388,8 @@ export function AnalyticsDashboard() {
                   onChange={async (m, y) => {
                     setIsActiveUsersLoading(true);
                     try {
-                      await loadGraphsForPeriod(m, y);
+                      const gd = await fetchGraphsForPeriod(m, y);
+                      setActiveUsersGraph(gd.activeUsers ?? []);
                     } finally {
                       setIsActiveUsersLoading(false);
                     }
@@ -1354,6 +1398,26 @@ export function AnalyticsDashboard() {
                 <span className="text-xs text-gray-500 whitespace-nowrap">
                   Aggregation: {getAggregationLabel(activeUsersMonth, activeUsersYear)}
                 </span>
+                <button
+                  type="button"
+                  className="text-xs text-[#2563eb] hover:underline whitespace-nowrap"
+                  onClick={async () => {
+                    setActiveUsersMonth(defaultGraphMonth);
+                    setActiveUsersYear(defaultGraphYear);
+                    setIsActiveUsersLoading(true);
+                    try {
+                      const gd = await fetchGraphsForPeriod(
+                        defaultGraphMonth,
+                        defaultGraphYear,
+                      );
+                      setActiveUsersGraph(gd.activeUsers ?? []);
+                    } finally {
+                      setIsActiveUsersLoading(false);
+                    }
+                  }}
+                >
+                  Clear filter
+                </button>
               </div>
             </CardTitle>
           </CardHeader>
@@ -1364,11 +1428,15 @@ export function AnalyticsDashboard() {
               <>
               <div className="mb-4 flex items-center gap-6">
                 <div>
-                  <div className="text-xs text-gray-500">Students (avg)</div>
+                  <div className="text-xs text-gray-500">
+                    {`Students (avg/${getAverageUnitLabel(activeUsersMonth, activeUsersYear)})`}
+                  </div>
                   <div className="text-2xl font-bold text-gray-900">{activeUsersKpi.students}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Instructors (avg)</div>
+                  <div className="text-xs text-gray-500">
+                    {`Instructors (avg/${getAverageUnitLabel(activeUsersMonth, activeUsersYear)})`}
+                  </div>
                   <div className="text-2xl font-bold text-gray-900">{activeUsersKpi.instructors}</div>
                 </div>
               </div>
@@ -1443,7 +1511,8 @@ export function AnalyticsDashboard() {
                   onChange={async (m, y) => {
                     setIsAvgRevenueLoading(true);
                     try {
-                      await loadGraphsForPeriod(m, y);
+                      const gd = await fetchGraphsForPeriod(m, y);
+                      setAvgRevenueGraph(gd.averageRevenuePerInstructor ?? []);
                     } finally {
                       setIsAvgRevenueLoading(false);
                     }
@@ -1452,6 +1521,26 @@ export function AnalyticsDashboard() {
                 <span className="text-xs text-gray-500 whitespace-nowrap">
                   Aggregation: {getAggregationLabel(avgRevenueMonth, avgRevenueYear)}
                 </span>
+                <button
+                  type="button"
+                  className="text-xs text-[#2563eb] hover:underline whitespace-nowrap"
+                  onClick={async () => {
+                    setAvgRevenueMonth(defaultGraphMonth);
+                    setAvgRevenueYear(defaultGraphYear);
+                    setIsAvgRevenueLoading(true);
+                    try {
+                      const gd = await fetchGraphsForPeriod(
+                        defaultGraphMonth,
+                        defaultGraphYear,
+                      );
+                      setAvgRevenueGraph(gd.averageRevenuePerInstructor ?? []);
+                    } finally {
+                      setIsAvgRevenueLoading(false);
+                    }
+                  }}
+                >
+                  Clear filter
+                </button>
               </div>
             </CardTitle>
           </CardHeader>
@@ -1461,7 +1550,12 @@ export function AnalyticsDashboard() {
             ) : (
               <>
               <div className="mb-4">
-                <div className="text-xs text-gray-500">Selected-period average</div>
+                <div
+                  className="text-xs text-gray-500"
+                  title="Computed as the simple mean of chart points for the selected aggregation; low-activity periods are included."
+                >
+                  {`Average per ${getAverageUnitLabel(avgRevenueMonth, avgRevenueYear)} in selected period`}
+                </div>
                 <div className="text-2xl font-bold text-gray-900">CHF {avgRevenueKpi.toFixed(2)}</div>
               </div>
               <Chart
@@ -1533,7 +1627,8 @@ export function AnalyticsDashboard() {
                   onChange={async (m, y) => {
                     setIsAvgBookingsLoading(true);
                     try {
-                      await loadGraphsForPeriod(m, y);
+                      const gd = await fetchGraphsForPeriod(m, y);
+                      setAvgBookingsGraph(gd.bookingsPerInstructor ?? []);
                     } finally {
                       setIsAvgBookingsLoading(false);
                     }
@@ -1542,6 +1637,26 @@ export function AnalyticsDashboard() {
                 <span className="text-xs text-gray-500 whitespace-nowrap">
                   Aggregation: {getAggregationLabel(avgBookingsMonth, avgBookingsYear)}
                 </span>
+                <button
+                  type="button"
+                  className="text-xs text-[#2563eb] hover:underline whitespace-nowrap"
+                  onClick={async () => {
+                    setAvgBookingsMonth(defaultGraphMonth);
+                    setAvgBookingsYear(defaultGraphYear);
+                    setIsAvgBookingsLoading(true);
+                    try {
+                      const gd = await fetchGraphsForPeriod(
+                        defaultGraphMonth,
+                        defaultGraphYear,
+                      );
+                      setAvgBookingsGraph(gd.bookingsPerInstructor ?? []);
+                    } finally {
+                      setIsAvgBookingsLoading(false);
+                    }
+                  }}
+                >
+                  Clear filter
+                </button>
               </div>
             </CardTitle>
           </CardHeader>
@@ -1551,7 +1666,12 @@ export function AnalyticsDashboard() {
             ) : (
               <>
               <div className="mb-4">
-                <div className="text-xs text-gray-500">Selected-period average</div>
+                <div
+                  className="text-xs text-gray-500"
+                  title="Computed as the simple mean of chart points for the selected aggregation; low-activity periods are included."
+                >
+                  {`Average per ${getAverageUnitLabel(avgBookingsMonth, avgBookingsYear)} in selected period`}
+                </div>
                 <div className="text-2xl font-bold text-gray-900">{avgBookingsKpi.toFixed(2)}</div>
               </div>
               <Chart
@@ -1593,7 +1713,7 @@ export function AnalyticsDashboard() {
                     name: "Bookings",
                     data:
                       avgBookingsGraph.map((d) =>
-                        Math.round(d.averageBookings),
+                        Number(Number(d.averageBookings || 0).toFixed(2)),
                       ) || [],
                   },
                 ]}
@@ -1619,7 +1739,8 @@ export function AnalyticsDashboard() {
                   onChange={async (m, y) => {
                     setIsTotalEarningsLoading(true);
                     try {
-                      await loadGraphsForPeriod(m, y);
+                      const gd = await fetchGraphsForPeriod(m, y);
+                      setTotalEarningsGraph(gd.totalEarnings ?? []);
                     } finally {
                       setIsTotalEarningsLoading(false);
                     }
@@ -1628,6 +1749,26 @@ export function AnalyticsDashboard() {
                 <span className="text-xs text-gray-500 whitespace-nowrap">
                   Aggregation: {getAggregationLabel(totalEarningsMonth, totalEarningsYear)}
                 </span>
+                <button
+                  type="button"
+                  className="text-xs text-[#2563eb] hover:underline whitespace-nowrap"
+                  onClick={async () => {
+                    setTotalEarningsMonth(defaultGraphMonth);
+                    setTotalEarningsYear(defaultGraphYear);
+                    setIsTotalEarningsLoading(true);
+                    try {
+                      const gd = await fetchGraphsForPeriod(
+                        defaultGraphMonth,
+                        defaultGraphYear,
+                      );
+                      setTotalEarningsGraph(gd.totalEarnings ?? []);
+                    } finally {
+                      setIsTotalEarningsLoading(false);
+                    }
+                  }}
+                >
+                  Clear filter
+                </button>
               </div>
             </CardTitle>
           </CardHeader>
@@ -1720,7 +1861,8 @@ export function AnalyticsDashboard() {
                 onChange={async (m, y) => {
                   setIsTrafficLoading(true);
                   try {
-                    await loadGraphsForPeriod(m, y);
+                    const gd = await fetchGraphsForPeriod(m, y);
+                    setTrafficGraph(gd.conversionRates ?? []);
                   } finally {
                     setIsTrafficLoading(false);
                   }
@@ -1729,6 +1871,26 @@ export function AnalyticsDashboard() {
               <span className="text-xs text-gray-500 whitespace-nowrap">
                 Aggregation: {getAggregationLabel(trafficMonth, trafficYear)}
               </span>
+              <button
+                type="button"
+                className="text-xs text-[#2563eb] hover:underline whitespace-nowrap"
+                onClick={async () => {
+                  setTrafficMonth(defaultGraphMonth);
+                  setTrafficYear(defaultGraphYear);
+                  setIsTrafficLoading(true);
+                  try {
+                    const gd = await fetchGraphsForPeriod(
+                      defaultGraphMonth,
+                      defaultGraphYear,
+                    );
+                    setTrafficGraph(gd.conversionRates ?? []);
+                  } finally {
+                    setIsTrafficLoading(false);
+                  }
+                }}
+              >
+                Clear filter
+              </button>
             </div>
           </CardTitle>
         </CardHeader>

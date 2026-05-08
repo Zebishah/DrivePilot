@@ -126,28 +126,25 @@ const adminAnalyticsResolvers = {
         createdAt: { $gte: fromDateObj, $lte: toDateObj },
       });
 
-      // Attended lessons: active slots in range explicitly marked completed
-      const nowDate = now.toDate();
+      // Attended lessons: count ONLY slots explicitly marked completed.
+      // Do not infer completion from lesson date/time being in the past.
       const attendedLessonsAgg = await studentBookingModel.aggregate([
         { $match: matchInstructor },
         { $unwind: "$slots" },
         {
-          $addFields: {
-            slotEndDateTime: {
-              $dateFromString: {
-                dateString: {
-                  $concat: ["$slots.date", "T", "$slots.endTime"],
-                },
-              },
-            },
-          },
-        },
-        {
           $match: {
             "slots.date": { $gte: fromStr, $lte: toStr },
             "slots.booked": true,
-            "slots.status": { $nin: ["cancelled", "refund"] },
-            "slots.status": "completed",
+            $expr: {
+              $eq: [
+                {
+                  $toLower: {
+                    $trim: { input: { $ifNull: ["$slots.status", ""] } },
+                  },
+                },
+                "completed",
+              ],
+            },
           },
         },
         { $count: "count" },
@@ -156,6 +153,7 @@ const adminAnalyticsResolvers = {
       const attendedLessons = attendedLessonsAgg[0]?.count || 0;
 
       // Upcoming lessons: booked, not cancelled/refund, and slot end time is in the future
+      const nowDate = now.toDate();
       const upcomingLessonsAgg = await studentBookingModel.aggregate([
         { $match: matchInstructor },
         { $unwind: "$slots" },
@@ -174,7 +172,50 @@ const adminAnalyticsResolvers = {
           $match: {
             "slots.date": { $gte: fromStr, $lte: toStr },
             "slots.booked": true,
-            "slots.status": { $nin: ["cancelled", "refund"] },
+            $expr: {
+              $and: [
+                {
+                  $ne: [
+                    {
+                      $toLower: {
+                        $trim: { input: { $ifNull: ["$slots.status", ""] } },
+                      },
+                    },
+                    "cancelled",
+                  ],
+                },
+                {
+                  $ne: [
+                    {
+                      $toLower: {
+                        $trim: { input: { $ifNull: ["$slots.status", ""] } },
+                      },
+                    },
+                    "refund",
+                  ],
+                },
+                {
+                  $ne: [
+                    {
+                      $toLower: {
+                        $trim: { input: { $ifNull: ["$slots.status", ""] } },
+                      },
+                    },
+                    "completed",
+                  ],
+                },
+                {
+                  $ne: [
+                    {
+                      $toLower: {
+                        $trim: { input: { $ifNull: ["$slots.status", ""] } },
+                      },
+                    },
+                    "missed",
+                  ],
+                },
+              ],
+            },
             slotEndDateTime: { $gt: nowDate },
           },
         },

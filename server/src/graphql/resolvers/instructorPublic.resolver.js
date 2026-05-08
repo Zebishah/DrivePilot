@@ -9,6 +9,7 @@ const teacherAvailabilityModel = require("../../models/teacherAvailability.model
 const { Review } = require("../../models/Reviews");
 const studentBookingModel = require("../../models/studentBooking.model");
 const dayjs = require("dayjs");
+const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
 
 const instructorResolver = {
   Query: {
@@ -334,11 +335,15 @@ const instructorResolver = {
       const now = new Date();
       const isUpcomingSlot = (s) => {
         if (!isActiveSlot(s)) return false;
-        const slotEnd = new Date(`${s.date}T${s.endTime}:00`);
+        const slotEndMs = getSlotEndTimestampUtc(
+          s.date,
+          s.endTime || "23:59:59",
+        );
         return (
-          s.status !== "completed" &&
-          s.status !== "missed" &&
-          slotEnd > now
+          String(s.status || "").toLowerCase() !== "completed" &&
+          String(s.status || "").toLowerCase() !== "missed" &&
+          Number.isFinite(slotEndMs) &&
+          slotEndMs > now.getTime()
         );
       };
 
@@ -551,11 +556,15 @@ const instructorResolver = {
         0,
       );
 
+      // Cancellation numerator must match Booking Management "Cancelled" bucket:
+      // include both cancelled and refund statuses.
       const cancelledLessons = bookings.reduce(
         (sum, b) =>
           sum +
-          b.slots.filter(
-            (s) => String(s.status).toLowerCase() === "cancelled",
+          b.slots.filter((s) =>
+            ["cancelled", "refund"].includes(
+              String(s.status || "").toLowerCase(),
+            ),
           ).length,
         0,
       );
