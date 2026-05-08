@@ -10,7 +10,6 @@ import { ErrorState } from "../../../components/InstructorComponent/StudentsTrac
 import { NotFoundState } from "../../../components/InstructorComponent/StudentsTracking/NotFoundState";
 import { StudentInfoCard } from "../../../components/InstructorComponent/StudentsTracking/StudentInfoCard";
 import { useStudentDashboard } from "../../../hooks/UseStudentDashboard";
-import { TotalLessonsCard } from "../../../components/InstructorComponent/StudentsTracking/TotalLessonCard";
 import { formatDuration } from "../../../components/InstructorComponent/common/FormatDuration";
 const StudentDashboard: React.FC = () => {
   const { studentId } = useParams<{ studentId: string }>();
@@ -38,8 +37,6 @@ const StudentDashboard: React.FC = () => {
   const {
     studentInfo,
     lessonStats,
-    completedBookings,
-    uncompletedBookings,
   } = data.getStudentDashboardDetails;
   return (
     <div className="min-h-screen bg-gray-50 py-2 px-8">
@@ -58,19 +55,12 @@ const StudentDashboard: React.FC = () => {
         />
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Overall Progress Chart */}
           <ProgressChart
             filteredGraphData={filteredGraphData}
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
-          />
-
-          {/* Total Lessons */}
-          <TotalLessonsCard
-            completedBookings={completedBookings}
-            uncompletedBookings={uncompletedBookings}
-            formatDuration={formatDuration}
           />
         </div>
 

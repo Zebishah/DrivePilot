@@ -29,6 +29,9 @@ export interface BookingSlot {
   review: boolean;
   status: "available" | "booked" | "cancelled" | "refund" | "completed" | "missed" | "yet";
   cancellationDate?: string;
+  refundedAt?: string;
+  cancelledBy?: "student" | "instructor" | "admin";
+  completionMarkedAt?: string;
 }
 
 export interface PaymentMethod {

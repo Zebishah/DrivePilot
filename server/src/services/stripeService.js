@@ -445,6 +445,48 @@ async function getTransferIdFromPaymentIntent(paymentIntentId) {
 }
 
 /**
+ * Get charge/payment ID used for refund reconciliation from a PaymentIntent.
+ * - For destination charges, prefer connected-account payment/charge id (`py_...`)
+ *   via transfer.destination_payment (matches manual refund webhook payload).
+ * - Fallback to platform charge id (`ch_...`) when destination payment is unavailable.
+ * @param {string} paymentIntentId
+ * @returns {Promise<string|null>} Charge ID or null
+ */
+async function getChargeIdFromPaymentIntent(paymentIntentId) {
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge"],
+  });
+  const charge = pi.latest_charge;
+  if (!charge) return null;
+  if (typeof charge === "string") return charge;
+
+  // For destination charges Stripe webhook on connected account often returns `py_...`
+  // as charge identifier. Resolve it from transfer.destination_payment when present.
+  if (charge.transfer) {
+    try {
+      const transfer = await stripe.transfers.retrieve(String(charge.transfer), {
+        expand: ["destination_payment"],
+      });
+      const destinationPayment = transfer?.destination_payment;
+      if (typeof destinationPayment === "string" && destinationPayment) {
+        return destinationPayment;
+      }
+      if (
+        destinationPayment &&
+        typeof destinationPayment === "object" &&
+        destinationPayment.id
+      ) {
+        return destinationPayment.id;
+      }
+    } catch (_) {
+      // Fallback below if transfer lookup fails
+    }
+  }
+
+  return charge.id || null;
+}
+
+/**
  * Create a partial transfer reversal (for refunds on destination charges).
  * Reverses the instructor's share so the platform does not cover it.
  * @param {{ transferId: string, amountCentimes: number, metadata?: Record<string, string> }} opts
@@ -641,6 +683,7 @@ module.exports = {
   createManualPayoutForInstructor,
   createRefund,
   getTransferIdFromPaymentIntent,
+  getChargeIdFromPaymentIntent,
   createTransferReversal,
   retrievePaymentIntent,
   confirmPaymentIntent,

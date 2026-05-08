@@ -60,6 +60,11 @@ async function runInstructorPayoutJob() {
       }
 
       try {
+        const normalizedLessonStatus = String(slot.status || "").toLowerCase();
+        const isMissedLesson = normalizedLessonStatus === "missed";
+        const payoutDescription = isMissedLesson
+          ? "Payout to bank for missed lesson"
+          : "Payout to bank for completed lesson";
         const amountCentimes = Math.round(
           Number(slot.instructorAmount) * CENTIMES_PER_UNIT,
         );
@@ -95,7 +100,7 @@ async function runInstructorPayoutJob() {
           slotId: slot._id,
           instructorId: instructor._id,
           stripePayoutId: payoutId,
-          description: "Payout to bank for completed lesson",
+          description: payoutDescription,
           occurredAt,
         });
         processed += 1;
@@ -128,7 +133,7 @@ async function runInstructorPayoutJob() {
             slotId: slot._id,
             instructorId: instructor._id,
             stripePayoutId: "test_skipped_insufficient_balance",
-            description: "Payout to bank for completed lesson (test simulated)",
+            description: `${payoutDescription} (test simulated)`,
             occurredAt,
           });
           console.log(

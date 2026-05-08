@@ -34,6 +34,7 @@ import StudentBookings from "../pages/private/student-dashboard/bookLesson";
 import { CompletePaymentPage } from "../pages/private/student-dashboard/CompletePaymentPage";
 import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
 import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
+import RefundRequestPage from "../pages/private/student-dashboard/RefundRequestPage";
 import EditStudentProfile from "../pages/private/student-dashboard/EditStudentProfile";
 import QuestionsAnswers from "../pages/private/admin-dashboard/HelpSupport";
 import FAQPage from "../pages/private/teacher-dashboard/HelpSuportPage";
@@ -122,6 +123,7 @@ const router = createBrowserRouter([
       },
       { path: "search/instructors/:id", element: <OurInstructor /> },
       { path: "booking-details", element: <BookingDetails /> },
+      { path: "refund-request", element: <RefundRequestPage /> },
       { path: "complete-payment", element: <CompletePaymentPage /> },
       { path: "help-support", element: <FAQPage /> },
       { path: "reviews", element: <Dashboard /> },

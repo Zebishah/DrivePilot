@@ -19,6 +19,83 @@ import {
   CANCEL_BOOKING_ADMIN,
   UPDATE_BOOKING_STATUS,
 } from "../../../graphql/mutations/AdminBookingsShowcase";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const SLOT_BUSINESS_TIMEZONE =
+  import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+
+function normalizeSlotTime(timeStr?: string) {
+  if (!timeStr) return "00:00:00";
+  return timeStr.split(":").length === 2 ? `${timeStr}:00` : timeStr;
+}
+
+function parseSlotStartMs(slot: { date: string; startTime: string }) {
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.startTime)}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function parseSlotEndMs(slot: { date: string; endTime: string }) {
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.endTime || "23:59:59")}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function formatSlotDateForViewer(slot: { date: string; startTime: string }) {
+  const startMs = parseSlotStartMs(slot);
+  if (!Number.isFinite(startMs)) return slot.date;
+  return new Date(startMs).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatSlotTimeForViewer(slot: {
+  date: string;
+  startTime: string;
+  endTime: string;
+}) {
+  const startMs = parseSlotStartMs(slot);
+  const endMs = parseSlotEndMs(slot);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function formatSlotStartTimeForViewer(slot: { date: string; startTime: string }) {
+  const startMs = parseSlotStartMs(slot);
+  if (!Number.isFinite(startMs)) return slot.startTime;
+  return new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 interface BookingsTableProps {
   className?: string;
@@ -39,7 +116,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const statusOptions = [
-    { value: "refund", label: "Refund" },
+    { value: "refund", label: "Refunded" },
     { value: "cancelled", label: "Cancel" },
   ];
 
@@ -109,20 +186,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
 }) => {
   if (!isOpen || !booking) return null;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+  const getDisplayStatus = (status?: string) => {
+    const normalized = String(status || "").toLowerCase();
+    if (normalized === "refund") return "Refunded";
+    if (!normalized) return "No Status Set Yet";
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   };
 
   return (
@@ -221,14 +289,20 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {formatDate(slot.date)}
+                              {formatSlotDateForViewer({
+                                date: slot.date,
+                                startTime: slot.startTime,
+                              })}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {formatTime(slot.startTime)} -{" "}
-                              {formatTime(slot.endTime)}
+                              {formatSlotTimeForViewer({
+                                date: slot.date,
+                                startTime: slot.startTime,
+                                endTime: slot.endTime,
+                              })}
                             </span>
                           </div>
                         </div>
@@ -243,7 +317,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                                   : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {slot.status}
+                          {getDisplayStatus(slot.status)}
                         </span>
                       </div>
                     </div>
@@ -326,14 +400,6 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -402,16 +468,23 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Start Date:</span>
                   <span className="text-gray-900">
-                    {formatDate(selectedSlot.date)}
+                    {formatSlotDateForViewer({
+                      date: selectedSlot.date,
+                      startTime: selectedSlot.startTime,
+                    })}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">End Date:</span>
                   <span className="text-gray-900">
-                    {formatDate(
-                      booking.slots[booking.slots.length - 1]?.date ||
+                    {formatSlotDateForViewer({
+                      date:
+                        booking.slots[booking.slots.length - 1]?.date ||
                         selectedSlot.date,
-                    )}
+                      startTime:
+                        booking.slots[booking.slots.length - 1]?.startTime ||
+                        selectedSlot.startTime,
+                    })}
                   </span>
                 </div>
               </div>
@@ -531,22 +604,6 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     cancelBookingAdmin({ variables: { input } });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -577,13 +634,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     const raw = (slot.status ?? "").toLowerCase();
     if (raw === "cancelled" || raw === "canceled" || raw === "refund")
       return "Cancel";
-    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    if (raw === "completed" || slotEnd <= new Date()) return "Completed";
+    const slotEndMs = parseSlotEndMs(slot);
+    if (raw === "completed" || (Number.isFinite(slotEndMs) && slotEndMs <= Date.now()))
+      return "Completed";
     return "Upcoming";
   };
 
   const getSlotTime = (slot: { date: string; startTime: string }) =>
-    new Date(`${slot.date}T${slot.startTime}`).getTime();
+    parseSlotStartMs(slot);
 
   const statusOrder = (s: DerivedStatus) => {
     if (s === "Upcoming") return 0;
@@ -719,7 +777,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
 
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
-                      {formatDate(slot.date)} {formatTime(slot.startTime)}
+                      {formatSlotDateForViewer({
+                        date: slot.date,
+                        startTime: slot.startTime,
+                      })}{" "}
+                      {formatSlotStartTimeForViewer({
+                        date: slot.date,
+                        startTime: slot.startTime,
+                      })}
                     </div>
                   </td>
 

@@ -67,6 +67,12 @@ interface RefundRequestRow {
   slotStartTime?: string | null;
   slotEndTime?: string | null;
   rejectionReason?: string | null;
+  message?: string | null;
+  attachments?: Array<{
+    url: string;
+    fileName: string;
+    mimeType: string;
+  }>;
 }
 
 export default function AdminRefundRequestsPage() {
@@ -74,6 +80,7 @@ export default function AdminRefundRequestsPage() {
     "all" | "pending" | "approved" | "rejected"
   >("all");
   const [rejectDialog, setRejectDialog] = useState<{ id: string; reason: string } | null>(null);
+  const [detailsRow, setDetailsRow] = useState<RefundRequestRow | null>(null);
 
   const { data, loading, error, refetch } = useQuery(GET_REFUND_REQUESTS, {
     variables: { status: statusFilter === "all" ? undefined : statusFilter },
@@ -188,6 +195,7 @@ export default function AdminRefundRequestsPage() {
                 <TableCell align="right">Amount</TableCell>
                 <TableCell>Requested</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell align="right">Details</TableCell>
                 {(statusFilter === "pending" || statusFilter === "all") && (
                   <TableCell align="right">Action</TableCell>
                 )}
@@ -199,8 +207,8 @@ export default function AdminRefundRequestsPage() {
                   <TableCell
                     colSpan={
                       statusFilter === "pending" || statusFilter === "all"
-                        ? 7
-                        : 6
+                        ? 8
+                        : 7
                     }
                     align="center"
                     sx={{ py: 4 }}
@@ -236,6 +244,16 @@ export default function AdminRefundRequestsPage() {
                         }
                         variant="filled"
                       />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setDetailsRow(r)}
+                        sx={{ textTransform: "none" }}
+                      >
+                        View details
+                      </Button>
                     </TableCell>
                     {(statusFilter === "pending" || statusFilter === "all") && (
                       <TableCell align="right">
@@ -311,6 +329,87 @@ export default function AdminRefundRequestsPage() {
           <Button variant="contained" color="error" onClick={handleRejectSubmit} disabled={isProcessing}>
             {rejecting ? <CircularProgress size={24} /> : "Reject"}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!detailsRow} onClose={() => setDetailsRow(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Refund request details</DialogTitle>
+        <DialogContent>
+          {detailsRow && (
+            <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+              <Typography variant="body2">
+                <strong>Student:</strong> {detailsRow.studentName ?? "—"}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Instructor:</strong> {detailsRow.instructorName ?? "—"}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Lesson:</strong> {detailsRow.slotDate ?? "—"}{" "}
+                {formatTime24(detailsRow.slotStartTime)}
+                {detailsRow.slotStartTime || detailsRow.slotEndTime ? "–" : ""}
+                {formatTime24(detailsRow.slotEndTime)}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Amount:</strong> {detailsRow.currency} {detailsRow.amount.toFixed(2)}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Requested at:</strong> {formatDate(detailsRow.requestedAt)}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Status:</strong>{" "}
+                {detailsRow.status.charAt(0).toUpperCase() + detailsRow.status.slice(1)}
+              </Typography>
+              {detailsRow.rejectionReason && (
+                <Typography variant="body2">
+                  <strong>Rejection reason:</strong> {detailsRow.rejectionReason}
+                </Typography>
+              )}
+              <Typography variant="body2">
+                <strong>Student message:</strong>
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "grey.50" }}>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                  {detailsRow.message?.trim() || "—"}
+                </Typography>
+              </Paper>
+              <Typography variant="body2">
+                <strong>Uploaded documents:</strong>
+              </Typography>
+              {Array.isArray(detailsRow.attachments) && detailsRow.attachments.length > 0 ? (
+                <Stack spacing={1}>
+                  {detailsRow.attachments.map((file) => (
+                    <Paper
+                      key={`${detailsRow.id}-${file.url}`}
+                      variant="outlined"
+                      sx={{ p: 1.25, display: "flex", justifyContent: "space-between", gap: 1 }}
+                    >
+                      <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+                        {file.fileName}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        component="a"
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        sx={{ textTransform: "none", whiteSpace: "nowrap" }}
+                      >
+                        Open
+                      </Button>
+                    </Paper>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No documents uploaded.
+                </Typography>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailsRow(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -23,6 +23,7 @@ import {
   GET_STUDENT_BOOKINGS,
   CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
 } from "../../../graphql/mutations/studentBooking";
+import { GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest";
 import { BookingList } from "../../../components/BookingList";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
@@ -76,6 +77,9 @@ const BookLesson: React.FC = () => {
   });
   const [createCheckoutForPending, { loading: checkoutPendingLoading }] =
     useMutation(CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING);
+  const { data: refundData } = useQuery(GET_MY_REFUND_REQUESTS, {
+    fetchPolicy: "network-only",
+  });
 
   const [loadingCheckoutBookingId, setLoadingCheckoutBookingId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -148,6 +152,16 @@ const BookLesson: React.FC = () => {
       },
     });
   };
+  const handleRequestRefundFromList = (booking: Booking, slot: Slot) => {
+    navigate("/student-dashboard/refund-request", {
+      state: {
+        bookingId: booking._id,
+        slotId: slot._id,
+        slot,
+        instructor: booking.instructorId,
+      },
+    });
+  };
 
   const handlePageChange = (
     event: React.ChangeEvent<unknown>,
@@ -161,6 +175,19 @@ const BookLesson: React.FC = () => {
     setPage(1); // Reset to first page when changing tabs
   };
   const bookings = data?.getStudentBookings || [];
+  const myRefundRequests = refundData?.getMyRefundRequests ?? [];
+  const refundRequestStateMap: Record<string, "pending" | "approved" | "rejected"> =
+    myRefundRequests.reduce(
+      (
+        acc: Record<string, "pending" | "approved" | "rejected">,
+        r: { bookingId: string; slotId: string; status: "pending" | "approved" | "rejected" },
+      ) => {
+        const key = `${r.bookingId}:${r.slotId}`;
+        acc[key] = r.status;
+        return acc;
+      },
+      {},
+    );
   const filterBookingsByStatus = (bookings: Booking[], status: string) => {
     if (status === "all") return bookings;
     return bookings.filter(
@@ -339,45 +366,6 @@ const BookLesson: React.FC = () => {
     return acc;
   }, []);
 
-  // Complete payment: use SLOT status and SLOT paymentStatus only (one booking can have many slots; each slot has its own status).
-  // Show only slots where THIS slot is booked and THIS slot requires payment action (3DS / retry). Do not show all slots of a booking.
-  const now = new Date();
-  const oneHourMs = 60 * 60 * 1000;
-  type SlotWithPayment = AvailabilitySlot & { _id?: string; paymentStatus?: string };
-  const t48CompletePaymentSlots = bookings.flatMap(
-    (b: Booking & { paymentMethod?: { paymentMethodId?: string }; stripeCustomerId?: string | null }) => {
-      // Only show T-48 / 3DS completion when the original deferred booking has a saved card.
-      // If there is no saved payment method or Stripe customer, backend will reject with
-      // "No payment method found for this booking", so we hide those here to avoid confusion.
-      const hasSavedCard =
-        Boolean(b.paymentMethod?.paymentMethodId) && Boolean(b.stripeCustomerId);
-      if (!hasSavedCard) return [];
-
-      return ((b.slots || []) as SlotWithPayment[])
-        .filter((s: SlotWithPayment) => {
-          if (!s._id) return false;
-          // Slot-level: only slots that need payment (3DS or failed charge)
-          if (s.paymentStatus !== "requires_action" && s.paymentStatus !== "payment_failed")
-            return false;
-          // Slot-level: only slots that are actually booked (ignore available/cancelled/refund/completed/missed)
-          if (s.status !== "booked" && s.status !== "confirmed") return false;
-          // Don't show slots whose lesson time has already passed
-          const slotEnd = new Date(`${s.date}T${s.endTime}:00`);
-          if (slotEnd.getTime() < now.getTime() - oneHourMs) return false;
-          return true;
-        })
-        .map((s: SlotWithPayment) => ({
-          bookingId: b._id,
-          slotId: s._id as string,
-          date: s.date,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          instructorName: `${b.instructorId?.firstName || ""} ${b.instructorId?.lastName || ""}`.trim(),
-          paymentStatus: s.paymentStatus,
-        }));
-    },
-  );
-
   const handleContinueToCheckout = async (bookingId: string) => {
     setCheckoutError(null);
     setLoadingCheckoutBookingId(bookingId);
@@ -493,77 +481,6 @@ const BookLesson: React.FC = () => {
                   </Box>
                 );
               })}
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
-      {/* T-48: Slots with requires_action (3DS) or payment_failed (retry) — each slot shows its own reason */}
-      {t48CompletePaymentSlots.length > 0 && (
-        <Card sx={{ mb: 3, mt: 2, borderLeft: "4px solid #f57c00" }}>
-          <Box
-            sx={{
-              pb: 1.6,
-              px: 2,
-              pt: 1.3,
-              borderBottom: 1,
-              borderBottomColor: "divider",
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              Complete payment for your lesson
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              For each lesson below, either your bank asked for extra verification (3D Secure) or the charge failed — see the status under each slot. Click &quot;Complete payment&quot; to finish or try again; no need to re-book.
-            </Typography>
-          </Box>
-          <CardContent>
-            <Stack spacing={2}>
-              {t48CompletePaymentSlots.map((slot) => (
-                <Box
-                  key={`${slot.bookingId}-${slot.slotId}`}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                    gap: 1,
-                    p: 1.5,
-                    bgcolor: "action.hover",
-                    borderRadius: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle2">
-                      {slot.instructorName}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(slot.date).toLocaleDateString([], {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })}{" "}
-                      · {slot.startTime} – {slot.endTime}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 500 }}>
-                      {slot.paymentStatus === "requires_action"
-                        ? "Authentication required (3D Secure)"
-                        : "Payment failed — try again"}
-                    </Typography>
-                  </Box>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    sx={{ bgcolor: "#f57c00", textTransform: "none" }}
-                    onClick={() =>
-                      navigate(
-                        `/student-dashboard/complete-payment?bookingId=${slot.bookingId}&slotId=${slot.slotId}`,
-                      )
-                    }
-                  >
-                    Complete payment
-                  </Button>
-                </Box>
-              ))}
             </Stack>
           </CardContent>
         </Card>
@@ -737,6 +654,8 @@ const BookLesson: React.FC = () => {
       <BookingList
         bookings={bookings}
         onBookingClick={handleBookingClick}
+        onRequestRefund={handleRequestRefundFromList}
+        refundRequestStateMap={refundRequestStateMap}
         showNewBookingButton={!selectedAvailability}
         onNewBooking={() => navigate("/student-dashboard/search")}
       />

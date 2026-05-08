@@ -37,8 +37,7 @@ const reviewResolver = {
 
         for (const slot of bookedSlots) {
           const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
-          const isCompleted =
-            slot.status === "completed" || slotEndDateTime <= now;
+          const isCompleted = slot.status === "completed";
 
           const isReviewed = slot.review === true;
 
@@ -105,10 +104,7 @@ const reviewResolver = {
           slot.booked &&
           slot.status !== "cancelled" &&
           slot.status !== "refund";
-        const isSlotCompletedFn = (slot) => {
-          const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status === "completed" || slotEnd <= now;
-        };
+        const isSlotCompletedFn = (slot) => slot.status === "completed";
 
         let totalBookedSlots = 0;
         let completedSlots = 0;
@@ -163,7 +159,7 @@ const reviewResolver = {
         // ✅ Always keep result non-negative
         if (remainingHours < 0) remainingHours = Math.abs(remainingHours);
 
-        // Completed hours = active slots that are completed (status or time)
+        // Completed hours = active slots explicitly marked completed
         let completedHours = 0;
         for (const booking of allBookings) {
           for (const slot of booking.slots) {

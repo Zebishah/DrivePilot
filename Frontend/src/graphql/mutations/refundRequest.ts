@@ -1,14 +1,30 @@
 import { gql } from "@apollo/client";
 
 export const REQUEST_REFUND = gql`
-  mutation RequestRefund($bookingId: ID!, $slotId: ID!) {
-    requestRefund(bookingId: $bookingId, slotId: $slotId) {
+  mutation RequestRefund(
+    $bookingId: ID!
+    $slotId: ID!
+    $message: String!
+    $attachments: [RefundAttachmentInput!]
+  ) {
+    requestRefund(
+      bookingId: $bookingId
+      slotId: $slotId
+      message: $message
+      attachments: $attachments
+    ) {
       id
       status
       amount
       requestedAt
       bookingId
       slotId
+      message
+      attachments {
+        url
+        fileName
+        mimeType
+      }
     }
   }
 `;
@@ -31,6 +47,12 @@ export const REJECT_REFUND_REQUEST = gql`
       status
       processedAt
       rejectionReason
+      message
+      attachments {
+        url
+        fileName
+        mimeType
+      }
     }
   }
 `;
@@ -70,6 +92,12 @@ export const GET_REFUND_REQUESTS = gql`
       slotDate
       slotStartTime
       slotEndTime
+      message
+      attachments {
+        url
+        fileName
+        mimeType
+      }
     }
   }
 `;

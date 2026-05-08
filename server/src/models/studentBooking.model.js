@@ -69,6 +69,10 @@ const studentBookingSchema = new mongoose.Schema(
         },
         // Per-slot Stripe PaymentIntent for T-48 charging
         paymentIntentId: { type: String },
+        // Connected account charge/payment ID (often `py_...`) for strict refund mapping
+        connectChargeId: { type: String },
+        // Transfer ID (`tr_...`) to correlate connect charge events
+        transferId: { type: String },
         chargedAt: { type: Date },
         /** Number of T-48 charge attempts; after max retries slot is marked payment_failed */
         paymentRetryCount: { type: Number, default: 0 },
@@ -90,6 +94,12 @@ const studentBookingSchema = new mongoose.Schema(
         refundedAt: { type: Date },
         // --- Lesson-end reminder ---
         lessonEndReminderSent: { type: Boolean, default: false },
+        // --- T-48 payment follow-up reminders ---
+        paymentReminderStartedAt: { type: Date },
+        paymentReminderDeadlineAt: { type: Date },
+        paymentReminder1SentAt: { type: Date },
+        paymentReminder2SentAt: { type: Date },
+        paymentReminder3SentAt: { type: Date },
       },
     ],
     totalAmount: {
@@ -119,6 +129,8 @@ const studentBookingSchema = new mongoose.Schema(
     stripePaymentIntentId: { type: String },
     /** Stripe Customer ID; required for off-session (T-48) charges when payment method was saved via setup mode */
     stripeCustomerId: { type: String },
+    /** Abandoned checkout reminder tracking (student incentive email) */
+    abandonedCheckoutReminderSentAt: { type: Date },
     cancellationDate: { type: Date },
     status: {
       type: String,

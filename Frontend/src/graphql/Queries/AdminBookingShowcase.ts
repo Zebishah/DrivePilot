@@ -36,6 +36,9 @@ export const GET_ALL_STUDENT_BOOKINGS = gql`
         review
         feedBackStatus
         cancellationDate
+        refundedAt
+        cancelledBy
+        completionMarkedAt
         status
       }
       totalAmount
@@ -86,9 +89,16 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         review
         feedBackStatus
         cancellationDate
+        refundedAt
+        completionMarkedAt
         cancelledBy
         status
         paymentStatus
+        paymentReminderStartedAt
+        paymentReminderDeadlineAt
+        paymentReminder1SentAt
+        paymentReminder2SentAt
+        paymentReminder3SentAt
       }
       totalAmount
       finalAmount

@@ -92,6 +92,11 @@ export interface Slot {
   chargeAmount?: number;
   instructorAmount?: number;
   feedBackStatus?: string;
+  paymentReminderStartedAt?: string;
+  paymentReminderDeadlineAt?: string;
+  paymentReminder1SentAt?: string;
+  paymentReminder2SentAt?: string;
+  paymentReminder3SentAt?: string;
 }
 
 export interface Instructor {

@@ -5,8 +5,8 @@ const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
 
 const { User, Student, Instructor } = require("../../models/User");
 
-// Payout delay after lesson completed (must match studentBooking.resolver.js)
-const PAYOUT_DELAY_MS = 1 * 60 * 1000;
+// Production payout delay: 3 days after lesson completion/missed outcome.
+const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = require("../../models/StudentBooking");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
@@ -150,16 +150,14 @@ const AdminBookingResolvers = {
           status === "booked" || status === "completed";
 
         // UI treats both `cancelled` and `refund` as part of "Cancelled" lists.
-        if (
-          (status === "cancelled" || status === "refund") &&
-          oldStatus !== status
-        ) {
+        if (status === "cancelled" && oldStatus !== status) {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
           booking.slots[slotIndex].cancelledBy = "admin";
         }
 
-        // When marking completed: set completion and payout-eligible (same as instructor updateSlotStatus)
-        if (status === "completed") {
+        // When marking completed/missed: set completion and payout-eligible.
+        // Missed follows the same payout flow as completed.
+        if (status === "completed" || status === "missed") {
           const now = new Date();
           booking.slots[slotIndex].completionMarkedAt = now;
           const payoutEligibleAt = new Date(now.getTime() + PAYOUT_DELAY_MS);

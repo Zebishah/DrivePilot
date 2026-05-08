@@ -30,7 +30,7 @@ const studentDashboardResolver = {
             slot.status !== "cancelled" &&
             slot.status !== "refund";
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          const isCompleted = slot.status === "completed" || slotEnd <= now;
+          const isCompleted = slot.status === "completed";
 
           // Total lessons on student overview must count only validated completed lessons.
           if (slot.status === "completed") totalLessons++;
@@ -101,7 +101,7 @@ const studentDashboardResolver = {
           const slotDate = new Date(slot.date);
           const isThisWeek = slotDate >= startOfWeek && slotDate < endOfWeek;
           const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-          const isCompleted = slot.status === "completed" || slotEnd <= now;
+          const isCompleted = slot.status === "completed";
 
           allLessons.push({
             lessonId: booking._id,

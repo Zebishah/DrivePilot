@@ -209,12 +209,18 @@ export const GET_STUDENT_BOOKINGS = gql`
         booked
         status
         cancellationDate
+        completionMarkedAt
         cancelledBy
         paymentStatus
         chargeAmount
         payoutStatus
         refundAmount
         refundedAt
+        paymentReminderStartedAt
+        paymentReminderDeadlineAt
+        paymentReminder1SentAt
+        paymentReminder2SentAt
+        paymentReminder3SentAt
       }
       paymentMethod {
         type
@@ -330,9 +336,9 @@ export const CANCEL_BOOKING = gql`
   }
 `;
 
-export const REQUEST_REFUND = gql`
-  mutation RequestRefund($bookingId: ID!, $slotId: ID!) {
-    requestRefund(bookingId: $bookingId, slotId: $slotId) {
+export const RESCHEDULE_BOOKING_SLOT = gql`
+  mutation RescheduleBookingSlot($input: RescheduleBookingSlotInput!) {
+    rescheduleBookingSlot(input: $input) {
       _id
       status
       slots {
@@ -342,10 +348,37 @@ export const REQUEST_REFUND = gql`
         endTime
         status
         paymentStatus
-        refundAmount
-        refundedAt
+        cancellationDate
+        cancelledBy
       }
       updatedAt
+    }
+  }
+`;
+
+export const REQUEST_REFUND = gql`
+  mutation RequestRefund(
+    $bookingId: ID!
+    $slotId: ID!
+    $message: String!
+    $attachments: [RefundAttachmentInput!]
+  ) {
+    requestRefund(
+      bookingId: $bookingId
+      slotId: $slotId
+      message: $message
+      attachments: $attachments
+    ) {
+      id
+      status
+      bookingId
+      slotId
+      message
+      attachments {
+        url
+        fileName
+        mimeType
+      }
     }
   }
 `;

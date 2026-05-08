@@ -24,6 +24,100 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const SLOT_BUSINESS_TIMEZONE =
+  import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+function normalizeSlotTime(timeStr?: string) {
+  if (!timeStr) return "00:00:00";
+  return timeStr.split(":").length === 2 ? `${timeStr}:00` : timeStr;
+}
+
+function parseSlotEndMs(slot: { date: string; endTime: string }) {
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.endTime || "23:59:59")}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function parseSlotStartMs(slot: { date: string; startTime: string }) {
+  const parsed = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.startTime || "00:00:00")}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const ms = parsed.valueOf();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function formatSlotDateForViewer(slot: { date: string; startTime: string }) {
+  const startMs = parseSlotStartMs(slot);
+  if (!Number.isFinite(startMs)) return slot.date;
+  return new Date(startMs).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatSlotTimeForViewer(slot: {
+  date: string;
+  startTime: string;
+  endTime: string;
+}) {
+  const startMs = parseSlotStartMs(slot);
+  const endMs = parseSlotEndMs(slot);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function formatSlotTimeForBusinessTimezone(slot: {
+  date: string;
+  startTime: string;
+  endTime: string;
+}) {
+  const startMs = parseSlotStartMs(slot);
+  const endMs = parseSlotEndMs(slot);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  return `${startLabel} - ${endLabel}`;
+}
 interface BookingsTableProps {
   className?: string;
   /** When set, only bookings for this student are listed (same UI as main Booking Management). */
@@ -56,6 +150,7 @@ interface StatusDropdownProps {
   lessonPassed: boolean;
   /** Active list tab — used so "Abandoned" rows do not show as "Upcoming". */
   listTab?: BookingTabKey;
+  paymentStatus?: string;
 }
 
 interface ConfirmationModalProps {
@@ -70,7 +165,7 @@ interface ConfirmationModalProps {
 const SLOT_STATUSES = [
   { value: "booked", label: "Booked", color: "bg-green-100 text-green-800" },
   { value: "completed", label: "Completed", color: "bg-blue-100 text-blue-800" },
-  { value: "refund", label: "Refund", color: "bg-yellow-100 text-yellow-800" },
+  { value: "refund", label: "Refunded", color: "bg-yellow-100 text-yellow-800" },
   { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" },
   { value: "missed", label: "Missed", color: "bg-orange-100 text-orange-800" },
 ];
@@ -148,6 +243,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   disabled = false,
   lessonPassed,
   listTab,
+  paymentStatus,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -155,12 +251,26 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
 
   const normalizedStatus = (currentStatus ?? "").toLowerCase();
+  const normalizedPaymentStatus = (paymentStatus ?? "").toLowerCase();
+  const isCancelledLike =
+    normalizedStatus === "cancelled" || normalizedStatus === "refund";
+  const isTerminalStatus =
+    isCancelledLike ||
+    normalizedStatus === "completed" ||
+    normalizedStatus === "missed";
+  const isAwaitingPayment =
+    !isTerminalStatus &&
+    (normalizedPaymentStatus === "requires_action" ||
+      normalizedPaymentStatus === "payment_failed");
 
   const isFinalDisabled =
-    normalizedStatus === "completed" || normalizedStatus === "refund";
+    normalizedStatus === "completed" ||
+    normalizedStatus === "missed" ||
+    normalizedStatus === "refund";
 
   // UI label rules (match admin logic)
   const isStatusNotSetYet =
+    listTab === "history" &&
     lessonPassed &&
     normalizedStatus !== "completed" &&
     normalizedStatus !== "missed" &&
@@ -170,6 +280,13 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const displayLabel =
     listTab === "abandoned"
       ? "Abandoned"
+      : isCancelledLike
+        ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
+          "Cancelled"
+      : isAwaitingPayment
+        ? "Awaiting Payment"
+      : listTab === "upcoming" && normalizedStatus === "booked"
+        ? "Upcoming"
       : normalizedStatus === "booked" && !lessonPassed
         ? "Upcoming"
         : isStatusNotSetYet
@@ -180,6 +297,13 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const displayColor =
     listTab === "abandoned"
       ? "bg-slate-200 text-slate-800"
+      : isCancelledLike
+        ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
+          "bg-red-100 text-red-800"
+      : isAwaitingPayment
+        ? "bg-amber-100 text-amber-800"
+      : listTab === "upcoming" && normalizedStatus === "booked"
+        ? "bg-yellow-100 text-yellow-800"
       : normalizedStatus === "booked" && !lessonPassed
         ? "bg-yellow-100 text-yellow-800"
         : isStatusNotSetYet
@@ -187,13 +311,17 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
           : SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
             "bg-gray-100 text-gray-800";
 
-  const isActuallyDisabled = disabled || isFinalDisabled;
+  const isActuallyDisabled = disabled || isFinalDisabled || isAwaitingPayment;
 
   const allowedStatuses = (() => {
     // Final statuses are non-editable from this table.
     if (isFinalDisabled) return [];
 
     // Refund is not an instructor action.
+    if (isAwaitingPayment) {
+      return [];
+    }
+
     if (listTab === "upcoming" || listTab === "abandoned") {
       // Future lessons: only cancel is allowed.
       return ["cancelled"];
@@ -319,22 +447,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
 }) => {
   if (!isOpen || !booking) return null;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -423,19 +535,32 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 <div className="space-y-2">
                   {booking.slots.map((slot) => (
                     <div key={slot._id} className="bg-gray-50 rounded-lg p-3">
+                      {(() => {
+                        const normalized = String(slot.status || "").toLowerCase();
+                        const displayStatus =
+                          normalized === "refund"
+                            ? "Refunded"
+                            : normalized.charAt(0).toUpperCase() + normalized.slice(1);
+                        return (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {formatDate(slot.date)}
+                              {formatSlotDateForViewer({
+                                date: slot.date,
+                                startTime: slot.startTime,
+                              })}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {formatTime(slot.startTime)} -{" "}
-                              {formatTime(slot.endTime)}
+                              {formatSlotTimeForViewer({
+                                date: slot.date,
+                                startTime: slot.startTime,
+                                endTime: slot.endTime,
+                              })}
                             </span>
                           </div>
                         </div>
@@ -450,8 +575,33 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                               : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {slot.status}
+                          {displayStatus}
                         </span>
+                      </div>
+                        );
+                      })()}
+                      <div className="mt-2 text-xs text-gray-600">
+                        {(slot.paymentStatus === "requires_action" ||
+                          slot.paymentStatus === "payment_failed") && (
+                          <div className="mb-1 rounded-md bg-amber-50 px-2 py-1 text-amber-800">
+                            The student's payment has not been completed. The student must complete the payment before{" "}
+                            {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
+                            {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
+                          </div>
+                        )}
+                        Cancelled by:{" "}
+                        {getCancelledByLabel(
+                          (slot as { cancelledBy?: string }).cancelledBy,
+                        )}{" "}
+                        • Cancelled at:{" "}
+                        {formatCancellationDateTime(
+                          (
+                            slot as { cancellationDate?: string; refundedAt?: string }
+                          ).cancellationDate ||
+                            (
+                              slot as { cancellationDate?: string; refundedAt?: string }
+                            ).refundedAt,
+                        )}
                       </div>
                     </div>
                   ))}
@@ -502,7 +652,8 @@ type SortOrder = "newest" | "oldest";
 type HistoryStatusFilter = "all" | "no_status" | "completed" | "missed";
 
 function getSlotEndDateTime(slot: { date: string; endTime: string }) {
-  return new Date(`${slot.date}T${slot.endTime || "23:59"}:00`);
+  const ms = parseSlotEndMs(slot);
+  return Number.isFinite(ms) ? new Date(ms) : new Date(NaN);
 }
 
 function getCancelledByLabel(cancelledBy?: string) {
@@ -510,6 +661,60 @@ function getCancelledByLabel(cancelledBy?: string) {
   if (cancelledBy === "instructor") return "Instructor";
   if (cancelledBy === "admin") return "Admin";
   return "Unknown";
+}
+function formatCancellationDateTime(value?: string) {
+  if (!value) return "-";
+  const numeric = Number(value);
+  const date = Number.isFinite(numeric)
+    ? new Date(numeric < 1_000_000_000_000 ? numeric * 1000 : numeric)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getPaymentDeadlineLabelByTimezone(
+  slot: StudentBooking["slots"][number],
+  timeZone?: string,
+) {
+  const reminderBase =
+    slot.paymentReminderStartedAt ||
+    (slot as { paymentReminder1SentAt?: string }).paymentReminder1SentAt ||
+    (slot as { chargedAt?: string }).chargedAt;
+  const deadline = slot.paymentReminderDeadlineAt
+    ? new Date(slot.paymentReminderDeadlineAt)
+    : reminderBase
+      ? new Date(new Date(reminderBase).getTime() + TWENTY_FOUR_HOURS_MS)
+      : null;
+  const slotStartTz = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.startTime)}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  const derivedDeadline =
+    slotStartTz.isValid()
+      ? new Date(slotStartTz.valueOf() - FORTY_EIGHT_HOURS_MS + TWENTY_FOUR_HOURS_MS)
+      : null;
+  const effectiveDeadline =
+    deadline && !Number.isNaN(deadline.getTime())
+      ? deadline
+      : derivedDeadline && !Number.isNaN(derivedDeadline.getTime())
+        ? derivedDeadline
+        : null;
+  if (!effectiveDeadline) return "-";
+  return effectiveDeadline.toLocaleString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
 const StudentBookingWInst: React.FC<BookingsTableProps> = ({
@@ -581,24 +786,37 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatCompletionDate = (completionMarkedAt?: string, status?: string) => {
+    if (String(status || "").toLowerCase() !== "completed") return "-";
+    if (!completionMarkedAt) return "-";
+    const numericTs = Number(completionMarkedAt);
+    const d = Number.isFinite(numericTs)
+      ? new Date(numericTs)
+      : new Date(completionMarkedAt);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
   };
 
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+  /** Base lesson price per slot (uses totalAmount), in CHF */
+  const formatLessonPriceChf = (booking: StudentBooking) => {
+    const slotCount = booking.slots?.length || 1;
+    const total = Number(booking.totalAmount ?? 0);
+    if (!Number.isFinite(total) || total <= 0) return "—";
+    const perLesson = total / slotCount;
+    return new Intl.NumberFormat("de-CH", {
+      style: "currency",
+      currency: "CHF",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(perLesson);
   };
 
-  /** Per-lesson share of booking total (matches student Booked Lessons table) */
-  const formatLessonPriceChf = (booking: StudentBooking) => {
+  /** Final lesson price per slot after discount (uses finalAmount), in CHF */
+  const formatFinalPriceChf = (booking: StudentBooking) => {
     const slotCount = booking.slots?.length || 1;
     const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
     if (!Number.isFinite(total) || total <= 0) return "—";
@@ -614,8 +832,8 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
   // (cancellation date formatter removed — unused in new table)
 
   const hasLessonPassed = (slot: { date: string; endTime: string }) => {
-    const slotEnd = new Date(`${slot.date}T${slot.endTime}:00`);
-    return slotEnd.getTime() <= Date.now();
+    const ms = parseSlotEndMs(slot);
+    return Number.isFinite(ms) ? ms <= Date.now() : false;
   };
 
   const [tab, setTab] = useState<BookingTabKey>("upcoming");
@@ -654,10 +872,12 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         effectiveStatus:
           | "upcoming"
           | "cancelled"
+          | "refunded"
           | "missed"
           | "completed"
           | "abandoned"
-          | "no_status";
+          | "no_status"
+          | "awaiting_payment";
       }
     > = [];
 
@@ -671,6 +891,9 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
     for (const booking of filteredBookings) {
       for (const slot of booking.slots || []) {
         const st = String(slot.status || "").toLowerCase();
+        const paySt = String(slot.paymentStatus || "").toLowerCase();
+        const isAwaitingPayment =
+          paySt === "requires_action" || paySt === "payment_failed";
         const slotEnd = getSlotEndDateTime(slot);
 
         if (st === "cancelled") {
@@ -687,7 +910,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             booking,
             slot,
             tab: "cancelled",
-            effectiveStatus: "cancelled",
+            effectiveStatus: "refunded",
           });
           continue;
         }
@@ -695,7 +918,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
           rows.push({
             booking,
             slot,
-            tab: "history",
+            tab: "missed",
             effectiveStatus: "missed",
           });
           continue;
@@ -737,7 +960,22 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
         if (
           (st === "booked" || st === "confirmed") &&
           slotEnd.getTime() > now.getTime() &&
-          !isAbandonedPending(booking)
+          !isAbandonedPending(booking) &&
+          isAwaitingPayment
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "awaiting_payment",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          !isAbandonedPending(booking) &&
+          !isAwaitingPayment
         ) {
           rows.push({
             booking,
@@ -920,7 +1158,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
 
       {filteredSortedRows.length > 0 && (
       <div className="overflow-x-auto mt-4">
-        <table className="w-full">
+        <table className="w-full min-w-[1024px] border-collapse">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -932,14 +1170,20 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Date
               </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Time Slot
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 whitespace-nowrap">
+                Time slot
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 whitespace-nowrap">
+                Lesson price (CHF)
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 whitespace-nowrap">
+                Final Price (CHF)
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Lesson price (CHF)
+                {tab === "cancelled" ? "Cancellation Time" : "Completion Date"}
               </th>
               {tab === "cancelled" && (
                 <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
@@ -952,11 +1196,22 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {pagedRows.map(({ booking, slot }) => (
-              <tr
-                key={`${booking._id}-${slot._id}`}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
+            {pagedRows.map(({ booking, slot }) => {
+              const rowStatus = String(slot.status || "").toLowerCase();
+              const rowPaymentStatus = String(slot.paymentStatus || "").toLowerCase();
+              const isAwaitingPayment =
+                (rowStatus === "booked" || rowStatus === "confirmed") &&
+                (rowPaymentStatus === "requires_action" ||
+                  rowPaymentStatus === "payment_failed");
+              const isPaymentRelatedCancelled =
+                tab === "cancelled" &&
+                (rowStatus === "cancelled" || rowStatus === "refund") &&
+                (rowPaymentStatus === "requires_action" ||
+                  rowPaymentStatus === "payment_failed" ||
+                  rowPaymentStatus === "pending_payment");
+              return (
+              <React.Fragment key={`${booking._id}-${slot._id}`}>
+              <tr className="hover:bg-gray-50 transition-colors duration-150">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
@@ -985,16 +1240,43 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">{formatDate(slot.date)}</div>
-                </td>
-                <td className="px-6 py-4">
                   <div className="text-sm text-gray-900">
-                    {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                    {formatSlotDateForViewer({
+                      date: slot.date,
+                      startTime: slot.startTime,
+                    })}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {formatSlotTimeForViewer({
+                      date: slot.date,
+                      startTime: slot.startTime,
+                      endTime: slot.endTime,
+                    })}
+                  </div>
+                    <div className="text-xs text-gray-500">
+                      ({`Switzerland: ${formatSlotTimeForBusinessTimezone({
+                        date: slot.date,
+                        startTime: slot.startTime,
+                        endTime: slot.endTime,
+                      })}`})
+                    </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 tabular-nums">
+                    {formatLessonPriceChf(booking)}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900 tabular-nums">
+                    {formatFinalPriceChf(booking)}
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <StatusDropdown
                     currentStatus={slot.status}
+                    paymentStatus={slot.paymentStatus}
                     slotId={slot._id}
                     bookingId={booking._id}
                     onStatusChange={handleStatusChange}
@@ -1004,8 +1286,20 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   />
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900 tabular-nums">
-                    {formatLessonPriceChf(booking)}
+                  <div className="text-sm text-gray-900">
+                    {tab === "cancelled"
+                      ? formatCancellationDateTime(
+                          (
+                            slot as { cancellationDate?: string; refundedAt?: string }
+                          ).cancellationDate ||
+                            (
+                              slot as { cancellationDate?: string; refundedAt?: string }
+                            ).refundedAt,
+                        )
+                      : formatCompletionDate(
+                          (slot as { completionMarkedAt?: string }).completionMarkedAt,
+                          slot.status,
+                        )}
                   </div>
                 </td>
                 {tab === "cancelled" && (
@@ -1029,7 +1323,31 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   </button>
                 </td>
               </tr>
-            ))}
+              {isAwaitingPayment && (
+                <tr>
+                  <td
+                    colSpan={tab === "cancelled" ? 10 : 9}
+                    className="px-6 py-3 text-xs font-medium text-amber-800 bg-amber-50"
+                  >
+                    The student&apos;s payment has not been completed. The student must complete the payment before{" "}
+                    {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
+                    {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
+                  </td>
+                </tr>
+              )}
+              {isPaymentRelatedCancelled && (
+                <tr>
+                  <td
+                    colSpan={tab === "cancelled" ? 10 : 9}
+                    className="px-6 py-3 text-xs font-medium text-red-800 bg-red-50"
+                  >
+                    This lesson was cancelled and is no longer available because
+                    the student's payment was not completed on time.
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
+            )})}
           </tbody>
         </table>
       </div>

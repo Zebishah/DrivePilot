@@ -17,6 +17,16 @@ export interface Slot {
   booked: boolean;
   status: string;
   paymentStatus?: string;
+  completionMarkedAt?: string;
+  cancellationDate?: string;
+  cancelledBy?: "student" | "instructor" | "admin";
+  chargeAmount?: number;
+  refundedAt?: string;
+  paymentReminderStartedAt?: string;
+  paymentReminderDeadlineAt?: string;
+  paymentReminder1SentAt?: string;
+  paymentReminder2SentAt?: string;
+  paymentReminder3SentAt?: string;
 }
 
 export interface PaymentMethod {

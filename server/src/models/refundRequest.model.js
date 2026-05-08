@@ -33,6 +33,14 @@ const refundRequestSchema = new mongoose.Schema(
     processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     stripeRefundId: { type: String },
     rejectionReason: { type: String },
+    message: { type: String, required: true, trim: true },
+    attachments: [
+      {
+        url: { type: String, required: true },
+        fileName: { type: String, required: true },
+        mimeType: { type: String, required: true },
+      },
+    ],
     // Snapshot for admin display (student/instructor names)
     studentName: { type: String },
     instructorName: { type: String },
@@ -43,7 +51,7 @@ const refundRequestSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-refundRequestSchema.index({ bookingId: 1, slotId: 1 });
+refundRequestSchema.index({ bookingId: 1, slotId: 1 }, { unique: true });
 refundRequestSchema.index({ studentId: 1, status: 1 });
 refundRequestSchema.index({ status: 1 });
 

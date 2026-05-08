@@ -15,6 +15,8 @@ import {
   CircularProgress,
   DialogTitle,
   Tooltip,
+  Divider,
+  Chip,
 } from "@mui/material";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -25,15 +27,40 @@ import {
   CREATE_BOOKING_CHECKOUT_SESSION,
   COMPLETE_BOOKING_FROM_CHECKOUT,
   COMPLETE_DEFERRED_BOOKING_FROM_CHECKOUT,
+  RESCHEDULE_BOOKING_SLOT,
 } from "../../../graphql/mutations/studentBooking";
-import { REQUEST_REFUND, GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest";
+import { GET_MY_REFUND_REQUESTS } from "../../../graphql/mutations/refundRequest";
+import { GET_INSTRUCTOR_PROFILE } from "../../../graphql/mutations/instructorPublic";
 import toast from "react-hot-toast";
 import advancedFormat from "dayjs/plugin/advancedFormat";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import dayjs from "dayjs";
 dayjs.extend(advancedFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 import { getSlotDurationInHours } from "../../../components/StudentComponents/GetSlotDurationInHours";
 import { Slot } from "../../../types/Bookings";
+
+const SLOT_BUSINESS_TIMEZONE =
+  import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+
+function normalizeSlotTime(timeStr: string) {
+  if (!timeStr) return "00:00:00";
+  return timeStr.split(":").length === 2 ? `${timeStr}:00` : timeStr;
+}
+
+function getSlotStartUtcMs(dateStr: string, timeStr: string) {
+  const parsed = dayjs.tz(
+    `${dateStr} ${normalizeSlotTime(timeStr)}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
+  );
+  return parsed.isValid() ? parsed.valueOf() : NaN;
+}
+
 function formatLessonDateTime(dateStr: string, timeStr: string) {
   // parse the combined ISO, then format:
   return dayjs(`${dateStr}T${timeStr}`).format("dddd, MMMM Do [at] h:mm A");
@@ -66,6 +93,27 @@ const BookingDetails: React.FC = () => {
   const slotNeedsPayment =
     (slot as { paymentStatus?: string } | undefined)?.paymentStatus === "requires_action" ||
     (slot as { paymentStatus?: string } | undefined)?.paymentStatus === "payment_failed";
+  const paymentReminderDeadlineAt = (slot as { paymentReminderDeadlineAt?: string } | undefined)
+    ?.paymentReminderDeadlineAt;
+  const paymentReminderStartedAt = (slot as { paymentReminderStartedAt?: string } | undefined)
+    ?.paymentReminderStartedAt;
+  const computedDeadline = (() => {
+    if (paymentReminderDeadlineAt) return new Date(paymentReminderDeadlineAt);
+    if (paymentReminderStartedAt) {
+      return new Date(new Date(paymentReminderStartedAt).getTime() + 24 * 60 * 60 * 1000);
+    }
+    return null;
+  })();
+  const paymentDeadlineLabel =
+    computedDeadline && !Number.isNaN(computedDeadline.getTime())
+      ? computedDeadline.toLocaleString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "the deadline";
   const [displayCancelled, setDisplayCancelled] = useState(false);
   const isCancelled = status === "cancelled" || displayCancelled;
 
@@ -232,36 +280,128 @@ const BookingDetails: React.FC = () => {
   // Add new state for reschedule dialog
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [selectedRescheduleSlotId, setSelectedRescheduleSlotId] = useState<string>("");
+  const [rescheduleError, setRescheduleError] = useState<string>("");
+  const [rescheduleBookingSlot] = useMutation(RESCHEDULE_BOOKING_SLOT);
+  const { data: instructorProfileData } = useQuery(GET_INSTRUCTOR_PROFILE, {
+    variables: { id: instructorId },
+    skip: !instructorId || isCurrentBooking || isCancelled,
+    fetchPolicy: "network-only",
+  });
   const handleReschedule = () => {
-    if (isCurrentBooking || isCancelled) {
-      navigate(`/student-dashboard/search/instructors/${instructorId}`);
-    }
+    if (isCurrentBooking || isCancelled) return;
     const firstSlot = selectedAvailability?.[0];
-    const lessonStart = firstSlot ? new Date(`${firstSlot.date}T${firstSlot.startTime}`).getTime() : 0;
-    const now = Date.now();
-    const msUntil = lessonStart ? lessonStart - now : 0;
+    const lessonDate = firstSlot?.date ? new Date(firstSlot.date) : null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (lessonDate) lessonDate.setHours(0, 0, 0, 0);
 
-    if (msUntil < 48 * 60 * 60 * 1000) {
+    if (!lessonDate || lessonDate < today) {
       setIsTooLate(true);
     } else {
       setIsTooLate(false);
     }
+    setSelectedRescheduleSlotId("");
+    setRescheduleError("");
     setIsRescheduleDialogOpen(true);
   };
 
+  const currentSlot =
+    slot ||
+    selectedAvailability?.find((s: { _id?: string }) => s._id === slotId);
+
+  const availableRescheduleSlots = (() => {
+    const profile = instructorProfileData?.getInstructorPublicProfile;
+    const allSlots =
+      profile?.availability?.flatMap(
+        (d: { availableSlots?: Array<{ id: string; date: string; startTime: string; endTime: string; booked?: boolean; status?: string }> }) =>
+          d.availableSlots || [],
+      ) || [];
+
+    const now = Date.now();
+    return allSlots.filter((s: { id: string; date: string; startTime: string; endTime: string; booked?: boolean; status?: string }) => {
+      if (!s.id) return false;
+      if (s.booked || s.status !== "available") return false;
+      const startMs = new Date(`${s.date}T${s.startTime}`).getTime();
+      if (!Number.isFinite(startMs)) return false;
+      if (startMs <= now) return false;
+      const sameAsCurrent =
+        s.date === (currentSlot as { date?: string })?.date &&
+        s.startTime === (currentSlot as { startTime?: string })?.startTime &&
+        s.endTime === (currentSlot as { endTime?: string })?.endTime;
+      return !sameAsCurrent;
+    });
+  })();
+  const selectedRescheduleSlot = availableRescheduleSlots.find(
+    (s: { id: string }) => s.id === selectedRescheduleSlotId,
+  );
+  const selectedRescheduleStartMs = selectedRescheduleSlot
+    ? getSlotStartUtcMs(selectedRescheduleSlot.date, selectedRescheduleSlot.startTime)
+    : NaN;
+  const selectedRescheduleInT48Window =
+    Number.isFinite(selectedRescheduleStartMs) &&
+    selectedRescheduleStartMs - Date.now() <= FORTY_EIGHT_HOURS_MS;
+  const selectedRescheduleChargeAtMs =
+    Number.isFinite(selectedRescheduleStartMs)
+      ? selectedRescheduleStartMs - FORTY_EIGHT_HOURS_MS
+      : NaN;
+  const currentSlotPaymentStatus = String(
+    (currentSlot as { paymentStatus?: string } | undefined)?.paymentStatus || "",
+  ).toLowerCase();
+  const isCurrentSlotPendingPayment = currentSlotPaymentStatus === "pending_payment";
+
   const handleConfirmReschedule = async () => {
     try {
+      if (!bookingId || !slotId) {
+        setRescheduleError("Booking/slot info missing for reschedule.");
+        return;
+      }
+      if (!selectedRescheduleSlotId) {
+        setRescheduleError("Please select a new slot.");
+        return;
+      }
+      const selectedSlot = availableRescheduleSlots.find((s: { id: string }) => s.id === selectedRescheduleSlotId);
+      if (!selectedSlot) {
+        setRescheduleError("Selected slot is no longer available. Please choose another.");
+        return;
+      }
+      const selectedStartMs = getSlotStartUtcMs(
+        selectedSlot.date,
+        selectedSlot.startTime,
+      );
+      const dueNowAfterReschedule =
+        currentSlotPaymentStatus === "pending_payment" &&
+        Number.isFinite(selectedStartMs) &&
+        selectedStartMs - Date.now() <= FORTY_EIGHT_HOURS_MS;
+
       setRescheduleLoading(true);
-      // First cancel the current booking
-      await cancelBooking({ variables: { bookingId: bookingId } });
-      toast.success("Booking cancelled for rescheduling");
-      // Navigate to instructor page for rebooking
-      navigate(`/student-dashboard/search/instructors/${instructorId}`);
+      setRescheduleError("");
+      await rescheduleBookingSlot({
+        variables: {
+          input: {
+            bookingId,
+            slotId,
+            newDate: selectedSlot.date,
+            newStartTime: selectedSlot.startTime,
+            newEndTime: selectedSlot.endTime,
+          },
+        },
+      });
+      if (dueNowAfterReschedule) {
+        toast.success(
+          "Lesson rescheduled. Payment is now due and will be attempted shortly.",
+        );
+      } else {
+        toast.success("Lesson rescheduled successfully.");
+      }
+      setIsRescheduleDialogOpen(false);
+      navigate("/student-dashboard/book", { replace: true });
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to reschedule booking");
+      const message = err instanceof Error ? err.message : "Failed to reschedule booking";
+      setRescheduleError(message);
+      toast.error(message);
     } finally {
       setRescheduleLoading(false);
-      setIsRescheduleDialogOpen(false);
     }
   };
   const [isCancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -269,7 +409,7 @@ const BookingDetails: React.FC = () => {
   const [cancelError, setCancelError] = useState("");
   const [isTooLate, setIsTooLate] = useState(false);
   const [cancelBooking] = useMutation(CANCEL_BOOKING);
-  const { data: myRefundData, refetch: refetchMyRefundRequests } = useQuery(GET_MY_REFUND_REQUESTS, {
+  const { data: myRefundData } = useQuery(GET_MY_REFUND_REQUESTS, {
     fetchPolicy: "network-only",
   });
   const myRefundRequests = myRefundData?.getMyRefundRequests ?? [];
@@ -286,19 +426,6 @@ const BookingDetails: React.FC = () => {
       bookingId && slotId && r.bookingId === bookingId && r.slotId === slotId && r.status === "rejected"
   ) as { rejectionReason?: string | null } | undefined;
 
-  const [requestRefund, { loading: refundLoading }] = useMutation(REQUEST_REFUND, {
-    onCompleted: () => {
-      setRefundRequestedForSlot(true);
-      setRefundDialogOpen(false);
-      refetchMyRefundRequests();
-      toast.success("Refund requested. It will be processed after admin approval.");
-    },
-    onError: (err) => {
-      toast.error(err.message || "Failed to request refund");
-    },
-  });
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [refundRequestedForSlot, setRefundRequestedForSlot] = useState(false);
   const isLessonPast = selectedAvailability?.length
     ? new Date(
         `${selectedAvailability[selectedAvailability.length - 1].date}T${
@@ -306,9 +433,6 @@ const BookingDetails: React.FC = () => {
         }`
       ).getTime() < Date.now()
     : false;
-  const currentSlot =
-    slot ||
-    selectedAvailability?.find((s: { _id?: string }) => s._id === slotId);
   /** Current slot's lesson date/time has passed (for single-slot view from booked lessons) */
   const slotDate = (currentSlot as { date?: string } | undefined)?.date;
   const slotEndTime =
@@ -345,14 +469,42 @@ const BookingDetails: React.FC = () => {
       (currentSlot as { refundedAt?: string } | undefined)?.refundedAt ||
       (currentSlot as { paymentStatus?: string } | undefined)?.paymentStatus === "refunded"
   );
-  const isPendingOrRefunded = pendingRefundForThisSlot || refundRequestedForSlot || isSlotRefunded;
-  const handleOpenRefund = () => setRefundDialogOpen(true);
-  const handleCloseRefund = () => setRefundDialogOpen(false);
-  const handleConfirmRefund = () => {
-    if (isPendingOrRefunded) return;
-    if (bookingId && slotId) {
-      requestRefund({ variables: { bookingId, slotId } });
-    }
+  const isPendingOrRefunded = pendingRefundForThisSlot || isSlotRefunded;
+  const cancellationInfo = (() => {
+    const cancelledBy = (currentSlot as { cancelledBy?: string } | undefined)?.cancelledBy;
+    const cancellationDate = (currentSlot as { cancellationDate?: string } | undefined)
+      ?.cancellationDate;
+    const cancelledByLabel =
+      cancelledBy === "student"
+        ? "Student"
+        : cancelledBy === "instructor"
+          ? "Instructor"
+          : cancelledBy === "admin"
+            ? "Admin"
+            : "Unknown";
+    const parsed = cancellationDate ? new Date(cancellationDate) : null;
+    const cancelledAt =
+      parsed && !Number.isNaN(parsed.getTime())
+        ? parsed.toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "—";
+    return { cancelledByLabel, cancelledAt };
+  })();
+  const handleOpenRefund = () => {
+    if (!bookingId || !slotId) return;
+    navigate("/student-dashboard/refund-request", {
+      state: {
+        bookingId,
+        slotId,
+        slot: currentSlot,
+        instructor: { id: instructorId, name, email },
+      },
+    });
   };
   const handleOpenCancel = () => {
     if (isCurrentBooking) {
@@ -674,6 +826,12 @@ const BookingDetails: React.FC = () => {
           <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, mt: 3 }}>
             Scheduled Lessons
           </Typography>
+          {isSlotCancelled && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Cancelled by: {cancellationInfo.cancelledByLabel} • Cancelled at:{" "}
+              {cancellationInfo.cancelledAt}
+            </Alert>
+          )}
           <Grid container spacing={2}>
             {selectedAvailability && selectedAvailability.length > 0 ? (
               selectedAvailability.map((slot: { date: string; startTime: string; endTime: string }, index: number) => (
@@ -777,7 +935,7 @@ const BookingDetails: React.FC = () => {
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, alignItems: "stretch", width: "100%", maxWidth: 500 }}>
             {canCompletePayment && bookingId && slotId && (
               <Alert severity="warning" sx={{ width: "100%" }}>
-                Your bank requires extra verification (3D Secure) or the charge needs to be completed. Click below to finish payment — no need to re-book.
+                Please complete your payment before {paymentDeadlineLabel}. Otherwise, your lesson will be automatically cancelled.
               </Alert>
             )}
             {slotNeedsPayment && !canCompletePayment && bookingId && slotId && (
@@ -835,13 +993,9 @@ const BookingDetails: React.FC = () => {
                         variant="contained"
                         color="secondary"
                         onClick={handleOpenRefund}
-                        disabled={refundLoading || isSlotLessonPast}
+                        disabled={isSlotLessonPast}
                       >
-                        {refundLoading ? (
-                          <CircularProgress size={20} />
-                        ) : (
-                          "Request refund"
-                        )}
+                        Request refund
                       </Button>
                     </span>
                   </Tooltip>
@@ -1050,59 +1204,20 @@ const BookingDetails: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Refund request dialog */}
-      <Dialog
-        open={refundDialogOpen}
-        onClose={handleCloseRefund}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          Request refund
-          <IconButton
-            onClick={handleCloseRefund}
-            sx={{ position: "absolute", right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Typography gutterBottom>
-            You are requesting a full refund for this cancelled lesson.
-          </Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            Your request will be sent to admin for approval. Once approved, the
-            refund will be credited to your original payment method
-            {paymentMethod?.cardLast4
-              ? ` (card ending ****${paymentMethod.cardLast4})`
-              : ""}
-            . It may take a few business days to appear.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: "center", pb: 3 }}>
-          <Button onClick={handleCloseRefund}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmRefund}
-            disabled={refundLoading || isPendingOrRefunded}
-          >
-            {refundLoading ? (
-              <CircularProgress size={20} />
-            ) : (
-              "Confirm refund"
-            )}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Reschedule Dialog */}
       <Dialog
         open={isRescheduleDialogOpen}
         onClose={() => setIsRescheduleDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+          },
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ pb: 1.2 }}>
           {isTooLate ? "Cannot Reschedule Lesson" : "Reschedule Lesson"}
           <IconButton
             onClick={() => setIsRescheduleDialogOpen(false)}
@@ -1110,17 +1225,26 @@ const BookingDetails: React.FC = () => {
           >
             <CloseIcon />
           </IconButton>
+          {!isTooLate && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Move this lesson to another available time slot.
+            </Typography>
+          )}
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent sx={{ pt: 1 }}>
+          {rescheduleError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {rescheduleError}
+            </Alert>
+          )}
           {isTooLate ? (
             <Alert severity="error">
-              You can't reschedule your lesson now because it's less than 48
-              hours before start.
+              You can&apos;t reschedule this lesson because the lesson date has already passed.
             </Alert>
           ) : (
             <>
-              <Typography align="center" gutterBottom>
+              <Typography align="center" sx={{ mb: 1.5 }}>
                 Are you sure you want to reschedule your lesson scheduled for{" "}
                 {selectedAvailability?.[0]
                   ? formatLessonDateTime(
@@ -1130,39 +1254,129 @@ const BookingDetails: React.FC = () => {
                   : "Not selected"}
                 ?
               </Typography>
-              <Alert severity="info" sx={{ mt: 2 }}>
-                By confirming, your current booking will be cancelled and you'll
-                be redirected to select new time slots.
+              <Alert severity="info" sx={{ mt: 1.5 }}>
+                Choose a new available slot. Your lesson will be moved directly without cancelling the full booking.
               </Alert>
-              <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  Current Booking Details
-                </Typography>
-                <Typography variant="body1" gutterBottom>
-                  <strong>Lesson Number:</strong>{" "}
-                  {selectedAvailability?.length || 0}
-                </Typography>
-                <Typography variant="body1" gutterBottom>
-                  <strong>Duration:</strong> {selectedAvailability?.length || 0}{" "}
-                  Hours
-                </Typography>
-                <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-                  <strong>Note:</strong> After confirming, you'll need to select
-                  new available time slots.
-                </Typography>
+              {isCurrentSlotPendingPayment && !selectedRescheduleSlot && (
+                <Alert severity="info" sx={{ mt: 1.5 }}>
+                  This lesson is on deferred payment. After you choose a new slot:
+                  if it starts within 48 hours, payment becomes due immediately;
+                  otherwise it stays deferred until T-48.
+                </Alert>
+              )}
+              {isCurrentSlotPendingPayment && selectedRescheduleSlot && selectedRescheduleInT48Window && (
+                <Alert severity="warning" sx={{ mt: 1.5 }}>
+                  Due now: this selected time is within 48 hours, so payment will
+                  be attempted on the next T-48 job tick (about 1 minute).
+                </Alert>
+              )}
+              {isCurrentSlotPendingPayment &&
+                selectedRescheduleSlot &&
+                !selectedRescheduleInT48Window &&
+                Number.isFinite(selectedRescheduleChargeAtMs) && (
+                  <Alert severity="success" sx={{ mt: 1.5 }}>
+                    Still deferred: payment remains pending and will be attempted at{" "}
+                    {new Date(selectedRescheduleChargeAtMs).toLocaleString()}.
+                  </Alert>
+                )}
+              <Box
+                sx={{
+                  bgcolor: "#f7fafc",
+                  border: "1px solid #e2e8f0",
+                  p: 2,
+                  borderRadius: 2,
+                  mt: 2,
+                }}
+              >
+                <Box
+                  sx={{
+                    mb: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Typography variant="h6">Select New Slot</Typography>
+                  <Chip
+                    size="small"
+                    label={`${availableRescheduleSlots.length} available`}
+                    color="info"
+                    variant="outlined"
+                  />
+                </Box>
+                <Divider sx={{ mb: 1.5 }} />
+
+                <Box sx={{ maxHeight: 360, overflowY: "auto", pr: 0.5 }}>
+                  {availableRescheduleSlots.length > 0 ? (
+                    <Grid container spacing={1}>
+                      {availableRescheduleSlots.map((s: { id: string; date: string; startTime: string; endTime: string }) => {
+                        const isSelected = selectedRescheduleSlotId === s.id;
+                        return (
+                          <Grid item xs={12} key={s.id}>
+                            <Button
+                              fullWidth
+                              variant={isSelected ? "contained" : "outlined"}
+                              onClick={() => setSelectedRescheduleSlotId(s.id)}
+                              sx={{
+                                justifyContent: "space-between",
+                                textTransform: "none",
+                                borderRadius: 2,
+                                px: 1.8,
+                                py: 1.2,
+                                borderColor: isSelected ? "#5ec2d2" : "#b7dfea",
+                                bgcolor: isSelected ? "#5ec2d2" : "#fff",
+                                color: isSelected ? "#083b45" : "#1d4e89",
+                                "&:hover": {
+                                  borderColor: "#5ec2d2",
+                                  bgcolor: isSelected ? "#4db1c1" : "#f0fbff",
+                                },
+                              }}
+                            >
+                              <Box sx={{ textAlign: "left" }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {new Date(s.date).toLocaleDateString("en-GB")}
+                                </Typography>
+                                <Typography variant="body2">
+                                  {s.startTime} - {s.endTime}
+                                </Typography>
+                              </Box>
+                              {isSelected && (
+                                <Chip size="small" label="Selected" sx={{ bgcolor: "#fff", color: "#0f5563" }} />
+                              )}
+                            </Button>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No eligible slots available for reschedule right now.
+                    </Typography>
+                  )}
+                </Box>
               </Box>
             </>
           )}
         </DialogContent>
 
-        <DialogActions sx={{ justifyContent: "center", pb: 3, gap: 2 }}>
+        <DialogActions
+          sx={{
+            justifyContent: "space-between",
+            px: 3,
+            py: 2,
+            borderTop: "1px solid #edf2f7",
+            bgcolor: "#fff",
+          }}
+        >
           {!isTooLate && (
             <Button
               variant="contained"
               onClick={handleConfirmReschedule}
-              disabled={rescheduleLoading}
+              disabled={rescheduleLoading || !selectedRescheduleSlotId}
               sx={{
-                width: "200px",
+                minWidth: "210px",
                 bgcolor: "#5ec2d2",
                 "&:hover": {
                   bgcolor: "rgba(65, 135, 147)",
@@ -1172,13 +1386,16 @@ const BookingDetails: React.FC = () => {
               {rescheduleLoading ? (
                 <CircularProgress size={20} />
               ) : (
-                "Confirm Reschedule"
+                isCurrentSlotPendingPayment && selectedRescheduleInT48Window
+                  ? "Confirm Reschedule (Due now)"
+                  : "Confirm Reschedule"
               )}
             </Button>
           )}
           <Button
             onClick={() => setIsRescheduleDialogOpen(false)}
             variant="outlined"
+            sx={{ minWidth: "120px" }}
           >
             Cancel
           </Button>

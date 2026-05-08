@@ -5,8 +5,8 @@ const {
   getSlotStartTimestampUtc,
 } = require("../../utils/slotTimezone");
 
-// Payout delay after lesson completed: 1 min for testing; for production use 3 * 24 * 60 * 60 * 1000 (3 days)
-const PAYOUT_DELAY_MS = 1 * 60 * 1000;
+// Production payout delay: 3 days after lesson completion/missed outcome.
+const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const {
   AuthenticationError,
   UserInputError,
@@ -28,7 +28,7 @@ async function getPlatformCommissionForSplit() {
 }
 const checkAllSlotsBooked = require("../../utils/CheckAllSlotsBooked");
 const studentBookingModel = require("../../models/studentBooking.model");
-const { notifyBookingParties } = require("../../utils/SendOtpEmail");
+const { notifyBookingParties, sendBookingEmail } = require("../../utils/SendOtpEmail");
 const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
 const { createTransaction } = require("../../services/transactionService");
@@ -45,6 +45,7 @@ const {
   confirmPaymentIntent,
   createRefund,
   getTransferIdFromPaymentIntent,
+  getChargeIdFromPaymentIntent,
   createTransferReversal,
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,
@@ -164,8 +165,6 @@ const studentBookingResolver = {
     getCompletedStudentBookings: async (_, __, { user }) => {
       validateUser(user);
 
-      const now = new Date();
-
       const allBookings = await StudentBooking.find({
         instructorId: user?.id,
         status: { $in: ["confirmed", "semi_cancelled", "completed"] },
@@ -178,7 +177,7 @@ const studentBookingResolver = {
       for (const booking of allBookings) {
         if (!booking.slots?.length) continue;
 
-        // ✅ gather all slots that are completed (time passed or instructor marked completed), and were booked (exclude cancelled/refund)
+        // ✅ gather only slots explicitly marked completed, and booked (exclude cancelled/refund)
         const completedSlots = booking.slots.filter((slot) => {
           if (
             !slot.booked ||
@@ -186,8 +185,7 @@ const studentBookingResolver = {
             slot.status === "refund"
           )
             return false;
-          const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
-          return slot.status === "completed" || slotEndDateTime <= now;
+          return slot.status === "completed";
         });
 
         if (completedSlots.length) {
@@ -398,6 +396,8 @@ const studentBookingResolver = {
           validatedInput.paymentMethod?.paymentMethodId;
 
         let stripePaymentIntentId = null;
+        let stripeTransferId = null;
+        let stripeChargeId = null;
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
         const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
@@ -446,6 +446,12 @@ const studentBookingResolver = {
             );
           }
           stripePaymentIntentId = paymentResult.paymentIntentId;
+          stripeTransferId = await getTransferIdFromPaymentIntent(
+            stripePaymentIntentId,
+          ).catch(() => null);
+          stripeChargeId = await getChargeIdFromPaymentIntent(
+            stripePaymentIntentId,
+          ).catch(() => null);
         }
 
         const enrichedSlots = validatedInput.slots.map((slot) => {
@@ -458,6 +464,9 @@ const studentBookingResolver = {
           if (isCardPayment && stripePaymentIntentId) {
             const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
               getCommissionSplit(perSlotAmount, instructor, platformSettings);
+            base.paymentIntentId = stripePaymentIntentId;
+            if (stripeChargeId) base.connectChargeId = stripeChargeId;
+            if (stripeTransferId) base.transferId = stripeTransferId;
             base.paymentStatus = "paid";
             base.chargeAmount = perSlotAmount;
             base.dspCommission = slotDsp;
@@ -1065,6 +1074,12 @@ const studentBookingResolver = {
         typeof paymentIntent === "object" && paymentIntent?.id
           ? paymentIntent.id
           : session.payment_intent;
+      const transferId = piId
+        ? await getTransferIdFromPaymentIntent(piId).catch(() => null)
+        : null;
+      const chargeId = piId
+        ? await getChargeIdFromPaymentIntent(piId).catch(() => null)
+        : null;
       const platformSettingsConfirm = await getPlatformCommissionForSplit();
       const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
         getCommissionSplit(perSlotAmount, instructor, platformSettingsConfirm);
@@ -1079,6 +1094,9 @@ const studentBookingResolver = {
           $set: {
             status: "confirmed",
             stripePaymentIntentId: piId,
+            "slots.$[].paymentIntentId": piId,
+            ...(chargeId ? { "slots.$[].connectChargeId": chargeId } : {}),
+            ...(transferId ? { "slots.$[].transferId": transferId } : {}),
             "slots.$[].paymentStatus": "paid",
             "slots.$[].chargeAmount": perSlotAmount,
             "slots.$[].dspCommission": slotDsp,
@@ -1359,12 +1377,48 @@ const studentBookingResolver = {
       if (!slot) {
         throw new UserInputError("Slot not found.");
       }
-      if (
-        slot.paymentStatus !== "requires_action" &&
-        slot.paymentStatus !== "payment_failed"
-      ) {
+      // If already paid (e.g. user just returned from 3DS or webhook fired first), do NOT throw —
+      // return null so the frontend renders the success state smoothly.
+      if (slot.paymentStatus === "paid") {
+        return null;
+      }
+
+      let slotNeedsCompletion =
+        slot.paymentStatus === "requires_action" ||
+        slot.paymentStatus === "payment_failed";
+
+      // Self-heal state drift: if DB status is stale but PI still needs action, allow completion.
+      if (!slotNeedsCompletion && slot.paymentIntentId) {
+        try {
+          const existingPi = await retrievePaymentIntent(slot.paymentIntentId);
+          const piStatus = String(existingPi?.status || "");
+          if (piStatus === "succeeded") {
+            return null; // Stripe finalized payment; frontend will treat as success
+          }
+          if (
+            ["requires_action", "requires_confirmation", "requires_payment_method"].includes(
+              piStatus,
+            )
+          ) {
+            slotNeedsCompletion = true;
+            await StudentBooking.updateOne(
+              { _id: bookingId, "slots._id": slotId },
+              {
+                $set: {
+                  "slots.$.paymentStatus": "requires_action",
+                  updatedAt: new Date(),
+                },
+              },
+            );
+          }
+        } catch (_) {
+          // Best-effort read only; fall through to standard validation message.
+        }
+      }
+
+      if (!slotNeedsCompletion) {
         throw new UserInputError(
-          "This slot does not require payment completion or has already been paid.",
+          "This slot does not require payment completion right now. Please refresh Booked lessons and try again.",
         );
       }
       // Do not allow completing 3DS/payment if lesson date passed or instructor marked completed/missed
@@ -1832,6 +1886,33 @@ const studentBookingResolver = {
           throw new Error("Slot not found in this booking");
         }
 
+        const oldStatus = booking.slots[slotIndex].status;
+        const oldLower = String(oldStatus || "").toLowerCase();
+        const newLower = String(status || "").toLowerCase();
+        const slotPaymentStatus = String(
+          booking.slots[slotIndex].paymentStatus || "",
+        ).toLowerCase();
+        const paymentPendingForSlot =
+          slotPaymentStatus === "requires_action" ||
+          slotPaymentStatus === "payment_failed";
+
+        // Instructors/students cannot change a final lesson outcome; Admin may correct data.
+        if (user?.role !== "Admin") {
+          if (paymentPendingForSlot && newLower !== "cancelled") {
+            throw new UserInputError(
+              "This lesson is awaiting payment. Status cannot be updated until payment is completed.",
+            );
+          }
+          if (
+            ["completed", "missed", "refund"].includes(oldLower) &&
+            newLower !== oldLower
+          ) {
+            throw new UserInputError(
+              "This lesson outcome is final and cannot be changed. Contact support if a correction is needed.",
+            );
+          }
+        }
+
         // Block marking as completed before the slot end time in all environments
         // Slot times are in business timezone (SLOT_TIMEZONE, default Europe/Zurich) so clients worldwide get correct "lesson ended" check
         if (status === "completed") {
@@ -1854,9 +1935,6 @@ const studentBookingResolver = {
           }
         }
 
-        // Store old status for comparison
-        const oldStatus = booking.slots[slotIndex].status;
-
         // Update the specific slot
         booking.slots[slotIndex].status = status;
 
@@ -1867,10 +1945,7 @@ const studentBookingResolver = {
         // Set cancellation date / who cancelled.
         // Important: UI treats both `cancelled` and `refund` as part of "Cancelled" lists.
         // So we must store `cancelledBy` for both statuses.
-        if (
-          (status === "cancelled" || status === "refund") &&
-          oldStatus !== status
-        ) {
+        if (status === "cancelled" && oldStatus !== status) {
           booking.slots[slotIndex].cancellationDate = new Date().toISOString();
           const actor =
             user?.role === "Instructor"
@@ -1881,8 +1956,9 @@ const studentBookingResolver = {
           booking.slots[slotIndex].cancelledBy = actor;
         }
 
-        // When marking completed: set completion and payout-eligible (see PAYOUT_DELAY_MS) for paid slots
-        if (status === "completed") {
+        // When marking completed/missed: set completion and payout-eligible (see PAYOUT_DELAY_MS) for paid slots.
+        // Missed follows the same payout flow as completed.
+        if (status === "completed" || status === "missed") {
           const now = new Date();
           booking.slots[slotIndex].completionMarkedAt = now;
           const payoutEligibleAt = new Date(now.getTime() + PAYOUT_DELAY_MS);
@@ -2199,6 +2275,275 @@ const studentBookingResolver = {
         } catch (emailError) {
           console.error(
             "Failed to send booking cancellation emails:",
+            emailError,
+          );
+        }
+
+        return booking;
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        session.endSession();
+      }
+    },
+    rescheduleBookingSlot: async (_, { input }, { user }) => {
+      validateUser(user);
+      const { bookingId, slotId, newDate, newStartTime, newEndTime } = input;
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const booking = await StudentBooking.findById(bookingId)
+          .populate("instructorId", "_id firstName lastName email phone")
+          .populate("studentId", "_id firstName lastName email phone")
+          .session(session);
+
+        if (!booking) {
+          throw new UserInputError("Booking not found.");
+        }
+
+        const isOwner = String(booking.studentId?._id) === String(user.id);
+        const isAdmin = user?.role === "Admin";
+        if (!isOwner && !isAdmin) {
+          throw new AuthenticationError(
+            "Not authorized to reschedule this booking.",
+          );
+        }
+
+        const slot = booking.slots.id(slotId);
+        if (!slot) {
+          throw new UserInputError("Slot not found in booking.");
+        }
+        const previousSlotSnapshot = {
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        };
+
+        const currentStatus = String(slot.status || "").toLowerCase();
+        if (["completed", "missed", "refund", "cancelled"].includes(currentStatus)) {
+          throw new UserInputError(
+            "This lesson cannot be rescheduled in its current status.",
+          );
+        }
+
+        const paymentStatus = String(slot.paymentStatus || "").toLowerCase();
+        if (["requires_action", "payment_failed"].includes(paymentStatus)) {
+          throw new UserInputError(
+            "This lesson is awaiting payment and cannot be rescheduled until payment is resolved.",
+          );
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const oldSlotDate = new Date(slot.date);
+        oldSlotDate.setHours(0, 0, 0, 0);
+        if (oldSlotDate < today) {
+          throw new UserInputError(
+            "Reschedule is only allowed before the lesson date passes.",
+          );
+        }
+
+        const newSlotStartMs = getSlotStartTimestampUtc(newDate, newStartTime);
+        if (!Number.isFinite(newSlotStartMs)) {
+          throw new UserInputError("Invalid new slot time.");
+        }
+        const newSlotDate = new Date(newDate);
+        newSlotDate.setHours(0, 0, 0, 0);
+        if (newSlotDate < today) {
+          throw new UserInputError("New slot date cannot be in the past.");
+        }
+
+        const sameSlot =
+          slot.date === newDate &&
+          slot.startTime === newStartTime &&
+          slot.endTime === newEndTime;
+        if (sameSlot) {
+          throw new UserInputError(
+            "Please choose a different slot to reschedule.",
+          );
+        }
+
+        const conflictingBooking = await StudentBooking.findOne({
+          _id: { $ne: booking._id },
+          studentId: booking.studentId._id,
+          status: { $ne: "cancelled" },
+          slots: {
+            $elemMatch: {
+              date: newDate,
+              booked: true,
+              status: { $nin: ["cancelled", "refund"] },
+              startTime: { $lt: newEndTime },
+              endTime: { $gt: newStartTime },
+            },
+          },
+        }).session(session);
+
+        if (conflictingBooking) {
+          throw new UserInputError(
+            "You already have another booking at this time.",
+          );
+        }
+
+        const teacherId = booking.instructorId._id;
+
+        const oldDayAvailability = await teacherAvailabilityModel
+          .findOne({
+            teacherId,
+            date: new Date(slot.date),
+          })
+          .session(session);
+        const sameDayMove = String(slot.date) === String(newDate);
+        const newDayAvailability = sameDayMove
+          ? oldDayAvailability
+          : await teacherAvailabilityModel
+              .findOne({
+                teacherId,
+                date: new Date(newDate),
+              })
+              .session(session);
+
+        if (!newDayAvailability) {
+          throw new UserInputError(
+            "The selected slot is no longer available for this instructor.",
+          );
+        }
+
+        const targetAvailableSlot = (newDayAvailability.availableSlots || []).find(
+          (s) =>
+            s.date === newDate &&
+            s.startTime === newStartTime &&
+            s.endTime === newEndTime &&
+            s.booked === false,
+        );
+
+        if (!targetAvailableSlot) {
+          throw new UserInputError(
+            "The selected slot is no longer available. Please choose another.",
+          );
+        }
+
+        if (oldDayAvailability) {
+          oldDayAvailability.slots = (oldDayAvailability.slots || []).filter(
+            (s) => String(s.id) !== String(slotId),
+          );
+
+          const existingAvailable = (oldDayAvailability.availableSlots || []).find(
+            (s) =>
+              s.date === slot.date &&
+              s.startTime === slot.startTime &&
+              s.endTime === slot.endTime,
+          );
+          if (existingAvailable) {
+            existingAvailable.booked = false;
+            existingAvailable.status = "available";
+          } else {
+            oldDayAvailability.availableSlots.push({
+              id: new mongoose.Types.ObjectId().toString(),
+              date: slot.date,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              booked: false,
+              status: "available",
+            });
+          }
+
+          const oldHasAvailable = oldDayAvailability.availableSlots.some(
+            (s) => s.booked === false,
+          );
+          oldDayAvailability.status = oldHasAvailable ? "available" : "booked";
+          if (!sameDayMove) {
+            await oldDayAvailability.save({ session });
+          }
+        }
+
+        targetAvailableSlot.booked = true;
+        targetAvailableSlot.status = "booked";
+
+        const alreadyInBooked = (newDayAvailability.slots || []).find(
+          (s) => String(s.id) === String(slotId),
+        );
+        if (!alreadyInBooked) {
+          newDayAvailability.slots.push({
+            id: String(slotId),
+            bookingId: String(booking._id),
+            date: newDate,
+            startTime: newStartTime,
+            endTime: newEndTime,
+            booked: true,
+            status: "booked",
+          });
+        } else {
+          alreadyInBooked.date = newDate;
+          alreadyInBooked.startTime = newStartTime;
+          alreadyInBooked.endTime = newEndTime;
+          alreadyInBooked.booked = true;
+          alreadyInBooked.status = "booked";
+        }
+
+        const newHasAvailable = newDayAvailability.availableSlots.some(
+          (s) => s.booked === false,
+        );
+        newDayAvailability.status = newHasAvailable ? "available" : "booked";
+        await newDayAvailability.save({ session });
+
+        slot.date = newDate;
+        slot.startTime = newStartTime;
+        slot.endTime = newEndTime;
+        slot.status = "booked";
+        slot.booked = true;
+        slot.cancellationDate = undefined;
+        slot.cancelledBy = undefined;
+
+        booking.updatedAt = new Date();
+        await booking.save({ session });
+
+        await session.commitTransaction();
+
+        // Dedicated instructor alert when student/admin reschedules a lesson.
+        if ((isOwner || isAdmin) && booking?.instructorId?.email) {
+          try {
+            const actorRole = isAdmin ? "admin" : "student";
+            await sendBookingEmail(
+              [
+                {
+                  email: booking.instructorId.email,
+                  role: "instructor",
+                  name: `${booking.instructorId.firstName || ""} ${booking.instructorId.lastName || ""}`.trim(),
+                },
+              ],
+              {
+                id: booking._id,
+                status: booking.status,
+                slots: [
+                  {
+                    ...slot.toObject(),
+                    previousDate: previousSlotSnapshot.date,
+                    previousStartTime: previousSlotSnapshot.startTime,
+                    previousEndTime: previousSlotSnapshot.endTime,
+                    rescheduledBy: actorRole,
+                  },
+                ],
+                student: booking.studentId,
+                instructor: booking.instructorId,
+              },
+              "booking_rescheduled",
+            );
+          } catch (emailError) {
+            console.error(
+              "Failed to send instructor reschedule alert email:",
+              emailError,
+            );
+          }
+        }
+
+        try {
+          await notifyBookingParties(booking, "booking_status_updated");
+        } catch (emailError) {
+          console.error(
+            "Failed to send reschedule notification emails:",
             emailError,
           );
         }
