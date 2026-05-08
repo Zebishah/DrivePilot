@@ -256,7 +256,7 @@ export const BookingList: React.FC<BookingListProps> = ({
           rows.push({
             booking,
             slot,
-            tab: "history",
+            tab: "missed",
             effectiveStatus: "missed",
           });
         } else if (slot.status === "completed") {
