@@ -31,6 +31,7 @@ import {
   formatDeadlineHhMmDdMmYyyy,
   resolveActiveLessonPlacement,
   resolveUnpaidCancelDeadline,
+  shouldShowPaymentRetryCta,
 } from "../../utils/unpaidBookingLifecycle";
 
 dayjs.extend(utc);
@@ -277,8 +278,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
     normalizedStatus !== "refund";
 
   const displayLabel =
-    listTab === "abandoned" || isAwaitingPayment
-      ? "Abandoned"
+    listTab === "abandoned"
+      ? "Awaiting Payment"
       : isCancelledLike
         ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
           "Cancelled"
@@ -292,8 +293,8 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
             currentStatus;
 
   const displayColor =
-    listTab === "abandoned" || isAwaitingPayment
-      ? "bg-slate-200 text-slate-800"
+    listTab === "abandoned"
+      ? "bg-amber-100 text-amber-800"
       : isCancelledLike
         ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
           "bg-red-100 text-red-800"
@@ -582,23 +583,6 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                         );
                       })()}
                       <div className="mt-2 text-xs text-gray-600">
-                        {(slot.paymentStatus === "requires_action" ||
-                          slot.paymentStatus === "payment_failed" ||
-                          slot.paymentStatus === "pending_payment") && (
-                          <div className="mb-1 rounded-md bg-amber-50 px-2 py-1 text-amber-800">
-                            {(() => {
-                              const deadline =
-                                getPaymentDeadlineLabelByTimezone(
-                                  slot,
-                                  SLOT_BUSINESS_TIMEZONE,
-                                  booking.createdAt,
-                                );
-                              return deadline
-                                ? `The student's payment has not been completed. The student must complete the payment before ${deadline}. Otherwise, the lesson will be automatically cancelled.`
-                                : "The student's payment has not been completed. This lesson stays under Abandoned until payment is confirmed.";
-                            })()}
-                          </div>
-                        )}
                         Cancelled by:{" "}
                         {getCancelledByLabel(
                           (slot as { cancelledBy?: string }).cancelledBy,
@@ -1108,11 +1092,6 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             {pagedRows.map(({ booking, slot }) => {
               const rowStatus = String(slot.status || "").toLowerCase();
               const rowPaymentStatus = String(slot.paymentStatus || "").toLowerCase();
-              const isAwaitingPayment =
-                (rowStatus === "booked" || rowStatus === "confirmed") &&
-                (rowPaymentStatus === "requires_action" ||
-                  rowPaymentStatus === "payment_failed" ||
-                  rowPaymentStatus === "pending_payment");
               const isPaymentRelatedCancelled =
                 tab === "cancelled" &&
                 (rowStatus === "cancelled" || rowStatus === "refund") &&
@@ -1235,24 +1214,28 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
               {tab === "abandoned" && (
                 <tr>
                   <td
-                    colSpan={tab === "cancelled" ? 10 : 9}
+                    colSpan={9}
                     className="px-6 py-3 text-xs font-medium text-amber-800 bg-amber-50"
                   >
                     {(() => {
+                      const showDeadline = shouldShowPaymentRetryCta({
+                        slotStatus: slot.status,
+                        paymentStatus: slot.paymentStatus,
+                        bookingStatus: booking.status,
+                        hasStripeCustomerId: Boolean(booking.stripeCustomerId),
+                        anySlotPaid: (booking.slots || []).some(
+                          (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
+                        ),
+                      });
                       const deadline = getPaymentDeadlineLabelByTimezone(
                         slot,
                         SLOT_BUSINESS_TIMEZONE,
                         booking.createdAt,
                       );
-                      if (
-                        deadline &&
-                        (rowPaymentStatus === "requires_action" ||
-                          rowPaymentStatus === "payment_failed" ||
-                          rowPaymentStatus === "pending_payment")
-                      ) {
+                      if (showDeadline && deadline) {
                         return `The student's payment has not been completed. The student must complete the payment before ${deadline}. Otherwise, the lesson will be automatically cancelled.`;
                       }
-                      return "The student's payment has not been completed. This lesson stays under Abandoned until payment is confirmed.";
+                      return "The student's card is saved and will be charged automatically 48 hours before the lesson. This lesson stays under Abandoned until the payment is confirmed.";
                     })()}
                   </td>
                 </tr>

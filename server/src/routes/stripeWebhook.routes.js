@@ -18,6 +18,9 @@ const Transaction = require("../models/transaction.model");
 const { createTransaction } = require("../services/transactionService");
 const { getCommissionSplit } = require("../services/stripeService");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
+const {
+  finalizePaidCheckoutBooking,
+} = require("../services/finalizePaidCheckoutBooking");
 
 const router = express.Router();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -502,7 +505,28 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
  */
 async function handleCheckoutSessionCompleted(sessionId) {
   const session = await retrieveCheckoutSession(sessionId);
-  if (!session || session.mode !== "setup") return;
+  if (!session) return;
+  if (session.mode === "payment") {
+    if (session.payment_status !== "paid") return;
+    const paymentIntent = session.payment_intent;
+    const bookingId =
+      session.metadata?.bookingId || paymentIntent?.metadata?.bookingId;
+    const piId =
+      typeof paymentIntent === "object" && paymentIntent?.id
+        ? paymentIntent.id
+        : paymentIntent;
+    if (!bookingId || !piId) return;
+    await finalizePaidCheckoutBooking({
+      bookingId,
+      paymentIntentId: piId,
+    });
+    console.log(
+      "[Stripe Webhook] Payment checkout completed: confirmed booking",
+      bookingId,
+    );
+    return;
+  }
+  if (session.mode !== "setup") return;
   const setupIntent = session.setup_intent;
   if (
     !setupIntent ||
@@ -645,6 +669,13 @@ router.post("/", async (req, res) => {
         })
           .populate("instructorId", "stripeAccount commission")
           .populate("studentId", "_id");
+        if (!booking && pi.metadata?.bookingId && !pi.metadata?.slotId) {
+          await finalizePaidCheckoutBooking({
+            bookingId: pi.metadata.bookingId,
+            paymentIntentId: pi.id,
+          });
+          return res.status(200).send("OK");
+        }
         if (booking) {
           const transferId = await getTransferIdFromPaymentIntent(pi.id).catch(
             () => null,

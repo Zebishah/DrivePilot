@@ -61,12 +61,40 @@ export function shouldUseSavedCardCompletion({
   return Boolean(hasStripeCustomerId && hasPaymentMethodId);
 }
 
-export function resolveActiveLessonPlacement({
+/**
+ * Complete/Retry (and the 24h cancel deadline) only while the lesson is still
+ * recoverable: checkout never finished, T-48 charge failed, or 3DS incomplete.
+ * A deferred booking waiting for its scheduled T-48 charge shows neither.
+ */
+export function shouldShowPaymentRetryCta({
   slotStatus,
   paymentStatus,
   bookingStatus,
   hasStripeCustomerId,
   anySlotPaid = false,
+}: {
+  slotStatus?: string | null;
+  paymentStatus?: string | null;
+  bookingStatus?: string | null;
+  hasStripeCustomerId?: boolean;
+  anySlotPaid?: boolean;
+}): boolean {
+  const st = String(slotStatus || "").toLowerCase();
+  if (["cancelled", "refund", "completed", "missed"].includes(st)) return false;
+
+  const pay = String(paymentStatus || "").toLowerCase();
+  if (pay === "paid" || pay === "refunded") return false;
+  if (pay === "requires_action" || pay === "payment_failed") return true;
+  return isIncompleteCheckout({
+    bookingStatus,
+    hasStripeCustomerId,
+    slotsPaid: anySlotPaid,
+  });
+}
+
+export function resolveActiveLessonPlacement({
+  slotStatus,
+  paymentStatus,
   slotEndMs,
   nowMs,
 }: {
@@ -80,7 +108,6 @@ export function resolveActiveLessonPlacement({
 }): { tab: LessonTab; effectiveStatus: LessonEffectiveStatus } | null {
   const st = String(slotStatus || "").toLowerCase();
   const pay = String(paymentStatus || "").toLowerCase();
-  const bookingSt = String(bookingStatus || "").toLowerCase();
 
   if (st === "cancelled") {
     return { tab: "cancelled", effectiveStatus: "cancelled" };
@@ -96,24 +123,18 @@ export function resolveActiveLessonPlacement({
   }
 
   const unpaid = !isPaymentConfirmed(pay) && pay !== "refunded";
-  const incompleteCheckout = isIncompleteCheckout({
-    bookingStatus: bookingSt,
-    hasStripeCustomerId,
-    slotsPaid: anySlotPaid,
-  });
+  const lessonPassed = Number.isFinite(slotEndMs)
+    ? Number(slotEndMs) <= Number(nowMs)
+    : false;
 
-  // Any unconfirmed payment stays in Abandoned until paid — never Upcoming.
   if (unpaid) {
-    if (incompleteCheckout || bookingSt === "pending") {
-      return { tab: "abandoned", effectiveStatus: "abandoned" };
+    if (pay === "requires_action" || pay === "payment_failed") {
+      return { tab: "abandoned", effectiveStatus: "awaiting_payment" };
     }
-    return { tab: "abandoned", effectiveStatus: "awaiting_payment" };
+    return { tab: "abandoned", effectiveStatus: "abandoned" };
   }
 
   if (st === "booked" || st === "confirmed") {
-    const lessonPassed = Number.isFinite(slotEndMs)
-      ? Number(slotEndMs) <= Number(nowMs)
-      : false;
     if (lessonPassed) {
       return { tab: "history", effectiveStatus: "no_status" };
     }
@@ -167,9 +188,6 @@ export function resolvePaymentDeadline({
   paymentReminderDeadlineAt,
   paymentReminderStartedAt,
   chargedAt,
-  slotDate,
-  slotStartTime,
-  businessTimezone = "Europe/Zurich",
 }: {
   paymentReminderDeadlineAt?: string | Date | null;
   paymentReminderStartedAt?: string | Date | null;

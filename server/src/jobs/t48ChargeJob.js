@@ -9,6 +9,7 @@ const { Admin, Instructor } = require("../models/User");
 const { getCommissionSplit } = require("../services/stripeService");
 const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 const { sendStudentReminderEmail } = require("./t48PaymentReminderJob");
+const { shouldSkipT48Charge } = require("../utils/checkoutPaymentGuard");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -50,7 +51,7 @@ async function runT48ChargeJob() {
   // Find bookings that have at least one pending_payment slot and a saved payment method
   const bookings = await StudentBooking.find({
     "slots.paymentStatus": "pending_payment",
-    "paymentMethod.paymentMethodId": { $exists: true, $ne: null },
+    "paymentMethod.paymentMethodId": { $regex: /^pm_/ },
   })
     .populate("instructorId", "stripeAccount firstName lastName commission")
     .populate("studentId", "_id")
@@ -86,9 +87,7 @@ async function runT48ChargeJob() {
 
     for (let i = 0; i < booking.slots.length; i++) {
       const slot = booking.slots[i];
-      if (slot.paymentStatus !== "pending_payment") continue;
-      // Do not charge cancelled slots (e.g. student cancelled before T-48)
-      if (slot.status === "cancelled" || slot.booked === false) continue;
+      if (shouldSkipT48Charge({ booking, slot })) continue;
 
       const slotStartUtcMs = getSlotStartTimestampUtc(
         slot.date,

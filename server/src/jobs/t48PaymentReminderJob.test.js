@@ -36,3 +36,25 @@ test("uses stored reminder start + 24h as cancel deadline", () => {
   });
   assert.equal(window.deadlineAt.toISOString(), "2026-08-06T12:00:00.000Z");
 });
+
+const { shouldAutoCancelUnpaidSlot } = require("../utils/checkoutPaymentGuard");
+
+test("reminder cancel guard ignores instant checkout failures", () => {
+  assert.equal(
+    shouldAutoCancelUnpaidSlot({
+      booking: {
+        stripeCustomerId: null,
+        paymentMethod: { paymentMethodId: "checkout" },
+        slots: [{ paymentStatus: "payment_failed", status: "booked", booked: true }],
+      },
+      slot: {
+        paymentStatus: "payment_failed",
+        status: "booked",
+        booked: true,
+        paymentReminderStartedAt: "2026-08-05T12:00:00.000Z",
+      },
+      now: new Date("2026-08-05T15:18:00.000Z"),
+    }),
+    false,
+  );
+});

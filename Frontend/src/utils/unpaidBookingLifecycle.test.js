@@ -7,19 +7,27 @@ import {
   resolvePaymentChip,
   resolvePaymentDeadline,
   resolveUnpaidCancelDeadline,
+  shouldShowPaymentRetryCta,
   shouldUseSavedCardCompletion,
 } from "./unpaidBookingLifecycle.ts";
 
-test("unpaid 3DS / failed / pending payment sits in Abandoned, not Upcoming", () => {
+test("T-48 saved-card pending stays Abandoned until payment is confirmed", () => {
+  const result = resolveActiveLessonPlacement({
+    slotStatus: "booked",
+    paymentStatus: "pending_payment",
+    bookingStatus: "confirmed",
+    hasStripeCustomerId: true,
+    slotEndMs: Date.parse("2026-08-10T15:00:00.000Z"),
+    nowMs: Date.parse("2026-08-04T08:00:00.000Z"),
+  });
+  assert.deepEqual(result, { tab: "abandoned", effectiveStatus: "abandoned" });
+});
+
+test("3DS / failed T-48 charge sits in Abandoned", () => {
   const now = Date.parse("2026-08-04T08:00:00.000Z");
   const futureEnd = Date.parse("2026-08-10T15:00:00.000Z");
 
-  for (const paymentStatus of [
-    "requires_action",
-    "payment_failed",
-    "pending_payment",
-    "",
-  ]) {
+  for (const paymentStatus of ["requires_action", "payment_failed"]) {
     const result = resolveActiveLessonPlacement({
       slotStatus: "booked",
       paymentStatus,
@@ -29,24 +37,59 @@ test("unpaid 3DS / failed / pending payment sits in Abandoned, not Upcoming", ()
       nowMs: now,
     });
     assert.equal(result.tab, "abandoned");
-    assert.equal(
-      result.effectiveStatus === "awaiting_payment" ||
-        result.effectiveStatus === "abandoned",
-      true,
-    );
+    assert.equal(result.effectiveStatus, "awaiting_payment");
   }
 });
 
-test("unpaid slot with unusual status still sits in Abandoned, not Upcoming", () => {
-  const result = resolveActiveLessonPlacement({
-    slotStatus: "yet",
-    paymentStatus: "pending_payment",
-    bookingStatus: "confirmed",
-    hasStripeCustomerId: true,
-    slotEndMs: Date.parse("2026-08-10T15:00:00.000Z"),
-    nowMs: Date.parse("2026-08-04T08:00:00.000Z"),
-  });
-  assert.equal(result.tab, "abandoned");
+test("retry CTA never shows on cancelled, refunded or finished lessons", () => {
+  for (const slotStatus of ["cancelled", "refund", "completed", "missed"]) {
+    assert.equal(
+      shouldShowPaymentRetryCta({
+        slotStatus,
+        paymentStatus: "payment_failed",
+        bookingStatus: "cancelled",
+        hasStripeCustomerId: true,
+      }),
+      false,
+    );
+  }
+  assert.equal(
+    shouldShowPaymentRetryCta({
+      slotStatus: "cancelled",
+      paymentStatus: "pending_payment",
+      bookingStatus: "cancelled",
+      hasStripeCustomerId: false,
+    }),
+    false,
+  );
+});
+
+test("retry CTA is only for incomplete checkout or failed/3DS T-48", () => {
+  assert.equal(
+    shouldShowPaymentRetryCta({
+      slotStatus: "booked",
+      paymentStatus: "pending_payment",
+      bookingStatus: "confirmed",
+      hasStripeCustomerId: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldShowPaymentRetryCta({
+      paymentStatus: "requires_action",
+      bookingStatus: "confirmed",
+      hasStripeCustomerId: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldShowPaymentRetryCta({
+      paymentStatus: "pending_payment",
+      bookingStatus: "pending",
+      hasStripeCustomerId: false,
+    }),
+    true,
+  );
 });
 
 test("incomplete checkout is Abandoned", () => {
@@ -202,6 +245,17 @@ test("unpaid cancel deadline falls back to createdAt + 24h", () => {
     bookingCreatedAt: "2026-08-05T10:00:00.000Z",
   });
   assert.equal(deadline?.toISOString(), "2026-08-06T10:00:00.000Z");
+});
+
+test("retry CTA is hidden for healthy T-48 pending payment", () => {
+  assert.equal(
+    shouldShowPaymentRetryCta({
+      paymentStatus: "payment_failed",
+      bookingStatus: "confirmed",
+      hasStripeCustomerId: true,
+    }),
+    true,
+  );
 });
 
 test("3DS complete page is only for saved-card failures", () => {
