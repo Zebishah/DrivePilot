@@ -4,10 +4,6 @@ const {
   getSlotEndTimestampUtc,
   getSlotStartTimestampUtc,
 } = require("../../utils/slotTimezone");
-const {
-  slotsOverlap,
-  isActiveUnpaidOrPaidSlot,
-} = require("../../utils/slotTimeOverlap");
 
 // Production payout delay: 3 days after lesson completion/missed outcome.
 const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
@@ -37,9 +33,6 @@ const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
 const { createTransaction } = require("../../services/transactionService");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
-const {
-  finalizePaidCheckoutBooking,
-} = require("../../services/finalizePaidCheckoutBooking");
 const {
   getCommissionSplit,
   createPaymentIntentForBooking,
@@ -821,8 +814,14 @@ const studentBookingResolver = {
           const conflictingBooking = existingBookings.find((booking) =>
             booking.slots.some(
               (existingSlot) =>
-                isActiveUnpaidOrPaidSlot(existingSlot) &&
-                slotsOverlap(newSlot, existingSlot),
+                existingSlot.date === newSlot.date &&
+                existingSlot.booked &&
+                ((newSlot.startTime >= existingSlot.startTime &&
+                  newSlot.startTime < existingSlot.endTime) ||
+                  (newSlot.endTime > existingSlot.startTime &&
+                    newSlot.endTime <= existingSlot.endTime) ||
+                  (newSlot.startTime <= existingSlot.startTime &&
+                    newSlot.endTime >= existingSlot.endTime)),
             ),
           );
           if (conflictingBooking) {
@@ -1084,22 +1083,167 @@ const studentBookingResolver = {
       if (!bookingId) {
         throw new UserInputError("Invalid checkout session.");
       }
+      const booking = await StudentBooking.findById(bookingId);
+      if (!booking) {
+        throw new UserInputError("Booking not found.");
+      }
+      if (String(booking.studentId) !== String(user.id)) {
+        throw new UserInputError("This booking does not belong to you.");
+      }
+      if (booking.status !== "pending") {
+        return booking;
+      }
+      // Do not allow completing checkout if any lesson date has passed
+      const slotEndTimes = (booking.slots || []).map(
+        (s) => new Date(`${s.date}T${s.endTime || s.startTime}`),
+      );
+      const now = new Date();
+      if (slotEndTimes.length > 0 && slotEndTimes.some((d) => d <= now)) {
+        throw new UserInputError(
+          "Cannot complete checkout: lesson date has passed.",
+        );
+      }
+      const instructor = await Instructor.findById(booking.instructorId).lean();
+      if (!instructor) {
+        throw new UserInputError("Instructor not found.");
+      }
+      const finalAmount = Number(booking.finalAmount);
+      const numSlots = booking.slots.length;
+      const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
       const piId =
         typeof paymentIntent === "object" && paymentIntent?.id
           ? paymentIntent.id
           : session.payment_intent;
-      const savedBooking = await finalizePaidCheckoutBooking({
-        bookingId,
-        paymentIntentId: piId,
-        expectedStudentId: user.id,
-      });
-      if (!savedBooking) {
-        throw new UserInputError("Booking not found.");
+      const transferId = piId
+        ? await getTransferIdFromPaymentIntent(piId).catch(() => null)
+        : null;
+      const chargeId = piId
+        ? await getChargeIdFromPaymentIntent(piId).catch(() => null)
+        : null;
+      const platformSettingsConfirm = await getPlatformCommissionForSplit();
+      const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
+        getCommissionSplit(perSlotAmount, instructor, platformSettingsConfirm);
+      // Use atomic update to avoid VersionError when a webhook updated the booking after we loaded it
+      const updateResult = await StudentBooking.updateOne(
+        {
+          _id: bookingId,
+          studentId: user.id,
+          status: "pending",
+        },
+        {
+          $set: {
+            status: "confirmed",
+            stripePaymentIntentId: piId,
+            "slots.$[].paymentIntentId": piId,
+            ...(chargeId ? { "slots.$[].connectChargeId": chargeId } : {}),
+            ...(transferId ? { "slots.$[].transferId": transferId } : {}),
+            "slots.$[].paymentStatus": "paid",
+            "slots.$[].chargeAmount": perSlotAmount,
+            "slots.$[].dspCommission": slotDsp,
+            "slots.$[].instructorAmount": slotInstructor,
+            "slots.$[].payoutStatus": "not_applicable",
+            updatedAt: new Date(),
+          },
+        },
+      );
+      if (updateResult.matchedCount === 0) {
+        // Already confirmed (e.g. by webhook) or not found
+        const current = await StudentBooking.findById(bookingId)
+          .populate(
+            "instructorId",
+            "_id firstName lastName email phone description profileImage address",
+          )
+          .populate(
+            "studentId",
+            "_id firstName lastName email phone profileImage homeAddress",
+          );
+        if (current && String(current.status) === "confirmed") {
+          return current;
+        }
+        throw new UserInputError("Booking not found or already processed.");
       }
-      if (String(savedBooking.status) !== "confirmed") {
-        throw new UserInputError(
-          "Payment succeeded in Stripe, but this booking can no longer be confirmed automatically. Please contact support.",
+      // Reload for transactions and response (slots now have payment fields set)
+      const bookingUpdated = await StudentBooking.findById(bookingId);
+      if (!bookingUpdated) throw new UserInputError("Booking not found.");
+      // Log transactions for checkout-based payment
+      const occurredAt = new Date();
+      await createTransaction({
+        type: "payment",
+        role: "student",
+        direction: "debit",
+        amount: finalAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: bookingId,
+        studentId: user.id,
+        stripePaymentIntentId: piId,
+        description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
+        occurredAt,
+      });
+      await createTransaction({
+        type: "payment",
+        role: "platform",
+        direction: "credit",
+        amount: finalAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: bookingId,
+        studentId: user.id,
+        instructorId: instructor._id,
+        stripePaymentIntentId: piId,
+        description: "Platform gross receipt for booking",
+        occurredAt,
+      });
+      for (const slot of bookingUpdated.slots) {
+        if (slot.instructorAmount != null) {
+          await createTransaction({
+            type: "payment",
+            role: "instructor",
+            direction: "credit",
+            amount: slot.instructorAmount,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: bookingId,
+            instructorId: instructor._id,
+            studentId: user.id,
+            stripePaymentIntentId: piId,
+            description: "Instructor share for booked slot",
+            occurredAt,
+          });
+        }
+        if (slot.dspCommission != null) {
+          await createTransaction({
+            type: "payment",
+            role: "platform",
+            direction: "credit",
+            amount: slot.dspCommission,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: bookingId,
+            studentId: user.id,
+            description: "Platform commission for booked slot",
+            occurredAt,
+          });
+        }
+      }
+      const savedBooking = await StudentBooking.findById(bookingId)
+        .populate(
+          "instructorId",
+          "_id firstName lastName email phone description profileImage address",
+        )
+        .populate(
+          "studentId",
+          "_id firstName lastName email phone profileImage homeAddress",
         );
+      try {
+        const bookingData = JSON.parse(JSON.stringify(savedBooking));
+        await notifyBookingParties(bookingData, "booking_created");
+      } catch (emailError) {
+        console.error("Failed to send booking creation emails:", emailError);
+      }
+      const io = getIOInstance();
+      if (io && io.notifyNewBooking) {
+        io.notifyNewBooking(JSON.parse(JSON.stringify(savedBooking)));
       }
       return savedBooking;
     },

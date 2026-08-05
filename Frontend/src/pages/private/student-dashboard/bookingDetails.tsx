@@ -215,24 +215,13 @@ const BookingDetails: React.FC = () => {
 
     if (checkout === "success") {
       completeBookingFromCheckout({ variables: { sessionId } })
-        .then((result) => {
+        .then(() => {
           setSearchParams({});
-          const status = result.data?.completeBookingFromCheckout?.status;
-          if (String(status || "").toLowerCase() === "confirmed") {
-            toast.success("Booking confirmed! Payment successful.");
-          } else {
-            toast.error(
-              "Payment was taken, but the booking is not confirmed yet. Please refresh Booked lessons or contact support.",
-            );
-          }
+          toast.success("Booking confirmed! Payment successful.");
           navigate("/student-dashboard/book", { replace: true });
         })
-        .catch((err) => {
-          setSearchParams({});
-          toast.error(
-            err?.message ||
-              "We could not confirm this payment. If you were charged, please contact support.",
-          );
+        .catch(() => {
+          runDeferredCompletion();
         });
       return;
     }
@@ -295,6 +284,7 @@ const BookingDetails: React.FC = () => {
         paymentMethod: {
           type: "card",
           cardNumber: "",
+          paymentMethodId: "checkout",
         },
       };
       const result = await createBookingCheckoutSession({
@@ -488,8 +478,6 @@ const BookingDetails: React.FC = () => {
   const canCompletePayment =
     canUseSavedCardCompletion &&
     !isSlotLessonPast &&
-    (currentSlot as { status?: string } | undefined)?.status !== "cancelled" &&
-    (currentSlot as { status?: string } | undefined)?.status !== "refund" &&
     (currentSlot as { status?: string } | undefined)?.status !== "completed" &&
     (currentSlot as { status?: string } | undefined)?.status !== "missed";
   /** Slot-level cancelled: show refund UI for this slot (works for semi_cancelled bookings too) */

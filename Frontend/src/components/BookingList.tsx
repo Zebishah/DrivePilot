@@ -35,7 +35,6 @@ import {
   formatDeadlineHhMmDdMmYyyy,
   resolveActiveLessonPlacement,
   resolvePaymentChip,
-  shouldShowPaymentRetryCta,
   resolveUnpaidCancelDeadline,
   shouldUseSavedCardCompletion,
 } from "../utils/unpaidBookingLifecycle";
@@ -220,16 +219,10 @@ export const BookingList: React.FC<BookingListProps> = ({
     return formatDeadlineHhMmDdMmYyyy(d, SLOT_BUSINESS_TIMEZONE);
   };
 
-  const canRetryPayment = (row: BookingRow) =>
-    shouldShowPaymentRetryCta({
-      slotStatus: row.slot.status,
-      paymentStatus: row.slot.paymentStatus,
-      bookingStatus: row.booking.status,
-      hasStripeCustomerId: Boolean(row.booking.stripeCustomerId),
-      anySlotPaid: (row.booking.slots || []).some(
-        (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
-      ),
-    });
+  const isIncompleteCheckoutRow = (row: BookingRow) =>
+    row.effectiveStatus === "abandoned" ||
+    (String(row.booking.status || "").toLowerCase() === "pending" &&
+      !row.booking.stripeCustomerId);
 
   const handleCompleteOrRetryPayment = async (row: BookingRow) => {
     const paymentMethodId = (
@@ -351,7 +344,8 @@ export const BookingList: React.FC<BookingListProps> = ({
   );
 
   const getDisplayStatus = (row: BookingRow) => {
-    if (row.tab === "abandoned") return "Awaiting Payment";
+    if (row.tab === "abandoned") return "Abandoned";
+    if (row.effectiveStatus === "awaiting_payment") return "Abandoned";
     if (row.tab === "upcoming") return "Upcoming";
     if (row.tab === "cancelled") {
       if (row.effectiveStatus === "refunded") return "Refunded";
@@ -651,7 +645,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                                     </Typography>
                                   </Box>
                                 )}
-                              {cancelDeadlineLabel && canRetryPayment(row) && (
+                              {cancelDeadlineLabel &&
+                                (row.tab === "abandoned" ||
+                                  row.effectiveStatus === "awaiting_payment") && (
                                   <Typography
                                     variant="caption"
                                     color="warning.dark"
@@ -687,7 +683,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 gap: 1,
                               }}
                             >
-                              {canRetryPayment(row) && (
+                              {(row.tab === "abandoned" ||
+                                row.effectiveStatus === "awaiting_payment" ||
+                                isIncompleteCheckoutRow(row)) && (
                                 <Button
                                   variant="contained"
                                   size="small"
@@ -787,15 +785,14 @@ export const BookingList: React.FC<BookingListProps> = ({
                             </Box>
                           </TableCell>
                         </TableRow>
-                        {row.tab === "abandoned" && (
+                        {(row.tab === "abandoned" ||
+                          row.effectiveStatus === "awaiting_payment") && (
                           <TableRow>
                             <TableCell colSpan={tabValue === 2 ? 11 : 10} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
                               <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
-                                {canRetryPayment(row)
-                                  ? cancelDeadlineLabel
-                                    ? `Your payment has not been completed. Please complete the payment before ${cancelDeadlineLabel} (Switzerland). Otherwise, the lesson will be automatically cancelled.`
-                                    : "Your payment has not been completed. Please complete or retry the payment. Otherwise, the lesson will be automatically cancelled."
-                                  : "Your card is saved. We will charge it automatically 48 hours before the lesson. This lesson moves to Upcoming once the payment is confirmed."}
+                                {cancelDeadlineLabel
+                                  ? `Your payment has not been completed. Please complete the payment before ${cancelDeadlineLabel} (Switzerland). Otherwise, the lesson will be automatically cancelled.`
+                                  : "Your payment has not been completed. Please complete or retry the payment. Otherwise, the lesson will be automatically cancelled."}
                               </Typography>
                             </TableCell>
                           </TableRow>

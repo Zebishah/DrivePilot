@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const StudentBooking = require("../models/studentBooking.model");
 const teacherAvailabilityModel = require("../models/teacherAvailability.model");
 const { sendBookingEmail } = require("../utils/SendOtpEmail");
-const { shouldAutoCancelUnpaidSlot } = require("../utils/checkoutPaymentGuard");
 
 const GRACE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SECOND_REMINDER_AFTER_MS = 12 * 60 * 60 * 1000;
@@ -246,7 +245,7 @@ async function runT48PaymentReminderJob() {
       const window = resolveT48PaymentWindow(slot);
       if (!window) continue;
 
-      const { milestones } = window;
+      const { milestones, deadlineAt } = window;
 
       if (!slot.paymentReminder2SentAt && now >= milestones.secondReminderAt) {
         const sent = await sendStudentReminderEmail(booking._id, slot._id, 2);
@@ -258,7 +257,7 @@ async function runT48PaymentReminderJob() {
         if (sent) thirdSent += 1;
       }
 
-      if (shouldAutoCancelUnpaidSlot({ booking, slot, now })) {
+      if (now.getTime() >= new Date(deadlineAt).getTime()) {
         const wasCancelled = await cancelSlotAndReleaseAvailability(
           booking._id,
           slot._id,

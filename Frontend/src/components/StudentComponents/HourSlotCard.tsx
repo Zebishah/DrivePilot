@@ -3,7 +3,7 @@ import { Card, CardContent, Typography, Box, Chip } from "@mui/material";
 import { FaRegCheckCircle } from "react-icons/fa";
 import { IoMdTime } from "react-icons/io";
 import { SlotCardProps } from "../../types/HourSlots";
-import { isBusinessSlotStartPast } from "../../utils/slotBusinessTime";
+import dayjs from "dayjs";
 
 const HourSlotCard: React.FC<SlotCardProps> = ({
   slot,
@@ -13,7 +13,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
   const isBooked = slot.booked;
 
   // Combine date + startTime to check if the slot is in the past
-  const isPast = isBusinessSlotStartPast(slot.date, slot.startTime);
+  const isPast = dayjs(`${slot.date} ${slot.startTime}`).isBefore(dayjs());
 
   // Slot should be disabled if it's either booked or in the past
   const isDisabled = isBooked || isPast;
