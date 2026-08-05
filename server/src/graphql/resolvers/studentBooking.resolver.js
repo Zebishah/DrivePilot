@@ -67,7 +67,30 @@ function isAbandonedPendingBooking(booking) {
   return true;
 }
 
+function toIsoString(value) {
+  if (value == null || value === "") return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
 const studentBookingResolver = {
+  StudentBooking: {
+    createdAt: (parent) => toIsoString(parent.createdAt) || parent.createdAt,
+    updatedAt: (parent) => toIsoString(parent.updatedAt) || parent.updatedAt,
+    paymentMethod: (parent) => parent.paymentMethod || { type: "card" },
+  },
+  Slot: {
+    paymentReminderStartedAt: (parent) => toIsoString(parent.paymentReminderStartedAt),
+    paymentReminderDeadlineAt: (parent) => toIsoString(parent.paymentReminderDeadlineAt),
+    paymentReminder1SentAt: (parent) => toIsoString(parent.paymentReminder1SentAt),
+    paymentReminder2SentAt: (parent) => toIsoString(parent.paymentReminder2SentAt),
+    paymentReminder3SentAt: (parent) => toIsoString(parent.paymentReminder3SentAt),
+    chargedAt: (parent) => toIsoString(parent.chargedAt),
+    cancellationDate: (parent) => toIsoString(parent.cancellationDate),
+    completionMarkedAt: (parent) => toIsoString(parent.completionMarkedAt),
+    refundedAt: (parent) => toIsoString(parent.refundedAt),
+  },
   Query: {
     // getStudentBookings: async (_, __, { user }) => {
     //   validateUser(user);
@@ -220,7 +243,7 @@ const studentBookingResolver = {
       const bookings = await StudentBooking.find({ instructorId: user.id })
         .populate("studentId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
-      return bookings.filter((b) => !isAbandonedPendingBooking(b));
+      return bookings;
     },
     getStudentDashboardDetails: async (_, { studentId }, { user }) => {
       validateUser(user);
@@ -989,6 +1012,23 @@ const studentBookingResolver = {
         Number(instructorAmount) * CENTIMES_PER_UNIT,
       );
       const instructorAccountId = instructor.stripeAccount.accountId;
+
+      const resumePaymentFields = { updatedAt: new Date() };
+      (booking.slots || []).forEach((slot, index) => {
+        const pay = String(slot.paymentStatus || "").toLowerCase();
+        if (pay === "paid" || pay === "refunded") return;
+        resumePaymentFields[`slots.${index}.paymentStatus`] = "pending_payment";
+        resumePaymentFields[`slots.${index}.paymentIntentId`] = null;
+        resumePaymentFields[`slots.${index}.paymentReminderStartedAt`] = null;
+        resumePaymentFields[`slots.${index}.paymentReminderDeadlineAt`] = null;
+        resumePaymentFields[`slots.${index}.paymentReminder1SentAt`] = null;
+        resumePaymentFields[`slots.${index}.paymentReminder2SentAt`] = null;
+        resumePaymentFields[`slots.${index}.paymentReminder3SentAt`] = null;
+      });
+      await StudentBooking.updateOne(
+        { _id: booking._id },
+        { $set: resumePaymentFields },
+      );
 
       let customerEmail = null;
       let stripeCustomerIdForSession = null;

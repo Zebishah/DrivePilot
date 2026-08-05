@@ -22,12 +22,22 @@ import {
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useState } from "react";
+import { useMutation } from "@apollo/client";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import toast from "react-hot-toast";
 import { Booking } from "../types/Student";
 import { Slot } from "../types/Bookings";
 import { useNavigate } from "react-router-dom";
+import { CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING } from "../graphql/mutations/studentBooking";
+import {
+  formatDeadlineHhMmDdMmYyyy,
+  resolveActiveLessonPlacement,
+  resolvePaymentChip,
+  resolveUnpaidCancelDeadline,
+  shouldUseSavedCardCompletion,
+} from "../utils/unpaidBookingLifecycle";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -85,6 +95,10 @@ export const BookingList: React.FC<BookingListProps> = ({
   >("all");
   const ITEMS_PER_PAGE = 10;
   const navigate = useNavigate();
+  const [resumeCheckoutBookingId, setResumeCheckoutBookingId] = useState<string | null>(null);
+  const [createCheckoutForPending] = useMutation(
+    CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
+  );
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
@@ -116,6 +130,21 @@ export const BookingList: React.FC<BookingListProps> = ({
     });
   };
 
+  const formatWallClock12h = (timeStr?: string) => {
+    const [hStr, mStr] = String(timeStr || "").split(":");
+    const hour = Number(hStr);
+    const minute = Number(mStr);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return timeStr || "—";
+    return new Date(2000, 0, 1, hour, minute, 0).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const formatSlotTimeForSwiss = (slot: Slot) =>
+    `${formatWallClock12h(slot.startTime)} - ${formatWallClock12h(slot.endTime)}`;
+
   const formatSlotTimeForViewer = (slot: Slot) => {
     const startMs = parseSlotStartUtcMs(slot);
     const endMs = parseSlotEndUtcMs(slot);
@@ -131,27 +160,6 @@ export const BookingList: React.FC<BookingListProps> = ({
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
-    });
-    return `${startLabel} - ${endLabel}`;
-  };
-
-  const formatSlotTimeForSwiss = (slot: Slot) => {
-    const startMs = parseSlotStartUtcMs(slot);
-    const endMs = parseSlotEndUtcMs(slot);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-      return `${slot.startTime} - ${slot.endTime}`;
-    }
-    const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: SLOT_BUSINESS_TIMEZONE,
-    });
-    const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: SLOT_BUSINESS_TIMEZONE,
     });
     return `${startLabel} - ${endLabel}`;
   };
@@ -184,12 +192,6 @@ export const BookingList: React.FC<BookingListProps> = ({
     }).format(perLesson);
   };
 
-  /** Stripe checkout started but never completed (no payment, no card saved) — do not show as upcoming */
-  const isAbandonedPending = (booking: Booking) =>
-    booking.status === "pending" &&
-    !booking.stripeCustomerId &&
-    !(booking.slots ?? []).some((s) => s.paymentStatus === "paid");
-
   type BookingTab = "upcoming" | "abandoned" | "cancelled" | "history";
   type BookingRow = {
     booking: Booking;
@@ -206,110 +208,85 @@ export const BookingList: React.FC<BookingListProps> = ({
       | "awaiting_payment";
   };
 
-  const slotNeedsPayment = (slot: Slot) =>
-    slot.paymentStatus === "requires_action" ||
-    slot.paymentStatus === "payment_failed";
-
-  const getPaymentDeadlineDate = (slot: Slot) => {
-    if (slot.paymentReminderDeadlineAt) return new Date(slot.paymentReminderDeadlineAt);
-    if (slot.paymentReminderStartedAt) {
-      return new Date(new Date(slot.paymentReminderStartedAt).getTime() + 24 * 60 * 60 * 1000);
-    }
-    return null;
+  const formatPaymentDeadline = (slot: Slot, booking?: Booking) => {
+    const d = resolveUnpaidCancelDeadline({
+      paymentReminderDeadlineAt: slot.paymentReminderDeadlineAt,
+      paymentReminderStartedAt: slot.paymentReminderStartedAt,
+      chargedAt: (slot as { chargedAt?: string }).chargedAt,
+      bookingCreatedAt: booking?.createdAt,
+    });
+    if (!d) return "";
+    return formatDeadlineHhMmDdMmYyyy(d, SLOT_BUSINESS_TIMEZONE);
   };
 
-  const formatPaymentDeadline = (slot: Slot) => {
-    const d = getPaymentDeadlineDate(slot);
-    if (!d || Number.isNaN(d.getTime())) return "the deadline";
-    return d.toLocaleString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  const isIncompleteCheckoutRow = (row: BookingRow) =>
+    row.effectiveStatus === "abandoned" ||
+    (String(row.booking.status || "").toLowerCase() === "pending" &&
+      !row.booking.stripeCustomerId);
+
+  const handleCompleteOrRetryPayment = async (row: BookingRow) => {
+    const paymentMethodId = (
+      row.booking as { paymentMethod?: { paymentMethodId?: string | null } }
+    ).paymentMethod?.paymentMethodId;
+    if (
+      shouldUseSavedCardCompletion({
+        paymentStatus: row.slot.paymentStatus,
+        hasStripeCustomerId: Boolean(row.booking.stripeCustomerId),
+        hasPaymentMethodId: Boolean(paymentMethodId),
+      })
+    ) {
+      navigate(
+        `/student-dashboard/complete-payment?bookingId=${row.booking._id}&slotId=${row.slot._id}`,
+      );
+      return;
+    }
+    setResumeCheckoutBookingId(row.booking._id);
+    try {
+      const { data } = await createCheckoutForPending({
+        variables: { bookingId: row.booking._id },
+      });
+      const url = data?.createCheckoutSessionForPendingBooking?.url;
+      if (!url) {
+        toast.error("Could not start checkout. Please try again.");
+        return;
+      }
+      window.location.href = url;
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message?: string }).message)
+          : "Could not start checkout. Please try again.";
+      toast.error(message);
+    } finally {
+      setResumeCheckoutBookingId(null);
+    }
   };
 
   const categorizeRows = (bookings: Booking[]) => {
-    const now = new Date();
+    const nowMs = Date.now();
     const rows: BookingRow[] = [];
 
     bookings.forEach((booking) => {
-      booking.slots.forEach((slot) => {
-        const slotEnd = getSlotEndDateTime(slot);
-
-        if (slot.status === "cancelled") {
-          rows.push({
-            booking,
-            slot,
-            tab: "cancelled",
-            effectiveStatus: "cancelled",
-          });
-        } else if (slot.status === "refund") {
-          rows.push({
-            booking,
-            slot,
-            tab: "cancelled",
-            effectiveStatus: "refunded",
-          });
-        } else if (slot.status === "missed") {
-          rows.push({
-            booking,
-            slot,
-            tab: "missed",
-            effectiveStatus: "missed",
-          });
-        } else if (slot.status === "completed") {
-          rows.push({
-            booking,
-            slot,
-            tab: "history",
-            effectiveStatus: "completed",
-          });
-        } else if (
-          (slot.status === "booked" || slot.status === "confirmed") &&
-          slotEnd <= now
-        ) {
-          rows.push({
-            booking,
-            slot,
-            tab: "history",
-            effectiveStatus: "no_status",
-          });
-        } else if (
-          (slot.status === "booked" || slot.status === "confirmed") &&
-          slotEnd > now &&
-          slotNeedsPayment(slot)
-        ) {
-          rows.push({
-            booking,
-            slot,
-            tab: "upcoming",
-            effectiveStatus: "awaiting_payment",
-          });
-        } else if (
-          (slot.status === "booked" || slot.status === "confirmed") &&
-          slotEnd > now &&
-          isAbandonedPending(booking)
-        ) {
-          rows.push({
-            booking,
-            slot,
-            tab: "abandoned",
-            effectiveStatus: "abandoned",
-          });
-        } else if (
-          (slot.status === "booked" || slot.status === "confirmed") &&
-          slotEnd > now &&
-          !isAbandonedPending(booking)
-        ) {
-          rows.push({
-            booking,
-            slot,
-            tab: "upcoming",
-            effectiveStatus: "upcoming",
-          });
-        }
+      const anySlotPaid = (booking.slots ?? []).some(
+        (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
+      );
+      (booking.slots ?? []).forEach((slot) => {
+        const placement = resolveActiveLessonPlacement({
+          slotStatus: slot.status,
+          paymentStatus: slot.paymentStatus,
+          bookingStatus: booking.status,
+          hasStripeCustomerId: Boolean(booking.stripeCustomerId),
+          anySlotPaid,
+          slotEndMs: getSlotEndDateTime(slot).getTime(),
+          nowMs,
+        });
+        if (!placement) return;
+        rows.push({
+          booking,
+          slot,
+          tab: placement.tab as BookingTab,
+          effectiveStatus: placement.effectiveStatus as BookingRow["effectiveStatus"],
+        });
       });
     });
 
@@ -367,9 +344,9 @@ export const BookingList: React.FC<BookingListProps> = ({
   );
 
   const getDisplayStatus = (row: BookingRow) => {
-    if (row.effectiveStatus === "awaiting_payment") return "Awaiting Payment";
-    if (row.tab === "upcoming") return "Upcoming";
     if (row.tab === "abandoned") return "Abandoned";
+    if (row.effectiveStatus === "awaiting_payment") return "Abandoned";
+    if (row.tab === "upcoming") return "Upcoming";
     if (row.tab === "cancelled") {
       if (row.effectiveStatus === "refunded") return "Refunded";
       return "Cancelled";
@@ -389,6 +366,7 @@ export const BookingList: React.FC<BookingListProps> = ({
     if (status === "Refunded") return "warning";
     if (status === "Upcoming") return "info";
     if (status === "Awaiting Payment") return "warning";
+    if (status === "Abandoned") return "default";
     if (status === "Cancelled") return "error";
     if (status === "Missed") return "warning";
     if (status === "Completed") return "success";
@@ -429,37 +407,18 @@ export const BookingList: React.FC<BookingListProps> = ({
     });
   };
 
-  const getPaymentDisplay = (slot: Slot) => {
-    const slotStatus = String(slot.status || "").toLowerCase();
-    const paymentStatus = String(slot.paymentStatus || "").toLowerCase();
-    const isCancelledLike = slotStatus === "cancelled" || slotStatus === "refund";
-    if (
-      isCancelledLike &&
-      (paymentStatus === "requires_action" ||
-        paymentStatus === "payment_failed" ||
-        paymentStatus === "pending_payment")
-    ) {
-      return { label: "Not Paid In Time", color: "error" as const };
-    }
-    if (paymentStatus === "paid") {
-      return { label: "Paid", color: "success" as const };
-    }
-    if (paymentStatus === "requires_action" || paymentStatus === "payment_failed") {
-      return { label: "Action Required", color: "warning" as const };
-    }
-    if (paymentStatus === "refunded") {
-      return { label: "Refunded", color: "default" as const };
-    }
-    if (paymentStatus === "pending_payment") {
-      const startMs = parseSlotStartUtcMs(slot);
-      const t48 = startMs - 48 * 60 * 60 * 1000;
-      if (Number.isFinite(t48) && Date.now() >= t48) {
-        return { label: "Due Now (T-48)", color: "warning" as const };
-      }
-      return { label: "Pending (T-48)", color: "info" as const };
-    }
-    return { label: "—", color: "default" as const };
-  };
+  const getPaymentDisplay = (booking: Booking, slot: Slot) =>
+    resolvePaymentChip({
+      slotStatus: slot.status,
+      paymentStatus: slot.paymentStatus,
+      bookingStatus: booking.status,
+      hasStripeCustomerId: Boolean(booking.stripeCustomerId),
+      anySlotPaid: (booking.slots || []).some(
+        (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
+      ),
+      slotStartMs: parseSlotStartUtcMs(slot),
+      bookingCreatedAt: booking.createdAt,
+    });
 
   const formatT48Instant = (t48Ms: number, timeZone?: string) =>
     new Date(t48Ms).toLocaleString("en-GB", {
@@ -557,7 +516,7 @@ export const BookingList: React.FC<BookingListProps> = ({
               <Table
                 size="small"
                 sx={{
-                  minWidth: 1024,
+                  minWidth: 1280,
                   "& .MuiTableCell-root": {
                     py: 1.6,
                     px: 2,
@@ -578,13 +537,22 @@ export const BookingList: React.FC<BookingListProps> = ({
                       {tabValue === 2 ? "Cancellation Time" : "Info"}
                     </TableCell>
                     {tabValue === 2 && <TableCell>Cancelled By</TableCell>}
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell align="right" sx={{ minWidth: 420, whiteSpace: "nowrap" }}>
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {currentRows.map((row) => {
                     const statusLabel = getDisplayStatus(row);
-                    const t48Lines = getT48Display(row.slot);
+                    const paymentDisplay = getPaymentDisplay(row.booking, row.slot);
+                    const t48Lines = paymentDisplay.showT48Schedule
+                      ? getT48Display(row.slot)
+                      : null;
+                    const cancelDeadlineLabel = formatPaymentDeadline(
+                      row.slot,
+                      row.booking,
+                    );
                     const rowStatus = String(row.slot.status || "").toLowerCase();
                     const rowPaymentStatus = String(
                       row.slot.paymentStatus || "",
@@ -608,10 +576,10 @@ export const BookingList: React.FC<BookingListProps> = ({
                           <TableCell sx={{ whiteSpace: "nowrap" }}>
                             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
                               <Typography variant="body2">
-                                {formatSlotTimeForViewer(row.slot)}
+                                {`Switzerland: ${formatSlotTimeForSwiss(row.slot)}`}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                ({`Switzerland: ${formatSlotTimeForSwiss(row.slot)}`})
+                                ({`Your time: ${formatSlotTimeForViewer(row.slot)}`})
                               </Typography>
                             </Box>
                           </TableCell>
@@ -643,8 +611,8 @@ export const BookingList: React.FC<BookingListProps> = ({
                           <TableCell>
                             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                               <Chip
-                                label={getPaymentDisplay(row.slot).label}
-                                color={getPaymentDisplay(row.slot).color}
+                                label={paymentDisplay.label}
+                                color={paymentDisplay.color}
                                 size="small"
                                 variant="outlined"
                                 sx={{
@@ -677,6 +645,17 @@ export const BookingList: React.FC<BookingListProps> = ({
                                     </Typography>
                                   </Box>
                                 )}
+                              {cancelDeadlineLabel &&
+                                (row.tab === "abandoned" ||
+                                  row.effectiveStatus === "awaiting_payment") && (
+                                  <Typography
+                                    variant="caption"
+                                    color="warning.dark"
+                                    sx={{ lineHeight: 1.2, fontWeight: 600 }}
+                                  >
+                                    Cancel by (Switzerland): {cancelDeadlineLabel}
+                                  </Typography>
+                                )}
                             </Box>
                           </TableCell>
                           <TableCell sx={{ minWidth: 280 }}>
@@ -694,27 +673,39 @@ export const BookingList: React.FC<BookingListProps> = ({
                               (row.slot as { cancelledBy?: string }).cancelledBy,
                             )}</TableCell>
                           )}
-                          <TableCell align="right">
-                            <Box sx={{ display: "inline-flex", gap: 1 }}>
-                              {row.effectiveStatus === "awaiting_payment" && (
+                          <TableCell align="right" sx={{ minWidth: 420 }}>
+                            <Box
+                              sx={{
+                                display: "inline-flex",
+                                flexWrap: "nowrap",
+                                alignItems: "center",
+                                justifyContent: "flex-end",
+                                gap: 1,
+                              }}
+                            >
+                              {(row.tab === "abandoned" ||
+                                row.effectiveStatus === "awaiting_payment" ||
+                                isIncompleteCheckoutRow(row)) && (
                                 <Button
                                   variant="contained"
                                   size="small"
-                                  onClick={() =>
-                                    navigate(
-                                      `/student-dashboard/complete-payment?bookingId=${row.booking._id}&slotId=${row.slot._id}`,
-                                    )
-                                  }
+                                  disabled={resumeCheckoutBookingId === row.booking._id}
+                                  onClick={() => handleCompleteOrRetryPayment(row)}
                                   sx={{
                                     bgcolor: "#f59e0b",
+                                    color: "#111827",
                                     "&:hover": { bgcolor: "#d97706" },
                                     borderRadius: 2.5,
-                                    px: 1.8,
-                                    py: 0.8,
+                                    px: 1.6,
+                                    py: 0.75,
                                     fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                    minWidth: "max-content",
                                   }}
                                 >
-                                  Complete Checkout
+                                  {resumeCheckoutBookingId === row.booking._id
+                                    ? "Opening checkout…"
+                                    : "Complete / Retry Payment"}
                                 </Button>
                               )}
                               <Button
@@ -724,9 +715,11 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 onClick={() => onBookingClick(row.booking, row.slot._id, row.slot)}
                                 sx={{
                                   borderRadius: 2.5,
-                                  px: 1.8,
-                                  py: 0.8,
+                                  px: 1.6,
+                                  py: 0.75,
                                   fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                  minWidth: "max-content",
                                 }}
                               >
                                 View Details
@@ -757,9 +750,11 @@ export const BookingList: React.FC<BookingListProps> = ({
                                     bgcolor: "#8b5cf6",
                                     "&:hover": { bgcolor: "#7c3aed" },
                                     borderRadius: 2.5,
-                                    px: 1.8,
-                                    py: 0.8,
+                                    px: 1.6,
+                                    py: 0.75,
                                     fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                    minWidth: "max-content",
                                   }}
                                 >
                                   Request Refund
@@ -775,11 +770,14 @@ export const BookingList: React.FC<BookingListProps> = ({
                                 }
                                 sx={{
                                   bgcolor: "#5fc2d3",
+                                  color: "#111827",
                                   "&:hover": { bgcolor: "#4bb1c2" },
                                   borderRadius: 2.5,
-                                  px: 1.8,
-                                  py: 0.8,
+                                  px: 1.6,
+                                  py: 0.75,
                                   fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                  minWidth: "max-content",
                                 }}
                               >
                                 View Instructor
@@ -787,11 +785,14 @@ export const BookingList: React.FC<BookingListProps> = ({
                             </Box>
                           </TableCell>
                         </TableRow>
-                        {row.effectiveStatus === "awaiting_payment" && (
+                        {(row.tab === "abandoned" ||
+                          row.effectiveStatus === "awaiting_payment") && (
                           <TableRow>
                             <TableCell colSpan={tabValue === 2 ? 11 : 10} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
                               <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
-                                Please complete your payment before {formatPaymentDeadline(row.slot)}. Otherwise, your lesson will be automatically cancelled.
+                                {cancelDeadlineLabel
+                                  ? `Your payment has not been completed. Please complete the payment before ${cancelDeadlineLabel} (Switzerland). Otherwise, the lesson will be automatically cancelled.`
+                                  : "Your payment has not been completed. Please complete or retry the payment. Otherwise, the lesson will be automatically cancelled."}
                               </Typography>
                             </TableCell>
                           </TableRow>

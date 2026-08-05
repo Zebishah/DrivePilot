@@ -54,6 +54,7 @@ const AdminBookingTypeDefs = gql`
     paymentReminder1SentAt: String
     paymentReminder2SentAt: String
     paymentReminder3SentAt: String
+    chargedAt: String
   }
 
   type PaymentMethodAdmin {
@@ -68,7 +69,7 @@ const AdminBookingTypeDefs = gql`
     slots: [BookingSlotAdmin!]!
     totalAmount: Float!
     finalAmount: Float!
-    paymentMethod: PaymentMethodAdmin!
+    paymentMethod: PaymentMethodAdmin
     status: BookingStatusAdmin!
     cancellationDate: String # Add this field
     stripeCustomerId: String

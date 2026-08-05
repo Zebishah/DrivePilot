@@ -25,6 +25,7 @@ import { useMutation, useQuery } from "@apollo/client";
 import {
   CANCEL_BOOKING,
   CREATE_BOOKING_CHECKOUT_SESSION,
+  CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
   COMPLETE_BOOKING_FROM_CHECKOUT,
   COMPLETE_DEFERRED_BOOKING_FROM_CHECKOUT,
   RESCHEDULE_BOOKING_SLOT,
@@ -36,6 +37,12 @@ import advancedFormat from "dayjs/plugin/advancedFormat";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import dayjs from "dayjs";
+import {
+  formatDeadlineHhMmDdMmYyyy,
+  resolveIncompleteCheckoutDeadline,
+  resolvePaymentDeadline,
+  shouldUseSavedCardCompletion,
+} from "../../../utils/unpaidBookingLifecycle";
 dayjs.extend(advancedFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -87,36 +94,54 @@ const BookingDetails: React.FC = () => {
     name = "",
     email = "",
     description = "",
+    createdAt,
+    stripeCustomerId,
   } = location.state || {};
   const [error, setError] = useState<string | null>(null);
   /** Slot needs 3DS or retry after T-48 charge (requires_action or payment_failed) */
+  const slotPaymentStatus = String(
+    (slot as { paymentStatus?: string } | undefined)?.paymentStatus || "",
+  ).toLowerCase();
   const slotNeedsPayment =
-    (slot as { paymentStatus?: string } | undefined)?.paymentStatus === "requires_action" ||
-    (slot as { paymentStatus?: string } | undefined)?.paymentStatus === "payment_failed";
-  const paymentReminderDeadlineAt = (slot as { paymentReminderDeadlineAt?: string } | undefined)
-    ?.paymentReminderDeadlineAt;
-  const paymentReminderStartedAt = (slot as { paymentReminderStartedAt?: string } | undefined)
-    ?.paymentReminderStartedAt;
-  const computedDeadline = (() => {
-    if (paymentReminderDeadlineAt) return new Date(paymentReminderDeadlineAt);
-    if (paymentReminderStartedAt) {
-      return new Date(new Date(paymentReminderStartedAt).getTime() + 24 * 60 * 60 * 1000);
-    }
-    return null;
+    slotPaymentStatus === "requires_action" ||
+    slotPaymentStatus === "payment_failed";
+  const canUseSavedCardCompletion = shouldUseSavedCardCompletion({
+    paymentStatus: slotPaymentStatus,
+    hasStripeCustomerId: Boolean(stripeCustomerId),
+    hasPaymentMethodId: Boolean(
+      (paymentMethod as { paymentMethodId?: string } | undefined)?.paymentMethodId,
+    ),
+  });
+  const slotUnpaid =
+    slotPaymentStatus !== "paid" && slotPaymentStatus !== "refunded";
+  const computedDeadline = resolvePaymentDeadline({
+    paymentReminderDeadlineAt: (slot as { paymentReminderDeadlineAt?: string } | undefined)
+      ?.paymentReminderDeadlineAt,
+    paymentReminderStartedAt: (slot as { paymentReminderStartedAt?: string } | undefined)
+      ?.paymentReminderStartedAt,
+    slotDate: (slot as { date?: string } | undefined)?.date,
+    slotStartTime: (slot as { startTime?: string } | undefined)?.startTime,
+    businessTimezone: SLOT_BUSINESS_TIMEZONE,
+  });
+  const paymentDeadlineLabel = (() => {
+    const deadline =
+      computedDeadline || resolveIncompleteCheckoutDeadline(createdAt);
+    return deadline
+      ? formatDeadlineHhMmDdMmYyyy(deadline, SLOT_BUSINESS_TIMEZONE)
+      : "";
   })();
-  const paymentDeadlineLabel =
-    computedDeadline && !Number.isNaN(computedDeadline.getTime())
-      ? computedDeadline.toLocaleString("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-      : "the deadline";
+  const isIncompleteCheckoutBooking =
+    String(status || "").toLowerCase() === "pending" && !stripeCustomerId;
   const [displayCancelled, setDisplayCancelled] = useState(false);
   const isCancelled = status === "cancelled" || displayCancelled;
 
+  const [createPendingCheckout, { loading: pendingCheckoutLoading }] =
+    useMutation(CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING, {
+      onError: (err) => {
+        toast.error(err.message || "Failed to start checkout. Please try again.");
+        setError(err.message || "Failed to start checkout.");
+      },
+    });
   const [createBookingCheckoutSession, { loading: checkoutLoading }] =
     useMutation(CREATE_BOOKING_CHECKOUT_SESSION, {
       onError: (err) => {
@@ -451,7 +476,7 @@ const BookingDetails: React.FC = () => {
     (currentSlot as { status?: string } | undefined)?.status === "refund";
   /** Can complete payment (3DS/retry) only if slot needs payment and lesson not past and not completed/missed */
   const canCompletePayment =
-    slotNeedsPayment &&
+    canUseSavedCardCompletion &&
     !isSlotLessonPast &&
     (currentSlot as { status?: string } | undefined)?.status !== "completed" &&
     (currentSlot as { status?: string } | undefined)?.status !== "missed";
@@ -933,9 +958,11 @@ const BookingDetails: React.FC = () => {
           </>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, alignItems: "stretch", width: "100%", maxWidth: 500 }}>
-            {canCompletePayment && bookingId && slotId && (
+            {slotUnpaid && !isSlotCancelled && bookingId && slotId && (
               <Alert severity="warning" sx={{ width: "100%" }}>
-                Please complete your payment before {paymentDeadlineLabel}. Otherwise, your lesson will be automatically cancelled.
+                {paymentDeadlineLabel
+                  ? `Your payment has not been completed. Please complete the payment before ${paymentDeadlineLabel}. Otherwise, the lesson will be automatically cancelled.`
+                  : "Your payment has not been completed. Please complete or retry the payment. Otherwise, the lesson will be automatically cancelled."}
               </Alert>
             )}
             {slotNeedsPayment && !canCompletePayment && bookingId && slotId && (
@@ -1010,7 +1037,26 @@ const BookingDetails: React.FC = () => {
                       )
                     }
                   >
-                    Complete payment
+                    Complete / Retry Payment
+                  </Button>
+                )}
+                {(isIncompleteCheckoutBooking ||
+                  (slotNeedsPayment && !canUseSavedCardCompletion)) &&
+                  bookingId &&
+                  !isSlotCancelled && (
+                  <Button
+                    variant="contained"
+                    size="medium"
+                    disabled={pendingCheckoutLoading}
+                    onClick={async () => {
+                      const { data } = await createPendingCheckout({
+                        variables: { bookingId },
+                      });
+                      const url = data?.createCheckoutSessionForPendingBooking?.url;
+                      if (url) window.location.href = url;
+                    }}
+                  >
+                    {pendingCheckoutLoading ? "Opening checkout…" : "Complete / Retry Payment"}
                   </Button>
                 )}
                 <Button

@@ -2,10 +2,8 @@ const mongoose = require("mongoose");
 const StudentBooking = require("../models/studentBooking.model");
 const teacherAvailabilityModel = require("../models/teacherAvailability.model");
 const { sendBookingEmail } = require("../utils/SendOtpEmail");
-const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 
 const GRACE_WINDOW_MS = 24 * 60 * 60 * 1000;
-const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 const SECOND_REMINDER_AFTER_MS = 12 * 60 * 60 * 1000;
 const THIRD_REMINDER_AFTER_MS = 18 * 60 * 60 * 1000;
 
@@ -16,6 +14,27 @@ function buildReminderMilestones(baseDate) {
     thirdReminderAt: new Date(baseMs + THIRD_REMINDER_AFTER_MS),
     deadlineAt: new Date(baseMs + GRACE_WINDOW_MS),
   };
+}
+
+/**
+ * Only auto-cancel when we know the real 24h payment window start.
+ * Never invent "lesson time - 48h" — that cancels same-day / late 3DS immediately.
+ */
+function resolveT48PaymentWindow(slot) {
+  const startedAt =
+    slot.paymentReminderStartedAt ||
+    slot.paymentReminder1SentAt ||
+    slot.chargedAt ||
+    null;
+  if (!startedAt) return null;
+  const started = new Date(startedAt);
+  if (Number.isNaN(started.getTime())) return null;
+  const milestones = buildReminderMilestones(started);
+  const deadlineAt = slot.paymentReminderDeadlineAt
+    ? new Date(slot.paymentReminderDeadlineAt)
+    : milestones.deadlineAt;
+  if (Number.isNaN(deadlineAt.getTime())) return null;
+  return { startedAt: started, deadlineAt, milestones };
 }
 
 async function sendStudentReminderEmail(bookingId, slotId, reminderNumber) {
@@ -223,19 +242,10 @@ async function runT48PaymentReminderJob() {
         continue;
       }
 
-      const startedAt =
-        slot.paymentReminderStartedAt ||
-        slot.paymentReminder1SentAt ||
-        slot.chargedAt ||
-        (() => {
-          const slotStartMs = getSlotStartTimestampUtc(slot.date, slot.startTime);
-          if (!Number.isFinite(slotStartMs)) return null;
-          return new Date(slotStartMs - FORTY_EIGHT_HOURS_MS);
-        })();
-      if (!startedAt) continue;
+      const window = resolveT48PaymentWindow(slot);
+      if (!window) continue;
 
-      const milestones = buildReminderMilestones(startedAt);
-      const deadlineAt = slot.paymentReminderDeadlineAt || milestones.deadlineAt;
+      const { milestones, deadlineAt } = window;
 
       if (!slot.paymentReminder2SentAt && now >= milestones.secondReminderAt) {
         const sent = await sendStudentReminderEmail(booking._id, slot._id, 2);
@@ -268,4 +278,5 @@ module.exports = {
   runT48PaymentReminderJob,
   sendStudentReminderEmail,
   buildReminderMilestones,
+  resolveT48PaymentWindow,
 };

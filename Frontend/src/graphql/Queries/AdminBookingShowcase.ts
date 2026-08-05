@@ -99,6 +99,7 @@ export const GET_INSTRUCTOR_BOOKINGS_BY_ID = gql`
         paymentReminder1SentAt
         paymentReminder2SentAt
         paymentReminder3SentAt
+        chargedAt
       }
       totalAmount
       finalAmount
