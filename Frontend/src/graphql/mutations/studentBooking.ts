@@ -221,7 +221,6 @@ export const GET_STUDENT_BOOKINGS = gql`
         paymentReminder1SentAt
         paymentReminder2SentAt
         paymentReminder3SentAt
-        chargedAt
       }
       paymentMethod {
         type

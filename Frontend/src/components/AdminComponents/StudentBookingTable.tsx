@@ -61,18 +61,6 @@ function formatSlotDateForViewer(slot: { date: string; startTime: string }) {
   });
 }
 
-function formatWallClock12h(timeStr?: string) {
-  const [hStr, mStr] = String(timeStr || "").split(":");
-  const hour = Number(hStr);
-  const minute = Number(mStr);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return timeStr || "—";
-  return new Date(2000, 0, 1, hour, minute, 0).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
 function formatSlotTimeForViewer(slot: {
   date: string;
   startTime: string;
@@ -96,8 +84,25 @@ function formatSlotTimeForViewer(slot: {
   return `${startLabel} - ${endLabel}`;
 }
 
-function formatSlotSwissTime(slot: { startTime: string; endTime: string }) {
-  return `${formatWallClock12h(slot.startTime)} - ${formatWallClock12h(slot.endTime)}`;
+function formatSlotSwissTime(slot: { date: string; startTime: string; endTime: string }) {
+  const startMs = parseSlotStartMs(slot);
+  const endMs = getSlotEndDateForAdmin(slot).getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  return `${startLabel} - ${endLabel}`;
 }
 
 export type AdminLessonDisplayStatus =
@@ -272,17 +277,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {`Switzerland: ${formatSlotSwissTime({
+                              {formatSlotTimeForViewer({
+                                date: slot.date,
                                 startTime: slot.startTime,
                                 endTime: slot.endTime,
-                              })}`}
-                              <span className="block text-xs text-gray-500">
-                                ({`Your time: ${formatSlotTimeForViewer({
-                                  date: slot.date,
-                                  startTime: slot.startTime,
-                                  endTime: slot.endTime,
-                                })}`})
-                              </span>
+                              })}
                             </span>
                           </div>
                         </div>
@@ -644,13 +643,14 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                         startTime: slot.startTime,
                       })}
                       <div className="text-xs text-gray-500">
-                        {`Switzerland: ${formatSlotSwissTime({
+                        {formatSlotTimeForViewer({
+                          date: slot.date,
                           startTime: slot.startTime,
                           endTime: slot.endTime,
-                        })}`}
+                        })}
                       </div>
                       <div className="text-xs text-gray-500">
-                        ({`Your time: ${formatSlotTimeForViewer({
+                        ({`Switzerland: ${formatSlotSwissTime({
                           date: slot.date,
                           startTime: slot.startTime,
                           endTime: slot.endTime,

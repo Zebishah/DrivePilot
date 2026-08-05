@@ -27,17 +27,14 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import {
-  formatDeadlineHhMmDdMmYyyy,
-  resolveActiveLessonPlacement,
-  resolveUnpaidCancelDeadline,
-} from "../../utils/unpaidBookingLifecycle";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const SLOT_BUSINESS_TIMEZONE =
   import.meta.env.VITE_SLOT_TIMEZONE || "Europe/Zurich";
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 function normalizeSlotTime(timeStr?: string) {
   if (!timeStr) return "00:00:00";
@@ -74,18 +71,6 @@ function formatSlotDateForViewer(slot: { date: string; startTime: string }) {
   });
 }
 
-function formatWallClock12h(timeStr?: string) {
-  const [hStr, mStr] = String(timeStr || "").split(":");
-  const hour = Number(hStr);
-  const minute = Number(mStr);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return timeStr || "—";
-  return new Date(2000, 0, 1, hour, minute, 0).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
 function formatSlotTimeForViewer(slot: {
   date: string;
   startTime: string;
@@ -110,10 +95,28 @@ function formatSlotTimeForViewer(slot: {
 }
 
 function formatSlotTimeForBusinessTimezone(slot: {
+  date: string;
   startTime: string;
   endTime: string;
 }) {
-  return `${formatWallClock12h(slot.startTime)} - ${formatWallClock12h(slot.endTime)}`;
+  const startMs = parseSlotStartMs(slot);
+  const endMs = parseSlotEndMs(slot);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return `${slot.startTime} - ${slot.endTime}`;
+  }
+  const startLabel = new Date(startMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  const endLabel = new Date(endMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SLOT_BUSINESS_TIMEZONE,
+  });
+  return `${startLabel} - ${endLabel}`;
 }
 interface BookingsTableProps {
   className?: string;
@@ -258,9 +261,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
   const isAwaitingPayment =
     !isTerminalStatus &&
     (normalizedPaymentStatus === "requires_action" ||
-      normalizedPaymentStatus === "payment_failed" ||
-      normalizedPaymentStatus === "pending_payment" ||
-      !normalizedPaymentStatus);
+      normalizedPaymentStatus === "payment_failed");
 
   const isFinalDisabled =
     normalizedStatus === "completed" ||
@@ -277,11 +278,13 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
     normalizedStatus !== "refund";
 
   const displayLabel =
-    listTab === "abandoned" || isAwaitingPayment
+    listTab === "abandoned"
       ? "Abandoned"
       : isCancelledLike
         ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.label ||
           "Cancelled"
+      : isAwaitingPayment
+        ? "Awaiting Payment"
       : listTab === "upcoming" && normalizedStatus === "booked"
         ? "Upcoming"
       : normalizedStatus === "booked" && !lessonPassed
@@ -292,11 +295,13 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
             currentStatus;
 
   const displayColor =
-    listTab === "abandoned" || isAwaitingPayment
+    listTab === "abandoned"
       ? "bg-slate-200 text-slate-800"
       : isCancelledLike
         ? SLOT_STATUSES.find((s) => s.value === normalizedStatus)?.color ||
           "bg-red-100 text-red-800"
+      : isAwaitingPayment
+        ? "bg-amber-100 text-amber-800"
       : listTab === "upcoming" && normalizedStatus === "booked"
         ? "bg-yellow-100 text-yellow-800"
       : normalizedStatus === "booked" && !lessonPassed
@@ -551,17 +556,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           <div className="flex items-center space-x-2">
                             <Clock className="h-4 w-4 text-gray-400" />
                             <span className="text-sm">
-                              {`Switzerland: ${formatSlotTimeForBusinessTimezone({
+                              {formatSlotTimeForViewer({
+                                date: slot.date,
                                 startTime: slot.startTime,
                                 endTime: slot.endTime,
-                              })}`}
-                              <span className="block text-xs text-gray-500">
-                                ({`Your time: ${formatSlotTimeForViewer({
-                                  date: slot.date,
-                                  startTime: slot.startTime,
-                                  endTime: slot.endTime,
-                                })}`})
-                              </span>
+                              })}
                             </span>
                           </div>
                         </div>
@@ -583,20 +582,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                       })()}
                       <div className="mt-2 text-xs text-gray-600">
                         {(slot.paymentStatus === "requires_action" ||
-                          slot.paymentStatus === "payment_failed" ||
-                          slot.paymentStatus === "pending_payment") && (
+                          slot.paymentStatus === "payment_failed") && (
                           <div className="mb-1 rounded-md bg-amber-50 px-2 py-1 text-amber-800">
-                            {(() => {
-                              const deadline =
-                                getPaymentDeadlineLabelByTimezone(
-                                  slot,
-                                  SLOT_BUSINESS_TIMEZONE,
-                                  booking.createdAt,
-                                );
-                              return deadline
-                                ? `The student's payment has not been completed. The student must complete the payment before ${deadline}. Otherwise, the lesson will be automatically cancelled.`
-                                : "The student's payment has not been completed. This lesson stays under Abandoned until payment is confirmed.";
-                            })()}
+                            The student's payment has not been completed. The student must complete the payment before{" "}
+                            {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
+                            {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
                           </div>
                         )}
                         Cancelled by:{" "}
@@ -691,21 +681,40 @@ function formatCancellationDateTime(value?: string) {
 function getPaymentDeadlineLabelByTimezone(
   slot: StudentBooking["slots"][number],
   timeZone?: string,
-  bookingCreatedAt?: string | Date | null,
 ) {
-  const effectiveDeadline = resolveUnpaidCancelDeadline({
-    paymentReminderDeadlineAt: slot.paymentReminderDeadlineAt,
-    paymentReminderStartedAt:
-      slot.paymentReminderStartedAt ||
-      (slot as { paymentReminder1SentAt?: string }).paymentReminder1SentAt,
-    chargedAt: (slot as { chargedAt?: string }).chargedAt,
-    bookingCreatedAt,
-  });
-  if (!effectiveDeadline) return "";
-  return formatDeadlineHhMmDdMmYyyy(
-    effectiveDeadline,
-    timeZone || SLOT_BUSINESS_TIMEZONE,
+  const reminderBase =
+    slot.paymentReminderStartedAt ||
+    (slot as { paymentReminder1SentAt?: string }).paymentReminder1SentAt ||
+    (slot as { chargedAt?: string }).chargedAt;
+  const deadline = slot.paymentReminderDeadlineAt
+    ? new Date(slot.paymentReminderDeadlineAt)
+    : reminderBase
+      ? new Date(new Date(reminderBase).getTime() + TWENTY_FOUR_HOURS_MS)
+      : null;
+  const slotStartTz = dayjs.tz(
+    `${slot.date} ${normalizeSlotTime(slot.startTime)}`,
+    "YYYY-MM-DD HH:mm:ss",
+    SLOT_BUSINESS_TIMEZONE,
   );
+  const derivedDeadline =
+    slotStartTz.isValid()
+      ? new Date(slotStartTz.valueOf() - FORTY_EIGHT_HOURS_MS + TWENTY_FOUR_HOURS_MS)
+      : null;
+  const effectiveDeadline =
+    deadline && !Number.isNaN(deadline.getTime())
+      ? deadline
+      : derivedDeadline && !Number.isNaN(derivedDeadline.getTime())
+        ? derivedDeadline
+        : null;
+  if (!effectiveDeadline) return "-";
+  return effectiveDeadline.toLocaleString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
 const StudentBookingWInst: React.FC<BookingsTableProps> = ({
@@ -872,27 +881,109 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
       }
     > = [];
 
-    for (const booking of filteredBookings) {
-      const anySlotPaid = (booking.slots ?? []).some(
+    const isAbandonedPending = (booking: StudentBooking) =>
+      String(booking.status || "").toLowerCase() === "pending" &&
+      !booking.stripeCustomerId &&
+      !(booking.slots ?? []).some(
         (s) => String(s.paymentStatus || "").toLowerCase() === "paid",
       );
+
+    for (const booking of filteredBookings) {
       for (const slot of booking.slots || []) {
-        const placement = resolveActiveLessonPlacement({
-          slotStatus: slot.status,
-          paymentStatus: slot.paymentStatus,
-          bookingStatus: booking.status,
-          hasStripeCustomerId: Boolean(booking.stripeCustomerId),
-          anySlotPaid,
-          slotEndMs: getSlotEndDateTime(slot).getTime(),
-          nowMs: now.getTime(),
-        });
-        if (!placement) continue;
-        rows.push({
-          booking,
-          slot,
-          tab: placement.tab as BookingTabKey,
-          effectiveStatus: placement.effectiveStatus,
-        });
+        const st = String(slot.status || "").toLowerCase();
+        const paySt = String(slot.paymentStatus || "").toLowerCase();
+        const isAwaitingPayment =
+          paySt === "requires_action" || paySt === "payment_failed";
+        const slotEnd = getSlotEndDateTime(slot);
+
+        if (st === "cancelled") {
+          rows.push({
+            booking,
+            slot,
+            tab: "cancelled",
+            effectiveStatus: "cancelled",
+          });
+          continue;
+        }
+        if (st === "refund") {
+          rows.push({
+            booking,
+            slot,
+            tab: "cancelled",
+            effectiveStatus: "refunded",
+          });
+          continue;
+        }
+        if (st === "missed") {
+          rows.push({
+            booking,
+            slot,
+            tab: "missed",
+            effectiveStatus: "missed",
+          });
+          continue;
+        }
+        if (st === "completed") {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "completed",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() <= now.getTime()
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "history",
+            effectiveStatus: "no_status",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          isAbandonedPending(booking)
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "abandoned",
+            effectiveStatus: "abandoned",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          !isAbandonedPending(booking) &&
+          isAwaitingPayment
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "awaiting_payment",
+          });
+          continue;
+        }
+        if (
+          (st === "booked" || st === "confirmed") &&
+          slotEnd.getTime() > now.getTime() &&
+          !isAbandonedPending(booking) &&
+          !isAwaitingPayment
+        ) {
+          rows.push({
+            booking,
+            slot,
+            tab: "upcoming",
+            effectiveStatus: "upcoming",
+          });
+        }
       }
     }
 
@@ -1111,8 +1202,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
               const isAwaitingPayment =
                 (rowStatus === "booked" || rowStatus === "confirmed") &&
                 (rowPaymentStatus === "requires_action" ||
-                  rowPaymentStatus === "payment_failed" ||
-                  rowPaymentStatus === "pending_payment");
+                  rowPaymentStatus === "payment_failed");
               const isPaymentRelatedCancelled =
                 tab === "cancelled" &&
                 (rowStatus === "cancelled" || rowStatus === "refund") &&
@@ -1159,13 +1249,14 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    {`Switzerland: ${formatSlotTimeForBusinessTimezone({
+                    {formatSlotTimeForViewer({
+                      date: slot.date,
                       startTime: slot.startTime,
                       endTime: slot.endTime,
-                    })}`}
+                    })}
                   </div>
                     <div className="text-xs text-gray-500">
-                      ({`Your time: ${formatSlotTimeForViewer({
+                      ({`Switzerland: ${formatSlotTimeForBusinessTimezone({
                         date: slot.date,
                         startTime: slot.startTime,
                         endTime: slot.endTime,
@@ -1232,28 +1323,15 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                   </button>
                 </td>
               </tr>
-              {tab === "abandoned" && (
+              {isAwaitingPayment && (
                 <tr>
                   <td
                     colSpan={tab === "cancelled" ? 10 : 9}
                     className="px-6 py-3 text-xs font-medium text-amber-800 bg-amber-50"
                   >
-                    {(() => {
-                      const deadline = getPaymentDeadlineLabelByTimezone(
-                        slot,
-                        SLOT_BUSINESS_TIMEZONE,
-                        booking.createdAt,
-                      );
-                      if (
-                        deadline &&
-                        (rowPaymentStatus === "requires_action" ||
-                          rowPaymentStatus === "payment_failed" ||
-                          rowPaymentStatus === "pending_payment")
-                      ) {
-                        return `The student's payment has not been completed. The student must complete the payment before ${deadline}. Otherwise, the lesson will be automatically cancelled.`;
-                      }
-                      return "The student's payment has not been completed. This lesson stays under Abandoned until payment is confirmed.";
-                    })()}
+                    The student&apos;s payment has not been completed. The student must complete the payment before{" "}
+                    {getPaymentDeadlineLabelByTimezone(slot)} (local time) /{" "}
+                    {getPaymentDeadlineLabelByTimezone(slot, SLOT_BUSINESS_TIMEZONE)} (Switzerland time). Otherwise, the lesson will be automatically cancelled.
                   </td>
                 </tr>
               )}

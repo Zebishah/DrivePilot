@@ -149,9 +149,6 @@ const BookLesson: React.FC = () => {
         initialAmount: booking.teacherTariff.lessonFee,
         status: booking.status,
         slot: slot,
-        createdAt: booking.createdAt,
-        stripeCustomerId: (booking as { stripeCustomerId?: string | null })
-          .stripeCustomerId,
       },
     });
   };

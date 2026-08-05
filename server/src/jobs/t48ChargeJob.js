@@ -110,16 +110,8 @@ async function runT48ChargeJob() {
       }
 
       if (!booking.stripeCustomerId) {
-        // Incomplete checkout (pending, card never saved) must stay abandoned
-        // until the 24h checkout cleanup — do not treat it as a failed T-48 charge.
-        if (String(booking.status || "").toLowerCase() === "pending") {
-          console.log(
-            `[T48ChargeJob] Booking ${booking._id} slot ${slot._id}: pending checkout without saved card; skipping T-48 charge.`,
-          );
-          continue;
-        }
         console.warn(
-          `[T48ChargeJob] Booking ${booking._id} has no stripeCustomerId; cannot charge off-session. Marking slot ${slot._id} as payment_failed.`,
+          `[T48ChargeJob] Booking ${booking._id} has no stripeCustomerId; cannot charge off-session. Marking slot ${slot._id} as payment_failed. (Student should re-book with current flow so card is saved to a customer.)`,
         );
         const r = await StudentBooking.updateOne(
           slotStillPendingFilter(booking._id, slot._id),

@@ -12,7 +12,6 @@ const studentBookingTypeDefs = gql`
   enum status {
     available
     booked
-    confirmed
     completed
     refund
     cancelled
@@ -21,7 +20,6 @@ const studentBookingTypeDefs = gql`
   enum SlotStatus {
     available
     booked
-    confirmed
     completed
     refund
     cancelled
@@ -60,7 +58,6 @@ const studentBookingTypeDefs = gql`
     paymentReminder1SentAt: String
     paymentReminder2SentAt: String
     paymentReminder3SentAt: String
-    chargedAt: String
   }
 
   type PaymentMethod {
@@ -93,7 +90,7 @@ const studentBookingTypeDefs = gql`
     slots: [Slot!]!
     totalAmount: Int!
     finalAmount: Float!
-    paymentMethod: PaymentMethod
+    paymentMethod: PaymentMethod!
     status: BookingStatus!
     stripePaymentIntentId: String
     stripeCustomerId: String
@@ -195,7 +192,6 @@ const studentBookingTypeDefs = gql`
     paymentReminder1SentAt: String
     paymentReminder2SentAt: String
     paymentReminder3SentAt: String
-    chargedAt: String
   }
 
   type PaymentInfo {
