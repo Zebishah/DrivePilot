@@ -21,6 +21,7 @@ import { FaRegCheckCircle } from "react-icons/fa";
 import { IoMdTime } from "react-icons/io";
 import dayjs from "dayjs";
 import { HourSlot } from "../../types/HourSlots";
+import { isBusinessSlotStartPast } from "../../utils/slotBusinessTime";
 
 interface HourSlotModalProps {
   open: boolean;
@@ -219,8 +220,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
 
         <Grid container spacing={2}>
           {originalSlot.availableSlots.map((slot) => {
-            const slotDateTime = dayjs(`${slot.date} ${slot.startTime}`);
-            const isPast = slotDateTime.isBefore(dayjs());
+            const isPast = isBusinessSlotStartPast(slot.date, slot.startTime);
             const isCompleted = slot.status === "completed";
             const isPassed = isPast && !slot.booked && !isCompleted;
             const isDisabled = isPast || slot.booked || isCompleted;

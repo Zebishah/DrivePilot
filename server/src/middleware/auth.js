@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-const { AuthenticationError } = require("apollo-server-express");
 
 const authMiddleware = async (req) => {
   const authHeader = req.headers.authorization;
@@ -10,7 +9,7 @@ const authMiddleware = async (req) => {
 
   try {
     const token = authHeader.split(" ")[1];
-    if (!token) {
+    if (!token || token === "undefined" || token === "null") {
       return { user: null };
     }
 
@@ -23,7 +22,9 @@ const authMiddleware = async (req) => {
       },
     };
   } catch (err) {
-    throw new AuthenticationError("Invalid/Expired token");
+    // Treat bad/expired tokens as logged out. Throwing here blocks public
+    // mutations like SignIn when the browser still has an old cookie.
+    return { user: null };
   }
 };
 

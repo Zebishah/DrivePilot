@@ -27,8 +27,15 @@ const getToken = (): string | null => {
   return decrypt(encryptedToken);
 };
 
-// 🛡 Public operations (no auth)
-const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword"];
+// 🛡 Public operations (no auth) — must match GraphQL operationName exactly
+const PUBLIC_OPERATIONS = [
+  "SignIn",
+  "SignUp",
+  "ForgotPassword",
+  "ResetPassword",
+  "VerifyUserOtp",
+  "ResendOtp",
+];
 
 // 🌐 HTTP Link
 const httpLink = new HttpLink({ uri: BACKEND_URL });
@@ -37,10 +44,14 @@ const httpLink = new HttpLink({ uri: BACKEND_URL });
 const authLink = setContext((operation, { headers }) => {
   const token = getToken();
   const isPublic = PUBLIC_OPERATIONS.includes(operation.operationName || "");
+  // Never attach a stale Bearer token on public auth calls — backend throws
+  // AuthenticationError on expired JWT during context creation, which blocks sign-in.
   return {
     headers: {
       ...headers,
-      ...(isPublic ? {} : { authorization: token ? `Bearer ${token}` : "" }),
+      ...(isPublic
+        ? { authorization: "" }
+        : { authorization: token ? `Bearer ${token}` : "" }),
     },
   };
 });

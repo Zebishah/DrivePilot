@@ -12,6 +12,13 @@ const StudentBooking = require("../../models/StudentBooking");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 
 const AdminBookingResolvers = {
+  StudentBookingAdmin: {
+    paymentMethod: (parent) => parent.paymentMethod || { type: "card" },
+  },
+  BookingSlotAdmin: {
+    review: (parent) => Boolean(parent.review),
+    feedBackStatus: (parent) => parent.feedBackStatus || "pending",
+  },
   Query: {
     getAllStudentBookings: async () => {
       try {

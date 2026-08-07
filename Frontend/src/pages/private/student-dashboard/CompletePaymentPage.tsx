@@ -15,6 +15,7 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import {
   GET_T48_CLIENT_SECRET,
   COMPLETE_T48_SLOT_PAYMENT,
+  CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
 } from "../../../graphql/mutations/studentBooking";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 
@@ -32,6 +33,9 @@ export const CompletePaymentPage: React.FC = () => {
     useMutation(GET_T48_CLIENT_SECRET);
   const [completePayment, { loading: completing }] =
     useMutation(COMPLETE_T48_SLOT_PAYMENT);
+  const [createPendingCheckout] = useMutation(
+    CREATE_CHECKOUT_SESSION_FOR_PENDING_BOOKING,
+  );
 
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error" | "no_params"
@@ -74,9 +78,35 @@ export const CompletePaymentPage: React.FC = () => {
       const STRIPE_STEP_TIMEOUT_MS = 15000; // don't hang if Stripe retrieve/confirm never resolves
 
       const flow = async () => {
-        const { data } = await getClientSecret({
-          variables: { bookingId, slotId },
-        });
+        let data;
+        try {
+          const result = await getClientSecret({
+            variables: { bookingId, slotId },
+          });
+          data = result.data;
+        } catch (secretErr: unknown) {
+          const apollo = secretErr as {
+            message?: string;
+            graphQLErrors?: Array<{ message?: string }>;
+          };
+          const message =
+            apollo?.graphQLErrors?.[0]?.message ||
+            apollo?.message ||
+            (secretErr instanceof Error ? secretErr.message : String(secretErr));
+          if (/no payment method found/i.test(message) && bookingId) {
+            const checkout = await createPendingCheckout({
+              variables: { bookingId },
+            });
+            const url = checkout.data?.createCheckoutSessionForPendingBooking?.url;
+            if (url) {
+              window.location.href = url;
+              return null;
+            }
+          }
+          throw secretErr instanceof Error
+            ? secretErr
+            : new Error(message || "Could not start payment.");
+        }
         if (cancelled) return;
         const clientSecret = data?.getT48ClientSecret;
         // Backend returns null when slot is already paid (e.g. user returns from 3DS after webhook).

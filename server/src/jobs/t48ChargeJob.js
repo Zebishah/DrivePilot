@@ -9,6 +9,7 @@ const { Admin, Instructor } = require("../models/User");
 const { getCommissionSplit } = require("../services/stripeService");
 const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 const { sendStudentReminderEmail } = require("./t48PaymentReminderJob");
+const { shouldSkipT48Charge } = require("../utils/checkoutPaymentGuard");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -50,7 +51,7 @@ async function runT48ChargeJob() {
   // Find bookings that have at least one pending_payment slot and a saved payment method
   const bookings = await StudentBooking.find({
     "slots.paymentStatus": "pending_payment",
-    "paymentMethod.paymentMethodId": { $exists: true, $ne: null },
+    "paymentMethod.paymentMethodId": { $regex: /^pm_/ },
   })
     .populate("instructorId", "stripeAccount firstName lastName commission")
     .populate("studentId", "_id")
@@ -86,9 +87,7 @@ async function runT48ChargeJob() {
 
     for (let i = 0; i < booking.slots.length; i++) {
       const slot = booking.slots[i];
-      if (slot.paymentStatus !== "pending_payment") continue;
-      // Do not charge cancelled slots (e.g. student cancelled before T-48)
-      if (slot.status === "cancelled" || slot.booked === false) continue;
+      if (shouldSkipT48Charge({ booking, slot })) continue;
 
       const slotStartUtcMs = getSlotStartTimestampUtc(
         slot.date,
@@ -110,8 +109,16 @@ async function runT48ChargeJob() {
       }
 
       if (!booking.stripeCustomerId) {
+        // Incomplete checkout (pending, card never saved) must stay abandoned
+        // until the 24h checkout cleanup — do not treat it as a failed T-48 charge.
+        if (String(booking.status || "").toLowerCase() === "pending") {
+          console.log(
+            `[T48ChargeJob] Booking ${booking._id} slot ${slot._id}: pending checkout without saved card; skipping T-48 charge.`,
+          );
+          continue;
+        }
         console.warn(
-          `[T48ChargeJob] Booking ${booking._id} has no stripeCustomerId; cannot charge off-session. Marking slot ${slot._id} as payment_failed. (Student should re-book with current flow so card is saved to a customer.)`,
+          `[T48ChargeJob] Booking ${booking._id} has no stripeCustomerId; cannot charge off-session. Marking slot ${slot._id} as payment_failed.`,
         );
         const r = await StudentBooking.updateOne(
           slotStillPendingFilter(booking._id, slot._id),
