@@ -25,69 +25,52 @@ const { runT48PaymentReminderJob } = require("./jobs/t48PaymentReminderJob");
 // ✅ Connect to MongoDB
 connectDB();
 
-// Run instructor payout job every 3 min; for production use 6 * 60 * 60 * 1000 (6 hours)
-const PAYOUT_JOB_INTERVAL_MS = 3 * 60 * 1000;
-setInterval(() => {
-  runInstructorPayoutJob().catch((err) =>
-    console.error("[PayoutJob] Error:", err),
-  );
-}, PAYOUT_JOB_INTERVAL_MS);
-runInstructorPayoutJob().catch((err) =>
-  console.error("[PayoutJob] Initial run error:", err),
+// CRON_RUNS=yes → start all background jobs on this instance.
+// CRON_RUNS=no  (or unset) → no crons at all. Use this on live while testing locally.
+const CRON_RUNS = ["yes", "true", "1"].includes(
+  String(process.env.CRON_RUNS || "")
+    .trim()
+    .toLowerCase(),
 );
 
-// Run T-48 charge job: 5 min for testing; adjust for production as needed
-const T48_JOB_INTERVAL_MS = 1 * 60 * 1000;
-setInterval(() => {
-  runT48ChargeJob().catch((err) => console.error("[T48ChargeJob] Error:", err));
-}, T48_JOB_INTERVAL_MS);
-runT48ChargeJob().catch((err) =>
-  console.error("[T48ChargeJob] Initial run error:", err),
-);
+function scheduleJob(name, run, intervalMs) {
+  const tick = () =>
+    run().catch((err) => console.error(`[${name}] Error:`, err));
+  setInterval(tick, intervalMs);
+  tick();
+}
 
-// T-48 follow-up reminders: 12h + 18h nudges and 24h auto-cancel
-const T48_REMINDER_JOB_INTERVAL_MS = 10 * 60 * 1000;
-setInterval(() => {
-  runT48PaymentReminderJob().catch((err) =>
-    console.error("[T48PaymentReminderJob] Error:", err),
+if (CRON_RUNS) {
+  console.log("[Jobs] CRON_RUNS=yes — starting background jobs.");
+  // Instructor payout every 3 min; for production use 6 * 60 * 60 * 1000 (6 hours)
+  scheduleJob("PayoutJob", runInstructorPayoutJob, 3 * 60 * 1000);
+  // T-48 charge: 1 min for testing; adjust for production as needed
+  scheduleJob("T48ChargeJob", runT48ChargeJob, 1 * 60 * 1000);
+  // T-48 follow-up reminders: 12h + 18h nudges and 24h auto-cancel
+  scheduleJob(
+    "T48PaymentReminderJob",
+    runT48PaymentReminderJob,
+    10 * 60 * 1000,
   );
-}, T48_REMINDER_JOB_INTERVAL_MS);
-runT48PaymentReminderJob().catch((err) =>
-  console.error("[T48PaymentReminderJob] Initial run error:", err),
-);
-
-// Abandoned Stripe checkout cleanup: run daily
-const PENDING_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
-setInterval(() => {
-  runPendingBookingCleanupJob().catch((err) =>
-    console.error("[PendingBookingCleanupJob] Error:", err),
+  // Abandoned Stripe checkout cleanup: run daily
+  scheduleJob(
+    "PendingBookingCleanupJob",
+    runPendingBookingCleanupJob,
+    24 * 60 * 60 * 1000,
   );
-}, PENDING_CLEANUP_INTERVAL_MS);
-runPendingBookingCleanupJob().catch((err) =>
-  console.error("[PendingBookingCleanupJob] Initial run error:", err),
-);
-
-// Abandoned checkout reminder: every 10 min (single reminder per pending booking)
-const ABANDONED_REMINDER_INTERVAL_MS = 10 * 60 * 1000;
-setInterval(() => {
-  runAbandonedCheckoutReminderJob().catch((err) =>
-    console.error("[AbandonedCheckoutReminderJob] Error:", err),
+  // Abandoned checkout reminder: single reminder per pending booking
+  scheduleJob(
+    "AbandonedCheckoutReminderJob",
+    runAbandonedCheckoutReminderJob,
+    10 * 60 * 1000,
   );
-}, ABANDONED_REMINDER_INTERVAL_MS);
-runAbandonedCheckoutReminderJob().catch((err) =>
-  console.error("[AbandonedCheckoutReminderJob] Initial run error:", err),
-);
-
-// Lesson-end reminder: every 1 min — emails instructor to confirm lesson status
-const LESSON_REMINDER_INTERVAL_MS = 2 * 60 * 1000;
-setInterval(() => {
-  runLessonEndReminderJob().catch((err) =>
-    console.error("[LessonEndReminder] Error:", err),
+  // Lesson-end reminder: emails instructor to confirm lesson status
+  scheduleJob("LessonEndReminder", runLessonEndReminderJob, 2 * 60 * 1000);
+} else {
+  console.log(
+    '[Jobs] CRON_RUNS is not "yes" — background jobs are disabled on this instance.',
   );
-}, LESSON_REMINDER_INTERVAL_MS);
-runLessonEndReminderJob().catch((err) =>
-  console.error("[LessonEndReminder] Initial run error:", err),
-);
+}
 
 // ✅ Initialize Express app and HTTP server
 const app = express();
