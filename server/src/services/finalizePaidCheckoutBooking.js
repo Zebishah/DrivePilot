@@ -4,7 +4,6 @@ const teacherAvailabilityModel = require("../models/teacherAvailability.model");
 const { Instructor, Admin } = require("../models/User");
 const { createTransaction } = require("./transactionService");
 const {
-  getCommissionSplit,
   getTransferIdFromPaymentIntent,
   getChargeIdFromPaymentIntent,
   DEFAULT_CURRENCY,
@@ -13,6 +12,10 @@ const { notifyBookingParties } = require("../utils/SendOtpEmail");
 const { getIOInstance } = require("../socket");
 const { canReviveAutoCancelledCheckout } = require("../utils/checkoutPaymentGuard");
 const { getLatestOperation } = require("./financialOperationService");
+const {
+  fromMinorUnits,
+  getBookingMoneySnapshot,
+} = require("../utils/money");
 
 async function getPlatformCommissionForSplit() {
   const admin = await Admin.findOne().lean();
@@ -101,9 +104,7 @@ async function finalizePaidCheckoutBooking({
     String(booking.status || "").toLowerCase(),
   );
 
-  const finalAmount = Number(booking.finalAmount);
   const numSlots = booking.slots.length;
-  const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
   const transferId = paymentIntentId
     ? await getTransferIdFromPaymentIntent(paymentIntentId).catch(() => null)
     : null;
@@ -111,8 +112,11 @@ async function finalizePaidCheckoutBooking({
     ? await getChargeIdFromPaymentIntent(paymentIntentId).catch(() => null)
     : null;
   const platformSettingsConfirm = await getPlatformCommissionForSplit();
-  const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
-    getCommissionSplit(perSlotAmount, instructor, platformSettingsConfirm);
+  const bookingMoney = getBookingMoneySnapshot({
+    booking,
+    instructor,
+    platformSettings: platformSettingsConfirm,
+  });
 
   const updateResult = await StudentBooking.updateOne(
     {
@@ -130,10 +134,11 @@ async function finalizePaidCheckoutBooking({
         ...(chargeId ? { "slots.$[].connectChargeId": chargeId } : {}),
         ...(transferId ? { "slots.$[].transferId": transferId } : {}),
         "slots.$[].paymentStatus": "paid",
-        "slots.$[].chargeAmount": perSlotAmount,
-        "slots.$[].dspCommission": slotDsp,
-        "slots.$[].instructorAmount": slotInstructor,
         "slots.$[].payoutStatus": "not_applicable",
+        grossAmountMinor: bookingMoney.grossAmountMinor,
+        commissionAmountMinor: bookingMoney.commissionAmountMinor,
+        instructorAmountMinor: bookingMoney.instructorAmountMinor,
+        currency: bookingMoney.currency,
         updatedAt: new Date(),
       },
       $unset: {
@@ -150,6 +155,17 @@ async function finalizePaidCheckoutBooking({
 
   const bookingUpdated = await StudentBooking.findById(bookingId);
   if (!bookingUpdated) return null;
+  for (let index = 0; index < bookingUpdated.slots.length; index += 1) {
+    const slotSnapshot = bookingMoney.slots[index];
+    if (!slotSnapshot) continue;
+    bookingUpdated.slots[index].grossAmountMinor = slotSnapshot.grossAmountMinor;
+    bookingUpdated.slots[index].commissionAmountMinor = slotSnapshot.commissionAmountMinor;
+    bookingUpdated.slots[index].instructorAmountMinor = slotSnapshot.instructorAmountMinor;
+    bookingUpdated.slots[index].chargeAmount = Number(fromMinorUnits(slotSnapshot.grossAmountMinor));
+    bookingUpdated.slots[index].dspCommission = Number(fromMinorUnits(slotSnapshot.commissionAmountMinor));
+    bookingUpdated.slots[index].instructorAmount = Number(fromMinorUnits(slotSnapshot.instructorAmountMinor));
+  }
+  await bookingUpdated.save();
   const checkoutOperation = await getLatestOperation({
     bookingId,
     operationType: "CHECKOUT_SESSION",
@@ -172,7 +188,8 @@ async function finalizePaidCheckoutBooking({
       type: "payment",
       role: "student",
       direction: "debit",
-      amount: finalAmount,
+      amount: Number(fromMinorUnits(bookingMoney.grossAmountMinor)),
+      amountMinor: bookingMoney.grossAmountMinor,
       currency: DEFAULT_CURRENCY.toUpperCase(),
       status: "succeeded",
       bookingId,
@@ -187,7 +204,8 @@ async function finalizePaidCheckoutBooking({
       type: "payment",
       role: "platform",
       direction: "credit",
-      amount: finalAmount,
+      amount: Number(fromMinorUnits(bookingMoney.grossAmountMinor)),
+      amountMinor: bookingMoney.grossAmountMinor,
       currency: DEFAULT_CURRENCY.toUpperCase(),
       status: "succeeded",
       bookingId,
@@ -205,7 +223,8 @@ async function finalizePaidCheckoutBooking({
           type: "payment",
           role: "instructor",
           direction: "credit",
-          amount: slot.instructorAmount,
+          amount: Number(fromMinorUnits(slot.instructorAmountMinor)),
+          amountMinor: slot.instructorAmountMinor,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           status: "succeeded",
           bookingId,
@@ -223,7 +242,8 @@ async function finalizePaidCheckoutBooking({
           type: "payment",
           role: "platform",
           direction: "credit",
-          amount: slot.dspCommission,
+          amount: Number(fromMinorUnits(slot.commissionAmountMinor)),
+          amountMinor: slot.commissionAmountMinor,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           status: "succeeded",
           bookingId,

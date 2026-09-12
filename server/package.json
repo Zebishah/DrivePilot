@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "npx nodemon src/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "money:backfill": "node src/scripts/backfillMoneyMinor.js"
   },
   "dependencies": {
     "@graphql-tools/merge": "^9.0.24",

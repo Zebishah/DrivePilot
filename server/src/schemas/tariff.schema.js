@@ -5,17 +5,21 @@ const typeDefs = gql`
     title: String
     lessons: Int
     cost: Float
+    costMinor: Int
     packageDiscount: Float
     PackageEndDate: String
     finalPackagePrice: Float
+    finalPackagePriceMinor: Int
     studentSave: Float
   }
 
   type TeacherTariff {
     lessonFee: Float
+    lessonFeeMinor: Int
     bulkPackages: [BulkLessonPackage!]
     lessonDiscount: Float
     FinalPricePerLesson: Float
+    FinalPricePerLessonMinor: Int
     isDefault: Boolean
   }
 

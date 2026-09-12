@@ -21,8 +21,17 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    amountMinor: {
+      type: Number,
+      min: 0,
+      validate: {
+        validator: (value) => value == null || Number.isSafeInteger(value),
+        message: "amountMinor must be a safe integer",
+      },
+    },
     currency: {
       type: String,
+      enum: ["CHF"],
       default: "CHF",
     },
     status: {

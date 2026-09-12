@@ -11,6 +11,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { useNavigate } from "react-router-dom";
 import { GET_INSTRUCTOR_TRANSACTION_STATS } from "../../../graphql/Queries/transactionQueries";
+import { formatCHF } from "../../../utils/money";
 
 const GET_INSTRUCTOR_ANALYTICS = gql`
   query GetInstructorAnalytics($instructorId: ID!) {
@@ -170,7 +171,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
             <div className="flex gap-4 w-full">
               <StatsCard
                 title="Total Received"
-                value={`${Number(totalReceived).toFixed(2)}$`}
+                value={formatCHF(Number(totalReceived))}
                 icon={DollarSign}
                 bgColor="bg-yellow-200"
                 iconColor="bg-yellow-400"

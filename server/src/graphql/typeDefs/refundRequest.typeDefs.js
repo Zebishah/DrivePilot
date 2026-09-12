@@ -15,6 +15,7 @@ const refundRequestTypeDefs = gql`
     studentId: ID!
     instructorId: ID!
     amount: Float!
+    amountMinor: Int
     currency: String!
     status: RefundRequestStatus!
     requestedAt: String!

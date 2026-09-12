@@ -24,7 +24,8 @@ const {
   markCompleted,
   markRetryable,
 } = require("../services/financialOperationService");
-const { getCommissionSplit } = require("../services/stripeService");
+const { fromMinorUnits, getBookingMoneySnapshot } = require("../utils/money");
+const { toMinorUnits } = require("../utils/money");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
 const {
   finalizePaidCheckoutBooking,
@@ -32,7 +33,6 @@ const {
 
 const router = express.Router();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-const CENTIMES_PER_UNIT = 100;
 const {
   receiveStripeWebhookEvent,
 } = require("../services/stripeWebhookEventService");
@@ -180,6 +180,7 @@ async function recordBookingLevelRefundIfMissing({
   booking,
   refundId,
   refundAmount,
+  refundAmountMinor = toMinorUnits(refundAmount),
   refundDate,
   paymentIntentId,
   reason,
@@ -194,7 +195,8 @@ async function recordBookingLevelRefundIfMissing({
     type: "refund",
     role: "student",
     direction: "credit",
-    amount: refundAmount,
+    amount: Number(fromMinorUnits(refundAmountMinor)),
+    amountMinor: refundAmountMinor,
     currency: "CHF",
     status: "succeeded",
     bookingId: booking._id,
@@ -309,7 +311,8 @@ async function syncManualRefundFromTransferReversal(
   }
 
   const slot = matchedSlots[0];
-  const refundAmount = Number(reversalObject?.amount || 0) / CENTIMES_PER_UNIT;
+  const refundAmountMinor = Number(reversalObject?.amount || 0);
+  const refundAmount = fromMinorUnits(refundAmountMinor);
   const refundedAt = toRefundTimestamp(reversalObject?.created);
   const reversalId = String(reversalObject?.id || "");
 
@@ -320,7 +323,10 @@ async function syncManualRefundFromTransferReversal(
     slot.status = "refund";
     slot.paymentStatus = "refunded";
     slot.refundedAt = refundedAt;
-    if (refundAmount > 0) slot.refundAmount = refundAmount;
+    if (refundAmountMinor > 0) {
+      slot.refundAmount = Number(refundAmount);
+      slot.refundAmountMinor = refundAmountMinor;
+    }
     if (!slot.cancellationDate) slot.cancellationDate = refundedAt.toISOString();
     booking.updatedAt = new Date();
     await booking.save();
@@ -337,7 +343,12 @@ async function syncManualRefundFromTransferReversal(
       type: "refund",
       role: "student",
       direction: "credit",
-      amount: refundAmount || Number(slot.instructorAmount || 0),
+      amount: refundAmountMinor > 0
+        ? Number(refundAmount)
+        : Number(fromMinorUnits(slot.instructorAmountMinor || toMinorUnits(slot.instructorAmount || 0))),
+      amountMinor: refundAmountMinor > 0
+        ? refundAmountMinor
+        : slot.instructorAmountMinor || toMinorUnits(slot.instructorAmount || 0),
       currency: "CHF",
       status: "succeeded",
       bookingId: booking._id,
@@ -373,7 +384,8 @@ async function syncManualRefundFromTransferReversal(
 
 async function syncManualRefundFromStripe(refundObject, connectedAccountId = null) {
   const refundDate = toRefundTimestamp(refundObject.created);
-  const refundAmount = Number(refundObject.amount || 0) / CENTIMES_PER_UNIT;
+  const refundAmountMinor = Number(refundObject.amount || 0);
+  const refundAmount = fromMinorUnits(refundAmountMinor);
   const refundId = String(refundObject.id || "");
   const chargeId =
     typeof refundObject?.charge === "string"
@@ -467,6 +479,7 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
       booking,
       refundId,
       refundAmount,
+      refundAmountMinor,
       refundDate,
       paymentIntentId,
       reason: "slot mapping ambiguous",
@@ -481,7 +494,8 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
     slot.status = "refund";
     slot.paymentStatus = "refunded";
     slot.refundedAt = refundDate;
-    slot.refundAmount = refundAmount;
+    slot.refundAmount = Number(refundAmount);
+    slot.refundAmountMinor = refundAmountMinor;
     if (!slot.cancellationDate) {
       slot.cancellationDate = refundDate.toISOString();
     }
@@ -501,6 +515,7 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
       role: "student",
       direction: "credit",
       amount: refundAmount,
+      amountMinor: refundAmountMinor,
       currency: "CHF",
       status: "succeeded",
       bookingId: booking._id,
@@ -809,14 +824,19 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
           if (slot) {
             const admin = await Admin.findOne().lean();
             const platformCommission = admin?.platformCommission || {};
-            const perSlotAmount =
-              (Number(booking.finalAmount || booking.totalAmount) || 0) /
-              (booking.slots?.length || 1);
-            const { dspCommission, instructorAmount } = getCommissionSplit(
-              perSlotAmount,
-              booking.instructorId,
-              platformCommission,
+            const bookingMoney = getBookingMoneySnapshot({
+              booking,
+              instructor: booking.instructorId,
+              platformSettings: platformCommission,
+            });
+            const slotIndex = booking.slots.findIndex(
+              (candidate) => String(candidate._id) === String(slot._id),
             );
+            const slotMoney = bookingMoney.slots[slotIndex];
+            if (!slotMoney) throw new Error("Missing financial snapshot for webhook payment");
+            const perSlotAmount = Number(fromMinorUnits(slotMoney.grossAmountMinor));
+            const dspCommission = Number(fromMinorUnits(slotMoney.commissionAmountMinor));
+            const instructorAmount = Number(fromMinorUnits(slotMoney.instructorAmountMinor));
             const occurredAt = new Date();
             if (slot.paymentStatus !== "paid") {
               slot.paymentStatus = "paid";
@@ -824,6 +844,9 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
               slot.chargeAmount = perSlotAmount;
               slot.dspCommission = dspCommission;
               slot.instructorAmount = instructorAmount;
+              slot.grossAmountMinor = slotMoney.grossAmountMinor;
+              slot.commissionAmountMinor = slotMoney.commissionAmountMinor;
+              slot.instructorAmountMinor = slotMoney.instructorAmountMinor;
               slot.payoutStatus = "not_applicable";
               if (transferId) slot.transferId = transferId;
               await booking.save();
@@ -839,12 +862,14 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
             await createTransaction({
               type: "payment", role: "student", direction: "debit",
               amount: perSlotAmount, currency: "CHF", status: "succeeded",
+              amountMinor: slotMoney.grossAmountMinor,
               ...transactionPayload, eventType: "T48_PAYMENT_STUDENT_DEBIT",
               description: "Lesson payment (T-48 3DS completed)", occurredAt,
             });
             await createTransaction({
               type: "payment", role: "platform", direction: "credit",
               amount: perSlotAmount, currency: "CHF", status: "succeeded",
+              amountMinor: slotMoney.grossAmountMinor,
               ...transactionPayload, eventType: "T48_PAYMENT_PLATFORM_GROSS",
               description: "Platform gross receipt for lesson (T-48)", occurredAt,
             });
@@ -852,6 +877,7 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
               await createTransaction({
                 type: "payment", role: "instructor", direction: "credit",
                 amount: instructorAmount, currency: "CHF", status: "succeeded",
+                amountMinor: slotMoney.instructorAmountMinor,
                 ...transactionPayload,
                 instructorId: booking.instructorId?._id ?? booking.instructorId,
                 eventType: "T48_PAYMENT_INSTRUCTOR_SHARE",
@@ -862,6 +888,7 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
               await createTransaction({
                 type: "payment", role: "platform", direction: "credit",
                 amount: dspCommission, currency: "CHF", status: "succeeded",
+                amountMinor: slotMoney.commissionAmountMinor,
                 ...transactionPayload, eventType: "T48_PAYMENT_COMMISSION",
                 description: "Platform commission for lesson (T-48)", occurredAt,
               });

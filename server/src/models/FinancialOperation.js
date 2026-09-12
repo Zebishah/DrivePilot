@@ -27,10 +27,17 @@ const financialOperationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Instructor",
     },
-    currency: { type: String, required: true, default: "CHF" },
-    // Amounts remain CHF major-unit Numbers for compatibility. A future
-    // migration can add amountMinor without changing operation identity.
+    currency: { type: String, required: true, enum: ["CHF"], default: "CHF" },
+    // Legacy major-unit amount retained for read compatibility.
     requestedAmount: { type: Number },
+    requestedAmountMinor: {
+      type: Number,
+      min: 0,
+      validate: {
+        validator: (value) => value == null || Number.isSafeInteger(value),
+        message: "requestedAmountMinor must be a safe integer",
+      },
+    },
     provider: { type: String, required: true, default: "stripe" },
     providerObjectId: { type: String },
     secondaryProviderObjectId: { type: String },

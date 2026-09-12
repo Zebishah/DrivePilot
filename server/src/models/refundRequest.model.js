@@ -22,7 +22,15 @@ const refundRequestSchema = new mongoose.Schema(
       required: true,
     },
     amount: { type: Number, required: true },
-    currency: { type: String, default: "CHF" },
+    amountMinor: {
+      type: Number,
+      min: 0,
+      validate: {
+        validator: (value) => value == null || Number.isSafeInteger(value),
+        message: "amountMinor must be a safe integer",
+      },
+    },
+    currency: { type: String, enum: ["CHF"], default: "CHF" },
     status: {
       type: String,
       enum: ["pending", "processing", "approved", "rejected"],

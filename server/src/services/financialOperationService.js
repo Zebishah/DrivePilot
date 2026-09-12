@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const FinancialOperation = require("../models/FinancialOperation");
 const Transaction = require("../models/transaction.model");
+const { toMinorUnits, fromMinorUnits } = require("../utils/money");
 
 const LEASE_MS = 5 * 60 * 1000;
 
@@ -60,7 +61,18 @@ async function getOrCreateOperation(input) {
     studentId: input.studentId,
     instructorId: input.instructorId,
     currency: String(input.currency || "CHF").toUpperCase(),
-    requestedAmount: input.requestedAmount,
+    requestedAmountMinor:
+      input.requestedAmountMinor != null
+        ? input.requestedAmountMinor
+        : input.requestedAmount != null
+          ? toMinorUnits(input.requestedAmount, input.currency || "CHF")
+          : undefined,
+    requestedAmount:
+      input.requestedAmount != null
+        ? input.requestedAmount
+        : input.requestedAmountMinor != null
+          ? Number(fromMinorUnits(input.requestedAmountMinor, input.currency || "CHF"))
+          : undefined,
     provider: input.provider || "stripe",
     idempotencyKey: String(input.idempotencyKey),
     metadata: input.metadata || {},

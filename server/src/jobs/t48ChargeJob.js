@@ -2,11 +2,10 @@ const StudentBooking = require("../models/studentBooking.model");
 const {
   createPaymentIntentForBooking,
   retrievePaymentIntent,
-  CENTIMES_PER_UNIT,
 } = require("../services/stripeService");
 const { createTransaction } = require("../services/transactionService");
 const { Admin, Instructor } = require("../models/User");
-const { getCommissionSplit } = require("../services/stripeService");
+const { fromMinorUnits, getBookingMoneySnapshot } = require("../utils/money");
 const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 const { sendStudentReminderEmail } = require("./t48PaymentReminderJob");
 const { shouldSkipT48Charge } = require("../utils/checkoutPaymentGuard");
@@ -92,9 +91,11 @@ async function runT48ChargeJob(context = {}) {
       continue;
     }
 
-    const totalAmount = Number(booking.finalAmount || booking.totalAmount || 0);
-    const numSlots = booking.slots.length || 1;
-    const perSlotAmount = numSlots > 0 ? totalAmount / numSlots : 0;
+    const bookingMoney = getBookingMoneySnapshot({
+      booking,
+      instructor,
+      platformSettings: platformCommission,
+    });
 
     for (let i = 0; i < booking.slots.length; i++) {
       const slot = booking.slots[i];
@@ -140,21 +141,17 @@ async function runT48ChargeJob(context = {}) {
       }
 
       console.log(
-        `[T48ChargeJob] Charging slot ${slot._id} for booking ${booking._id} — lesson ${slot.date} ${slot.startTime}, amount CHF ${perSlotAmount.toFixed(2)}`,
+        `[T48ChargeJob] Charging slot ${slot._id} for booking ${booking._id} — lesson ${slot.date} ${slot.startTime}, amount CHF ${fromMinorUnits(bookingMoney.slots[i].grossAmountMinor)}`,
       );
 
       let paymentOperation = null;
       try {
-        const { dspCommission, instructorAmount } = getCommissionSplit(
-          perSlotAmount,
-          instructor,
-          platformCommission,
-        );
-
-        const amountCentimes = Math.round(perSlotAmount * CENTIMES_PER_UNIT);
-        const instructorShareCentimes = Math.round(
-          Number(instructorAmount) * CENTIMES_PER_UNIT,
-        );
+        const slotMoney = bookingMoney.slots[i];
+        const amountCentimes = slotMoney.grossAmountMinor;
+        const instructorShareCentimes = slotMoney.instructorAmountMinor;
+        const perSlotAmount = Number(fromMinorUnits(slotMoney.grossAmountMinor));
+        const dspCommission = Number(fromMinorUnits(slotMoney.commissionAmountMinor));
+        const instructorAmount = Number(fromMinorUnits(slotMoney.instructorAmountMinor));
 
         const idempotencyKey = `t48-${String(booking._id)}-${String(slot._id)}`;
         paymentOperation = await getOrCreateOperation({
@@ -167,6 +164,7 @@ async function runT48ChargeJob(context = {}) {
           instructorId: instructor._id,
           currency: "CHF",
           requestedAmount: perSlotAmount,
+          requestedAmountMinor: slotMoney.grossAmountMinor,
           idempotencyKey,
           metadata: {
             bookingId: String(booking._id),
@@ -289,6 +287,9 @@ async function runT48ChargeJob(context = {}) {
               "slots.$.chargeAmount": perSlotAmount,
               "slots.$.dspCommission": dspCommission,
               "slots.$.instructorAmount": instructorAmount,
+              "slots.$.grossAmountMinor": slotMoney.grossAmountMinor,
+              "slots.$.commissionAmountMinor": slotMoney.commissionAmountMinor,
+              "slots.$.instructorAmountMinor": slotMoney.instructorAmountMinor,
               "slots.$.payoutStatus": "not_applicable",
             },
           },
@@ -311,6 +312,7 @@ async function runT48ChargeJob(context = {}) {
           role: "student",
           direction: "debit",
           amount: perSlotAmount,
+          amountMinor: slotMoney.grossAmountMinor,
           currency: "CHF",
           status: "succeeded",
           bookingId: booking._id,
@@ -328,6 +330,7 @@ async function runT48ChargeJob(context = {}) {
           role: "platform",
           direction: "credit",
           amount: perSlotAmount,
+          amountMinor: slotMoney.grossAmountMinor,
           currency: "CHF",
           status: "succeeded",
           bookingId: booking._id,
@@ -347,6 +350,7 @@ async function runT48ChargeJob(context = {}) {
             role: "instructor",
             direction: "credit",
             amount: instructorAmount,
+            amountMinor: slotMoney.instructorAmountMinor,
             currency: "CHF",
             status: "succeeded",
             bookingId: booking._id,
@@ -367,6 +371,7 @@ async function runT48ChargeJob(context = {}) {
             role: "platform",
             direction: "credit",
             amount: dspCommission,
+            amountMinor: slotMoney.commissionAmountMinor,
             currency: "CHF",
             status: "succeeded",
             bookingId: booking._id,

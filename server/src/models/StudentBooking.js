@@ -1,6 +1,15 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+const minorAmount = {
+  type: Number,
+  min: 0,
+  validate: {
+    validator: (value) => value == null || Number.isSafeInteger(value),
+    message: "Minor-unit amount must be a safe integer",
+  },
+};
+
 // Slot Schema - Updated
 const slotSchema = new Schema(
   {
@@ -49,11 +58,14 @@ const slotSchema = new Schema(
     // Stripe payment details
     paymentIntentId: { type: String }, // Stripe PaymentIntent ID
     chargedAt: { type: Date }, // When T-48 charge happened
-    chargeAmount: { type: Number }, // Amount charged for this slot
+    chargeAmount: { type: Number }, // Legacy major-unit compatibility field
+    grossAmountMinor: minorAmount,
 
     // Commission split
-    dspCommission: { type: Number }, // DSP's share
-    instructorAmount: { type: Number }, // Instructor's share
+    dspCommission: { type: Number }, // Legacy major-unit compatibility field
+    commissionAmountMinor: minorAmount,
+    instructorAmount: { type: Number }, // Legacy major-unit compatibility field
+    instructorAmountMinor: minorAmount,
 
     // Completion tracking
     completionMarkedAt: { type: Date }, // When marked complete/missed
@@ -67,7 +79,8 @@ const slotSchema = new Schema(
       enum: ["none", "requested", "approved", "processed"],
       default: "none",
     },
-    refundAmount: { type: Number }, // Amount refunded
+    refundAmount: { type: Number }, // Legacy major-unit compatibility field
+    refundAmountMinor: minorAmount,
     refundPercentage: { type: Number }, // Refund percentage
     refundReason: { type: String }, // Why refunded
     refundDate: { type: Date }, // When refunded
@@ -129,6 +142,10 @@ const studentBookingSchema = new Schema(
       required: true,
       min: [0, "Total amount cannot be negative"],
     },
+    currency: { type: String, enum: ["CHF"], default: "CHF" },
+    grossAmountMinor: minorAmount,
+    commissionAmountMinor: minorAmount,
+    instructorAmountMinor: minorAmount,
     paymentMethod: {
       type: paymentMethodSchema,
       required: true,

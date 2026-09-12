@@ -4,6 +4,7 @@ const { updateStudentProfileSchema } = require("../../schemas/validation");
 const { Mutation } = require("../resolvers");
 const studentBookingModel = require("../../models/studentBooking.model");
 const StudentBooking = require("../../models/studentBooking.model");
+const { toMinorUnits, fromMinorUnits } = require("../../utils/money");
 const {
   requireStudentOwnership,
   requireStudentDataAccess,
@@ -105,8 +106,12 @@ const studentResolver = {
 
             const endDate = slot.date.split("-").reverse().join("-");
 
-            const paymentPerSlot = booking.totalAmount;
-            const finalPrice = Math.round(booking.finalAmount);
+            const paymentPerSlot = Number(fromMinorUnits(toMinorUnits(booking.totalAmount)));
+            const finalPrice = Number(fromMinorUnits(
+              Number.isSafeInteger(slot.grossAmountMinor)
+                ? slot.grossAmountMinor
+                : toMinorUnits(booking.finalAmount),
+            ));
             let status = slot.status;
             if (slot.status === "available") {
               status = booking.status;
@@ -118,13 +123,13 @@ const studentResolver = {
             lessons.push({
               lessonBooked: `Lesson ${booking._id.toString().substr(-4)}-${slotIndex + 1}`,
               bookingDate: bookingDate,
-              payment: Math.round(paymentPerSlot),
+              payment: paymentPerSlot,
               status: statusDisplay,
               endDate: endDate,
               startTime: slot.startTime,
               endTime: slot.endTime,
               slotStatus: slot.status,
-              FinalPrice: Math.round(finalPrice),
+              FinalPrice: finalPrice,
               bookingStatus: booking.status,
               instructorName: booking.instructorId
                 ? `${booking.instructorId.firstName} ${booking.instructorId.lastName}`

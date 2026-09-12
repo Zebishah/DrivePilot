@@ -6,6 +6,11 @@ const mongoose = require("mongoose");
 const Transaction = require("../../models/transaction.model");
 const { Admin, User } = require("../../models/User");
 const StudentBooking = require("../../models/studentBooking.model");
+const { fromMinorUnits } = require("../../utils/money");
+
+const amountMinorExpression = {
+  $ifNull: ["$amountMinor", { $round: [{ $multiply: ["$amount", 100] }, 0] }],
+};
 
 function toObjectId(id) {
   if (!id) return null;
@@ -181,7 +186,7 @@ const transactionResolver = {
               description: { $regex: /gross receipt/i },
             },
           },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
+          { $group: { _id: null, totalMinor: { $sum: amountMinorExpression } } },
         ]),
         Transaction.aggregate([
           { $match: { status: "succeeded" } },
@@ -203,7 +208,7 @@ const transactionResolver = {
         ]),
       ]);
       const c = counts[0] || {};
-      const totalEarned = Math.round((grossVolume[0]?.total ?? 0) * 100) / 100;
+      const totalEarned = Number(fromMinorUnits(grossVolume[0]?.totalMinor ?? 0));
       return {
         totalEarned,
         totalPayments: c.totalPayments ?? 0,
@@ -277,7 +282,7 @@ const transactionResolver = {
               status: "succeeded",
             },
           },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
+          { $group: { _id: null, totalMinor: { $sum: amountMinorExpression } } },
         ]),
         Transaction.aggregate([
           {
@@ -289,7 +294,7 @@ const transactionResolver = {
               status: "succeeded",
             },
           },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
+          { $group: { _id: null, totalMinor: { $sum: amountMinorExpression } } },
         ]),
         Transaction.aggregate([
           { $match: { instructorId: instructorOid, role: "instructor" } },
@@ -309,8 +314,8 @@ const transactionResolver = {
       ]);
       const c = counts[0] || {};
       return {
-        totalReceived: Math.round((received[0]?.total ?? 0) * 100) / 100,
-        totalPayouts: Math.round((payouts[0]?.total ?? 0) * 100) / 100,
+        totalReceived: Number(fromMinorUnits(received[0]?.totalMinor ?? 0)),
+        totalPayouts: Number(fromMinorUnits(payouts[0]?.totalMinor ?? 0)),
         paymentCount: c.paymentCount ?? 0,
         payoutCount: c.payoutCount ?? 0,
         transactionCount: c.transactionCount ?? 0,
@@ -381,7 +386,7 @@ const transactionResolver = {
               status: "succeeded",
             },
           },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
+          { $group: { _id: null, totalMinor: { $sum: amountMinorExpression } } },
         ]),
         Transaction.aggregate([
           {
@@ -393,7 +398,7 @@ const transactionResolver = {
               status: "succeeded",
             },
           },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
+          { $group: { _id: null, totalMinor: { $sum: amountMinorExpression } } },
         ]),
         Transaction.aggregate([
           { $match: { studentId: studentOid, role: "student" } },
@@ -413,8 +418,8 @@ const transactionResolver = {
       ]);
       const c = counts[0] || {};
       return {
-        totalSpent: Math.round((spent[0]?.total ?? 0) * 100) / 100,
-        totalRefunded: Math.round((refunded[0]?.total ?? 0) * 100) / 100,
+        totalSpent: Number(fromMinorUnits(spent[0]?.totalMinor ?? 0)),
+        totalRefunded: Number(fromMinorUnits(refunded[0]?.totalMinor ?? 0)),
         paymentCount: c.paymentCount ?? 0,
         refundCount: c.refundCount ?? 0,
         transactionCount: c.transactionCount ?? 0,

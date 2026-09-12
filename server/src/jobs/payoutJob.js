@@ -1,7 +1,6 @@
 const StudentBooking = require("../models/studentBooking.model");
 const {
   createManualPayoutForInstructor,
-  CENTIMES_PER_UNIT,
 } = require("../services/stripeService");
 const { createTransaction } = require("../services/transactionService");
 const {
@@ -15,6 +14,7 @@ const {
   markManualReview,
 } = require("../services/financialOperationService");
 const { retrievePayout } = require("../services/stripeService");
+const { fromMinorUnits, getBookingMoneySnapshot } = require("../utils/money");
 const JOB_CONFIG = require("../config/jobConfig");
 
 async function runInstructorPayoutJob() {
@@ -52,6 +52,15 @@ async function runInstructorPayoutJob() {
       ) {
         continue;
       }
+      const slotMoney = getBookingMoneySnapshot({
+        booking,
+        instructor,
+        platformSettings: {},
+      }).slots[i];
+      if (!slotMoney || slotMoney.instructorAmountMinor <= 0) {
+        errors += 1;
+        continue;
+      }
 
       const payoutOperation = await getOrCreateOperation({
         operationType: "PAYOUT",
@@ -61,7 +70,8 @@ async function runInstructorPayoutJob() {
         slotId: slot._id,
         instructorId: instructor._id,
         currency: "CHF",
-        requestedAmount: Number(slot.instructorAmount),
+        requestedAmount: Number(fromMinorUnits(slotMoney.instructorAmountMinor)),
+        requestedAmountMinor: slotMoney.instructorAmountMinor,
         idempotencyKey: `payout-${String(booking._id)}-${String(slot._id)}`,
         metadata: { bookingId: String(booking._id), slotId: String(slot._id) },
       });
@@ -110,9 +120,7 @@ async function runInstructorPayoutJob() {
         const payoutDescription = isMissedLesson
           ? "Payout to bank for missed lesson"
           : "Payout to bank for completed lesson";
-        const amountCentimes = Math.round(
-          Number(slot.instructorAmount) * CENTIMES_PER_UNIT,
-        );
+        const amountCentimes = slotMoney.instructorAmountMinor;
         let payoutId = payoutOperation.providerObjectId || slot.payoutId;
         if (payoutId) {
           const providerPayout = await retrievePayout(
@@ -166,7 +174,8 @@ async function runInstructorPayoutJob() {
           type: "payout",
           role: "instructor",
           direction: "credit",
-          amount: Number(slot.instructorAmount),
+          amount: Number(fromMinorUnits(slotMoney.instructorAmountMinor)),
+          amountMinor: slotMoney.instructorAmountMinor,
           currency: "CHF",
           status: "succeeded",
           bookingId: booking._id,
@@ -204,7 +213,8 @@ async function runInstructorPayoutJob() {
             type: "payout",
             role: "instructor",
             direction: "credit",
-            amount: Number(slot.instructorAmount),
+            amount: Number(fromMinorUnits(slotMoney.instructorAmountMinor)),
+            amountMinor: slotMoney.instructorAmountMinor,
             currency: "CHF",
             status: "succeeded",
             bookingId: booking._id,

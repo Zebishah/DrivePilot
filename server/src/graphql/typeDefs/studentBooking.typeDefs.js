@@ -49,8 +49,12 @@ const studentBookingTypeDefs = gql`
     paymentStatus: String
     chargeAmount: Float
     instructorAmount: Float
+    grossAmountMinor: Int
+    commissionAmountMinor: Int
+    instructorAmountMinor: Int
     payoutStatus: String
     refundAmount: Float
+    refundAmountMinor: Int
     refundedAt: String
     cancellationDate: String
     completionMarkedAt: String
@@ -93,6 +97,10 @@ const studentBookingTypeDefs = gql`
     slots: [Slot!]!
     totalAmount: Int!
     finalAmount: Float!
+    currency: String!
+    grossAmountMinor: Int
+    commissionAmountMinor: Int
+    instructorAmountMinor: Int
     paymentMethod: PaymentMethod
     status: BookingStatus!
     stripePaymentIntentId: String
@@ -185,8 +193,12 @@ const studentBookingTypeDefs = gql`
     paymentStatus: String
     chargeAmount: Float
     instructorAmount: Float
+    grossAmountMinor: Int
+    commissionAmountMinor: Int
+    instructorAmountMinor: Int
     payoutStatus: String
     refundAmount: Float
+    refundAmountMinor: Int
     refundedAt: String
     cancellationDate: String
     completionMarkedAt: String

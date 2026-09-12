@@ -43,6 +43,7 @@ import {
   GET_STUDENT_TRANSACTION_STATS,
 } from "../../../graphql/Queries/transactionQueries";
 import { format } from "date-fns";
+import { formatCHF } from "../../../utils/money";
 
 function formatTransactionDate(value: string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -157,7 +158,7 @@ export default function StudentPaymentHistoryPage() {
 
   const formatAmount = (t: Transaction) => {
     const sign = t.direction === "credit" ? "+" : "-";
-    return `${sign} $${t.amount.toFixed(2)}`;
+    return `${sign} ${formatCHF(t.amount)}`;
   };
 
   if (loading && !effectiveData) {
@@ -218,7 +219,7 @@ export default function StudentPaymentHistoryPage() {
               </Box>
               <Box>
                 <Typography color="text.secondary" variant="body2">Total spent</Typography>
-                <Typography variant="h6">${stats.totalSpent.toFixed(2)}</Typography>
+                <Typography variant="h6">{formatCHF(stats.totalSpent)}</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -249,7 +250,7 @@ export default function StudentPaymentHistoryPage() {
               </Box>
               <Box>
                 <Typography color="text.secondary" variant="body2">Total refunded</Typography>
-                <Typography variant="h6">${stats.totalRefunded.toFixed(2)}</Typography>
+                <Typography variant="h6">{formatCHF(stats.totalRefunded)}</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -504,11 +505,11 @@ export default function StudentPaymentHistoryPage() {
                   <DetailRow
                     icon={<AttachMoneyIcon sx={{ fontSize: 20, color: "text.secondary" }} />}
                     label="Amount"
-                    value={`${viewTransaction.direction === "credit" ? "+" : "-"} $${viewTransaction.amount.toFixed(2)}`}
+                    value={`${viewTransaction.direction === "credit" ? "+" : "-"} ${formatCHF(viewTransaction.amount)}`}
                     valueColor={viewTransaction.direction === "credit" ? "success.main" : undefined}
                   />
-                  <DetailRow icon={<ReceiptLongIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Fee" value="$0.00" />
-                  <DetailRow icon={<AttachMoneyIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Total Amount" value={`$${viewTransaction.amount.toFixed(2)}`} />
+                  <DetailRow icon={<ReceiptLongIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Fee" value="CHF 0.00" />
+                  <DetailRow icon={<AttachMoneyIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Total Amount" value={formatCHF(viewTransaction.amount)} />
                   <DetailRow icon={<FingerprintIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Ref Number" value={viewTransaction.id.slice(-9)} />
                   <DetailRow icon={<CalendarTodayIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Date" value={formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt)} />
                   <DetailRow icon={<InfoIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Status" value={statusLabel(viewTransaction)} />

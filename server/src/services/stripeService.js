@@ -3,6 +3,13 @@
  * Uses Stripe Connect with type: "express"; country CH.
  */
 const Stripe = require("stripe");
+const {
+  DEFAULT_CURRENCY: MONEY_CURRENCY,
+  toMinorUnits,
+  fromMinorUnits,
+  calculateCommission,
+  assertValidMoney,
+} = require("../utils/money");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -143,7 +150,7 @@ function accountToStripeSnapshot(account) {
   };
 }
 
-const DEFAULT_CURRENCY = "chf";
+const DEFAULT_CURRENCY = MONEY_CURRENCY.toLowerCase();
 const CENTIMES_PER_UNIT = 100; // 1 CHF = 100 centimes for Stripe
 
 /**
@@ -154,86 +161,19 @@ const CENTIMES_PER_UNIT = 100; // 1 CHF = 100 centimes for Stripe
  * @returns {{ dspCommission: number, instructorAmount: number }}
  */
 function getCommissionSplit(amountChf, instructor, platformSettings = {}) {
-  const defRate = platformSettings.defaultRate ?? 20;
-  const defInstructorRate = platformSettings.defaultInstructorRate;
-  const defType = platformSettings.defaultType ?? "percentage";
-  const defFixed = platformSettings.defaultFixedAmount ?? 0;
-
-  let dspCommission;
-  let instructorAmount;
-  const inc = instructor?.commission;
-
-  // 1) Per-instructor percentage override: instructor gets instructorRate %, admin gets the rest
-  const instructorRate = inc?.instructorRate;
-  if (
-    instructorRate != null &&
-    Number.isFinite(instructorRate) &&
-    instructorRate >= 0 &&
-    instructorRate <= 100
-  ) {
-    instructorAmount =
-      Math.round(amountChf * (instructorRate / 100) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-    dspCommission =
-      Math.round((amountChf - instructorAmount) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-    return {
-      dspCommission:
-        Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
-      instructorAmount:
-        Math.round(instructorAmount * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
-    };
-  }
-
-  // 2) Per-instructor fixed amount (existing)
-  if (inc?.type === "amount" || inc?.type === "fixed") {
-    const fixed = Number(inc.fixedAmount ?? 0);
-    dspCommission = Math.min(fixed, amountChf);
-    instructorAmount =
-      Math.round((amountChf - dspCommission) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-    return {
-      dspCommission:
-        Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
-      instructorAmount,
-    };
-  }
-
-  // 3) Platform default
-  if (defType === "amount") {
-    dspCommission = Math.min(defFixed, amountChf);
-  } else if (
-    defInstructorRate != null &&
-    Number.isFinite(defInstructorRate) &&
-    defInstructorRate >= 0 &&
-    defInstructorRate <= 100
-  ) {
-    instructorAmount =
-      Math.round(amountChf * (defInstructorRate / 100) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-    dspCommission =
-      Math.round((amountChf - instructorAmount) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-    return {
-      dspCommission:
-        Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
-      instructorAmount:
-        Math.round(instructorAmount * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
-    };
-  } else {
-    dspCommission =
-      Math.round(amountChf * (defRate / 100) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-    instructorAmount =
-      Math.round((amountChf - dspCommission) * CENTIMES_PER_UNIT) /
-      CENTIMES_PER_UNIT;
-  }
-
+  const split = getCommissionSplitMinor(
+    toMinorUnits(amountChf, MONEY_CURRENCY),
+    instructor,
+    platformSettings,
+  );
   return {
-    dspCommission:
-      Math.round(dspCommission * CENTIMES_PER_UNIT) / CENTIMES_PER_UNIT,
-    instructorAmount,
+    dspCommission: Number(fromMinorUnits(split.commissionMinor, MONEY_CURRENCY)),
+    instructorAmount: Number(fromMinorUnits(split.instructorAmountMinor, MONEY_CURRENCY)),
   };
+}
+
+function getCommissionSplitMinor(amountMinor, instructor, platformSettings = {}) {
+  return calculateCommission(amountMinor, instructor, platformSettings, MONEY_CURRENCY);
 }
 
 /**
@@ -270,7 +210,7 @@ async function createPaymentIntentForBooking(opts) {
 
   // Ensure all values are primitives (Stripe throws "Unknown arguments ([object Object])" for class instances / ObjectIds)
   const params = {
-    amount: Math.round(Number(amountCentimes)),
+    amount: assertValidMoney(Number(amountCentimes), currency),
     currency: String(currency || DEFAULT_CURRENCY).toLowerCase(),
     payment_method:
       paymentMethodId != null ? String(paymentMethodId) : undefined,
@@ -297,7 +237,7 @@ async function createPaymentIntentForBooking(opts) {
   ) {
     params.transfer_data = {
       destination: String(transferData.destinationAccountId),
-      amount: Math.round(Number(transferData.amountCentimes)),
+      amount: assertValidMoney(Number(transferData.amountCentimes), currency),
     };
   }
 
@@ -373,7 +313,7 @@ async function createTransferToInstructor(opts) {
   } = opts;
 
   const transfer = await stripe.transfers.create({
-    amount: Math.round(amountCentimes),
+    amount: assertValidMoney(Number(amountCentimes), currency),
     currency: currency.toLowerCase(),
     destination: destinationAccountId,
     metadata: { ...metadata },
@@ -404,7 +344,7 @@ async function createManualPayoutForInstructor(opts) {
 
   const payout = await stripe.payouts.create(
     {
-      amount: Math.round(amountCentimes),
+      amount: assertValidMoney(Number(amountCentimes), currency),
       currency: currency.toLowerCase(),
       metadata: { ...metadata },
     },
@@ -427,7 +367,7 @@ async function createManualPayoutForInstructor(opts) {
 async function createRefund(opts) {
   const { paymentIntentId, amountCentimes, reason, idempotencyKey } = opts;
   const refundParams = { payment_intent: paymentIntentId };
-  if (amountCentimes != null) refundParams.amount = Math.round(amountCentimes);
+  if (amountCentimes != null) refundParams.amount = assertValidMoney(Number(amountCentimes), DEFAULT_CURRENCY);
   if (reason) refundParams.reason = reason;
 
   const refund = await stripe.refunds.create(
@@ -507,7 +447,7 @@ async function createTransferReversal(opts) {
   const reversal = await stripe.transfers.createReversal(
     transferId,
     {
-      amount: Math.round(amountCentimes),
+      amount: assertValidMoney(Number(amountCentimes), DEFAULT_CURRENCY),
       metadata: { ...metadata },
     },
     idempotencyKey
@@ -636,7 +576,7 @@ async function createCheckoutSessionForBooking(opts) {
         {
           price_data: {
             currency: currency.toLowerCase(),
-            unit_amount: Math.round(amountCentimes),
+            unit_amount: assertValidMoney(Number(amountCentimes), currency),
             product_data: {
               name: "Lesson booking",
               description: description || "Lesson booking",
@@ -650,7 +590,7 @@ async function createCheckoutSessionForBooking(opts) {
         metadata: { ...metadata },
         transfer_data: {
           destination: destinationAccountId,
-          amount: Math.round(transferAmountCentimes),
+          amount: assertValidMoney(Number(transferAmountCentimes), currency),
         },
       },
       success_url: successUrl,
@@ -716,6 +656,7 @@ module.exports = {
   accountToStripeSnapshot,
   FRONTEND_BASE,
   getCommissionSplit,
+  getCommissionSplitMinor,
   createPaymentIntentForBooking,
   createCheckoutSessionForBooking,
   createCustomer,

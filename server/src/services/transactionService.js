@@ -1,5 +1,6 @@
 const Transaction = require("../models/transaction.model");
 const { createIdempotentTransaction } = require("./financialOperationService");
+const { toMinorUnits, fromMinorUnits } = require("../utils/money");
 
 /**
  * Create a transaction document.
@@ -10,6 +11,14 @@ async function createTransaction(opts) {
   const payload = {
     ...opts,
   };
+  const currency = String(payload.currency || "CHF").toUpperCase();
+  if (payload.amountMinor == null && payload.amount != null) {
+    payload.amountMinor = toMinorUnits(payload.amount, currency);
+  }
+  if (payload.amount == null && payload.amountMinor != null) {
+    payload.amount = Number(fromMinorUnits(payload.amountMinor, currency));
+  }
+  payload.currency = currency;
   if (!payload.occurredAt) {
     payload.occurredAt = new Date();
   }

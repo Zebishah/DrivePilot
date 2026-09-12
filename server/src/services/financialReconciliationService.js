@@ -19,6 +19,7 @@ const {
   executionId,
 } = require("./financialOperationService");
 const { dispatchStripeWebhookEvent } = require("./stripeWebhookProcessor");
+const { fromMinorUnits, toMinorUnits } = require("../utils/money");
 
 const BATCH_SIZE = Number(process.env.FINANCIAL_RECONCILIATION_BATCH_SIZE || 25);
 
@@ -45,6 +46,9 @@ async function reconcilePayout(operation, owner) {
         : "PAYOUT_FAILED",
     });
   }
+  const instructorAmountMinor = Number.isSafeInteger(slot.instructorAmountMinor)
+    ? slot.instructorAmountMinor
+    : toMinorUnits(slot.instructorAmount || 0);
   await StudentBooking.updateOne(
     { _id: booking._id, "slots._id": slot._id },
     { $set: { "slots.$.payoutStatus": "completed", "slots.$.payoutId": payout.id, "slots.$.payoutDate": new Date(), updatedAt: new Date() } },
@@ -54,7 +58,7 @@ async function reconcilePayout(operation, owner) {
     {
       $setOnInsert: {
         type: "payout", role: "instructor", direction: "credit",
-        amount: Number(slot.instructorAmount), currency: "CHF", status: "succeeded",
+        amount: Number(fromMinorUnits(instructorAmountMinor)), amountMinor: instructorAmountMinor, currency: "CHF", status: "succeeded",
         bookingId: booking._id, slotId: slot._id, instructorId: booking.instructorId._id,
         stripePayoutId: payout.id, financialOperationId: operation.operationId,
         eventType: "PAYOUT_INSTRUCTOR_CREDIT", description: "Reconciled instructor payout", occurredAt: new Date(),

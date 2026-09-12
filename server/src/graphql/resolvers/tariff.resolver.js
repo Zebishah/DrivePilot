@@ -1,6 +1,7 @@
 const TeacherTariff = require("../../models/teacherTariff.model");
 const Instructor = require("../../models/User").Instructor;
 const { updateInstructorProfileSchema } = require("../../schemas/validation");
+const { toMinorUnits } = require("../../utils/money");
 
 // Default tariff values for new teachers
 const DEFAULT_TARIFF = {
@@ -47,6 +48,10 @@ const resolvers = {
           ...input,
 
           teacherId: user.id,
+          lessonFeeMinor: toMinorUnits(input.lessonFee),
+          ...(input.FinalPricePerLesson != null
+            ? { FinalPricePerLessonMinor: toMinorUnits(input.FinalPricePerLesson) }
+            : {}),
           bulkPackages: input.bulkPackages || [],
         };
 
@@ -56,9 +61,11 @@ const resolvers = {
             title: pkg.title,
             lessons: pkg.lessons,
             cost: pkg.cost,
+            costMinor: toMinorUnits(pkg.cost),
             packageDiscount: pkg.packageDiscount,
             PackageEndDate: pkg.PackageEndDate,
             finalPackagePrice: pkg.finalPackagePrice,
+            finalPackagePriceMinor: toMinorUnits(pkg.finalPackagePrice),
             studentSave: pkg.studentSave,
           }));
         }

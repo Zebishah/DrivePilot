@@ -290,7 +290,7 @@ const InstructorsInfo: React.FC = () => {
     // Price Range
     if (filters.price[0] !== 1000 || filters.price[1] !== 10000) {
       chips.push({
-        label: `Price: $${filters.price[0]} - $${filters.price[1]}`,
+        label: `Price: CHF ${filters.price[0]} - CHF ${filters.price[1]}`,
         key: "price",
       });
     }

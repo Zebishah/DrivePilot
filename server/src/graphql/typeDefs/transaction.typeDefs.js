@@ -49,6 +49,7 @@ const transactionTypeDefs = gql`
     role: TransactionRole!
     direction: TransactionDirection!
     amount: Float!
+    amountMinor: Int
     currency: String!
     status: TransactionStatus!
 

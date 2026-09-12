@@ -487,10 +487,10 @@ const sendBookingEmail = async (recipients, bookingData, type) => {
                 <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">${
                   bookingData.status || "Confirmed"
                 }</span></p>
-                <p style="margin-bottom: 8px;"><strong>Total Price:</strong> $${
+                <p style="margin-bottom: 8px;"><strong>Total Price:</strong> CHF ${
                   bookingData.totalAmount || "0"
                 }</p>
-                <p style="margin-bottom: 8px;"><strong>Final Price:</strong> $${
+                <p style="margin-bottom: 8px;"><strong>Final Price:</strong> CHF ${
                   bookingData.finalAmount || "0"
                 }</p>
               </div>

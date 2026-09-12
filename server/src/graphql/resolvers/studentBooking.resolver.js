@@ -39,6 +39,11 @@ const { createTransaction } = require("../../services/transactionService");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 const { buildDirectCardSlotSplits } = require("../../utils/directCardBookingPricing");
 const {
+  toMinorUnits,
+  fromMinorUnits,
+  buildBookingMoneySnapshot,
+} = require("../../utils/money");
+const {
   requireAdmin,
   requireRole,
   requireStudentDataAccess,
@@ -63,6 +68,7 @@ const {
 } = require("../../services/finalizePaidCheckoutBooking");
 const {
   getCommissionSplit,
+  getCommissionSplitMinor,
   createPaymentIntentForBooking,
   createCheckoutSessionForBooking,
   createCustomer,
@@ -452,8 +458,13 @@ const studentBookingResolver = {
         let directPaymentOperation = null;
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
-        const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
         const platformSettings = await getPlatformCommissionForSplit();
+        const bookingMoney = buildBookingMoneySnapshot({
+          grossAmountMinor: toMinorUnits(validatedInput.finalAmount),
+          slotCount: numSlots,
+          instructor,
+          platformSettings,
+        });
 
         if (isCardPayment) {
           const instructorAccountId = instructor.stripeAccount?.accountId;
@@ -462,15 +473,8 @@ const studentBookingResolver = {
               "Instructor payment account is not set up. Please try another instructor.",
             );
           }
-          const { dspCommission, instructorAmount } = getCommissionSplit(
-            finalAmount,
-            instructor,
-            platformSettings,
-          );
-          const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
-          const instructorShareCentimes = Math.round(
-            Number(instructorAmount) * CENTIMES_PER_UNIT,
-          );
+          const amountCentimes = bookingMoney.grossAmountMinor;
+          const instructorShareCentimes = bookingMoney.instructorAmountMinor;
           const operationKey = `direct-${validatedInput.operationId || paymentCorrelationId}`;
           directPaymentOperation = await getOrCreateOperation({
             operationType: "DIRECT_PAYMENT",
@@ -480,6 +484,7 @@ const studentBookingResolver = {
             instructorId: instructor._id,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             requestedAmount: finalAmount,
+            requestedAmountMinor: bookingMoney.grossAmountMinor,
             idempotencyKey: operationKey,
             metadata: {
               studentId: String(user.id),
@@ -575,6 +580,7 @@ const studentBookingResolver = {
                 instructor,
                 platformSettings,
                 getCommissionSplit,
+                getCommissionSplitMinor,
               })
             : null;
 
@@ -592,9 +598,16 @@ const studentBookingResolver = {
             if (stripeChargeId) base.connectChargeId = stripeChargeId;
             if (stripeTransferId) base.transferId = stripeTransferId;
             base.paymentStatus = "paid";
-            base.chargeAmount = perSlotAmount;
+            base.chargeAmount = Number(
+              fromMinorUnits(directCardSlotSplits[index].grossAmountMinor),
+            );
             base.dspCommission = slotDsp;
             base.instructorAmount = slotInstructor;
+            base.grossAmountMinor = directCardSlotSplits[index].grossAmountMinor;
+            base.commissionAmountMinor =
+              directCardSlotSplits[index].commissionAmountMinor;
+            base.instructorAmountMinor =
+              directCardSlotSplits[index].instructorAmountMinor;
             base.payoutStatus = "not_applicable";
           } else {
             base.paymentStatus = "pending_payment";
@@ -636,6 +649,10 @@ const studentBookingResolver = {
           ...validatedInput,
           slots: enrichedSlots,
           status: "confirmed",
+          currency: bookingMoney.currency,
+          grossAmountMinor: bookingMoney.grossAmountMinor,
+          commissionAmountMinor: bookingMoney.commissionAmountMinor,
+          instructorAmountMinor: bookingMoney.instructorAmountMinor,
         };
         if (stripePaymentIntentId) {
           bookingPayload.stripePaymentIntentId = stripePaymentIntentId;
@@ -663,6 +680,7 @@ const studentBookingResolver = {
             role: "student",
             direction: "debit",
             amount: finalAmount,
+            amountMinor: bookingMoney.grossAmountMinor,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
             bookingId: booking._id,
@@ -679,6 +697,7 @@ const studentBookingResolver = {
             role: "platform",
             direction: "credit",
             amount: finalAmount,
+            amountMinor: bookingMoney.grossAmountMinor,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
             bookingId: booking._id,
@@ -698,6 +717,7 @@ const studentBookingResolver = {
                 role: "instructor",
                 direction: "credit",
                 amount: slot.instructorAmount,
+                amountMinor: slot.instructorAmountMinor,
                 currency: DEFAULT_CURRENCY.toUpperCase(),
                 status: "succeeded",
                 bookingId: booking._id,
@@ -716,6 +736,7 @@ const studentBookingResolver = {
                 role: "platform",
                 direction: "credit",
                 amount: slot.dspCommission,
+                amountMinor: slot.commissionAmountMinor,
                 currency: DEFAULT_CURRENCY.toUpperCase(),
                 status: "succeeded",
                 bookingId: booking._id,
@@ -892,25 +913,27 @@ const studentBookingResolver = {
 
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
-        const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
         const platformSettings = await getPlatformCommissionForSplit();
-        const { dspCommission, instructorAmount } = getCommissionSplit(
-          finalAmount,
+        const bookingMoney = buildBookingMoneySnapshot({
+          grossAmountMinor: toMinorUnits(validatedInput.finalAmount),
+          slotCount: numSlots,
           instructor,
           platformSettings,
-        );
-        const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
-        const instructorShareCentimes = Math.round(
-          Number(instructorAmount) * CENTIMES_PER_UNIT,
-        );
+        });
+        const amountCentimes = bookingMoney.grossAmountMinor;
+        const instructorShareCentimes = bookingMoney.instructorAmountMinor;
 
-        const enrichedSlots = validatedInput.slots.map((slot) => ({
+        const enrichedSlots = validatedInput.slots.map((slot, index) => ({
           ...slot,
           booked: true,
           status: "booked",
           review: false,
           paymentStatus: "pending_payment",
           payoutStatus: "not_applicable",
+          ...bookingMoney.slots[index],
+          chargeAmount: Number(fromMinorUnits(bookingMoney.slots[index].grossAmountMinor)),
+          dspCommission: Number(fromMinorUnits(bookingMoney.slots[index].commissionAmountMinor)),
+          instructorAmount: Number(fromMinorUnits(bookingMoney.slots[index].instructorAmountMinor)),
         }));
 
         // Decide instant vs deferred by gap between now and earliest slot start
@@ -940,6 +963,7 @@ const studentBookingResolver = {
           instructorId: instructor._id,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           requestedAmount: finalAmount,
+          requestedAmountMinor: bookingMoney.grossAmountMinor,
           idempotencyKey: `checkout-${checkoutRequestId}`,
           metadata: {
             studentId: String(user.id),
@@ -1008,6 +1032,10 @@ const studentBookingResolver = {
           ...validatedInput,
           slots: enrichedSlots,
           status: "pending",
+          currency: bookingMoney.currency,
+          grossAmountMinor: bookingMoney.grossAmountMinor,
+          commissionAmountMinor: bookingMoney.commissionAmountMinor,
+          instructorAmountMinor: bookingMoney.instructorAmountMinor,
         };
         const booking = new StudentBooking(bookingPayload);
         await booking.save();
@@ -1212,15 +1240,13 @@ const studentBookingResolver = {
       const numSlots = booking.slots?.length || 1;
       const admin = await Admin.findOne().lean();
       const platformCommission = admin?.platformCommission || {};
-      const { dspCommission, instructorAmount } = getCommissionSplit(
-        finalAmount,
+      const bookingMoney = getBookingMoneySnapshot({
+        booking,
         instructor,
-        platformCommission,
-      );
-      const amountCentimes = Math.round(finalAmount * CENTIMES_PER_UNIT);
-      const instructorShareCentimes = Math.round(
-        Number(instructorAmount) * CENTIMES_PER_UNIT,
-      );
+        platformSettings: platformCommission,
+      });
+      const amountCentimes = bookingMoney.grossAmountMinor;
+      const instructorShareCentimes = bookingMoney.instructorAmountMinor;
       const instructorAccountId = instructor.stripeAccount.accountId;
       const checkoutAttempt = (booking.checkoutAttempt || 0) + 1;
       const unfinishedCheckoutOperation = await getLatestOperation({
@@ -1238,6 +1264,7 @@ const studentBookingResolver = {
           instructorId: instructor._id,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           requestedAmount: finalAmount,
+          requestedAmountMinor: bookingMoney.grossAmountMinor,
           idempotencyKey: `checkout-${String(booking._id)}-resume-${checkoutAttempt}`,
           metadata: { bookingId: String(booking._id), resumed: "true" },
         }));
@@ -1678,22 +1705,20 @@ const studentBookingResolver = {
       }
       const admin = await Admin.findOne().lean();
       const platformCommission = admin?.platformCommission || {};
-      const totalAmount = Number(
-        bookingWithInstructor.finalAmount ||
-          bookingWithInstructor.totalAmount ||
-          0,
-      );
-      const numSlots = bookingWithInstructor.slots?.length || 1;
-      const perSlotAmount = numSlots > 0 ? totalAmount / numSlots : 0;
-      const { instructorAmount } = getCommissionSplit(
-        perSlotAmount,
+      const bookingMoney = getBookingMoneySnapshot({
+        booking: bookingWithInstructor,
         instructor,
-        platformCommission,
+        platformSettings: platformCommission,
+      });
+      const slotIndex = bookingWithInstructor.slots.findIndex(
+        (candidate) => String(candidate._id) === String(slotId),
       );
-      const amountCentimes = Math.round(perSlotAmount * CENTIMES_PER_UNIT);
-      const instructorShareCentimes = Math.round(
-        Number(instructorAmount) * CENTIMES_PER_UNIT,
-      );
+      const slotMoney = bookingMoney.slots[slotIndex];
+      if (!slotMoney) throw new UserInputError("Slot financial snapshot is missing.");
+      const perSlotAmount = Number(fromMinorUnits(slotMoney.grossAmountMinor));
+      const instructorAmount = Number(fromMinorUnits(slotMoney.instructorAmountMinor));
+      const amountCentimes = slotMoney.grossAmountMinor;
+      const instructorShareCentimes = slotMoney.instructorAmountMinor;
       const completionOperation = await getOrCreateOperation({
         operationType: "T48_PAYMENT",
         aggregateType: "BOOKING_SLOT",
@@ -1704,6 +1729,7 @@ const studentBookingResolver = {
         instructorId: instructor._id,
         currency: "CHF",
         requestedAmount: perSlotAmount,
+        requestedAmountMinor: slotMoney.grossAmountMinor,
         idempotencyKey: `complete-${String(bookingId)}-${String(slotId)}`,
         metadata: { bookingId: String(bookingId), slotId: String(slotId) },
       });
@@ -1762,15 +1788,15 @@ const studentBookingResolver = {
           "Could not create payment session. Please try again or contact support.",
         );
       }
-      const slotIndex = bookingWithInstructor.slots.findIndex(
+      const paymentSlotIndex = bookingWithInstructor.slots.findIndex(
         (s) => String(s._id) === String(slotId),
       );
-      if (slotIndex !== -1) {
+      if (paymentSlotIndex !== -1) {
         await StudentBooking.updateOne(
           { _id: bookingId },
           {
             $set: {
-              [`slots.${slotIndex}.paymentIntentId`]: newPiId,
+              [`slots.${paymentSlotIndex}.paymentIntentId`]: newPiId,
               updatedAt: new Date(),
             },
           },
@@ -1821,6 +1847,11 @@ const studentBookingResolver = {
         paymentIntentId,
       );
       if (!paymentOperation) {
+        const bookingMoneyForRecovery = getBookingMoneySnapshot({
+          booking,
+          instructor: booking.instructorId,
+          platformSettings: {},
+        });
         paymentOperation = await getOrCreateOperation({
           operationType: "T48_PAYMENT",
           aggregateType: "BOOKING_SLOT",
@@ -1830,8 +1861,10 @@ const studentBookingResolver = {
           studentId: booking.studentId._id,
           instructorId: booking.instructorId._id,
           currency: "CHF",
-          requestedAmount: Number(booking.finalAmount || booking.totalAmount) /
-            (booking.slots?.length || 1),
+          requestedAmount: Number(
+            fromMinorUnits(bookingMoneyForRecovery.slots[booking.slots.findIndex((candidate) => String(candidate._id) === String(slot._id))].grossAmountMinor),
+          ),
+          requestedAmountMinor: bookingMoneyForRecovery.slots[booking.slots.findIndex((candidate) => String(candidate._id) === String(slot._id))].grossAmountMinor,
           idempotencyKey: `t48-recovered-${paymentIntentId}`,
           metadata: { recoveredFromProvider: true },
         });
@@ -1860,14 +1893,16 @@ const studentBookingResolver = {
       }
       const admin = await Admin.findOne().lean();
       const platformCommission = admin?.platformCommission || {};
-      const perSlotAmount =
-        (Number(booking.finalAmount || booking.totalAmount) || 0) /
-        (booking.slots?.length || 1);
-      const { dspCommission, instructorAmount } = getCommissionSplit(
-        perSlotAmount,
-        booking.instructorId,
-        platformCommission,
-      );
+      const bookingMoney = getBookingMoneySnapshot({
+        booking,
+        instructor: booking.instructorId,
+        platformSettings: platformCommission,
+      });
+      const slotIndex = booking.slots.findIndex((candidate) => String(candidate._id) === String(slot._id));
+      const slotMoney = bookingMoney.slots[slotIndex];
+      const perSlotAmount = Number(fromMinorUnits(slotMoney.grossAmountMinor));
+      const instructorAmount = Number(fromMinorUnits(slotMoney.instructorAmountMinor));
+      const dspCommission = Number(fromMinorUnits(slotMoney.commissionAmountMinor));
       const occurredAt = new Date();
       slot.paymentStatus = "paid";
       slot.paymentIntentId = paymentIntentId;
@@ -1875,6 +1910,9 @@ const studentBookingResolver = {
       slot.chargeAmount = perSlotAmount;
       slot.dspCommission = dspCommission;
       slot.instructorAmount = instructorAmount;
+      slot.grossAmountMinor = slotMoney.grossAmountMinor;
+      slot.commissionAmountMinor = slotMoney.commissionAmountMinor;
+      slot.instructorAmountMinor = slotMoney.instructorAmountMinor;
       slot.payoutStatus = "not_applicable";
       await booking.save();
 
@@ -1883,6 +1921,7 @@ const studentBookingResolver = {
         role: "student",
         direction: "debit",
         amount: perSlotAmount,
+        amountMinor: slotMoney.grossAmountMinor,
         currency: "CHF",
         status: "succeeded",
         bookingId: booking._id,
@@ -1899,6 +1938,7 @@ const studentBookingResolver = {
         role: "platform",
         direction: "credit",
         amount: perSlotAmount,
+        amountMinor: slotMoney.grossAmountMinor,
         bookingId: booking._id,
         slotId: slot._id,
         studentId: booking.studentId._id,
@@ -1914,6 +1954,7 @@ const studentBookingResolver = {
           role: "instructor",
           direction: "credit",
           amount: instructorAmount,
+          amountMinor: slotMoney.instructorAmountMinor,
           currency: "CHF",
           status: "succeeded",
           bookingId: booking._id,
@@ -1933,6 +1974,7 @@ const studentBookingResolver = {
           role: "platform",
           direction: "credit",
           amount: dspCommission,
+          amountMinor: slotMoney.commissionAmountMinor,
           currency: "CHF",
           bookingId: booking._id,
           slotId: slot._id,
@@ -2004,14 +2046,18 @@ const studentBookingResolver = {
       }
       const numSlots = validatedInput.slots.length;
       const finalAmount = Number(validatedInput.finalAmount);
-      const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
       const platformSettingsPay = await getPlatformCommissionForSplit();
-      const enrichedSlots = validatedInput.slots.map((slot) => {
-        const { dspCommission, instructorAmount } = getCommissionSplit(
-          perSlotAmount,
-          instructor,
-          platformSettingsPay,
-        );
+      const bookingMoney = buildBookingMoneySnapshot({
+        grossAmountMinor: toMinorUnits(validatedInput.finalAmount),
+        slotCount: numSlots,
+        instructor,
+        platformSettings: platformSettingsPay,
+      });
+      if (Number.isSafeInteger(pi.amount) && pi.amount !== bookingMoney.grossAmountMinor) {
+        throw new UserInputError("Payment amount does not match the booking total.");
+      }
+      const enrichedSlots = validatedInput.slots.map((slot, index) => {
+        const slotMoney = bookingMoney.slots[index];
         return {
           ...slot,
           booked: true,
@@ -2019,9 +2065,10 @@ const studentBookingResolver = {
           review: false,
           paymentStatus: "paid",
           paymentIntentId,
-          chargeAmount: perSlotAmount,
-          dspCommission,
-          instructorAmount,
+          chargeAmount: Number(fromMinorUnits(slotMoney.grossAmountMinor)),
+          dspCommission: Number(fromMinorUnits(slotMoney.commissionAmountMinor)),
+          instructorAmount: Number(fromMinorUnits(slotMoney.instructorAmountMinor)),
+          ...slotMoney,
           payoutStatus: "not_applicable",
         };
       });
@@ -2054,6 +2101,10 @@ const studentBookingResolver = {
         ...validatedInput,
         slots: enrichedSlots,
         status: "confirmed",
+        currency: bookingMoney.currency,
+        grossAmountMinor: bookingMoney.grossAmountMinor,
+        commissionAmountMinor: bookingMoney.commissionAmountMinor,
+        instructorAmountMinor: bookingMoney.instructorAmountMinor,
         stripePaymentIntentId: paymentIntentId,
         paymentMethod: validatedInput.paymentMethod
           ? {
@@ -2073,6 +2124,7 @@ const studentBookingResolver = {
         role: "student",
         direction: "debit",
         amount: finalAmount,
+        amountMinor: bookingMoney.grossAmountMinor,
         currency: DEFAULT_CURRENCY.toUpperCase(),
         status: "succeeded",
         bookingId: booking._id,
@@ -2088,6 +2140,7 @@ const studentBookingResolver = {
         role: "platform",
         direction: "credit",
         amount: finalAmount,
+        amountMinor: bookingMoney.grossAmountMinor,
         currency: DEFAULT_CURRENCY.toUpperCase(),
         status: "succeeded",
         bookingId: booking._id,
@@ -2106,6 +2159,7 @@ const studentBookingResolver = {
             role: "instructor",
             direction: "credit",
             amount: slot.instructorAmount,
+            amountMinor: slot.instructorAmountMinor,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
             bookingId: booking._id,
@@ -2124,6 +2178,7 @@ const studentBookingResolver = {
             role: "platform",
             direction: "credit",
             amount: slot.dspCommission,
+            amountMinor: slot.commissionAmountMinor,
             currency: DEFAULT_CURRENCY.toUpperCase(),
             status: "succeeded",
             bookingId: booking._id,

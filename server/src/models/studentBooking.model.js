@@ -1,6 +1,15 @@
 const mongoose = require("mongoose");
 const { Review } = require("./Reviews");
 
+const minorAmount = {
+  type: Number,
+  min: 0,
+  validate: {
+    validator: (value) => value == null || Number.isSafeInteger(value),
+    message: "Minor-unit amount must be a safe integer",
+  },
+};
+
 const studentBookingSchema = new mongoose.Schema(
   {
     studentId: {
@@ -79,6 +88,9 @@ const studentBookingSchema = new mongoose.Schema(
         chargeAmount: { type: Number },
         dspCommission: { type: Number },
         instructorAmount: { type: Number },
+        grossAmountMinor: minorAmount,
+        commissionAmountMinor: minorAmount,
+        instructorAmountMinor: minorAmount,
         // --- Payout (3 days after completed) ---
         payoutStatus: {
           type: String,
@@ -91,6 +103,7 @@ const studentBookingSchema = new mongoose.Schema(
         payoutDate: { type: Date },
         // --- Refund ---
         refundAmount: { type: Number },
+        refundAmountMinor: minorAmount,
         refundedAt: { type: Date },
         // --- Lesson-end reminder ---
         lessonEndReminderSent: { type: Boolean, default: false },
@@ -118,6 +131,10 @@ const studentBookingSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    currency: { type: String, enum: ["CHF"], default: "CHF" },
+    grossAmountMinor: minorAmount,
+    commissionAmountMinor: minorAmount,
+    instructorAmountMinor: minorAmount,
     paymentMethod: {
       type: {
         type: String,

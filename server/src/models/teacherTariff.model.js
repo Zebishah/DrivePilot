@@ -1,5 +1,14 @@
 const { default: mongoose } = require("mongoose");
 
+const minorAmount = {
+  type: Number,
+  min: 0,
+  validate: {
+    validator: (value) => value == null || Number.isSafeInteger(value),
+    message: "Minor-unit amount must be a safe integer",
+  },
+};
+
 const bulkLessonPackageSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -17,6 +26,7 @@ const bulkLessonPackageSchema = new mongoose.Schema({
     min: 0,
     max: 100,
   },
+  costMinor: minorAmount,
   packageDiscount: {
     type: Number,
     required: true,
@@ -31,6 +41,7 @@ const bulkLessonPackageSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  finalPackagePriceMinor: minorAmount,
   studentSave: {
     type: Number,
     required: true,
@@ -48,6 +59,7 @@ const teacherTariffSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    lessonFeeMinor: minorAmount,
     bulkPackages: [bulkLessonPackageSchema],
 
     lessonDiscount: {
@@ -58,6 +70,7 @@ const teacherTariffSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    FinalPricePerLessonMinor: minorAmount,
     isDefault: {
       type: Boolean,
       default: false,

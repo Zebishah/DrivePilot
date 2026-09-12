@@ -8,7 +8,6 @@ const {
   getTransferIdFromPaymentIntent,
   createTransferReversal,
   DEFAULT_CURRENCY,
-  CENTIMES_PER_UNIT,
 } = require("../../services/stripeService");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const {
@@ -26,6 +25,7 @@ const {
   retrieveRefund,
   retrieveTransferReversal,
 } = require("../../services/stripeService");
+const { fromMinorUnits, toMinorUnits } = require("../../utils/money");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -208,13 +208,17 @@ const refundRequestResolver = {
           .join(" ") || "Instructor";
 
       let refundRequest;
+      const refundAmountMinor = Number.isSafeInteger(slot.grossAmountMinor)
+        ? slot.grossAmountMinor
+        : toMinorUnits(slot.chargeAmount);
       try {
         refundRequest = await RefundRequest.create({
           bookingId: booking._id,
           slotId: slotIdStr,
           studentId: booking.studentId._id,
           instructorId: booking.instructorId._id,
-          amount: slot.chargeAmount,
+          amount: Number(fromMinorUnits(refundAmountMinor)),
+          amountMinor: refundAmountMinor,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           status: "pending",
           message: trimmedMessage,
@@ -339,9 +343,18 @@ const refundRequestResolver = {
         throw new UserInputError("Payment information missing for refund.");
       }
 
-      const amountCentimes = Math.round(
-        Number(slot.chargeAmount) * CENTIMES_PER_UNIT,
-      );
+      const amountCentimes = Number.isSafeInteger(slot.grossAmountMinor)
+        ? slot.grossAmountMinor
+        : toMinorUnits(slot.chargeAmount);
+      const instructorAmountMinor = Number.isSafeInteger(slot.instructorAmountMinor)
+        ? slot.instructorAmountMinor
+        : toMinorUnits(slot.instructorAmount || 0);
+      const commissionAmountMinor = Number.isSafeInteger(slot.commissionAmountMinor)
+        ? slot.commissionAmountMinor
+        : toMinorUnits(slot.dspCommission || 0);
+      if (amountCentimes <= 0 || instructorAmountMinor + commissionAmountMinor !== amountCentimes) {
+        throw new UserInputError("Invalid booking financial snapshot; manual review is required.");
+      }
 
       let refundId;
       let refundProviderStatus;
@@ -357,7 +370,8 @@ const refundRequestResolver = {
         studentId: booking.studentId._id,
         instructorId: booking.instructorId._id,
         currency: DEFAULT_CURRENCY.toUpperCase(),
-        requestedAmount: slot.chargeAmount,
+        requestedAmount: Number(fromMinorUnits(amountCentimes)),
+        requestedAmountMinor: amountCentimes,
         idempotencyKey: `refund-${String(refundRequest._id)}`,
         metadata: {
           bookingId: String(booking._id),
@@ -376,12 +390,9 @@ const refundRequestResolver = {
         ).catch(() => null);
         if (
           transferId &&
-          slot.instructorAmount != null &&
-          slot.instructorAmount > 0
+          instructorAmountMinor > 0
         ) {
-          const instructorShareCentimes = Math.round(
-            Number(slot.instructorAmount) * CENTIMES_PER_UNIT,
-          );
+          const instructorShareCentimes = instructorAmountMinor;
           reversalOperation = await getOrCreateOperation({
             operationType: "TRANSFER_REVERSAL",
             aggregateType: "REFUND_REQUEST",
@@ -390,7 +401,8 @@ const refundRequestResolver = {
             slotId: refundRequest.slotId,
             instructorId: booking.instructorId._id,
             currency: DEFAULT_CURRENCY.toUpperCase(),
-            requestedAmount: slot.instructorAmount,
+            requestedAmount: Number(fromMinorUnits(instructorAmountMinor)),
+            requestedAmountMinor: instructorAmountMinor,
             idempotencyKey: `reversal-${String(refundRequest._id)}`,
             metadata: {
               bookingId: String(booking._id),
@@ -500,7 +512,9 @@ const refundRequestResolver = {
 
       slot.status = "refund";
       slot.paymentStatus = "refunded";
-      slot.refundAmount = slot.chargeAmount;
+      slot.refundAmount = Number(fromMinorUnits(amountCentimes));
+      slot.grossAmountMinor = amountCentimes;
+      slot.refundAmountMinor = amountCentimes;
       slot.refundedAt = new Date();
       booking.updatedAt = new Date();
       await booking.save();
@@ -510,7 +524,8 @@ const refundRequestResolver = {
         type: "refund",
         role: "student",
         direction: "credit",
-        amount: slot.chargeAmount,
+        amount: Number(fromMinorUnits(amountCentimes)),
+        amountMinor: amountCentimes,
         currency: DEFAULT_CURRENCY.toUpperCase(),
         status: "succeeded",
         bookingId: booking._id,
@@ -526,14 +541,14 @@ const refundRequestResolver = {
 
       if (
         transferId &&
-        slot.instructorAmount != null &&
-        slot.instructorAmount > 0
+        instructorAmountMinor > 0
       ) {
         await createTransaction({
           type: "transfer_reversal",
           role: "instructor",
           direction: "debit",
-          amount: slot.instructorAmount,
+          amount: Number(fromMinorUnits(instructorAmountMinor)),
+          amountMinor: instructorAmountMinor,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           status: "succeeded",
           bookingId: booking._id,
@@ -547,12 +562,13 @@ const refundRequestResolver = {
           occurredAt,
         });
       }
-      if (slot.dspCommission != null && slot.dspCommission > 0) {
+      if (commissionAmountMinor > 0) {
         await createTransaction({
           type: "transfer_reversal",
           role: "platform",
           direction: "debit",
-          amount: slot.dspCommission,
+          amount: Number(fromMinorUnits(commissionAmountMinor)),
+          amountMinor: commissionAmountMinor,
           currency: DEFAULT_CURRENCY.toUpperCase(),
           status: "succeeded",
           bookingId: booking._id,

@@ -2,6 +2,7 @@ import { StudentBooking } from "../../../types/Bookings";
 import { FeedbackButton } from "./FeedBackButton";
 import { FeedbackStatus } from "./FeedBackStatus";
 import { StudentAvatar } from "./StudentAvatar";
+import { formatCHF } from "../../../utils/money";
 
 interface FeedbackTableRowProps {
   booking: StudentBooking;
@@ -23,7 +24,7 @@ export const FeedbackTableRow: React.FC<FeedbackTableRowProps> = ({
       Lesson {booking._id.charAt(booking._id.length - 1)}
     </td>
 
-    <td className="py-4 px-2 text-gray-600">${booking.totalAmount}</td>
+    <td className="py-4 px-2 text-gray-600">{formatCHF(booking.totalAmount)}</td>
     <td className="py-4 px-2">
       <FeedbackStatus status={booking.feedBackStatus} />
     </td>

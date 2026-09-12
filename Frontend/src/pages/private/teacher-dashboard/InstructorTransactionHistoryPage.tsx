@@ -26,6 +26,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useQuery, useLazyQuery } from "@apollo/client";
 import toast from "react-hot-toast";
+import { formatCHF } from "../../../utils/money";
 import { GET_STRIPE_EXPRESS_DASHBOARD_URL } from "../../../graphql/mutations/profile";
 import {
   GET_INSTRUCTOR_TRANSACTIONS,
@@ -206,7 +207,7 @@ export default function InstructorTransactionHistoryPage() {
                       Total received
                     </Typography>
                     <Typography variant="h6">
-                      ${stats.totalReceived.toFixed(2)}
+                      {formatCHF(stats.totalReceived)}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -245,7 +246,7 @@ export default function InstructorTransactionHistoryPage() {
                       Total payouts
                     </Typography>
                     <Typography variant="h6">
-                      ${stats.totalPayouts.toFixed(2)}
+                      {formatCHF(stats.totalPayouts)}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -393,8 +394,7 @@ export default function InstructorTransactionHistoryPage() {
                           fontWeight: 600,
                         }}
                       >
-                        {t.direction === "credit" ? "+" : "-"} $
-                        {Number(t.amount).toFixed(2)}
+                        {t.direction === "credit" ? "+" : "-"} {formatCHF(Number(t.amount))}
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -484,8 +484,7 @@ export default function InstructorTransactionHistoryPage() {
                 </Typography>
                 <Typography variant="body2">
                   <strong>Amount:</strong>{" "}
-                  {viewTransaction.direction === "credit" ? "+" : "-"} $
-                  {viewTransaction.amount.toFixed(2)}
+                  {viewTransaction.direction === "credit" ? "+" : "-"} {formatCHF(viewTransaction.amount)}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Date:</strong>{" "}

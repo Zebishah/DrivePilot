@@ -52,6 +52,7 @@ import {
   UPDATE_PLATFORM_COMMISSION_SETTINGS,
 } from "../../../graphql/Queries/transactionQueries";
 import { format } from "date-fns";
+import { formatCHF } from "../../../utils/money";
 
 function formatTransactionDate(value: string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -173,7 +174,7 @@ export default function AdminTransactionsPage() {
 
   const formatAmount = (t: Transaction) => {
     const sign = t.direction === "credit" ? "+" : "-";
-    return `${sign} $${t.amount.toFixed(2)}`;
+    return `${sign} ${formatCHF(t.amount)}`;
   };
 
   // Show the party that the transaction belongs to: instructor for instructor share/payout; platform for commission; student for payment/refund
@@ -186,7 +187,7 @@ export default function AdminTransactionsPage() {
   const isRefund = (t: Transaction) => t.type === "refund";
   const commissionDisplay = (t: Transaction) => {
     if (t.role === "platform" && t.type === "payment" && t.description?.toLowerCase().includes("commission"))
-      return `$${t.amount.toFixed(2)}`;
+      return formatCHF(t.amount);
     return "—";
   };
 
@@ -238,7 +239,7 @@ export default function AdminTransactionsPage() {
                     <Typography color="text.secondary" variant="body2">
                       Total earned
                     </Typography>
-                    <Typography variant="h6">${stats.totalEarned.toFixed(2)}</Typography>
+                    <Typography variant="h6">{formatCHF(stats.totalEarned)}</Typography>
                   </Box>
                 </CardContent>
               </Card>

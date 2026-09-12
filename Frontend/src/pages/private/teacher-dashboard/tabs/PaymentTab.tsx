@@ -33,6 +33,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { useQuery, useMutation, useLazyQuery } from "@apollo/client";
 
 import toast from "react-hot-toast";
+import { formatCHF } from "../../../../utils/money";
 import {
   CREATE_STRIPE_ACCOUNT,
   GET_TEACHER_PROFILE,
@@ -512,7 +513,7 @@ export const PaymentTab: React.FC = () => {
                     </Box>
                     <Box>
                       <Typography color="text.secondary" variant="caption">Total received</Typography>
-                      <Typography variant="h6">${stats.totalReceived.toFixed(2)}</Typography>
+                      <Typography variant="h6">{formatCHF(stats.totalReceived)}</Typography>
                     </Box>
                   </CardContent>
                 </Card>
@@ -523,7 +524,7 @@ export const PaymentTab: React.FC = () => {
                     </Box>
                     <Box>
                       <Typography color="text.secondary" variant="caption">Total payouts</Typography>
-                      <Typography variant="h6">${stats.totalPayouts.toFixed(2)}</Typography>
+                      <Typography variant="h6">{formatCHF(stats.totalPayouts)}</Typography>
                     </Box>
                   </CardContent>
                 </Card>
@@ -585,7 +586,7 @@ export const PaymentTab: React.FC = () => {
                         </TableCell>
 
                         <TableCell align="right" sx={{ color: t.direction === "credit" ? "success.main" : "text.primary", fontWeight: 600 }}>
-                          {t.direction === "credit" ? "+" : "-"} ${Number(t.amount).toFixed(2)}
+                          {t.direction === "credit" ? "+" : "-"} {formatCHF(Number(t.amount))}
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -641,7 +642,7 @@ export const PaymentTab: React.FC = () => {
                 <Typography variant="body2"><strong>Ref Number:</strong> {viewTransaction.id.slice(-9)}</Typography>
                 <Typography variant="body2"><strong>Type:</strong> {viewTransaction.type}</Typography>
                 <Typography variant="body2">
-                  <strong>Amount:</strong> {viewTransaction.direction === "credit" ? "+" : "-"} ${viewTransaction.amount.toFixed(2)}
+                  <strong>Amount:</strong> {viewTransaction.direction === "credit" ? "+" : "-"} {formatCHF(viewTransaction.amount)}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Date:</strong> {formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt)}
