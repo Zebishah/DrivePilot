@@ -436,7 +436,7 @@ async function createRefund(opts) {
       ? { idempotencyKey: String(idempotencyKey).slice(0, 255) }
       : undefined,
   );
-  return { refundId: refund.id };
+  return { refundId: refund.id, status: refund.status };
 }
 
 /**

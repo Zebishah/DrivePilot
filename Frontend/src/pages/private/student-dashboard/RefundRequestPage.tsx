@@ -63,7 +63,7 @@ export default function RefundRequestPage() {
       (r: { bookingId: string; slotId: string; status: string }) =>
         bookingId && slotId && r.bookingId === bookingId && r.slotId === slotId,
     );
-    return found?.status as "pending" | "approved" | "rejected" | undefined;
+    return found?.status as "pending" | "processing" | "approved" | "rejected" | undefined;
   }, [myRefundData, bookingId, slotId]);
   const filePreviews = useMemo(
     () =>

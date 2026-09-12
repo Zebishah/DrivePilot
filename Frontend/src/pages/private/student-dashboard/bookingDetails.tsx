@@ -454,7 +454,9 @@ const BookingDetails: React.FC = () => {
       slotId &&
       myRefundRequests.some(
         (r: { bookingId: string; slotId: string; status: string }) =>
-          r.bookingId === bookingId && r.slotId === slotId && r.status === "pending"
+          r.bookingId === bookingId &&
+          r.slotId === slotId &&
+          (r.status === "pending" || r.status === "processing")
       )
   );
   const rejectedRefundForThisSlot = myRefundRequests.find(

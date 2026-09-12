@@ -11,10 +11,26 @@ test("financial operations are idempotent and only one live lease can claim work
     if (query._id && String(doc._id) !== String(query._id)) return false;
     if (query.operationId && doc.operationId !== query.operationId) return false;
     if (query.idempotencyKey && doc.idempotencyKey !== query.idempotencyKey) return false;
-    if (query.status && doc.status !== query.status) return false;
+    if (query.status?.$in && !query.status.$in.includes(doc.status)) return false;
+    if (query.status && typeof query.status === "string" && doc.status !== query.status) return false;
+    if (query.nextAttemptAt) {
+      if (query.nextAttemptAt.$lte && new Date(doc.nextAttemptAt) > query.nextAttemptAt.$lte) return false;
+    }
     if (query.$or) {
       return query.$or.some((branch) => {
         if (branch.status?.$in) return branch.status.$in.includes(doc.status);
+        if (branch.status === "RETRYABLE") {
+          return (
+            doc.status === "RETRYABLE" &&
+            (!branch.$or ||
+              branch.$or.some((retryBranch) =>
+                (retryBranch.nextAttemptAt === null && doc.nextAttemptAt == null) ||
+                (retryBranch.nextAttemptAt?.$lte &&
+                  doc.nextAttemptAt &&
+                  new Date(doc.nextAttemptAt) <= retryBranch.nextAttemptAt.$lte),
+              ))
+          );
+        }
         if (branch.status === "PROCESSING") {
           return (
             doc.status === "PROCESSING" &&
@@ -85,6 +101,30 @@ test("financial operations are idempotent and only one live lease can claim work
     assert.equal(claimOne.leaseOwner, "worker-one");
     assert.equal(claimTwo, null);
 
+    const retryable = await service.getOrCreateOperation({
+      operationType: "PAYOUT",
+      aggregateType: "BOOKING_SLOT",
+      aggregateId: "booking:payout",
+      idempotencyKey: "payout-booking-slot",
+    });
+    const retryableClaim = await service.claimOperation(retryable, "setup-retryable");
+    await service.markRetryable(retryableClaim, new Error("temporary"), new Date(Date.now() + 60_000));
+    assert.equal(await service.claimOperation(retryable, "too-early"), null);
+    await service.markRetryable(retryable, new Error("ready"), new Date(Date.now() - 1));
+    const reclaimed = await service.claimOperation(retryable, "worker-three");
+    assert.equal(reclaimed.leaseOwner, "worker-three");
+
+    const expired = await service.getOrCreateOperation({
+      operationType: "PAYOUT",
+      aggregateType: "BOOKING_SLOT",
+      aggregateId: "booking:expired",
+      idempotencyKey: "payout-expired-slot",
+    });
+    const initialExpiredClaim = await service.claimOperation(expired, "worker-four", 1);
+    operations.get(initialExpiredClaim.operationId).leaseExpiresAt = new Date(Date.now() - 1);
+    const reclaimedExpired = await service.claimOperation(initialExpiredClaim, "worker-five");
+    assert.equal(reclaimedExpired.leaseOwner, "worker-five");
+
     await service.markAttempt(claimOne, "worker-one");
     await service.markProviderSuccess(claimOne, {
       providerObjectId: "pi_t48",
@@ -93,6 +133,12 @@ test("financial operations are idempotent and only one live lease can claim work
     await service.markLocalSuccess(claimOne, "slot_applied");
     const completed = await service.markCompleted(claimOne);
     assert.equal(completed.status, "COMPLETED");
+    assert.equal(await service.claimOperation(completed, "worker-six"), null);
+    assert.equal(await service.markProviderSuccess(completed, { providerObjectId: "pi_other" }), null);
+    assert.equal(await service.markCompleted(reclaimed), null);
+
+    await service.markManualReview(reclaimed, new Error("ambiguous provider outcome"));
+    assert.equal(await service.claimOperation(reclaimed, "worker-seven"), null);
 
     const txOne = await service.createIdempotentTransaction({
       financialOperationId: completed.operationId,

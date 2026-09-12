@@ -4,6 +4,28 @@ const Transaction = require("../models/transaction.model");
 
 const LEASE_MS = 5 * 60 * 1000;
 
+function currentOperationQuery(operation, allowedStatuses) {
+  return {
+    _id: operation._id,
+    status: { $in: allowedStatuses },
+  };
+}
+
+async function updateOperation(operation, targetStatus, allowedStatuses, update) {
+  const updated = await FinancialOperation.findOneAndUpdate(
+    currentOperationQuery(operation, allowedStatuses),
+    update,
+    { new: true },
+  );
+  if (updated) return updated;
+
+  // A repeated transition to the same state is idempotent. Every other
+  // transition is rejected without regressing the persisted state.
+  const current = await FinancialOperation.findOne({ _id: operation._id });
+  if (current?.status === targetStatus) return current;
+  return null;
+}
+
 function executionId(prefix = "financial") {
   return `${prefix}-${crypto.randomUUID()}`;
 }
@@ -68,7 +90,14 @@ async function claimOperation(operation, owner = executionId(), leaseMs = LEASE_
     {
       _id: operation._id,
       $or: [
-        { status: { $in: ["PENDING", "RETRYABLE", "VERIFYING_PROVIDER"] } },
+        { status: { $in: ["PENDING", "VERIFYING_PROVIDER"] } },
+        {
+          status: "RETRYABLE",
+          $or: [
+            { nextAttemptAt: null },
+            { nextAttemptAt: { $lte: now } },
+          ],
+        },
         { status: "PROCESSING", leaseExpiresAt: { $lte: now } },
       ],
     },
@@ -100,8 +129,10 @@ async function markAttempt(operation, owner) {
 }
 
 async function markProviderSuccess(operation, data = {}) {
-  return FinancialOperation.findOneAndUpdate(
-    { _id: operation._id },
+  return updateOperation(
+    operation,
+    "PROVIDER_SUCCEEDED",
+    ["PENDING", "PROCESSING", "VERIFYING_PROVIDER", "RETRYABLE", "PROVIDER_SUCCEEDED"],
     {
       $set: {
         status: "PROVIDER_SUCCEEDED",
@@ -117,13 +148,14 @@ async function markProviderSuccess(operation, data = {}) {
         updatedAt: new Date(),
       },
     },
-    { new: true },
   );
 }
 
 async function markLocalSuccess(operation, localStatus = "applied") {
-  return FinancialOperation.findOneAndUpdate(
-    { _id: operation._id },
+  return updateOperation(
+    operation,
+    "LOCAL_APPLIED",
+    ["PROVIDER_SUCCEEDED", "LOCAL_APPLIED"],
     {
       $set: {
         status: "LOCAL_APPLIED",
@@ -134,13 +166,14 @@ async function markLocalSuccess(operation, localStatus = "applied") {
         updatedAt: new Date(),
       },
     },
-    { new: true },
   );
 }
 
 async function markCompleted(operation, localStatus = "completed") {
-  return FinancialOperation.findOneAndUpdate(
-    { _id: operation._id },
+  return updateOperation(
+    operation,
+    "COMPLETED",
+    ["LOCAL_APPLIED", "COMPLETED"],
     {
       $set: {
         status: "COMPLETED",
@@ -152,13 +185,14 @@ async function markCompleted(operation, localStatus = "completed") {
         updatedAt: new Date(),
       },
     },
-    { new: true },
   );
 }
 
 async function markRetryable(operation, error, nextAttemptAt) {
-  return FinancialOperation.findOneAndUpdate(
-    { _id: operation._id },
+  return updateOperation(
+    operation,
+    "RETRYABLE",
+    ["PROCESSING", "PROVIDER_SUCCEEDED", "RETRYABLE"],
     {
       $set: {
         status: "RETRYABLE",
@@ -170,25 +204,33 @@ async function markRetryable(operation, error, nextAttemptAt) {
         updatedAt: new Date(),
       },
     },
-    { new: true },
   );
 }
 
 async function markManualReview(operation, error, localStatus = "manual_review") {
-  return FinancialOperation.findOneAndUpdate(
-    { _id: operation._id },
+  return updateOperation(
+    operation,
+    "FAILED_MANUAL_REVIEW",
+    [
+      "PENDING",
+      "PROCESSING",
+      "VERIFYING_PROVIDER",
+      "PROVIDER_SUCCEEDED",
+      "RETRYABLE",
+      "FAILED_MANUAL_REVIEW",
+    ],
     {
       $set: {
         status: "FAILED_MANUAL_REVIEW",
         localStatus,
         leaseOwner: null,
         leaseExpiresAt: null,
+        nextAttemptAt: null,
         lastErrorCode: error?.code ? String(error.code) : "MANUAL_REVIEW",
         lastErrorMessage: String(error?.message || error || "Manual review required").slice(0, 1000),
         updatedAt: new Date(),
       },
     },
-    { new: true },
   );
 }
 

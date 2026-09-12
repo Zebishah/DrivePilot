@@ -67,7 +67,11 @@ async function runInstructorPayoutJob() {
         errors += 1;
         continue;
       }
-      if (slot.payoutStatus === "processing" && !payoutOperation.providerObjectId) {
+      if (
+        slot.payoutStatus === "processing" &&
+        !payoutOperation.providerObjectId &&
+        !slot.payoutId
+      ) {
         await markManualReview(
           payoutOperation,
           new Error("Legacy payout was processing without a provider payout ID"),

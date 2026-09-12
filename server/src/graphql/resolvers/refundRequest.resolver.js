@@ -344,6 +344,7 @@ const refundRequestResolver = {
       );
 
       let refundId;
+      let refundProviderStatus;
       let transferId = null;
       let reversalId = null;
       let reversalProviderSucceeded = false;
@@ -434,6 +435,7 @@ const refundRequestResolver = {
             refundOperation.providerObjectId,
           );
           refundId = existingRefund.id;
+          refundProviderStatus = existingRefund.status;
           if (refundOperation.providerStatus === "succeeded") {
             await markProviderSuccess(refundOperation, {
               providerObjectId: refundId,
@@ -452,11 +454,22 @@ const refundRequestResolver = {
             idempotencyKey: refundOperation.idempotencyKey,
           });
           refundId = result.refundId;
+          refundProviderStatus = result.status;
           await markProviderSuccess(refundOperation, {
             providerObjectId: refundId,
             providerStatus: "succeeded",
             localStatus: "provider_succeeded",
           });
+        }
+        if (refundProviderStatus && refundProviderStatus !== "succeeded") {
+          const pendingRefund = new Error(
+            `Stripe refund status is ${refundProviderStatus}.`,
+          );
+          pendingRefund.code =
+            refundProviderStatus === "pending"
+              ? "REFUND_PENDING"
+              : "REFUND_NOT_SUCCEEDED";
+          throw pendingRefund;
         }
       } catch (stripeErr) {
         const concurrentOperation = String(stripeErr?.message || "").includes(
@@ -465,7 +478,9 @@ const refundRequestResolver = {
         if (concurrentOperation) {
           throw new UserInputError("Refund is already being processed.");
         }
-        if (reversalProviderSucceeded) {
+        if (stripeErr?.code === "REFUND_PENDING") {
+          await markRetryable(refundOperation, stripeErr);
+        } else if (reversalProviderSucceeded || stripeErr?.code === "REFUND_NOT_SUCCEEDED") {
           await markManualReview(
             refundOperation,
             stripeErr,
@@ -603,22 +618,28 @@ const refundRequestResolver = {
         throw new ForbiddenError("Not authorized");
       }
 
-      const refundRequest = await RefundRequest.findById(id);
-      if (!refundRequest) throw new UserInputError("Refund request not found");
-      if (refundRequest.status !== "pending") {
+      const refundRequest = await RefundRequest.findOneAndUpdate(
+        { _id: id, status: "pending" },
+        {
+          $set: {
+            status: "rejected",
+            processedAt: new Date(),
+            processedBy: user.id,
+            ...(rejectionReason != null ? { rejectionReason } : {}),
+          },
+        },
+        { new: true },
+      );
+      if (refundRequest) return refundRequest;
+
+      const existingRequest = await RefundRequest.findById(id);
+      if (!existingRequest) throw new UserInputError("Refund request not found");
+      if (existingRequest.status !== "pending") {
         throw new UserInputError(
-          `Refund request is already ${refundRequest.status}.`,
+          `Refund request is already ${existingRequest.status}.`,
         );
       }
-
-      refundRequest.status = "rejected";
-      refundRequest.processedAt = new Date();
-      refundRequest.processedBy = user.id;
-      if (rejectionReason != null)
-        refundRequest.rejectionReason = rejectionReason;
-      await refundRequest.save();
-
-      return refundRequest;
+      throw new UserInputError("Refund request could not be rejected. Please retry.");
     },
   },
 };

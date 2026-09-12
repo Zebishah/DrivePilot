@@ -75,7 +75,7 @@ interface BookingListProps {
   bookings: Booking[];
   onBookingClick: (booking: Booking, id: string, slot: Slot) => void;
   onRequestRefund?: (booking: Booking, slot: Slot) => void;
-  refundRequestStateMap?: Record<string, "pending" | "approved" | "rejected">;
+  refundRequestStateMap?: Record<string, "pending" | "processing" | "approved" | "rejected">;
   showNewBookingButton?: boolean;
   onNewBooking?: () => void;
 }

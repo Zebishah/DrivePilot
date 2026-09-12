@@ -18,7 +18,10 @@ const Transaction = require("../models/transaction.model");
 const { createTransaction } = require("../services/transactionService");
 const {
   getOperationByProviderObjectId,
+  getOperation,
   markProviderSuccess,
+  markLocalSuccess,
+  markCompleted,
 } = require("../services/financialOperationService");
 const { getCommissionSplit } = require("../services/stripeService");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
@@ -35,6 +38,16 @@ const CENTIMES_PER_UNIT = 100;
 async function syncFinancialOperationFromWebhook(event) {
   const providerObjectId = event.data?.object?.id;
   if (!providerObjectId) return null;
+  const providerObject = event.data?.object;
+  const isSuccessfulEvent =
+    event.type === "payment_intent.succeeded" ||
+    event.type === "checkout.session.completed" ||
+    event.type === "transfer.reversed" ||
+    event.type === "payout.created" ||
+    event.type === "payout.paid" ||
+    ((event.type === "refund.created" || event.type === "refund.updated") &&
+      providerObject?.status === "succeeded");
+  if (!isSuccessfulEvent) return null;
   const operation = await getOperationByProviderObjectId(providerObjectId);
   if (!operation || operation.status === "COMPLETED") return operation;
   return markProviderSuccess(operation, {
@@ -696,13 +709,18 @@ router.post("/", async (req, res) => {
           return res.status(200).send("OK");
         }
         if (booking) {
+          const paymentOperation =
+            (await getOperationByProviderObjectId(pi.id)) ||
+            (pi.metadata?.operationId
+              ? await getOperation(pi.metadata.operationId)
+              : null);
           const transferId = await getTransferIdFromPaymentIntent(pi.id).catch(
             () => null,
           );
           const slot = booking.slots.find(
             (s) => s.paymentIntentId && String(s.paymentIntentId) === pi.id,
           );
-          if (slot && slot.paymentStatus !== "paid") {
+          if (slot) {
             const admin = await Admin.findOne().lean();
             const platformCommission = admin?.platformCommission || {};
             const perSlotAmount =
@@ -714,14 +732,16 @@ router.post("/", async (req, res) => {
               platformCommission,
             );
             const occurredAt = new Date();
-            slot.paymentStatus = "paid";
-            slot.chargedAt = occurredAt;
-            slot.chargeAmount = perSlotAmount;
-            slot.dspCommission = dspCommission;
-            slot.instructorAmount = instructorAmount;
-            slot.payoutStatus = "not_applicable";
-            if (transferId) slot.transferId = transferId;
-            await booking.save();
+            if (slot.paymentStatus !== "paid") {
+              slot.paymentStatus = "paid";
+              slot.chargedAt = occurredAt;
+              slot.chargeAmount = perSlotAmount;
+              slot.dspCommission = dspCommission;
+              slot.instructorAmount = instructorAmount;
+              slot.payoutStatus = "not_applicable";
+              if (transferId) slot.transferId = transferId;
+              await booking.save();
+            }
 
             await createTransaction({
               type: "payment",
@@ -734,6 +754,8 @@ router.post("/", async (req, res) => {
               slotId: slot._id,
               studentId: booking.studentId?._id ?? booking.studentId,
               stripePaymentIntentId: pi.id,
+              financialOperationId: paymentOperation?.operationId,
+              eventType: "T48_PAYMENT_STUDENT_DEBIT",
               description: "Lesson payment (T-48 3DS completed)",
               occurredAt,
             });
@@ -748,6 +770,8 @@ router.post("/", async (req, res) => {
               slotId: slot._id,
               studentId: booking.studentId?._id ?? booking.studentId,
               stripePaymentIntentId: pi.id,
+              financialOperationId: paymentOperation?.operationId,
+              eventType: "T48_PAYMENT_PLATFORM_GROSS",
               description: "Platform gross receipt for lesson (T-48)",
               occurredAt,
             });
@@ -764,6 +788,8 @@ router.post("/", async (req, res) => {
                 instructorId: booking.instructorId?._id ?? booking.instructorId,
                 studentId: booking.studentId?._id ?? booking.studentId,
                 stripePaymentIntentId: pi.id,
+                financialOperationId: paymentOperation?.operationId,
+                eventType: "T48_PAYMENT_INSTRUCTOR_SHARE",
                 description: "Instructor share for lesson (T-48)",
                 occurredAt,
               });
@@ -778,6 +804,9 @@ router.post("/", async (req, res) => {
                 bookingId: booking._id,
                 slotId: slot._id,
                 studentId: booking.studentId?._id ?? booking.studentId,
+                stripePaymentIntentId: pi.id,
+                financialOperationId: paymentOperation?.operationId,
+                eventType: "T48_PAYMENT_COMMISSION",
                 description: "Platform commission for lesson (T-48)",
                 occurredAt,
               });
@@ -803,6 +832,10 @@ router.post("/", async (req, res) => {
               "slot",
               slot._id,
             );
+            if (paymentOperation) {
+              await markLocalSuccess(paymentOperation, "slot_and_transactions_applied");
+              await markCompleted(paymentOperation);
+            }
           }
         }
       } catch (e) {

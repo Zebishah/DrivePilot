@@ -77,7 +77,7 @@ interface RefundRequestRow {
 
 export default function AdminRefundRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "pending" | "approved" | "rejected"
+    "all" | "pending" | "processing" | "approved" | "rejected"
   >("all");
   const [rejectDialog, setRejectDialog] = useState<{ id: string; reason: string } | null>(null);
   const [detailsRow, setDetailsRow] = useState<RefundRequestRow | null>(null);
@@ -135,7 +135,7 @@ export default function AdminRefundRequestsPage() {
         value={statusFilter}
         onChange={(
           _,
-          v: "all" | "pending" | "approved" | "rejected",
+          v: "all" | "pending" | "processing" | "approved" | "rejected",
         ) => setStatusFilter(v)}
         sx={{
           mb: 2,
@@ -150,6 +150,7 @@ export default function AdminRefundRequestsPage() {
       >
         <Tab label="All" value="all" />
         <Tab label="Pending" value="pending" />
+        <Tab label="Processing" value="processing" />
         <Tab label="Approved" value="approved" />
         <Tab label="Rejected" value="rejected" />
       </Tabs>

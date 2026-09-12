@@ -179,11 +179,11 @@ const BookLesson: React.FC = () => {
   };
   const bookings = data?.getStudentBookings || [];
   const myRefundRequests = refundData?.getMyRefundRequests ?? [];
-  const refundRequestStateMap: Record<string, "pending" | "approved" | "rejected"> =
+  const refundRequestStateMap: Record<string, "pending" | "processing" | "approved" | "rejected"> =
     myRefundRequests.reduce(
       (
-        acc: Record<string, "pending" | "approved" | "rejected">,
-        r: { bookingId: string; slotId: string; status: "pending" | "approved" | "rejected" },
+        acc: Record<string, "pending" | "processing" | "approved" | "rejected">,
+        r: { bookingId: string; slotId: string; status: "pending" | "processing" | "approved" | "rejected" },
       ) => {
         const key = `${r.bookingId}:${r.slotId}`;
         acc[key] = r.status;
