@@ -9,6 +9,7 @@ test("financial operations are idempotent and only one live lease can claim work
   const clone = (value) => (value ? { ...value } : value);
   const matches = (doc, query) => {
     if (query._id && String(doc._id) !== String(query._id)) return false;
+    if (query.leaseOwner && doc.leaseOwner !== query.leaseOwner) return false;
     if (query.operationId && doc.operationId !== query.operationId) return false;
     if (query.idempotencyKey && doc.idempotencyKey !== query.idempotencyKey) return false;
     if (query.status?.$in && !query.status.$in.includes(doc.status)) return false;
@@ -108,10 +109,15 @@ test("financial operations are idempotent and only one live lease can claim work
       idempotencyKey: "payout-booking-slot",
     });
     const retryableClaim = await service.claimOperation(retryable, "setup-retryable");
-    await service.markRetryable(retryableClaim, new Error("temporary"), new Date(Date.now() + 60_000));
-    assert.equal(await service.claimOperation(retryable, "too-early"), null);
-    await service.markRetryable(retryable, new Error("ready"), new Date(Date.now() - 1));
-    const reclaimed = await service.claimOperation(retryable, "worker-three");
+    const retryableState = await service.markRetryable(
+      retryableClaim,
+      new Error("temporary"),
+      new Date(Date.now() + 60_000),
+    );
+    assert.equal(await service.claimOperation(retryableState, "too-early"), null);
+    const readyRetryable = await service.getOperation(retryable.operationId);
+    await service.markRetryable(readyRetryable, new Error("ready"), new Date(Date.now() - 1));
+    const reclaimed = await service.claimOperation(readyRetryable, "worker-three");
     assert.equal(reclaimed.leaseOwner, "worker-three");
 
     const expired = await service.getOrCreateOperation({
@@ -121,9 +127,14 @@ test("financial operations are idempotent and only one live lease can claim work
       idempotencyKey: "payout-expired-slot",
     });
     const initialExpiredClaim = await service.claimOperation(expired, "worker-four", 1);
+    const staleClaim = { ...initialExpiredClaim };
     operations.get(initialExpiredClaim.operationId).leaseExpiresAt = new Date(Date.now() - 1);
     const reclaimedExpired = await service.claimOperation(initialExpiredClaim, "worker-five");
     assert.equal(reclaimedExpired.leaseOwner, "worker-five");
+    assert.equal(
+      await service.markProviderSuccess(staleClaim, { providerObjectId: "pi_stale" }),
+      null,
+    );
 
     await service.markAttempt(claimOne, "worker-one");
     await service.markProviderSuccess(claimOne, {

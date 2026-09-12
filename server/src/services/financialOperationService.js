@@ -5,10 +5,12 @@ const Transaction = require("../models/transaction.model");
 const LEASE_MS = 5 * 60 * 1000;
 
 function currentOperationQuery(operation, allowedStatuses) {
-  return {
+  const query = {
     _id: operation._id,
     status: { $in: allowedStatuses },
   };
+  if (operation.leaseOwner) query.leaseOwner = operation.leaseOwner;
+  return query;
 }
 
 async function updateOperation(operation, targetStatus, allowedStatuses, update) {
@@ -17,7 +19,14 @@ async function updateOperation(operation, targetStatus, allowedStatuses, update)
     update,
     { new: true },
   );
-  if (updated) return updated;
+  if (updated) {
+    Object.assign(operation, {
+      status: updated.status,
+      leaseOwner: updated.leaseOwner,
+      leaseExpiresAt: updated.leaseExpiresAt,
+    });
+    return updated;
+  }
 
   // A repeated transition to the same state is idempotent. Every other
   // transition is rejected without regressing the persisted state.
@@ -86,7 +95,7 @@ async function claimOperation(operation, owner = executionId(), leaseMs = LEASE_
   if (!operation) return null;
   const now = new Date();
   const leaseExpiresAt = new Date(now.getTime() + leaseMs);
-  return FinancialOperation.findOneAndUpdate(
+  const claimed = await FinancialOperation.findOneAndUpdate(
     {
       _id: operation._id,
       $or: [
@@ -111,6 +120,14 @@ async function claimOperation(operation, owner = executionId(), leaseMs = LEASE_
     },
     { new: true },
   );
+  if (claimed) {
+    Object.assign(operation, {
+      status: claimed.status,
+      leaseOwner: claimed.leaseOwner,
+      leaseExpiresAt: claimed.leaseExpiresAt,
+    });
+  }
+  return claimed;
 }
 
 async function markAttempt(operation, owner) {
