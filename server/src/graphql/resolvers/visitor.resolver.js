@@ -2,6 +2,7 @@
 
 const crypto = require("crypto");
 const Visitor = require("../../models/Visitors");
+const { requireAdmin } = require("../../utils/authorization");
 
 // Helper function to create unique visitor ID
 const createVisitorId = (ipAddress, userAgent) => {
@@ -25,7 +26,8 @@ const getDateRanges = () => {
 const visitorResolvers = {
   Query: {
     // Get visitor statistics
-    getVisitorStats: async () => {
+    getVisitorStats: async (_, __, { user }) => {
+      requireAdmin(user);
       try {
         const { today, weekAgo, monthAgo } = getDateRanges();
 
@@ -67,7 +69,8 @@ const visitorResolvers = {
     },
 
     // Get all visitors with pagination
-    getAllVisitors: async (_, { limit = 50, offset = 0 }) => {
+    getAllVisitors: async (_, { limit = 50, offset = 0 }, { user }) => {
+      requireAdmin(user);
       try {
         return await Visitor.find()
           .sort({ createdAt: -1 })
@@ -79,7 +82,8 @@ const visitorResolvers = {
     },
 
     // Get visitor by ID
-    getVisitorById: async (_, { visitorId }) => {
+    getVisitorById: async (_, { visitorId }, { user }) => {
+      requireAdmin(user);
       try {
         return await Visitor.findOne({ visitorId });
       } catch (error) {

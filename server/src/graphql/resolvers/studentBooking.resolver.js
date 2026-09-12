@@ -37,6 +37,15 @@ const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
 const { createTransaction } = require("../../services/transactionService");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
+const { buildDirectCardSlotSplits } = require("../../utils/directCardBookingPricing");
+const {
+  requireAdmin,
+  requireRole,
+  requireStudentDataAccess,
+  requireBookingParticipantOrAdmin,
+  requireAssignedInstructorOrAdmin,
+  requireStudentOwnerOrAdmin,
+} = require("../../utils/authorization");
 const {
   finalizePaidCheckoutBooking,
 } = require("../../services/finalizePaidCheckoutBooking");
@@ -109,7 +118,7 @@ const studentBookingResolver = {
     // },
 
     getStudentBookings: async (_, __, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
 
       const currentDate = new Date();
       currentDate.setHours(0, 0, 0, 0); // start of today
@@ -166,9 +175,7 @@ const studentBookingResolver = {
     },
     getUnseenBookingsCount: async (_, __, { user }) => {
       try {
-        if (!user || user.role !== "Admin") {
-          throw new Error("Unauthorized");
-        }
+        requireAdmin(user);
 
         // Get the last time admin viewed bookings
         // You can store this in a separate AdminActivity collection or in the Admin model
@@ -193,7 +200,7 @@ const studentBookingResolver = {
     },
 
     getCompletedStudentBookings: async (_, __, { user }) => {
-      validateUser(user);
+      requireRole(user, "Instructor");
 
       const allBookings = await StudentBooking.find({
         instructorId: user?.id,
@@ -246,14 +253,14 @@ const studentBookingResolver = {
     },
 
     getInstructorBookings: async (_, __, { user }) => {
-      validateUser(user);
+      requireRole(user, "Instructor");
       const bookings = await StudentBooking.find({ instructorId: user.id })
         .populate("studentId", "_id firstName lastName email description")
         .sort({ createdAt: -1 });
       return bookings;
     },
     getStudentDashboardDetails: async (_, { studentId }, { user }) => {
-      validateUser(user);
+      await requireStudentDataAccess(user, studentId);
 
       const student = await User.findById(studentId).lean();
       if (!student) throw new Error("Student not found");
@@ -401,7 +408,9 @@ const studentBookingResolver = {
 
   Mutation: {
     createBooking: async (_, { input }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
+      const paymentCorrelationId = new mongoose.Types.ObjectId().toString();
+      let directPaymentIntentId = null;
       try {
         const validatedInput = studentBookingSchema.parse({
           ...input,
@@ -431,6 +440,7 @@ const studentBookingResolver = {
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
         const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
+        const platformSettings = await getPlatformCommissionForSplit();
 
         if (isCardPayment) {
           const instructorAccountId = instructor.stripeAccount?.accountId;
@@ -439,7 +449,6 @@ const studentBookingResolver = {
               "Instructor payment account is not set up. Please try another instructor.",
             );
           }
-          const platformSettings = await getPlatformCommissionForSplit();
           const { dspCommission, instructorAmount } = getCommissionSplit(
             finalAmount,
             instructor,
@@ -455,6 +464,7 @@ const studentBookingResolver = {
             metadata: {
               studentId: String(user.id),
               instructorId: String(instructorId),
+              paymentCorrelationId,
             },
             confirm: true,
             transferData: {
@@ -462,6 +472,7 @@ const studentBookingResolver = {
               amountCentimes: instructorShareCentimes,
             },
           });
+          directPaymentIntentId = paymentResult.paymentIntentId;
           if (paymentResult.requiresAction) {
             return {
               booking: null,
@@ -484,7 +495,18 @@ const studentBookingResolver = {
           ).catch(() => null);
         }
 
-        const enrichedSlots = validatedInput.slots.map((slot) => {
+        const directCardSlotSplits =
+          isCardPayment && stripePaymentIntentId
+            ? buildDirectCardSlotSplits({
+                finalAmount,
+                numSlots,
+                instructor,
+                platformSettings,
+                getCommissionSplit,
+              })
+            : null;
+
+        const enrichedSlots = validatedInput.slots.map((slot, index) => {
           const base = {
             ...slot,
             booked: true,
@@ -493,7 +515,7 @@ const studentBookingResolver = {
           };
           if (isCardPayment && stripePaymentIntentId) {
             const { dspCommission: slotDsp, instructorAmount: slotInstructor } =
-              getCommissionSplit(perSlotAmount, instructor, platformSettings);
+              directCardSlotSplits[index];
             base.paymentIntentId = stripePaymentIntentId;
             if (stripeChargeId) base.connectChargeId = stripeChargeId;
             if (stripeTransferId) base.transferId = stripeTransferId;
@@ -545,6 +567,7 @@ const studentBookingResolver = {
         };
         if (stripePaymentIntentId) {
           bookingPayload.stripePaymentIntentId = stripePaymentIntentId;
+          bookingPayload.paymentCorrelationId = paymentCorrelationId;
           if (validatedInput.paymentMethod?.paymentMethodId)
             bookingPayload.paymentMethod = {
               ...validatedInput.paymentMethod,
@@ -736,6 +759,14 @@ const studentBookingResolver = {
         }
         return { booking: savedBooking };
       } catch (error) {
+        if (directPaymentIntentId) {
+          console.error("[HIGH] Direct card booking failed after Stripe operation", {
+            paymentIntentId: directPaymentIntentId,
+            paymentCorrelationId,
+            studentId: String(user.id),
+            error: error.message,
+          });
+        }
         console.error("Booking creation error:", error);
         if (error.errors) {
           throw new UserInputError("Invalid input", { errors: error.errors });
@@ -745,7 +776,7 @@ const studentBookingResolver = {
     },
 
     createBookingCheckoutSession: async (_, { input }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
       try {
         const validatedInput = studentBookingSchema.parse({
           ...input,
@@ -948,7 +979,7 @@ const studentBookingResolver = {
       { bookingId },
       { user },
     ) => {
-      validateUser(user);
+      requireRole(user, "Student");
       const booking = await StudentBooking.findOne({
         _id: bookingId,
         studentId: user.id,
@@ -1067,7 +1098,7 @@ const studentBookingResolver = {
     },
 
     completeBookingFromCheckout: async (_, { sessionId }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
       const session = await retrieveCheckoutSession(sessionId);
       if (
         !session ||
@@ -1107,7 +1138,7 @@ const studentBookingResolver = {
     // For deferred bookings: Checkout in setup mode saves a payment method via SetupIntent.
     // This resolver finalizes the booking after successful setup (no immediate charge).
     completeDeferredBookingFromCheckout: async (_, { sessionId }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
       console.log(
         "[completeDeferredBookingFromCheckout] called, sessionId:",
         sessionId?.slice(0, 20) + "...",
@@ -1261,7 +1292,7 @@ const studentBookingResolver = {
     },
 
     getT48ClientSecret: async (_, { bookingId, slotId }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
       const booking = await StudentBooking.findOne({
         _id: bookingId,
         studentId: user.id,
@@ -1441,7 +1472,7 @@ const studentBookingResolver = {
     },
 
     completeT48SlotPayment: async (_, { paymentIntentId }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
       const pi = await retrievePaymentIntent(paymentIntentId);
       if (!pi || pi.status !== "succeeded") {
         throw new UserInputError(
@@ -1577,7 +1608,7 @@ const studentBookingResolver = {
       { paymentIntentId, input },
       { user },
     ) => {
-      validateUser(user);
+      requireRole(user, "Student");
       const { retrievePaymentIntent } = require("../../services/stripeService");
       const pi = await retrievePaymentIntent(paymentIntentId);
       if (!pi || pi.status !== "succeeded") {
@@ -1735,7 +1766,7 @@ const studentBookingResolver = {
 
     updateSlotStatus: async (_, { input }, { user }) => {
       try {
-        validateUser(user);
+        requireRole(user, "Student", "Instructor", "Admin");
         const { bookingId, slotId, status } = input;
 
         // Validate status
@@ -1771,6 +1802,15 @@ const studentBookingResolver = {
 
         if (!booking) {
           throw new Error("Booking not found");
+        }
+
+        if (user.role === "Student") {
+          if (status !== "cancelled") {
+            throw new Error("Students may only cancel their own lesson slots");
+          }
+          requireStudentOwnerOrAdmin(user, booking);
+        } else {
+          requireAssignedInstructorOrAdmin(user, booking);
         }
 
         // Find the slot index
@@ -1986,9 +2026,7 @@ const studentBookingResolver = {
 
     markBookingsAsViewed: async (_, __, { user }) => {
       try {
-        if (!user || user.role !== "Admin") {
-          throw new Error("Unauthorized");
-        }
+        requireAdmin(user);
 
         // Update the admin's last viewed timestamp
         await Admin.findByIdAndUpdate(user.id, {
@@ -2004,7 +2042,7 @@ const studentBookingResolver = {
       }
     },
     updateBookingStatus: async (_, { bookingId, status }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Instructor", "Admin");
 
       const booking = await StudentBooking.findById(bookingId)
         .populate("instructorId", "_id firstName lastName email phone")
@@ -2013,10 +2051,7 @@ const studentBookingResolver = {
       if (!booking) {
         throw new UserInputError("Booking not found");
       }
-
-      if (booking.instructorId._id.toString() !== user.id.toString()) {
-        throw new AuthenticationError("Not authorized to update this booking");
-      }
+      requireAssignedInstructorOrAdmin(user, booking);
 
       const oldStatus = booking.status;
       booking.status = status;
@@ -2039,7 +2074,7 @@ const studentBookingResolver = {
     },
 
     cancelBookingSlot: async (_, { bookingId, slotId }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student", "Instructor", "Admin");
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -2052,16 +2087,7 @@ const studentBookingResolver = {
           .session(session);
 
         if (!booking) throw new UserInputError("Booking not found");
-
-        const uid = user.id.toString();
-        if (
-          booking.studentId._id.toString() !== uid &&
-          booking.instructorId._id.toString() !== uid
-        ) {
-          throw new AuthenticationError(
-            "Not authorized to cancel this booking",
-          );
-        }
+        requireBookingParticipantOrAdmin(user, booking);
 
         // 2. Find the specific slot in the booking
         const slot = booking.slots.id(slotId);
@@ -2184,7 +2210,7 @@ const studentBookingResolver = {
       }
     },
     rescheduleBookingSlot: async (_, { input }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student", "Admin");
       const { bookingId, slotId, newDate, newStartTime, newEndTime } = input;
 
       const session = await mongoose.startSession();
@@ -2200,13 +2226,9 @@ const studentBookingResolver = {
           throw new UserInputError("Booking not found.");
         }
 
-        const isOwner = String(booking.studentId?._id) === String(user.id);
+        requireStudentOwnerOrAdmin(user, booking);
+        const isOwner = user?.role === "Student";
         const isAdmin = user?.role === "Admin";
-        if (!isOwner && !isAdmin) {
-          throw new AuthenticationError(
-            "Not authorized to reschedule this booking.",
-          );
-        }
 
         const slot = booking.slots.id(slotId);
         if (!slot) {

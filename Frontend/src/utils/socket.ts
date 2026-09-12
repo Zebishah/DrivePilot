@@ -19,6 +19,10 @@ export const connectSocket = (token?: string): Socket => {
 
   // If socket exists but disconnected, reconnect
   if (socket && !socket.connected) {
+    if (token) {
+      socket.auth = { token };
+      socket.io.opts.query = { token };
+    }
     console.log("🔄 Reconnecting existing socket...");
     socket.connect();
     return socket;
@@ -110,8 +114,8 @@ export const getSocket = (): Socket | null => {
  * Initialize socket without token (for admin notifications)
  * Use this if you don't have auth token but still need socket
  */
-export const initSocket = (): Socket => {
-  return connectSocket();
+export const initSocket = (token?: string): Socket => {
+  return connectSocket(token);
 };
 
 /**

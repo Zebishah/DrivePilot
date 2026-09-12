@@ -2,11 +2,16 @@ const { default: mongoose } = require("mongoose");
 const { Review } = require("../../models/Reviews");
 const StudentBooking = require("../../models/studentBooking.model");
 const { Student } = require("../../models/User");
-const { validateUser } = require("../../utils/auth");
+const {
+  requireBookingParticipantOrAdmin,
+  requireRole,
+  requireStudentDataAccess,
+  identityId,
+} = require("../../utils/authorization");
 const reviewResolver = {
   Query: {
     getAllStudentBookingSlots: async (_, __, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
 
       const now = new Date();
 
@@ -87,8 +92,9 @@ const reviewResolver = {
       );
       return reviews;
     },
-    getStudentHoursProgress: async (_, { studentId }) => {
+    getStudentHoursProgress: async (_, { studentId }, { user }) => {
       try {
+        await requireStudentDataAccess(user, studentId);
         const student = await Student.findById(studentId);
         if (!student) throw new Error("Student not found");
 
@@ -200,7 +206,8 @@ const reviewResolver = {
     },
 
     // Get all reviews by a specific student
-    getStudentReviews: async (_, { studentId }) => {
+    getStudentReviews: async (_, { studentId }, { user }) => {
+      await requireStudentDataAccess(user, studentId);
       const reviews = await Review.find({ studentId })
         .populate("studentId", "_id firstName lastName profileImage")
         .populate("instructorId", "_id firstName lastName profileImage")
@@ -210,7 +217,12 @@ const reviewResolver = {
     },
 
     // Get specific review by lesson and slot
-    getReviewByLessonSlot: async (_, { lessonId, slotId }) => {
+    getReviewByLessonSlot: async (_, { lessonId, slotId }, { user }) => {
+      const booking = await StudentBooking.findById(lessonId).select(
+        "studentId instructorId",
+      );
+      if (!booking) throw new Error("Associated booking not found");
+      requireBookingParticipantOrAdmin(user, booking);
       const review = await Review.findOne({ lessonId, slotId })
         .populate("studentId", "_id firstName lastName profileImage")
         .populate("instructorId", "_id firstName lastName profileImage");
@@ -221,9 +233,12 @@ const reviewResolver = {
   Mutation: {
     // Create a new review
     createReview: async (_, args, context) => {
-      validateUser(context.user);
+      requireRole(context.user, "Student");
 
       const input = args.input;
+      if (identityId(context.user) !== String(input.studentId)) {
+        throw new Error("Unauthorized: You can only review your own lessons");
+      }
 
       // Check if review already exists for this lesson and slot
       const existingReview = await Review.findOne({
@@ -242,8 +257,11 @@ const reviewResolver = {
         throw new Error("Lesson not found");
       }
 
-      if (lesson.studentId.toString() !== input.studentId) {
+      if (lesson.studentId.toString() !== identityId(context.user)) {
         throw new Error("Unauthorized: You can only review your own lessons");
+      }
+      if (lesson.instructorId.toString() !== String(input.instructorId)) {
+        throw new Error("Unauthorized: Review instructor does not match the lesson");
       }
 
       // Check if the slot exists and is booked
@@ -280,7 +298,7 @@ const reviewResolver = {
 
     // Update an existing review
     updateReview: async (_, { reviewId, input }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
 
       const review = await Review.findById(reviewId);
       if (!review) {
@@ -288,7 +306,7 @@ const reviewResolver = {
       }
 
       // Check if the user is the owner of the review
-      if (review.studentId.toString() !== user.id) {
+      if (review.studentId.toString() !== identityId(user)) {
         throw new Error("Unauthorized: You can only update your own reviews");
       }
 
@@ -313,7 +331,7 @@ const reviewResolver = {
 
     // Delete a review
     deleteReview: async (_, { reviewId }, { user }) => {
-      validateUser(user);
+      requireRole(user, "Student");
 
       // Fetch the review
       const review = await Review.findById(reviewId);
@@ -322,7 +340,7 @@ const reviewResolver = {
       }
 
       // Check if the user owns the review
-      if (review.studentId.toString() !== user.id) {
+      if (review.studentId.toString() !== identityId(user)) {
         throw new Error("Unauthorized: You can only delete your own reviews");
       }
 

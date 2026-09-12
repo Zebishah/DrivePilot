@@ -1,7 +1,7 @@
 const { ContactDetailModel } = require("../../models/AdminContact");
 const ContaactFormServices = require("../../services/ContaactFormServices");
 const contactDetailService = require("../../services/ContactAdminServices");
-const { AuthenticationError } = require("apollo-server-express");
+const { AuthenticationError, UserInputError } = require("apollo-server-express");
 
 const contactDetailResolvers = {
   Query: {

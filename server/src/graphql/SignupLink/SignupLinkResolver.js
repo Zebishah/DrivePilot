@@ -112,10 +112,12 @@ const { v4: uuidv4 } = require("uuid");
 const { AuthenticationError } = require("apollo-server-express");
 const { User, Admin } = require("../../models/User");
 const { sendOtpEmail } = require("../../utils/SendOtpEmail");
+const { requireAdmin } = require("../../utils/authorization");
 
 const SignupLinkResolver = {
   Query: {
-    getAllSignupLinks: async () => {
+    getAllSignupLinks: async (_, __, { user }) => {
+      requireAdmin(user);
       try {
         const signupLinks = await SignupToken.find({}).sort({
           signupDate: -1,
@@ -149,7 +151,8 @@ const SignupLinkResolver = {
     },
   },
   Mutation: {
-    createSignUpLink: async (_, { firstName, lastName, email }) => {
+    createSignUpLink: async (_, { firstName, lastName, email }, { user }) => {
+      requireAdmin(user);
       const emailInUse = await SignupToken.findOne({ email });
       if (emailInUse) {
         throw new Error("This email is already in use.");
@@ -186,7 +189,8 @@ const SignupLinkResolver = {
         pending: newSignupToken.pending,
       };
     },
-    deleteSignUpLink: async (_, { id }, context) => {
+    deleteSignUpLink: async (_, { id }, { user }) => {
+      requireAdmin(user);
       const deletedLink = await SignupToken.findByIdAndDelete(id);
       if (!deletedLink) {
         return {
@@ -199,7 +203,8 @@ const SignupLinkResolver = {
         message: "Signup link deleted successfully.",
       };
     },
-    updateSignupLinkStatus: async (_, { id, pending, email }) => {
+    updateSignupLinkStatus: async (_, { id, pending, email }, { user }) => {
+      requireAdmin(user);
       try {
         if (pending === false) {
           // Find the user first - important to use findById to get the actual document

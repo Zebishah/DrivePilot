@@ -34,7 +34,7 @@ interface AdminLayoutProps {
 const DRAWER_WIDTH = 280;
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,9 +43,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     if (user?.role === "Admin") {
       console.log("🔌 Initializing socket for admin:", user.id);
-      initSocket();
+      initSocket(token || undefined);
     }
-  }, [user]);
+  }, [user, token]);
 
   // ✅ Use booking notifications hook
   const { unseenBookingsCount, clearUnseenCount, isRegistered } =

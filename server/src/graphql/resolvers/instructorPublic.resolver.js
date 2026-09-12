@@ -10,6 +10,36 @@ const { Review } = require("../../models/Reviews");
 const studentBookingModel = require("../../models/studentBooking.model");
 const dayjs = require("dayjs");
 const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
+const { requireInstructorOwnership } = require("../../utils/authorization");
+
+const toPublicInstructor = (instructor, extras = {}) => {
+  if (!instructor) return null;
+
+  const id = instructor._id?.toString?.() || instructor.id?.toString?.();
+  return {
+    id,
+    _id: id,
+    firstName: instructor.firstName,
+    lastName: instructor.lastName,
+    location: instructor.location || null,
+    description: instructor.description || null,
+    averageRating: instructor.averageRating ?? null,
+    totalReviews: instructor.totalReviews ?? null,
+    reviewsCount: instructor.reviewsCount ?? 0,
+    experience: instructor.experience || null,
+    verificationStatus: instructor.verificationStatus || null,
+    rating: instructor.rating ?? null,
+    profileImage: instructor.profileImage || null,
+    languagePreference: instructor.languagePreference || [],
+    coordinates: instructor.coordinates || null,
+    details: instructor.details || null,
+    carName: instructor.carName || null,
+    transmissionType: instructor.transmissionType || null,
+    gender: instructor.gender || null,
+    availability: instructor.availability || null,
+    isPaymentReady: extras.isPaymentReady ?? instructor.isPaymentReady ?? false,
+  };
+};
 
 const instructorResolver = {
   Query: {
@@ -238,16 +268,14 @@ const instructorResolver = {
             const isPaymentReadyFlag = isInstructorPaymentReady(instructor);
 
             return {
+              id: instructorId,
               _id: instructorId,
               firstName: instructor.firstName,
               lastName: instructor.lastName,
-              email: instructor.email,
               location: instructor.location,
-              address: instructor.address,
               description: instructor.description,
               experience: instructor.experience,
               verificationStatus: instructor.verificationStatus || "",
-              phone: instructor.phone,
               rating: instructor.rating,
               profileImage: instructor.profileImage || "",
               coordinates: instructor.coordinates,
@@ -288,7 +316,8 @@ const instructorResolver = {
       }
     },
 
-    getInstructorAnalytics: async (_, { instructorId }) => {
+    getInstructorAnalytics: async (_, { instructorId }, { user }) => {
+      requireInstructorOwnership(user, instructorId);
       const bookings = await studentBookingModel
         .find({ instructorId })
         .populate("studentId")
@@ -695,10 +724,9 @@ const instructorResolver = {
 
         return {
           instructor: {
-            ...instructor,
-            id: instructor._id.toString(),
-            isPaymentReady: isPaymentReadyFlag,
-            coordinates: instructor.coordinates || null,
+            ...toPublicInstructor(instructor, {
+              isPaymentReady: isPaymentReadyFlag,
+            }),
           },
           averageRating: Math.round(averageRating * 10) / 10,
           reviewsCount: totalReviews,

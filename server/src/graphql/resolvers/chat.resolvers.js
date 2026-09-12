@@ -5,12 +5,44 @@ const MESSAGE_SENT = "MESSAGE_SENT";
 
 const Conversation = require("../../models/Conversation");
 const Message = require("../../models/Message");
-const StudentBooking = require("../../models/StudentBooking");
+const StudentBooking = require("../../models/studentBooking.model");
+const { User } = require("../../models/User");
+const {
+  identityId,
+  requireAuthenticatedUser,
+} = require("../../utils/authorization");
+
+async function requireConversationAccess(user, user1Id, user2Id) {
+  const authenticatedUser = requireAuthenticatedUser(user);
+  const participantIds = [String(user1Id), String(user2Id)];
+  if (
+    authenticatedUser.role !== "Admin" &&
+    !participantIds.includes(identityId(authenticatedUser))
+  ) {
+    throw new Error("Not authorized to access this conversation");
+  }
+
+  if (authenticatedUser.role === "Admin") return authenticatedUser;
+
+  const [first, second] = participantIds;
+  const isParticipantInBooking = await StudentBooking.exists({
+    $or: [
+      { studentId: first, instructorId: second },
+      { studentId: second, instructorId: first },
+    ],
+    status: { $ne: "cancelled" },
+  });
+  if (!isParticipantInBooking) {
+    throw new Error("Not authorized to access this conversation");
+  }
+  return authenticatedUser;
+}
 
 const chatResolvers = {
   Query: {
-    getMessages: async (_, { user1Id, user2Id }) => {
+    getMessages: async (_, { user1Id, user2Id }, { user }) => {
       try {
+        await requireConversationAccess(user, user1Id, user2Id);
         const conversationId = [user1Id, user2Id].sort().join("_");
 
         const messages = await Message.find({ conversationId })
@@ -35,10 +67,7 @@ const chatResolvers = {
           },
         }));
 
-        console.log(
-          `📥 Fetched messages for conversation ${conversationId}:`,
-          formattedMessages.length
-        );
+        console.log("[Chat] Messages fetched", formattedMessages.length);
         return formattedMessages;
       } catch (error) {
         console.error("❌ Error in getMessages:", error.message);
@@ -50,9 +79,31 @@ const chatResolvers = {
   Mutation: {
     sendMessage: async (
       _,
-      { senderId, receiverId, content, senderModel, receiverModel }
+      { senderId, receiverId, content, senderModel, receiverModel },
+      { user },
     ) => {
       try {
+        const authenticatedUser = requireAuthenticatedUser(user);
+        if (String(senderId) !== identityId(authenticatedUser)) {
+          throw new Error("Sender identity must match the authenticated user");
+        }
+        if (typeof content !== "string" || content.trim().length === 0) {
+          throw new Error("Message content is required");
+        }
+        if (content.length > 5000) {
+          throw new Error("Message content must be 5000 characters or fewer");
+        }
+        if (senderModel !== authenticatedUser.role) {
+          throw new Error("Sender model does not match the authenticated user");
+        }
+        if (!["Student", "Instructor", "Admin"].includes(receiverModel)) {
+          throw new Error("Invalid receiver model");
+        }
+        const receiver = await User.findById(receiverId).select("role").lean();
+        if (!receiver || receiver.role !== receiverModel) {
+          throw new Error("Receiver not found");
+        }
+        await requireConversationAccess(user, senderId, receiverId);
         const participants = [senderId, receiverId].sort();
         const conversationId = participants.join("_");
 
@@ -62,7 +113,7 @@ const chatResolvers = {
           receiver: receiverId,
           senderModel,
           receiverModel,
-          content,
+          content: content.trim(),
         });
 
         const populatedMessage = await Message.findById(message._id)
@@ -89,15 +140,7 @@ const chatResolvers = {
           },
         };
 
-        console.log("📤 Message sent:", {
-          conversationId,
-          senderId,
-          receiverId,
-          senderModel,
-          receiverModel,
-          content,
-          createdAt: messagePayload.createdAt,
-        });
+        console.log("[Chat] Message sent");
 
         pubsub.publish(MESSAGE_SENT, {
           messageSent: messagePayload,
@@ -113,18 +156,22 @@ const chatResolvers = {
 
   Subscription: {
     messageSent: {
-      subscribe: withFilter(
-        () => {
-          return pubsub.asyncIterator(MESSAGE_SENT);
-        },
-        (payload, variables) => {
+      subscribe: async (_, variables, context, info) => {
+        await requireConversationAccess(
+          context.user,
+          variables.user1Id,
+          variables.user2Id,
+        );
+        return withFilter(
+          () => pubsub.asyncIterator(MESSAGE_SENT),
+          (payload, filterVariables) => {
           const { messageSent } = payload;
           if (!messageSent) {
-            console.error("❌ Invalid subscription payload:", payload);
+            console.error("[Chat] Invalid subscription payload");
             return false;
           }
 
-          const participants = [variables.user1Id, variables.user2Id].sort();
+          const participants = [filterVariables.user1Id, filterVariables.user2Id].sort();
           const subscriptionConversationId = participants.join("_");
           const payloadConversationId = messageSent.conversationId;
 
@@ -132,23 +179,17 @@ const chatResolvers = {
             payloadConversationId === subscriptionConversationId;
           const userInvolved =
             [messageSent.sender._id, messageSent.receiver._id].includes(
-              variables.user1Id
+              filterVariables.user1Id
             ) &&
             [messageSent.sender._id, messageSent.receiver._id].includes(
-              variables.user2Id
+              filterVariables.user2Id
             );
 
-          console.log(
-            `📡 Subscription check: messageMatches=${messageMatches}, userInvolved=${userInvolved}`
-          );
           return messageMatches && userInvolved;
-        }
-      ),
+          },
+        )(_, variables, context, info);
+      },
       resolve: (payload) => {
-        console.log(
-          "📡 Resolving messageSent subscription:",
-          payload.messageSent
-        );
         return {
           messageSent: {
             ...payload.messageSent,

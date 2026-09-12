@@ -46,20 +46,18 @@ const instructorTypeDefs = gql`
     originalSlotId: ID!
   }
 
-  type Instructor {
+  type PublicInstructor {
+    id: ID!
     _id: ID!
     firstName: String!
     lastName: String!
-    email: String!
     location: String
-    address: String
     description: String
     averageRating: Float
     totalReviews: String
     reviewsCount: Int
     experience: String
     verificationStatus: String
-    phone: String
     rating: Float
     profileImage: String
     languagePreference: [String!]!
@@ -73,7 +71,7 @@ const instructorTypeDefs = gql`
   }
 
   type InstructorPaginationResult {
-    instructors: [Instructor!]!
+    instructors: [PublicInstructor!]!
     totalCount: Int!
     hasMore: Boolean!
   }
@@ -113,7 +111,7 @@ const instructorTypeDefs = gql`
   }
 
   type InstructorPublicProfile {
-    instructor: Instructor!
+    instructor: PublicInstructor!
     averageRating: Float
     reviewsCount: Int
     tariff: InstructorTariff

@@ -52,7 +52,7 @@ interface TeacherLayoutProps {
 const DRAWER_WIDTH = 280;
 
 export default function TeacherLayout({ children }: TeacherLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const dispatch = useDispatch();
@@ -72,9 +72,9 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
         "Role:",
         user.role
       );
-      initSocket();
+      initSocket(token || undefined);
     }
-  }, [user]);
+  }, [user, token]);
 
   // ✅ Use booking notifications hook
   const { unseenBookingsCount, clearUnseenCount, isRegistered } =

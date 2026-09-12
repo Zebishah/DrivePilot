@@ -9,6 +9,8 @@ const authMiddleware = require("./middleware/auth");
 const connectDB = require("./config/database");
 const authRoutes = require("./routes/auth.routes");
 const cors = require("cors");
+const helmet = require("helmet");
+const { rateLimit } = require("express-rate-limit");
 const http = require("http");
 const { initSocket, setIOInstance } = require("./socket");
 const { runInstructorPayoutJob } = require("./jobs/payoutJob");
@@ -76,25 +78,24 @@ if (CRON_RUNS) {
 const app = express();
 const httpServer = http.createServer(app);
 
+// Render terminates TLS in front of the app; trust its single proxy hop so
+// rate limiting uses the originating client IP rather than the shared proxy.
+app.set("trust proxy", 1);
+app.use(helmet());
+
 // ✅ CORS configuration
+const configuredFrontendUrl = (
+  process.env.FRONTEND_URL || process.env.Frontend_URL || ""
+).replace(/\/$/, "");
 const allowedOrigins = [
-  "https://dsp-client.onrender.com",
-  "https://dsp-server.onrender.com",
-  "http://localhost:5173",
-  "https://studio.apollographql.com",
-];
-// Add frontend URL(s) from env if provided
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
-if (process.env.Frontend_URL) {
-  allowedOrigins.push(process.env.Frontend_URL);
-}
+  configuredFrontendUrl,
+  ...(process.env.NODE_ENV === "production" ? [] : ["http://localhost:5173"]),
+].filter(Boolean);
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. same-origin, Postman) or literal "null" (some browsers in dev/redirects)
-      if (!origin || origin === "null" || allowedOrigins.includes(origin)) {
+      // Requests without an Origin are not browser cross-origin requests.
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.log("❌ Blocked by CORS:", origin);
@@ -116,6 +117,34 @@ app.use(
 // ✅ Init middleware and routes
 app.use(passport.initialize());
 app.use(authRoutes);
+
+const rateLimitedGraphQLOperations = new Set([
+  "SignIn",
+  "SignUp",
+  "ForgotPassword",
+  "ResetPassword",
+  "VerifyUserOtp",
+  "ResendOtp",
+  "SendContactEmail",
+]);
+const sensitiveGraphQLFieldPattern = /\b(signIn|signUp|forgotPassword|resetPassword|verifyUser|resendOtp|sendContactEmail)\s*\(/i;
+const sensitiveGraphQLRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skip: (req) => {
+    const requests = Array.isArray(req.body) ? req.body : [req.body];
+    return !requests.some((body) =>
+      rateLimitedGraphQLOperations.has(body?.operationName) ||
+      sensitiveGraphQLFieldPattern.test(body?.query || ""),
+    );
+  },
+});
+
+// Apollo parses GraphQL requests after middleware is mounted. Parse the small
+// GraphQL envelope here so sensitive operations can be rate limited by name.
+app.use("/graphql", express.json({ limit: "1mb" }), sensitiveGraphQLRateLimit);
 
 // ✅ Create GraphQL schema
 const schema = makeExecutableSchema({ typeDefs, resolvers });

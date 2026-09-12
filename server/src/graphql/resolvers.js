@@ -36,6 +36,14 @@ const {
   retrieveAccount,
   accountToStripeSnapshot,
 } = require("../services/stripeService");
+const {
+  requireAuthenticatedUser,
+  requireAdmin,
+  requireRole,
+  requireSelfServiceRole,
+  requireInstructorOwnership,
+} = require("../utils/authorization");
+const path = require("path");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -58,7 +66,8 @@ const resolvers = {
       }
       return await User.findById(user.id);
     },
-    getInstructorDocuments: async (_, { instructorId }) => {
+    getInstructorDocuments: async (_, { instructorId }, { user }) => {
+      requireInstructorOwnership(user, instructorId);
       try {
         const instructor = await Instructor.findById(instructorId);
         if (!instructor) {
@@ -74,9 +83,7 @@ const resolvers = {
       }
     },
     teacherProfile: async (_, __, { user }) => {
-      if (!user) {
-        throw new AuthenticationError("Not authenticated");
-      }
+      requireRole(user, "Instructor");
 
       try {
         const instructor = await Instructor.findById(user.id);
@@ -449,7 +456,8 @@ instead.`);
         throw error;
       }
     },
-    updateInstructorVerificationStatus: async (_, { id, status }) => {
+    updateInstructorVerificationStatus: async (_, { id, status }, { user }) => {
+      requireAdmin(user);
       if (!["pending", "verified", "rejected"].includes(status)) {
         throw new Error("Invalid verification status");
       }
@@ -751,6 +759,7 @@ instead.`);
       { studentId, documentType, status },
       context,
     ) => {
+      requireAdmin(context.user);
       try {
         // Find the student and update the specific document status
         const updatedStudent = await Student.findOneAndUpdate(
@@ -917,7 +926,6 @@ instead.`);
         // If verified, send two-factor authentication OTP
         if (user?.role !== "Admin") {
           const otp = generateOTP();
-          console.log("user come fpr two factor auth otp");
           await Otp.create({
             email: user.email,
             otp,
@@ -925,7 +933,6 @@ instead.`);
             status: "unused",
             expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
           });
-          console.log("user come fpr two factor auth");
           await sendOtpEmail(user.email, otp, "two_factor_auth");
         }
 
@@ -945,15 +952,19 @@ instead.`);
     },
 
     selectRole: async (_, { role }, { user }) => {
-      if (!user) {
-        throw new AuthenticationError("Not authenticated");
-      }
+      requireAuthenticatedUser(user);
+
+      requireSelfServiceRole(role);
 
       // Find the existing user
       const existingUser = await User.findById(user.id);
 
       if (!existingUser) {
         throw new Error("User not found");
+      }
+
+      if (existingUser.role !== "UserBase") {
+        throw new ForbiddenError("Role selection is only available for new accounts");
       }
 
       // Remove the existing user
@@ -1046,7 +1057,6 @@ instead.`);
       if (user.role !== "Instructor") {
         throw new UserInputError("User is not an instructor");
       }
-      console.log("Instructor profile input:", user);
       const existingInstructor = await Instructor.findById(user.id);
       if (!existingInstructor) {
         throw new UserInputError("Instructor not found");
@@ -1109,15 +1119,62 @@ instead.`);
       }
     },
 
-    generateUploadUrl: async (_, { userId, role, fileName, fileType }) => {
-      const folder = role === "Student" ? "students" : "teachers";
-      const fileKey = `${folder}/${userId}/${Date.now()}-${fileName}`;
+    generateUploadUrl: async (
+      _,
+      { userId, role, fileName, fileType, fileSize },
+      { user },
+    ) => {
+      const authenticatedUser = requireAuthenticatedUser(user);
+      const maxFileSize = 10 * 1024 * 1024;
+      const allowedMimeTypes = new Set([
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ]);
+      if (!allowedMimeTypes.has(String(fileType).toLowerCase())) {
+        throw new UserInputError("Only PDF, JPEG, PNG, and WebP files are allowed");
+      }
+      if (!Number.isInteger(fileSize) || fileSize <= 0 || fileSize > maxFileSize) {
+        throw new UserInputError("File size must be between 1 byte and 10 MB");
+      }
+
+      const requestedRole = String(role);
+      requireSelfServiceRole(requestedRole);
+      const isAdminUpload = authenticatedUser.role === "Admin";
+      if (
+        !isAdminUpload &&
+        (String(authenticatedUser.id) !== String(userId) ||
+          requestedRole !== authenticatedUser.role)
+      ) {
+        throw new ForbiddenError("You may only upload files for your own account");
+      }
+      if (!isAdminUpload && !["Student", "Instructor"].includes(requestedRole)) {
+        throw new UserInputError("Invalid upload role");
+      }
+
+      if (isAdminUpload) {
+        const targetModel = requestedRole === "Student" ? Student : Instructor;
+        const target = await targetModel.findById(userId).select("_id").lean();
+        if (!target) throw new UserInputError("Upload target not found");
+      }
+
+      const folder = requestedRole === "Student" ? "students" : "teachers";
+      const safeFileName = path
+        .basename(String(fileName))
+        .replace(/[^a-zA-Z0-9._-]/g, "-")
+        .slice(0, 160);
+      if (!safeFileName || safeFileName === "." || safeFileName === "..") {
+        throw new UserInputError("Invalid file name");
+      }
+      const fileKey = `${folder}/${userId}/${Date.now()}-${safeFileName}`;
 
       const s3Params = {
         Bucket: process.env.BUCKET_NAME,
         Key: fileKey,
         Expires: 60,
         ContentType: fileType,
+        ContentLength: fileSize,
       };
 
       const uploadUrl = await s3.getSignedUrlPromise("putObject", s3Params);
@@ -1171,16 +1228,19 @@ instead.`);
       }
     },
     forgotPassword: async (_, { email }) => {
-      // Check if user exists
-      const user = await User.findOne({ email });
-      if (!user) {
-        throw new UserInputError("No account with that email exists");
-      }
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+      const user = await User.findOne({ email: normalizedEmail });
+      const genericResponse = {
+        success: true,
+        message: "If an account exists, password reset instructions have been sent",
+      };
+      // Keep reset requests indistinguishable for unknown and OAuth-only accounts.
       if (
-        user?.authProvider === "google" ||
-        user?.authProvider === "facebook"
+        !user ||
+        user.authProvider === "google" ||
+        user.authProvider === "facebook"
       ) {
-        throw new UserInputError("No account with that email exists");
+        return genericResponse;
       }
 
       // Generate reset token
@@ -1205,8 +1265,7 @@ instead.`);
         await sendTemplateEmail(user.email, "passwordReset", resetUrl);
 
         return {
-          success: true,
-          message: "Password reset email sent",
+          ...genericResponse,
         };
       } catch (error) {
         throw new Error("Failed to send reset email");

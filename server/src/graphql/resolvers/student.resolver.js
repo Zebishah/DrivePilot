@@ -4,6 +4,11 @@ const { updateStudentProfileSchema } = require("../../schemas/validation");
 const { Mutation } = require("../resolvers");
 const studentBookingModel = require("../../models/studentBooking.model");
 const StudentBooking = require("../../models/studentBooking.model");
+const {
+  requireStudentOwnership,
+  requireStudentDataAccess,
+  requireRole,
+} = require("../../utils/authorization");
 const studentResolver = {
   Query: {
     studentProfile: async (_, __, { user }) => {
@@ -53,7 +58,8 @@ const studentResolver = {
         throw new Error("Failed to fetch student profile");
       }
     },
-    getStudentLessonHours: async (_, { studentId }) => {
+    getStudentLessonHours: async (_, { studentId }, { user }) => {
+      await requireStudentDataAccess(user, studentId);
       const student = await Student.findById(studentId).select(
         "firstName lastName lessonHoursLeft",
       );
@@ -68,7 +74,8 @@ const studentResolver = {
         lessonHoursLeft: student.lessonHoursLeft || "",
       };
     },
-    getStudentLessons: async (_, { studentId }) => {
+    getStudentLessons: async (_, { studentId }, { user }) => {
+      requireStudentOwnership(user, studentId);
       try {
         return await studentBookingModel.find({ studentId });
       } catch (error) {
@@ -76,7 +83,8 @@ const studentResolver = {
       }
     },
 
-    getStudentLessonHistory: async (_, { studentId }) => {
+    getStudentLessonHistory: async (_, { studentId }, { user }) => {
+      requireStudentOwnership(user, studentId);
       try {
         // ✅ Populate instructor fields
         const bookings = await studentBookingModel
@@ -143,7 +151,7 @@ const studentResolver = {
       }
     },
     getStudentProgress: async (_, { studentId }, { user }) => {
-      validateUser(user);
+      await requireStudentDataAccess(user, studentId);
 
       try {
         // Fetch student details
@@ -285,6 +293,7 @@ const studentResolver = {
     },
 
     getAllStudents: async (_, { filter }, { user }) => {
+      requireRole(user, "Instructor");
       try {
         const confirmedBookings = await StudentBooking.find({
           instructorId: user?.id,

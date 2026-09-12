@@ -109,12 +109,14 @@ export const GENERATE_UPLOAD_URL = gql`
     $role: String!
     $fileName: String!
     $fileType: String!
+    $fileSize: Int!
   ) {
     generateUploadUrl(
       userId: $userId
       role: $role
       fileName: $fileName
       fileType: $fileType
+      fileSize: $fileSize
     ) {
       uploadUrl
       fileUrl

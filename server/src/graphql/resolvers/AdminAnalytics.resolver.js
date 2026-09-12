@@ -6,6 +6,7 @@ const studentBookingModel = require("../../models/studentBooking.model");
 const { Review } = require("../../models/Reviews");
 const Visitor = require("../../models/Visitors");
 dayjs.extend(customParseFormat);
+const { requireAdmin } = require("../../utils/authorization");
 
 function parseSlotDateFlexible(value) {
   if (!value) return null;
@@ -29,7 +30,8 @@ function parseSlotDateFlexible(value) {
 // Resolvers
 const adminAnalyticsResolvers = {
   Query: {
-    getAdminAnalytics: async (_, { filter }) => {
+    getAdminAnalytics: async (_, { filter }, { user }) => {
+      requireAdmin(user);
       const { instructorIds, filterType, fromDate, toDate } = filter || {};
 
       // Compute date range based on filterType
@@ -535,7 +537,8 @@ const adminAnalyticsResolvers = {
 
       return { overallStats, graphData };
     },
-    getAllInstructors: async () => {
+    getAllInstructors: async (_, __, { user }) => {
+      requireAdmin(user);
       try {
         // Ensure Instructor model is defined
         if (!Instructor) {

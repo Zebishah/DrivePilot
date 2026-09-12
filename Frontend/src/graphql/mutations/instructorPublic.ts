@@ -6,10 +6,10 @@ export const GET_NEARBY_INSTRUCTORS = gql`
     getNearbyInstructors(filter: $filter, offset: $offset) {
       instructors {
         _id
+        id
         firstName
         lastName
         location
-        address
         isPaymentReady
         totalReviews
         reviewsCount
@@ -52,9 +52,6 @@ export const GET_INSTRUCTOR_PROFILE = gql`
         id
         firstName
         lastName
-        email
-        phone
-        address
         location
         coordinates {
           coordinates

@@ -1,5 +1,6 @@
 import { useMutation } from "@apollo/client";
 import { GENERATE_UPLOAD_URL } from "../graphql/mutations/auth";
+import { useAuth } from "../context/AuthContext";
 
 interface UploadResponse {
   success: boolean;
@@ -9,22 +10,34 @@ interface UploadResponse {
 
 export const useFileUpload = () => {
   const [generateUploadUrl, { loading }] = useMutation(GENERATE_UPLOAD_URL);
+  const { user } = useAuth();
 
   const uploadFile = async (
     file: File,
-    userId: string | undefined,
-    role: string | undefined
+    _userId: string | undefined,
+    _role: string | undefined
   ): Promise<UploadResponse> => {
+    // Keep the legacy call signature while deliberately ignoring caller-supplied
+    // identity; the authenticated server context is authoritative.
+    void _userId;
+    void _role;
     if (!file) return { success: false, message: "No file selected" };
+    if (!user?.id || !user.role) {
+      return { success: false, message: "You must be signed in to upload files" };
+    }
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+      return { success: false, message: "Files must be smaller than 10 MB" };
+    }
 
     try {
       // Step 1: Get pre-signed URL from backend
       const { data } = await generateUploadUrl({
         variables: {
-          userId,
-          role,
+          userId: user.id,
+          role: user.role,
           fileName: file.name,
           fileType: file.type,
+          fileSize: file.size,
         },
       });
 
@@ -38,7 +51,10 @@ export const useFileUpload = () => {
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
         body: file,
-        headers: { "Content-Type": file.type },
+        headers: {
+          "Content-Type": file.type,
+          "Content-Length": String(file.size),
+        },
       });
 
       if (!uploadResponse.ok) {

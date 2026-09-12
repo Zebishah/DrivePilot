@@ -54,7 +54,7 @@ interface StudentLayoutProps {
 const DRAWER_WIDTH = 280;
 
 export default function StudentLayout({ children }: StudentLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const nav = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const dispatch = useDispatch();
@@ -68,9 +68,9 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   useEffect(() => {
     if (user?.role === "Student") {
       console.log("🔌 Initializing socket for student:", user.id);
-      initSocket();
+      initSocket(token || undefined);
     }
-  }, [user]);
+  }, [user, token]);
 
   // ✅ Use booking notifications hook
   const { unseenBookingsCount, clearUnseenCount } = useBookingNotifications(

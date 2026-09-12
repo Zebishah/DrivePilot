@@ -451,6 +451,7 @@ const typeDefs = gql`
       role: String!
       fileName: String!
       fileType: String!
+      fileSize: Int!
     ): FileUploadResponse!
     updateInstructorDocuments(
       input: UpdateInstructorDocumentsInput!

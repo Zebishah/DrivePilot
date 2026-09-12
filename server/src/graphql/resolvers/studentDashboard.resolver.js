@@ -6,9 +6,11 @@ const teacherAvailabilityModel = require("../../models/teacherAvailability.model
 const { Student } = require("../../models/User");
 const { validateUser } = require("../../utils/auth");
 const { Feedback } = require("./LessonFeedBack.resolver");
+const { requireStudentOwnership } = require("../../utils/authorization");
 const studentDashboardResolver = {
   Query: {
-    getStudentDashboardStats: async (_, { studentId }) => {
+    getStudentDashboardStats: async (_, { studentId }, { user }) => {
+      requireStudentOwnership(user, studentId);
       const [bookings, student] = await Promise.all([
         studentBookingModel.find({ studentId }),
         Student.findById(studentId),
@@ -73,7 +75,8 @@ const studentDashboardResolver = {
       };
     },
 
-    getStudentLesson: async (_, { studentId }) => {
+    getStudentLesson: async (_, { studentId }, { user }) => {
+      requireStudentOwnership(user, studentId);
       const now = new Date();
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay());
@@ -120,7 +123,8 @@ const studentDashboardResolver = {
 
       return allLessons;
     },
-    getStudentFeedbacks: async (_, { studentId }) => {
+    getStudentFeedbacks: async (_, { studentId }, { user }) => {
+      requireStudentOwnership(user, studentId);
       const feedbacks = await LessonFeedBack.find({ studentId })
         .populate("instructorId", "firstName lastName profileImage email")
         .lean();

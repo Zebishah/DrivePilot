@@ -10,6 +10,7 @@ const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = require("../../models/StudentBooking");
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
+const { requireAdmin } = require("../../utils/authorization");
 
 const AdminBookingResolvers = {
   StudentBookingAdmin: {
@@ -20,7 +21,8 @@ const AdminBookingResolvers = {
     feedBackStatus: (parent) => parent.feedBackStatus || "pending",
   },
   Query: {
-    getAllStudentBookings: async () => {
+    getAllStudentBookings: async (_, __, { user }) => {
+      requireAdmin(user);
       try {
         const bookings = await StudentBooking.find({})
           .populate({
@@ -55,7 +57,8 @@ const AdminBookingResolvers = {
         throw new Error(`Failed to fetch student bookings: ${error.message}`);
       }
     },
-    getInstructorBookingsById: async (_, { instructorId }) => {
+    getInstructorBookingsById: async (_, { instructorId }, { user }) => {
+      requireAdmin(user);
       try {
         const bookings = await StudentBooking.find({ instructorId })
           .populate({
@@ -85,7 +88,8 @@ const AdminBookingResolvers = {
   },
 
   Mutation: {
-    updateBookingStatusAdmin: async (_, { input }) => {
+    updateBookingStatusAdmin: async (_, { input }, { user }) => {
+      requireAdmin(user);
       try {
         const { bookingId, slotId, status } = input;
 
@@ -280,7 +284,8 @@ const AdminBookingResolvers = {
       }
     },
 
-    cancelBookingAdmin: async (_, { input }) => {
+    cancelBookingAdmin: async (_, { input }, { user }) => {
+      requireAdmin(user);
       try {
         const { bookingId, slotId, studentId, reason } = input;
 

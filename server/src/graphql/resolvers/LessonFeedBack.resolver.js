@@ -3,20 +3,25 @@ const { default: mongoose } = require("mongoose");
 const Feedback = require("../../models/LessonFeedBack"); // Make sure this path is correct
 const { User, Student, Instructor } = require("../../models/User");
 const StudentBooking = require("../../models/studentBooking.model");
-const { GraphQLError } = require("graphql");
+const {
+  requireAuthenticatedUser,
+  requireRole,
+  requireBookingParticipantOrAdmin,
+  identityId,
+} = require("../../utils/authorization");
 const feedbackResolvers = {
   Query: {
     getFeedbackByLessonId: async (_, { lessonId }, { user }) => {
       try {
-        // Optional: Add authentication check
-        if (!user) {
-          throw new Error("Authentication required");
-        }
+        requireAuthenticatedUser(user);
+        const feedback = await Feedback.findOne({ lessonId });
+        if (!feedback) return null;
 
-        const feedback = await Feedback.findOne({
-          lessonId,
-          instructorId: user.id || user._id,
-        });
+        const booking = await StudentBooking.findById(feedback.bookingId).select(
+          "studentId instructorId",
+        );
+        if (!booking) throw new Error("Associated booking not found");
+        requireBookingParticipantOrAdmin(user, booking);
 
         return feedback; // This can be null if no feedback exists
       } catch (error) {
@@ -27,17 +32,16 @@ const feedbackResolvers = {
 
     getAllFeedbacks: async (_, __, { user }) => {
       try {
-        // Optional: Add authentication and authorization checks
-        if (!user) {
-          throw new Error("Authentication required");
-        }
-
-        // If user is instructor, show only their feedbacks
-        // If user is admin/student, show all feedbacks (adjust as needed)
+        requireAuthenticatedUser(user);
         const filter =
-          user.role === "instructor"
-            ? { instructorId: user.id || user._id }
-            : {};
+          user.role === "Admin"
+            ? {}
+            : user.role === "Instructor"
+              ? { instructorId: identityId(user) }
+              : user.role === "Student"
+                ? { studentId: identityId(user) }
+                : null;
+        if (!filter) throw new Error("Not authorized");
 
         const feedbacks = await Feedback.find(filter).sort({ createdAt: -1 });
 
@@ -52,9 +56,9 @@ const feedbackResolvers = {
   Mutation: {
     createFeedback: async (_, { input }, { user }) => {
       try {
-        if (!user) throw new Error("Authentication required");
+        requireRole(user, "Instructor");
 
-        if (user.id !== input.instructorId && user._id !== input.instructorId) {
+        if (identityId(user) !== String(input.instructorId)) {
           throw new Error(
             "Unauthorized: You can only create feedback for yourself"
           );
@@ -155,14 +159,13 @@ const feedbackResolvers = {
 
     updateFeedback: async (_, { input }, { user }) => {
       try {
-        if (!user) throw new Error("Authentication required");
+        requireRole(user, "Instructor");
 
         const feedback = await Feedback.findById(input.feedbackId);
         if (!feedback) throw new Error("Feedback not found");
 
         if (
-          user.id !== feedback.instructorId?.toString() &&
-          user._id !== feedback.instructorId?.toString()
+          identityId(user) !== feedback.instructorId?.toString()
         ) {
           throw new Error(
             "Unauthorized: You can only update your own feedback"
@@ -204,9 +207,7 @@ const feedbackResolvers = {
 
     deleteFeedback: async (_, { feedbackId }, { user }) => {
       try {
-        if (!user) {
-          throw new Error("Authentication required");
-        }
+        requireRole(user, "Instructor");
 
         const feedback = await Feedback.findById(feedbackId);
         if (!feedback) {
@@ -215,8 +216,7 @@ const feedbackResolvers = {
 
         // Ensure the user is the original instructor
         if (
-          user.id !== feedback.instructorId?.toString() &&
-          user._id !== feedback.instructorId?.toString()
+          identityId(user) !== feedback.instructorId?.toString()
         ) {
           throw new Error(
             "Unauthorized: You can only delete your own feedback"
