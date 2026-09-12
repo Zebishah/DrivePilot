@@ -95,46 +95,31 @@ const feedbackResolvers = {
           });
         }
 
-        // Check for existing feedback
-        const existingFeedback = await Feedback.findOne({
-          lessonId: input.lessonId,
-          bookingId: input.bookingId,
-          instructorId: input.instructorId,
-        });
-
-        if (existingFeedback) {
-          existingFeedback.feedbackTags = input.feedbackTags;
-          existingFeedback.hoursRemaining = input.hoursRemaining;
-          existingFeedback.message = input.message;
-          existingFeedback.updatedAt = new Date();
-          const updatedFeedback = await existingFeedback.save();
-
-          return {
-            _id: updatedFeedback._id,
-            lessonId: updatedFeedback.lessonId,
-            bookingId: updatedFeedback.bookingId,
-            instructorId: updatedFeedback.instructorId,
-            instructorEmail: updatedFeedback.instructorEmail,
-            feedbackTags: updatedFeedback.feedbackTags,
-            hoursRemaining: updatedFeedback.hoursRemaining,
-            message: updatedFeedback.message,
-            createdAt: updatedFeedback.createdAt.toISOString(),
-          };
-        }
-
-        // Create new feedback
-        const feedback = new Feedback({
-          lessonId: input.lessonId,
-          bookingId: input.bookingId, // ✅ Add this line
-          instructorId: input.instructorId,
-          instructorEmail: input.instructorEmail,
-          feedbackTags: input.feedbackTags,
-          hoursRemaining: input.hoursRemaining,
-          message: input.message,
-          studentId: studentId,
-        });
-
-        const savedFeedback = await feedback.save();
+        // Upsert on the database uniqueness key. This preserves the existing
+        // create-or-update behavior while avoiding a read-before-create race.
+        const savedFeedback = await Feedback.findOneAndUpdate(
+          {
+            lessonId: input.lessonId,
+            bookingId: input.bookingId,
+            instructorId: input.instructorId,
+          },
+          {
+            $set: {
+              instructorEmail: input.instructorEmail,
+              feedbackTags: input.feedbackTags,
+              hoursRemaining: input.hoursRemaining,
+              message: input.message,
+              studentId,
+              updatedAt: new Date(),
+            },
+            $setOnInsert: {
+              lessonId: input.lessonId,
+              bookingId: input.bookingId,
+              instructorId: input.instructorId,
+            },
+          },
+          { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+        );
         await StudentBooking.updateOne(
           { _id: input.bookingId, "slots._id": input.lessonId },
           { $set: { "slots.$.feedBackStatus": "completed" } }

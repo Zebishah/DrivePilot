@@ -40,13 +40,17 @@ async function requireConversationAccess(user, user1Id, user2Id) {
 
 const chatResolvers = {
   Query: {
-    getMessages: async (_, { user1Id, user2Id }, { user }) => {
+    getMessages: async (_, { user1Id, user2Id, limit = 50, offset = 0 }, { user }) => {
       try {
         await requireConversationAccess(user, user1Id, user2Id);
         const conversationId = [user1Id, user2Id].sort().join("_");
+        const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+        const safeOffset = Math.max(Number(offset) || 0, 0);
 
         const messages = await Message.find({ conversationId })
-          .sort({ createdAt: 1 })
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(safeOffset)
+          .limit(safeLimit)
           .populate("sender")
           .populate("receiver");
 
@@ -68,7 +72,7 @@ const chatResolvers = {
         }));
 
         console.log("[Chat] Messages fetched", formattedMessages.length);
-        return formattedMessages;
+        return formattedMessages.reverse();
       } catch (error) {
         console.error("❌ Error in getMessages:", error.message);
         throw new Error("Failed to fetch messages.");

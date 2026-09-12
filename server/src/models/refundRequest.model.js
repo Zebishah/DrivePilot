@@ -62,5 +62,6 @@ const refundRequestSchema = new mongoose.Schema(
 refundRequestSchema.index({ bookingId: 1, slotId: 1 }, { unique: true });
 refundRequestSchema.index({ studentId: 1, status: 1 });
 refundRequestSchema.index({ status: 1 });
+refundRequestSchema.index({ bookingId: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("RefundRequest", refundRequestSchema);

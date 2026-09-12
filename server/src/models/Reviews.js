@@ -50,5 +50,11 @@ const reviewSchema = new mongoose.Schema(
   }
 );
 
+// A student may review a lesson slot once. The uniqueness key mirrors the
+// mutation's business identity and closes the read-before-create race.
+reviewSchema.index({ lessonId: 1, slotId: 1, studentId: 1 }, { unique: true });
+reviewSchema.index({ instructorId: 1, createdAt: -1 });
+reviewSchema.index({ studentId: 1, createdAt: -1 });
+
 const Review = mongoose.model("Review", reviewSchema);
 module.exports = { Review };

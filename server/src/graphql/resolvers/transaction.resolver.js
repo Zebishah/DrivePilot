@@ -7,6 +7,7 @@ const Transaction = require("../../models/transaction.model");
 const { Admin, User } = require("../../models/User");
 const StudentBooking = require("../../models/studentBooking.model");
 const { fromMinorUnits } = require("../../utils/money");
+const { normalizePagination } = require("../../utils/pagination");
 
 const amountMinorExpression = {
   $ifNull: ["$amountMinor", { $round: [{ $multiply: ["$amount", 100] }, 0] }],
@@ -91,11 +92,11 @@ const transactionResolver = {
     updatedAt: (parent) =>
       toIsoString(parent.updatedAt) ??
       (parent.updatedAt ? String(parent.updatedAt) : ""),
-    lessonSummary: async (parent) => {
+    lessonSummary: async (parent, _, { loaders } = {}) => {
       if (!parent.bookingId) return null;
-      const booking = await StudentBooking.findById(parent.bookingId)
-        .select("slots")
-        .lean();
+      const booking = loaders?.booking
+        ? await loaders.booking.load(parent.bookingId)
+        : await StudentBooking.findById(parent.bookingId).select("slots").lean();
       if (
         !booking ||
         !Array.isArray(booking.slots) ||
@@ -116,30 +117,30 @@ const transactionResolver = {
       }
       return formatLessonSummary(slot);
     },
-    student: async (parent) => {
+    student: async (parent, _, { loaders } = {}) => {
       let id = parent.studentId;
       if (!id && parent.bookingId) {
-        const booking = await StudentBooking.findById(parent.bookingId)
-          .select("studentId")
-          .lean();
+        const booking = loaders?.booking
+          ? await loaders.booking.load(parent.bookingId)
+          : await StudentBooking.findById(parent.bookingId).select("studentId").lean();
         id = booking?.studentId;
       }
       id = id?._id ?? id; // handle populated ref
       if (!id) return null;
-      const u = await User.findById(id).lean();
+      const u = loaders?.user ? await loaders.user.load(id) : await User.findById(id).lean();
       return toTransactionParty(u);
     },
-    instructor: async (parent) => {
+    instructor: async (parent, _, { loaders } = {}) => {
       let id = parent.instructorId;
       if (!id && parent.bookingId) {
-        const booking = await StudentBooking.findById(parent.bookingId)
-          .select("instructorId")
-          .lean();
+        const booking = loaders?.booking
+          ? await loaders.booking.load(parent.bookingId)
+          : await StudentBooking.findById(parent.bookingId).select("instructorId").lean();
         id = booking?.instructorId;
       }
       id = id?._id ?? id; // handle populated ref
       if (!id) return null;
-      const u = await User.findById(id).lean();
+      const u = loaders?.user ? await loaders.user.load(id) : await User.findById(id).lean();
       return toTransactionParty(u);
     },
   },
@@ -153,12 +154,16 @@ const transactionResolver = {
         throw new ForbiddenError("Not authorized");
       }
       const query = buildAdminTransactionQuery(filter);
-      const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
-      const safeOffset = Math.max(Number(offset) || 0, 0);
+      const { limit: safeLimit, offset: safeOffset } = normalizePagination({
+        limit,
+        offset,
+        maxLimit: 200,
+      });
       return Transaction.find(query)
         .sort({ occurredAt: -1, createdAt: -1 })
         .skip(safeOffset)
-        .limit(safeLimit);
+        .limit(safeLimit)
+        .lean();
     },
 
     async getAdminTransactionCount(_, { filter = {} }, { user }) {
@@ -218,7 +223,7 @@ const transactionResolver = {
       };
     },
 
-    async getBookingTransactions(_, { bookingId }, { user }) {
+    async getBookingTransactions(_, { bookingId, limit, offset }, { user }) {
       if (!user) throw new AuthenticationError("Not authenticated");
       const query = { bookingId };
       if (user.role === "Instructor") {
@@ -229,7 +234,12 @@ const transactionResolver = {
         query.studentId = user.id;
         query.role = "student";
       }
-      return Transaction.find(query).sort({ occurredAt: 1, createdAt: 1 });
+      const page = normalizePagination({ limit, offset, maxLimit: 200 });
+      return Transaction.find(query)
+        .sort({ occurredAt: 1, createdAt: 1, _id: 1 })
+        .skip(page.offset)
+        .limit(page.limit)
+        .lean();
     },
 
     async getInstructorTransactions(
@@ -242,10 +252,12 @@ const transactionResolver = {
       }
       const query = { instructorId: user.id, role: "instructor" };
       if (type) query.type = type;
+      const page = normalizePagination({ limit, offset, maxLimit: 200 });
       return Transaction.find(query)
         .sort({ occurredAt: -1, createdAt: -1 })
-        .skip(offset)
-        .limit(limit);
+        .skip(page.offset)
+        .limit(page.limit)
+        .lean();
     },
 
     async getInstructorTransactionCount(_, { type }, { user }) {
@@ -339,10 +351,12 @@ const transactionResolver = {
         query.type = { $ne: "refund" };
         query.status = { $nin: ["pending", "failed", "cancelled"] };
       }
+      const page = normalizePagination({ limit, offset, maxLimit: 200 });
       return Transaction.find(query)
         .sort({ occurredAt: -1, createdAt: -1 })
-        .skip(offset)
-        .limit(limit);
+        .skip(page.offset)
+        .limit(page.limit)
+        .lean();
     },
 
     async getStudentTransactionCount(_, { view = "all" }, { user }) {
@@ -426,10 +440,11 @@ const transactionResolver = {
       };
     },
 
-    async getStudentBookingTransactions(_, { bookingId }, { user }) {
+    async getStudentBookingTransactions(_, { bookingId, limit, offset }, { user }) {
       if (!user || user.role !== "Student") {
         throw new ForbiddenError("Not authorized");
       }
+      const page = normalizePagination({ limit, offset, maxLimit: 200 });
       return Transaction.find({
         bookingId,
         studentId: user.id,
@@ -437,7 +452,8 @@ const transactionResolver = {
       }).sort({
         occurredAt: 1,
         createdAt: 1,
-      });
+        _id: 1,
+      }).skip(page.offset).limit(page.limit).lean();
     },
 
     async getPlatformCommissionSettings(_, __, { user }) {

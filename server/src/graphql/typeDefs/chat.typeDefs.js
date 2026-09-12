@@ -70,7 +70,7 @@ const chatTypeDefs = gql`
   }
 
   type Query {
-    getMessages(user1Id: ID!, user2Id: ID!): [Message!]!
+    getMessages(user1Id: ID!, user2Id: ID!, limit: Int = 50, offset: Int = 0): [Message!]!
     getConversations: [Conversation!]!
   }
 

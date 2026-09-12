@@ -85,5 +85,9 @@ transactionSchema.index(
   { correlationKey: 1 },
   { unique: true, partialFilterExpression: { correlationKey: { $type: "string" } } },
 );
+transactionSchema.index({ bookingId: 1, occurredAt: 1 });
+transactionSchema.index({ studentId: 1, role: 1, occurredAt: -1 });
+transactionSchema.index({ instructorId: 1, role: 1, occurredAt: -1 });
+transactionSchema.index({ type: 1, status: 1, occurredAt: -1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

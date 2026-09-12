@@ -35,6 +35,11 @@ const studentBookingModel = require("../../models/studentBooking.model");
 const { notifyBookingParties, sendBookingEmail } = require("../../utils/SendOtpEmail");
 const teacherTariffModel = require("../../models/teacherTariff.model");
 const { getIOInstance } = require("../../socket");
+const {
+  claimAvailabilitySlots,
+  releaseAvailabilitySlots,
+  recordBookedAvailabilitySlots,
+} = require("../../services/availabilityService");
 const { createTransaction } = require("../../services/transactionService");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 const { buildDirectCardSlotSplits } = require("../../utils/directCardBookingPricing");
@@ -428,6 +433,8 @@ const studentBookingResolver = {
     createBooking: async (_, { input }, { user }) => {
       requireRole(user, "Student");
       const paymentCorrelationId = new mongoose.Types.ObjectId().toString();
+      let availabilityClaims = [];
+      let availabilityCommitted = false;
       let directPaymentIntentId = null;
       try {
         const validatedInput = studentBookingSchema.parse({
@@ -500,6 +507,13 @@ const studentBookingResolver = {
             if (existingBooking) return { booking: existingBooking };
           }
 
+          // Reserve the advertised slots before contacting Stripe. The claim
+          // is released below if payment fails or requires customer action.
+          availabilityClaims = await claimAvailabilitySlots({
+            teacherId: instructorId,
+            slots: validatedInput.slots,
+          });
+
           let paymentResult;
           if (directPaymentOperation.providerObjectId) {
             const existingPi = await retrievePaymentIntent(
@@ -551,6 +565,8 @@ const studentBookingResolver = {
           }
           directPaymentIntentId = paymentResult.paymentIntentId;
           if (paymentResult.requiresAction) {
+            await releaseAvailabilitySlots({ claims: availabilityClaims });
+            availabilityClaims = [];
             return {
               booking: null,
               requiresAction: true,
@@ -570,6 +586,11 @@ const studentBookingResolver = {
           stripeChargeId = await getChargeIdFromPaymentIntent(
             stripePaymentIntentId,
           ).catch(() => null);
+        } else {
+          availabilityClaims = await claimAvailabilitySlots({
+            teacherId: instructorId,
+            slots: validatedInput.slots,
+          });
         }
 
         const directCardSlotSplits =
@@ -667,6 +688,7 @@ const studentBookingResolver = {
         }
         const booking = new StudentBooking(bookingPayload);
         await booking.save();
+        availabilityCommitted = true;
         if (directPaymentOperation) {
           await attachBooking(directPaymentOperation, booking._id);
         }
@@ -758,90 +780,13 @@ const studentBookingResolver = {
           await markCompleted(directPaymentOperation);
         }
 
-        // 3. Update availability and push booked sub-slots
-        // Group slots by date and availability block
-        const slotsByAvailability = {};
-
-        for (const slot of enrichedSlots) {
-          const availability = await teacherAvailabilityModel.findOne({
-            teacherId: instructorId,
-            date: new Date(slot.date),
-          });
-
-          if (!availability) continue;
-
-          const availabilityKey = `${availability._id}`;
-          if (!slotsByAvailability[availabilityKey]) {
-            slotsByAvailability[availabilityKey] = {
-              availability,
-              slotsToAdd: [],
-            };
-          }
-
-          slotsByAvailability[availabilityKey].slotsToAdd.push(slot);
-        }
-
-        // Process each availability block
-        await Promise.all(
-          Object.values(slotsByAvailability).map(
-            async ({ availability, slotsToAdd }) => {
-              let hasChanges = false;
-
-              for (const slot of slotsToAdd) {
-                // Check if slot already exists in `slots` (booked list)
-                const savedSlot = booking.slots.find(
-                  (s) =>
-                    s.date === slot.date &&
-                    s.startTime === slot.startTime &&
-                    s.endTime === slot.endTime,
-                );
-
-                if (!savedSlot) continue;
-
-                // Mark slot as booked in booked list
-                availability.slots.push({
-                  id: savedSlot._id.toString(),
-                  bookingId: booking._id.toString(),
-                  date: slot.date,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
-                  booked: true,
-                  status: "booked",
-                });
-
-                // Find and update in availableSlots (mark as booked)
-                const availableSlot = availability.availableSlots.find(
-                  (s) =>
-                    s.date === slot.date &&
-                    s.startTime === slot.startTime &&
-                    s.endTime === slot.endTime,
-                );
-
-                if (availableSlot) {
-                  availableSlot.booked = true;
-                  availableSlot.status = "booked";
-                }
-
-                hasChanges = true;
-              }
-
-              if (hasChanges) {
-                // If all availableSlots are booked, mark day as booked
-                const allBooked =
-                  availability.availableSlots.length > 0 &&
-                  availability.availableSlots.every((s) => s.booked === true);
-
-                if (allBooked) {
-                  availability.status = "booked";
-                } else {
-                  availability.status = "available";
-                }
-
-                await availability.save();
-              }
-            },
-          ),
-        );
+        // Record the embedded booking entry with atomic updates. This avoids
+        // saving a stale day document over another request's slot claim.
+        await recordBookedAvailabilitySlots({
+          teacherId: instructorId,
+          bookingId: booking._id,
+          slots: booking.slots,
+        });
         // 4. Optional: populate instructor
         const savedBooking = await StudentBooking.findById(booking._id)
           .populate(
@@ -871,6 +816,9 @@ const studentBookingResolver = {
         }
         return { booking: savedBooking };
       } catch (error) {
+        if (!availabilityCommitted) {
+          await releaseAvailabilitySlots({ claims: availabilityClaims }).catch(() => {});
+        }
         if (directPaymentIntentId) {
           console.error("[HIGH] Direct card booking failed after Stripe operation", {
             paymentIntentId: directPaymentIntentId,
@@ -889,6 +837,8 @@ const studentBookingResolver = {
 
     createBookingCheckoutSession: async (_, { input }, { user }) => {
       requireRole(user, "Student");
+      let availabilityClaims = [];
+      let availabilityCommitted = false;
       try {
         const validatedInput = studentBookingSchema.parse({
           ...input,
@@ -1028,6 +978,11 @@ const studentBookingResolver = {
           }
         }
 
+        availabilityClaims = await claimAvailabilitySlots({
+          teacherId: instructorId,
+          slots: enrichedSlots,
+        });
+
         const bookingPayload = {
           ...validatedInput,
           slots: enrichedSlots,
@@ -1039,67 +994,14 @@ const studentBookingResolver = {
         };
         const booking = new StudentBooking(bookingPayload);
         await booking.save();
+        availabilityCommitted = true;
         await attachBooking(checkoutOperation, booking._id);
 
-        const slotsByAvailability = {};
-        for (const slot of enrichedSlots) {
-          const availability = await teacherAvailabilityModel.findOne({
-            teacherId: instructorId,
-            date: new Date(slot.date),
-          });
-          if (!availability) continue;
-          const availabilityKey = `${availability._id}`;
-          if (!slotsByAvailability[availabilityKey]) {
-            slotsByAvailability[availabilityKey] = {
-              availability,
-              slotsToAdd: [],
-            };
-          }
-          slotsByAvailability[availabilityKey].slotsToAdd.push(slot);
-        }
-        await Promise.all(
-          Object.values(slotsByAvailability).map(
-            async ({ availability, slotsToAdd }) => {
-              let hasChanges = false;
-              for (const slot of slotsToAdd) {
-                const savedSlot = booking.slots.find(
-                  (s) =>
-                    s.date === slot.date &&
-                    s.startTime === slot.startTime &&
-                    s.endTime === slot.endTime,
-                );
-                if (!savedSlot) continue;
-                availability.slots.push({
-                  id: savedSlot._id.toString(),
-                  bookingId: booking._id.toString(),
-                  date: slot.date,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
-                  booked: true,
-                  status: "booked",
-                });
-                const availableSlot = availability.availableSlots.find(
-                  (s) =>
-                    s.date === slot.date &&
-                    s.startTime === slot.startTime &&
-                    s.endTime === slot.endTime,
-                );
-                if (availableSlot) {
-                  availableSlot.booked = true;
-                  availableSlot.status = "booked";
-                  hasChanges = true;
-                }
-              }
-              if (hasChanges) {
-                const allBooked =
-                  availability.availableSlots.length > 0 &&
-                  availability.availableSlots.every((s) => s.booked === true);
-                availability.status = allBooked ? "booked" : "available";
-                await availability.save();
-              }
-            },
-          ),
-        );
+        await recordBookedAvailabilitySlots({
+          teacherId: instructorId,
+          bookingId: booking._id,
+          slots: booking.slots,
+        });
 
         let customerEmail = null;
         let stripeCustomerIdForSession = null;
@@ -1155,6 +1057,9 @@ const studentBookingResolver = {
         await markCompleted(checkoutOperation);
         return { url, bookingId: booking._id, deferred: isDeferred };
       } catch (error) {
+        if (!availabilityCommitted) {
+          await releaseAvailabilitySlots({ claims: availabilityClaims }).catch(() => {});
+        }
         console.error("createBookingCheckoutSession error:", error);
         if (error.errors) {
           throw new UserInputError("Invalid input", { errors: error.errors });
@@ -2194,56 +2099,11 @@ const studentBookingResolver = {
       }
       await markLocalSuccess(directPaymentOperation, "booking_and_transactions_applied");
       await markCompleted(directPaymentOperation);
-      const slotsByAvailability = {};
-      for (const slot of booking.slots) {
-        const availability = await teacherAvailabilityModel.findOne({
-          teacherId: instructorId,
-          date: new Date(slot.date),
-        });
-        if (!availability) continue;
-        const key = availability._id.toString();
-        if (!slotsByAvailability[key])
-          slotsByAvailability[key] = { availability, slotsToAdd: [] };
-        slotsByAvailability[key].slotsToAdd.push(slot);
-      }
-      await Promise.all(
-        Object.values(slotsByAvailability).map(
-          async ({ availability, slotsToAdd }) => {
-            let hasChanges = false;
-            for (const slot of slotsToAdd) {
-              availability.slots = availability.slots || [];
-              availability.slots.push({
-                id: slot._id.toString(),
-                bookingId: booking._id.toString(),
-                date: slot.date,
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-                booked: true,
-                status: "booked",
-              });
-              const availableSlot = (availability.availableSlots || []).find(
-                (s) =>
-                  s.date === slot.date &&
-                  s.startTime === slot.startTime &&
-                  s.endTime === slot.endTime,
-              );
-              if (availableSlot) {
-                availableSlot.booked = true;
-                availableSlot.status = "booked";
-              }
-              hasChanges = true;
-            }
-            if (hasChanges) {
-              availability.status = (availability.availableSlots || []).every(
-                (s) => s.booked,
-              )
-                ? "booked"
-                : "available";
-              await availability.save();
-            }
-          },
-        ),
-      );
+      await recordBookedAvailabilitySlots({
+        teacherId: instructorId,
+        bookingId: booking._id,
+        slots: booking.slots,
+      });
       const savedBooking = await StudentBooking.findById(booking._id)
         .populate(
           "instructorId",
@@ -2807,41 +2667,49 @@ const studentBookingResolver = {
 
         const teacherId = booking.instructorId._id;
 
-        const oldDayAvailability = await teacherAvailabilityModel
+        let oldDayAvailability = await teacherAvailabilityModel
           .findOne({
             teacherId,
             date: new Date(slot.date),
           })
           .session(session);
         const sameDayMove = String(slot.date) === String(newDate);
-        const newDayAvailability = sameDayMove
-          ? oldDayAvailability
-          : await teacherAvailabilityModel
-              .findOne({
-                teacherId,
-                date: new Date(newDate),
-              })
-              .session(session);
-
-        if (!newDayAvailability) {
-          throw new UserInputError(
-            "The selected slot is no longer available for this instructor.",
+        const claimedNewDayAvailability = await teacherAvailabilityModel
+          .findOneAndUpdate(
+            {
+              teacherId,
+              date: new Date(newDate),
+              availableSlots: {
+                $elemMatch: {
+                  date: newDate,
+                  startTime: newStartTime,
+                  endTime: newEndTime,
+                  booked: false,
+                },
+              },
+            },
+            {
+              $set: {
+                "availableSlots.$.booked": true,
+                "availableSlots.$.status": "booked",
+              },
+            },
+            { new: true, session },
           );
-        }
 
-        const targetAvailableSlot = (newDayAvailability.availableSlots || []).find(
-          (s) =>
-            s.date === newDate &&
-            s.startTime === newStartTime &&
-            s.endTime === newEndTime &&
-            s.booked === false,
-        );
-
-        if (!targetAvailableSlot) {
+        if (!claimedNewDayAvailability) {
           throw new UserInputError(
             "The selected slot is no longer available. Please choose another.",
           );
         }
+        const newDayAvailability = claimedNewDayAvailability;
+        if (sameDayMove) oldDayAvailability = newDayAvailability;
+        const targetAvailableSlot = (newDayAvailability.availableSlots || []).find(
+          (s) =>
+            s.date === newDate &&
+            s.startTime === newStartTime &&
+            s.endTime === newEndTime,
+        );
 
         if (oldDayAvailability) {
           oldDayAvailability.slots = (oldDayAvailability.slots || []).filter(

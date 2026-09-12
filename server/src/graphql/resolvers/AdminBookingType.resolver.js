@@ -8,7 +8,7 @@ const { User, Student, Instructor } = require("../../models/User");
 // Production payout delay: 3 days after lesson completion/missed outcome.
 const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
-const StudentBooking = require("../../models/StudentBooking");
+const StudentBooking = studentBookingModel;
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { requireAdmin } = require("../../utils/authorization");
 

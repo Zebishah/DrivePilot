@@ -140,7 +140,7 @@ const transactionTypeDefs = gql`
     ): [Transaction!]!
     getAdminTransactionCount(filter: AdminTransactionFilterInput): Int!
     getAdminTransactionStats: AdminTransactionStats!
-    getBookingTransactions(bookingId: ID!): [Transaction!]!
+    getBookingTransactions(bookingId: ID!, limit: Int, offset: Int): [Transaction!]!
     getInstructorTransactions(
       limit: Int
       offset: Int
@@ -155,7 +155,7 @@ const transactionTypeDefs = gql`
     ): [Transaction!]!
     getStudentTransactionCount(view: StudentTransactionView): Int!
     getStudentTransactionStats: StudentTransactionStats!
-    getStudentBookingTransactions(bookingId: ID!): [Transaction!]!
+    getStudentBookingTransactions(bookingId: ID!, limit: Int, offset: Int): [Transaction!]!
     getPlatformCommissionSettings: PlatformCommissionSettings!
   }
 

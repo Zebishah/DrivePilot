@@ -200,7 +200,12 @@ studentBookingSchema.index({ "slots.payoutStatus": 1, "slots.payoutEligibleAt": 
 studentBookingSchema.index({ "slots.paymentIntentId": 1 });
 studentBookingSchema.index({ stripeCustomerId: 1 });
 studentBookingSchema.index({ status: 1, createdAt: 1, stripeCustomerId: 1 });
+studentBookingSchema.index({ instructorId: 1, createdAt: -1 });
+studentBookingSchema.index({ studentId: 1, createdAt: -1 });
+studentBookingSchema.index({ stripePaymentIntentId: 1 });
+studentBookingSchema.index({ checkoutSessionId: 1 });
 studentBookingSchema.index({ "slots.lessonEndReminderSent": 1 });
 studentBookingSchema.index({ "slots.paymentReminderDeadlineAt": 1 });
 
-module.exports = mongoose.model("StudentBooking", studentBookingSchema);
+module.exports =
+  mongoose.models.StudentBooking || mongoose.model("StudentBooking", studentBookingSchema);

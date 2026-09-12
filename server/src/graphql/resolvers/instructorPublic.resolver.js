@@ -48,6 +48,8 @@ const instructorResolver = {
       { filter = {}, offset = 0, limit = 10 },
     ) => {
       try {
+        const safeOffset = Math.max(Number(offset) || 0, 0);
+        const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
         // Build the base query: only instructors with complete profile and Stripe verified (active)
         let baseQuery = {
           role: "Instructor",
@@ -79,8 +81,9 @@ const instructorResolver = {
             priceQuery.lessonFee = { $lte: filter.priceMax };
           }
 
-          const tariffs = await teacherTariffModel.find(priceQuery);
-          priceFilteredInstructorIds = tariffs.map((t) => t.teacherId);
+          priceFilteredInstructorIds = await teacherTariffModel
+            .find(priceQuery)
+            .distinct("teacherId");
 
           if (priceFilteredInstructorIds.length === 0) {
             return {
@@ -91,6 +94,33 @@ const instructorResolver = {
           }
 
           // Add price filter to base query
+          baseQuery._id = { $in: priceFilteredInstructorIds };
+        }
+
+        // Apply availability before pagination so sparse results do not force
+        // the server to load and slice the entire instructor collection.
+        if (filter.availableDates?.length) {
+          const dateRanges = filter.availableDates.map((dateStr) => {
+            const date = new Date(dateStr);
+            const start = new Date(date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(date);
+            end.setHours(23, 59, 59, 999);
+            return { date: { $gte: start, $lte: end } };
+          });
+          const availableInstructorIds = await teacherAvailabilityModel
+            .find({ $or: dateRanges })
+            .distinct("teacherId");
+          const availableIds = new Set(
+            availableInstructorIds.map((id) => id.toString()),
+          );
+          const candidateIds = priceFilteredInstructorIds
+            ? priceFilteredInstructorIds.filter((id) =>
+                availableIds.has(id.toString()),
+              )
+            : availableInstructorIds;
+          baseQuery._id = { $in: candidateIds };
+        } else if (priceFilteredInstructorIds) {
           baseQuery._id = { $in: priceFilteredInstructorIds };
         }
 
@@ -134,10 +164,15 @@ const instructorResolver = {
 
           // Count pipeline (without skip/limit)
           const countPipeline = [...pipeline, { $count: "totalCount" }];
+          const paginatedPipeline = [
+            ...pipeline,
+            { $skip: safeOffset },
+            { $limit: safeLimit },
+          ];
 
           try {
             const [results, countResult] = await Promise.all([
-              User.Instructor.aggregate(pipeline),
+              User.Instructor.aggregate(paginatedPipeline),
               User.Instructor.aggregate(countPipeline),
             ]);
 
@@ -150,8 +185,12 @@ const instructorResolver = {
         } else {
           // Non-geographic query
 
-          const [results, count] = await Promise?.all([
-            User.Instructor.find(baseQuery),
+          const [results, count] = await Promise.all([
+            User.Instructor.find(baseQuery)
+              .sort({ createdAt: -1, _id: 1 })
+              .skip(safeOffset)
+              .limit(safeLimit)
+              .lean(),
             User.Instructor.countDocuments(baseQuery),
           ]);
 
@@ -159,38 +198,7 @@ const instructorResolver = {
           totalCount = count;
         }
 
-        // NOW apply availability date filtering if specified
-        if (filter.availableDates?.length) {
-          const dateRanges = filter.availableDates.map((dateStr) => {
-            const date = new Date(dateStr);
-            const start = new Date(date);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(date);
-            end.setHours(23, 59, 59, 999);
-            return { date: { $gte: start, $lte: end } };
-          });
-
-          const availabilityResults = await teacherAvailabilityModel
-            .find({ $or: dateRanges })
-            .distinct("teacherId");
-
-          // Convert to Set for faster lookup
-          const availableInstructorIds = new Set(
-            availabilityResults.map((id) => id.toString()),
-          );
-
-          // Filter instructors based on availability
-          const filteredInstructors = instructors.filter((instructor) =>
-            availableInstructorIds.has(instructor._id.toString()),
-          );
-
-          // Update counts
-          instructors = filteredInstructors;
-          totalCount = filteredInstructors.length;
-        }
-
-        // Apply pagination AFTER all filtering
-        const paginatedInstructors = instructors.slice(offset, offset + limit);
+        const paginatedInstructors = instructors;
 
         // Get tariffs and availability for the found instructors
         const instructorIds = paginatedInstructors.map((i) => i._id);
@@ -204,8 +212,10 @@ const instructorResolver = {
         }
 
         const [tariffs, availabilityDocs] = await Promise.all([
-          teacherTariffModel.find({ teacherId: { $in: instructorIds } }),
-          teacherAvailabilityModel.find(availabilityQuery),
+          teacherTariffModel
+            .find({ teacherId: { $in: instructorIds } })
+            .lean(),
+          teacherAvailabilityModel.find(availabilityQuery).lean(),
         ]);
 
         // 🆕 Transform availabilityDocs into a more usable map
@@ -238,6 +248,7 @@ const instructorResolver = {
         );
 
         const reviewsAggregation = await Review.aggregate([
+          { $match: { instructorId: { $in: instructorIds } } },
           {
             $group: {
               _id: "$instructorId",
@@ -306,7 +317,7 @@ const instructorResolver = {
             };
           }),
           totalCount,
-          hasMore: totalCount > offset + limit,
+          hasMore: totalCount > safeOffset + safeLimit,
         };
 
         return result;

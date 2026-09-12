@@ -34,6 +34,7 @@ const { createJobScheduler } = require("./services/jobScheduler");
 const mongoose = require("mongoose");
 const { requestCorrelationMiddleware } = require("./middleware/requestCorrelation");
 const { logger } = require("./utils/logger");
+const { createRequestLoaders } = require("./graphql/requestLoaders");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
@@ -169,6 +170,7 @@ async function startApolloServer() {
         req,
         requestId: req.requestId,
         correlationId: req.correlationId,
+        loaders: createRequestLoaders(),
       };
     },
   });
