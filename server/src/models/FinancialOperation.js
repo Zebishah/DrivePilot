@@ -78,6 +78,7 @@ financialOperationSchema.index(
 financialOperationSchema.index({ operationType: 1, aggregateType: 1, aggregateId: 1 });
 financialOperationSchema.index({ bookingId: 1, slotId: 1, operationType: 1 });
 financialOperationSchema.index({ status: 1, nextAttemptAt: 1 });
+financialOperationSchema.index({ status: 1, operationType: 1, providerObjectId: 1, updatedAt: 1 });
 financialOperationSchema.index({ leaseExpiresAt: 1 });
 
 module.exports = mongoose.model("FinancialOperation", financialOperationSchema);

@@ -23,6 +23,14 @@ const {
 } = require("./jobs/abandonedCheckoutReminderJob");
 const { runLessonEndReminderJob } = require("./jobs/lessonEndReminderJob");
 const { runT48PaymentReminderJob } = require("./jobs/t48PaymentReminderJob");
+const stripeWebhookRoutes = require("./routes/stripeWebhook.routes");
+const {
+  setStripeWebhookEventHandler,
+  runStripeWebhookProcessorJob,
+} = require("./services/stripeWebhookProcessor");
+const { runFinancialReconciliation } = require("./services/financialReconciliationService");
+
+setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
 // ✅ Connect to MongoDB
 connectDB();
@@ -44,6 +52,16 @@ function scheduleJob(name, run, intervalMs) {
 
 if (CRON_RUNS) {
   console.log("[Jobs] CRON_RUNS=yes — starting background jobs.");
+  scheduleJob(
+    "StripeWebhookProcessor",
+    runStripeWebhookProcessorJob,
+    Number(process.env.STRIPE_WEBHOOK_PROCESSOR_INTERVAL_MS || 5000),
+  );
+  scheduleJob(
+    "FinancialReconciliation",
+    runFinancialReconciliation,
+    Number(process.env.FINANCIAL_RECONCILIATION_INTERVAL_MS || 15 * 60 * 1000),
+  );
   // Instructor payout every 3 min; for production use 6 * 60 * 60 * 1000 (6 hours)
   scheduleJob("PayoutJob", runInstructorPayoutJob, 3 * 60 * 1000);
   // T-48 charge: 1 min for testing; adjust for production as needed
@@ -107,7 +125,6 @@ app.use(
 );
 
 // Stripe webhook needs raw body for signature verification (mount before any JSON body parser)
-const stripeWebhookRoutes = require("./routes/stripeWebhook.routes");
 app.use(
   "/webhooks/stripe",
   express.raw({ type: "application/json" }),

@@ -130,6 +130,40 @@ async function claimOperation(operation, owner = executionId(), leaseMs = LEASE_
   return claimed;
 }
 
+async function claimOperationForReconciliation(
+  operation,
+  owner = executionId("reconcile"),
+  leaseMs = LEASE_MS,
+) {
+  if (!operation) return null;
+  const now = new Date();
+  const claimed = await FinancialOperation.findOneAndUpdate(
+    {
+      _id: operation._id,
+      $or: [
+        { status: "PROVIDER_SUCCEEDED" },
+        {
+          status: "RETRYABLE",
+          $or: [{ nextAttemptAt: null }, { nextAttemptAt: { $lte: now } }],
+        },
+        { status: "PROCESSING", leaseExpiresAt: { $lte: now } },
+      ],
+    },
+    {
+      $set: {
+        status: "PROCESSING",
+        leaseOwner: owner,
+        leaseExpiresAt: new Date(now.getTime() + leaseMs),
+        lastAttemptAt: now,
+        updatedAt: now,
+      },
+      $inc: { attemptCount: 1 },
+    },
+    { new: true },
+  );
+  return claimed;
+}
+
 async function markAttempt(operation, owner) {
   return FinancialOperation.findOneAndUpdate(
     {
@@ -209,7 +243,7 @@ async function markRetryable(operation, error, nextAttemptAt) {
   return updateOperation(
     operation,
     "RETRYABLE",
-    ["PROCESSING", "PROVIDER_SUCCEEDED", "RETRYABLE"],
+    ["PENDING", "PROCESSING", "VERIFYING_PROVIDER", "PROVIDER_SUCCEEDED", "RETRYABLE"],
     {
       $set: {
         status: "RETRYABLE",
@@ -285,6 +319,7 @@ module.exports = {
   getOperationByProviderObjectId,
   getLatestOperation,
   claimOperation,
+  claimOperationForReconciliation,
   markAttempt,
   markProviderSuccess,
   markLocalSuccess,

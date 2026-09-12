@@ -22,6 +22,7 @@ const {
   markProviderSuccess,
   markLocalSuccess,
   markCompleted,
+  markRetryable,
 } = require("../services/financialOperationService");
 const { getCommissionSplit } = require("../services/stripeService");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
@@ -31,9 +32,10 @@ const {
 
 const router = express.Router();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-const processedEvents = new Set();
-const MAX_PROCESSED_SIZE = 10000;
 const CENTIMES_PER_UNIT = 100;
+const {
+  receiveStripeWebhookEvent,
+} = require("../services/stripeWebhookEventService");
 
 async function syncFinancialOperationFromWebhook(event) {
   const providerObjectId = event.data?.object?.id;
@@ -48,7 +50,11 @@ async function syncFinancialOperationFromWebhook(event) {
     ((event.type === "refund.created" || event.type === "refund.updated") &&
       providerObject?.status === "succeeded");
   if (!isSuccessfulEvent) return null;
-  const operation = await getOperationByProviderObjectId(providerObjectId);
+  const operation =
+    (await getOperationByProviderObjectId(providerObjectId)) ||
+    (event.data?.object?.metadata?.operationId
+      ? await getOperation(event.data.object.metadata.operationId)
+      : null);
   if (!operation || operation.status === "COMPLETED") return operation;
   return markProviderSuccess(operation, {
     providerObjectId,
@@ -535,6 +541,11 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
 async function handleCheckoutSessionCompleted(sessionId) {
   const session = await retrieveCheckoutSession(sessionId);
   if (!session) return;
+  const checkoutOperation =
+    (await getOperationByProviderObjectId(session.id)) ||
+    (session.metadata?.operationId
+      ? await getOperation(session.metadata.operationId)
+      : null);
   if (session.mode === "payment") {
     if (session.payment_status !== "paid") return;
     const paymentIntent = session.payment_intent;
@@ -549,6 +560,10 @@ async function handleCheckoutSessionCompleted(sessionId) {
       bookingId,
       paymentIntentId: piId,
     });
+    if (checkoutOperation) {
+      const local = await markLocalSuccess(checkoutOperation, "booking_finalized");
+      if (local) await markCompleted(local);
+    }
     console.log(
       "[Stripe Webhook] Payment checkout completed: confirmed booking",
       bookingId,
@@ -623,78 +638,153 @@ async function handleCheckoutSessionCompleted(sessionId) {
     }
   });
   await booking.save();
+  if (checkoutOperation) {
+    const provider = await markProviderSuccess(checkoutOperation, {
+      providerObjectId: session.id,
+      providerStatus: session.status,
+      localStatus: "payment_method_saved",
+    });
+    const local = await markLocalSuccess(provider || checkoutOperation, "payment_method_saved");
+    if (local) await markCompleted(local);
+  }
   console.log(
     "[Stripe Webhook] Deferred booking completed: saved stripeCustomerId for booking",
     bookingId,
   );
 }
 
-router.post("/", async (req, res) => {
-  if (!WEBHOOK_SECRET) {
-    console.error("STRIPE_WEBHOOK_SECRET is not set");
-    return res.status(500).send("Webhook secret not configured");
-  }
-  const sig = req.headers["stripe-signature"];
-  if (!sig) {
-    return res.status(400).send("Missing stripe-signature");
-  }
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-  console.log("[Stripe Webhook] Received event:", event.type, event.id);
+async function findOperationForProviderEvent(providerObject, metadata = {}) {
+  if (!providerObject?.id && !metadata?.operationId) return null;
+  return (
+    (providerObject?.id
+      ? await getOperationByProviderObjectId(providerObject.id)
+      : null) ||
+    (metadata?.operationId ? await getOperation(metadata.operationId) : null)
+  );
+}
 
-  if (processedEvents.has(event.id)) {
-    return res.status(200).send("OK");
-  }
-  if (processedEvents.size >= MAX_PROCESSED_SIZE) {
-    processedEvents.clear();
-  }
-  processedEvents.add(event.id);
-  await syncFinancialOperationFromWebhook(event).catch((error) => {
-    console.error("[Stripe Webhook] Financial operation sync failed:", error.message);
+async function handlePaymentIntentStatus(paymentIntent, eventType) {
+  if (!paymentIntent?.id) return;
+  const operation = await findOperationForProviderEvent(
+    paymentIntent,
+    paymentIntent.metadata,
+  );
+  const booking = await StudentBooking.findOne({
+    $or: [
+      { stripePaymentIntentId: paymentIntent.id },
+      { "slots.paymentIntentId": paymentIntent.id },
+      ...(paymentIntent.metadata?.bookingId
+        ? [{ _id: paymentIntent.metadata.bookingId }]
+        : []),
+    ],
   });
+  if (booking) {
+    const targetSlotId = paymentIntent.metadata?.slotId;
+    const slots = (booking.slots || []).filter(
+      (slot) =>
+        (!targetSlotId || String(slot._id) === String(targetSlotId)) &&
+        (!slot.paymentIntentId || String(slot.paymentIntentId) === String(paymentIntent.id)),
+    );
+    const status = eventType === "payment_intent.requires_action" ? "requires_action" : "payment_failed";
+    let changed = false;
+    for (const slot of slots) {
+      if (["paid", "refunded"].includes(String(slot.paymentStatus || "").toLowerCase())) continue;
+      if (slot.paymentStatus !== status) {
+        slot.paymentStatus = status;
+        changed = true;
+      }
+    }
+    if (changed) {
+      booking.updatedAt = new Date();
+      await booking.save();
+    }
+  }
+  if (operation) {
+    const error = new Error(`Stripe reported ${eventType}`);
+    error.code = eventType === "payment_intent.requires_action" ? "REQUIRES_ACTION" : "PAYMENT_FAILED";
+    await markRetryable(operation, error);
+  }
+}
+
+async function handleSetupIntentSucceeded(setupIntent) {
+  if (!setupIntent?.id) return;
+  const operation = await findOperationForProviderEvent(
+    setupIntent,
+    setupIntent.metadata,
+  );
+  const bookingId = setupIntent.metadata?.bookingId || operation?.bookingId;
+  if (!bookingId) return;
+  const booking = await StudentBooking.findById(bookingId);
+  if (!booking || ["cancelled", "semi_cancelled"].includes(String(booking.status).toLowerCase())) return;
+  const paymentMethodId =
+    typeof setupIntent.payment_method === "string"
+      ? setupIntent.payment_method
+      : setupIntent.payment_method?.id;
+  const customerId =
+    typeof setupIntent.customer === "string"
+      ? setupIntent.customer
+      : setupIntent.customer?.id;
+  if (!paymentMethodId) return;
+  booking.status = booking.status === "pending" ? "confirmed" : booking.status;
+  if (customerId) booking.stripeCustomerId = customerId;
+  booking.paymentMethod = {
+    ...(booking.paymentMethod || { type: "card" }),
+    paymentMethodId,
+    setupIntentId: setupIntent.id,
+  };
+  for (const slot of booking.slots || []) {
+    if (!slot.paymentStatus) slot.paymentStatus = "pending_payment";
+    if (!slot.payoutStatus) slot.payoutStatus = "not_applicable";
+  }
+  await booking.save();
+  if (operation) {
+    const providerSuccess = await markProviderSuccess(operation, {
+      providerObjectId: setupIntent.id,
+      providerStatus: setupIntent.status,
+      localStatus: "setup_method_saved",
+    });
+    if (providerSuccess) {
+      const local = await markLocalSuccess(providerSuccess, "setup_method_saved");
+      if (local) await markCompleted(local);
+    }
+  }
+}
+
+async function processStripeWebhookEvent(event, eventRecord = null) {
+  if (!event || !event.id || !event.type) {
+    const error = new Error("Invalid Stripe webhook event payload");
+    error.code = "INVALID_WEBHOOK_EVENT";
+    throw error;
+  }
+  console.log("[Stripe Webhook] Processing event:", event.type, event.id);
+
+  await syncFinancialOperationFromWebhook(event);
 
   // Platform payment events (no Connect accountId)
   if (event.type === "transfer.reversed") {
     const reversal = event.data?.object;
-    try {
-      await syncManualRefundFromTransferReversal(reversal, event.account || null);
-    } catch (e) {
-      console.error("transfer.reversed handler:", e?.message || e);
-    }
-    return res.status(200).send("OK");
+    await syncManualRefundFromTransferReversal(reversal, event.account || null);
+    return;
   }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data?.object;
-    if (session?.id) {
-      try {
-        await handleCheckoutSessionCompleted(session.id);
-      } catch (e) {
-        console.error(
-          "[Stripe Webhook] checkout.session.completed handler:",
-          e?.message || e,
-        );
-      }
-    }
-    return res.status(200).send("OK");
+    if (session?.id) await handleCheckoutSessionCompleted(session.id);
+    return;
   }
 
   if (event.type === "payment_intent.succeeded") {
     const pi = event.data?.object;
     if (pi?.id) {
-      try {
-        // Legacy flow: booking-level PaymentIntent
-        const existingLegacy = await StudentBooking.findOne({
-          stripePaymentIntentId: pi.id,
-        }).lean();
-        if (existingLegacy) {
-          return res.status(200).send("OK");
-        }
+      const paymentOperation = await findOperationForProviderEvent(
+        pi,
+        pi.metadata,
+      );
+      // Legacy flow: booking-level PaymentIntent
+      const existingLegacy = await StudentBooking.findOne({
+        stripePaymentIntentId: pi.id,
+      }).lean();
+      if (!existingLegacy) {
         // T-48 per-slot flow: find slot by paymentIntentId, set paid, create transactions (idempotent)
         const booking = await StudentBooking.findOne({
           "slots.paymentIntentId": pi.id,
@@ -706,17 +796,13 @@ router.post("/", async (req, res) => {
             bookingId: pi.metadata.bookingId,
             paymentIntentId: pi.id,
           });
-          return res.status(200).send("OK");
+          if (paymentOperation) {
+            const local = await markLocalSuccess(paymentOperation, "booking_finalized");
+            if (local) await markCompleted(local);
+          }
         }
         if (booking) {
-          const paymentOperation =
-            (await getOperationByProviderObjectId(pi.id)) ||
-            (pi.metadata?.operationId
-              ? await getOperation(pi.metadata.operationId)
-              : null);
-          const transferId = await getTransferIdFromPaymentIntent(pi.id).catch(
-            () => null,
-          );
+          const transferId = await getTransferIdFromPaymentIntent(pi.id);
           const slot = booking.slots.find(
             (s) => s.paymentIntentId && String(s.paymentIntentId) === pi.id,
           );
@@ -743,233 +829,159 @@ router.post("/", async (req, res) => {
               await booking.save();
             }
 
-            await createTransaction({
-              type: "payment",
-              role: "student",
-              direction: "debit",
-              amount: perSlotAmount,
-              currency: "CHF",
-              status: "succeeded",
+            const transactionPayload = {
               bookingId: booking._id,
               slotId: slot._id,
               studentId: booking.studentId?._id ?? booking.studentId,
               stripePaymentIntentId: pi.id,
               financialOperationId: paymentOperation?.operationId,
-              eventType: "T48_PAYMENT_STUDENT_DEBIT",
-              description: "Lesson payment (T-48 3DS completed)",
-              occurredAt,
+            };
+            await createTransaction({
+              type: "payment", role: "student", direction: "debit",
+              amount: perSlotAmount, currency: "CHF", status: "succeeded",
+              ...transactionPayload, eventType: "T48_PAYMENT_STUDENT_DEBIT",
+              description: "Lesson payment (T-48 3DS completed)", occurredAt,
             });
             await createTransaction({
-              type: "payment",
-              role: "platform",
-              direction: "credit",
-              amount: perSlotAmount,
-              currency: "CHF",
-              status: "succeeded",
-              bookingId: booking._id,
-              slotId: slot._id,
-              studentId: booking.studentId?._id ?? booking.studentId,
-              stripePaymentIntentId: pi.id,
-              financialOperationId: paymentOperation?.operationId,
-              eventType: "T48_PAYMENT_PLATFORM_GROSS",
-              description: "Platform gross receipt for lesson (T-48)",
-              occurredAt,
+              type: "payment", role: "platform", direction: "credit",
+              amount: perSlotAmount, currency: "CHF", status: "succeeded",
+              ...transactionPayload, eventType: "T48_PAYMENT_PLATFORM_GROSS",
+              description: "Platform gross receipt for lesson (T-48)", occurredAt,
             });
             if (instructorAmount != null) {
               await createTransaction({
-                type: "payment",
-                role: "instructor",
-                direction: "credit",
-                amount: instructorAmount,
-                currency: "CHF",
-                status: "succeeded",
-                bookingId: booking._id,
-                slotId: slot._id,
+                type: "payment", role: "instructor", direction: "credit",
+                amount: instructorAmount, currency: "CHF", status: "succeeded",
+                ...transactionPayload,
                 instructorId: booking.instructorId?._id ?? booking.instructorId,
-                studentId: booking.studentId?._id ?? booking.studentId,
-                stripePaymentIntentId: pi.id,
-                financialOperationId: paymentOperation?.operationId,
                 eventType: "T48_PAYMENT_INSTRUCTOR_SHARE",
-                description: "Instructor share for lesson (T-48)",
-                occurredAt,
+                description: "Instructor share for lesson (T-48)", occurredAt,
               });
             }
             if (dspCommission != null) {
               await createTransaction({
-                type: "payment",
-                role: "platform",
-                direction: "credit",
-                amount: dspCommission,
-                currency: "CHF",
-                bookingId: booking._id,
-                slotId: slot._id,
-                studentId: booking.studentId?._id ?? booking.studentId,
-                stripePaymentIntentId: pi.id,
-                financialOperationId: paymentOperation?.operationId,
-                eventType: "T48_PAYMENT_COMMISSION",
-                description: "Platform commission for lesson (T-48)",
-                occurredAt,
+                type: "payment", role: "platform", direction: "credit",
+                amount: dspCommission, currency: "CHF", status: "succeeded",
+                ...transactionPayload, eventType: "T48_PAYMENT_COMMISSION",
+                description: "Platform commission for lesson (T-48)", occurredAt,
               });
             }
-            const allPaid =
-              booking.slots.length &&
-              booking.slots.every((s) => s.paymentStatus === "paid");
+            const allPaid = booking.slots.length && booking.slots.every((s) => s.paymentStatus === "paid");
             if (allPaid) {
               await StudentBooking.updateOne(
                 { _id: booking._id },
-                {
-                  $set: {
-                    status: "confirmed",
-                    stripePaymentIntentId: pi.id,
-                    updatedAt: new Date(),
-                  },
-                },
+                { $set: { status: "confirmed", stripePaymentIntentId: pi.id, updatedAt: new Date() } },
               );
             }
-            console.log(
-              "[Stripe Webhook] payment_intent.succeeded: updated slot to paid for booking",
-              booking._id,
-              "slot",
-              slot._id,
-            );
+            console.log("[Stripe Webhook] T48 payment applied", {
+              eventId: event.id, paymentIntentId: pi.id,
+              bookingId: String(booking._id), slotId: String(slot._id),
+            });
             if (paymentOperation) {
               await markLocalSuccess(paymentOperation, "slot_and_transactions_applied");
               await markCompleted(paymentOperation);
             }
           }
         }
-      } catch (e) {
-        console.error("payment_intent.succeeded handler:", e.message);
       }
     }
-    return res.status(200).send("OK");
+    return;
+  }
+
+  if (event.type === "payment_intent.payment_failed" || event.type === "payment_intent.requires_action") {
+    await handlePaymentIntentStatus(event.data?.object, event.type);
+    return;
+  }
+
+  if (event.type === "setup_intent.succeeded") {
+    await handleSetupIntentSucceeded(event.data?.object);
+    return;
   }
 
   if (event.type === "charge.refunded") {
     const charge = event.data?.object;
     const refunds = charge?.refunds?.data || [];
-    console.log(
-      "[Stripe Webhook][Debug charge.refunded]",
-      JSON.stringify(
-        {
-          eventId: event.id,
-          account: event.account || null,
-          chargeId: charge?.id || null,
-          paymentIntent: charge?.payment_intent || null,
-          amount: charge?.amount ?? null,
-          amountRefunded: charge?.amount_refunded ?? null,
-          refundsCount: refunds.length,
-          refundIds: refunds.map((r) => r?.id).filter(Boolean),
-        },
-        null,
-        2,
-      ),
-    );
-    try {
-      for (const refund of refunds) {
-        console.log(
-          "[Stripe Webhook][Debug charge.refunded refund-item]",
-          JSON.stringify(
-            {
-              eventId: event.id,
-              account: event.account || null,
-              refundId: refund?.id || null,
-              refundObjectType: refund?.object || null,
-              refundStatus: refund?.status || null,
-              refundPaymentIntent: refund?.payment_intent || null,
-              refundCharge: refund?.charge || null,
-              refundAmount: refund?.amount ?? null,
-              metadata: refund?.metadata || null,
-            },
-            null,
-            2,
-          ),
-        );
-        await syncManualRefundFromStripe({
-          ...refund,
-          payment_intent: charge?.payment_intent,
-        }, event.account || null);
-      }
-    } catch (e) {
-      console.error("charge.refunded handler:", e?.message || e);
+    for (const refund of refunds) {
+      await syncManualRefundFromStripe(
+        { ...refund, payment_intent: charge?.payment_intent },
+        event.account || null,
+      );
     }
-    return res.status(200).send("OK");
+    return;
   }
 
   if (event.type === "charge.succeeded" && event.account) {
-    const charge = event.data?.object;
-    try {
-      await handleConnectChargeSucceeded(charge, event.account);
-    } catch (e) {
-      console.error("charge.succeeded connect handler:", e?.message || e);
-    }
-    return res.status(200).send("OK");
+    await handleConnectChargeSucceeded(event.data?.object, event.account);
+    return;
   }
 
   if (event.type === "refund.updated" || event.type === "refund.created") {
     const refund = event.data?.object;
-    console.log(
-      `[Stripe Webhook][Debug ${event.type}]`,
-      JSON.stringify(
-        {
-          eventId: event.id,
-          account: event.account || null,
-          refundId: refund?.id || null,
-          refundObjectType: refund?.object || null,
-          status: refund?.status || null,
-          paymentIntent: refund?.payment_intent || null,
-          charge: refund?.charge || null,
-          amount: refund?.amount ?? null,
-          currency: refund?.currency || null,
-          reason: refund?.reason || null,
-          metadata: refund?.metadata || null,
-        },
-        null,
-        2,
-      ),
-    );
-    // Sync only when Stripe marks the refund as succeeded.
-    // `charge.refunded` above still covers successful manual refunds too.
     if (refund?.status === "succeeded") {
-      try {
-        await syncManualRefundFromStripe(refund, event.account || null);
-      } catch (e) {
-        console.error(`${event.type} handler:`, e?.message || e);
-      }
+      await syncManualRefundFromStripe(refund, event.account || null);
     }
-    return res.status(200).send("OK");
+    return;
   }
 
   const accountId = getAccountIdFromEvent(event);
-  if (!accountId) return res.status(200).send("OK");
+  if (!accountId) return { ignored: true, reason: "unsupported_event" };
 
-  try {
-    switch (event.type) {
-      case "account.updated":
-        await handleAccountUpdated(accountId);
-        break;
-      case "account.application.deauthorized":
-        await handleAccountDeauthorized(accountId);
-        break;
-      case "charge.dispute.created":
-        if (accountId) await handleDisputeCreated(accountId);
-        break;
-      case "charge.dispute.closed":
-        if (accountId) await handleDisputeClosed(accountId);
-        break;
-      case "payout.failed":
-        await handlePayoutFailed(accountId);
-        break;
-      case "payout.paid":
-        await handlePayoutPaid(accountId);
-        break;
-      default:
-        break;
-    }
-  } catch (err) {
-    console.error("Stripe webhook handler error:", err);
+  switch (event.type) {
+    case "account.updated":
+      await handleAccountUpdated(accountId);
+      break;
+    case "account.application.deauthorized":
+      await handleAccountDeauthorized(accountId);
+      break;
+    case "charge.dispute.created":
+      await handleDisputeCreated(accountId);
+      break;
+    case "charge.dispute.closed":
+      await handleDisputeClosed(accountId);
+      break;
+    case "payout.failed":
+      await handlePayoutFailed(accountId);
+      break;
+    case "payout.paid":
+      await handlePayoutPaid(accountId);
+      break;
+    default:
+      return { ignored: true, reason: "unsupported_event" };
   }
-  res.status(200).send("OK");
+}
+
+router.post("/", async (req, res) => {
+  if (!WEBHOOK_SECRET) {
+    console.error("STRIPE_WEBHOOK_SECRET is not set");
+    return res.status(500).send("Webhook secret not configured");
+  }
+  const sig = req.headers["stripe-signature"];
+  if (!sig) {
+    return res.status(400).send("Missing stripe-signature");
+  }
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  console.log("[Stripe Webhook] Received event:", event.type, event.id);
+  try {
+    const { duplicate } = await receiveStripeWebhookEvent(event);
+    if (duplicate) {
+      console.log("[Stripe Webhook] Duplicate durable receipt", { eventId: event.id });
+    }
+    return res.status(200).send("OK");
+  } catch (error) {
+    console.error("[Stripe Webhook] Durable receipt failed", {
+      eventId: event.id,
+      code: error?.code || "RECEIPT_FAILED",
+    });
+    return res.status(503).send("Webhook receipt unavailable");
+  }
+
 });
 
+router.processStripeWebhookEvent = processStripeWebhookEvent;
 module.exports = router;
