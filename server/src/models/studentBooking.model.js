@@ -94,12 +94,20 @@ const studentBookingSchema = new mongoose.Schema(
         refundedAt: { type: Date },
         // --- Lesson-end reminder ---
         lessonEndReminderSent: { type: Boolean, default: false },
+        lessonEndReminderClaimedAt: { type: Date },
+        lessonEndReminderClaimedUntil: { type: Date },
+        lessonEndReminderClaimOwner: { type: String },
+        lessonEndReminderAttemptCount: { type: Number, default: 0 },
         // --- T-48 payment follow-up reminders ---
         paymentReminderStartedAt: { type: Date },
         paymentReminderDeadlineAt: { type: Date },
         paymentReminder1SentAt: { type: Date },
         paymentReminder2SentAt: { type: Date },
         paymentReminder3SentAt: { type: Date },
+        paymentReminderClaimedAt: { type: Date },
+        paymentReminderClaimedUntil: { type: Date },
+        paymentReminderClaimOwner: { type: String },
+        paymentReminderAttemptCount: { type: Number, default: 0 },
       },
     ],
     totalAmount: {
@@ -134,6 +142,10 @@ const studentBookingSchema = new mongoose.Schema(
     checkoutAttempt: { type: Number, default: 0 },
     /** Abandoned checkout reminder tracking (student incentive email) */
     abandonedCheckoutReminderSentAt: { type: Date },
+    abandonedCheckoutReminderClaimedAt: { type: Date },
+    abandonedCheckoutReminderClaimedUntil: { type: Date },
+    abandonedCheckoutReminderClaimOwner: { type: String },
+    abandonedCheckoutReminderAttemptCount: { type: Number, default: 0 },
     cancellationDate: { type: Date },
     status: {
       type: String,
@@ -161,5 +173,17 @@ const studentBookingSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+studentBookingSchema.index({ studentId: 1, status: 1 });
+studentBookingSchema.index({ instructorId: 1, status: 1 });
+studentBookingSchema.index({ "slots.paymentStatus": 1 });
+studentBookingSchema.index({ "slots.payoutStatus": 1 });
+studentBookingSchema.index({ "slots.paymentStatus": 1, "slots.payoutEligibleAt": 1 });
+studentBookingSchema.index({ "slots.payoutStatus": 1, "slots.payoutEligibleAt": 1 });
+studentBookingSchema.index({ "slots.paymentIntentId": 1 });
+studentBookingSchema.index({ stripeCustomerId: 1 });
+studentBookingSchema.index({ status: 1, createdAt: 1, stripeCustomerId: 1 });
+studentBookingSchema.index({ "slots.lessonEndReminderSent": 1 });
+studentBookingSchema.index({ "slots.paymentReminderDeadlineAt": 1 });
 
 module.exports = mongoose.model("StudentBooking", studentBookingSchema);

@@ -15,6 +15,7 @@ const {
   markManualReview,
 } = require("../services/financialOperationService");
 const { retrievePayout } = require("../services/stripeService");
+const JOB_CONFIG = require("../config/jobConfig");
 
 async function runInstructorPayoutJob() {
   const now = new Date();
@@ -28,6 +29,7 @@ async function runInstructorPayoutJob() {
     "slots.instructorAmount": { $gt: 0 },
   })
     .populate("instructorId", "stripeAccount commission")
+    .limit(JOB_CONFIG.payoutBatchSize)
     .lean();
 
   let processed = 0;
@@ -247,7 +249,7 @@ async function runInstructorPayoutJob() {
   }
 
   console.log(`[PayoutJob] Done. processed=${processed}, errors=${errors}`);
-  return { processed, errors };
+  return { selected: bookings.length, processed, errors };
 }
 
 module.exports = { runInstructorPayoutJob };

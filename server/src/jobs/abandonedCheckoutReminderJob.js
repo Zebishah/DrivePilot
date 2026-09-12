@@ -1,9 +1,11 @@
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 const StudentBooking = require("../models/studentBooking.model");
 const {
   getPendingCleanupStaleMinutes,
   describeHoldDurationMinutes,
 } = require("../utils/pendingBookingHoldMinutes");
+const JOB_CONFIG = require("../config/jobConfig");
 
 const FRONTEND_BASE = (
   process.env.FRONTEND_URL ||
@@ -87,8 +89,10 @@ function buildReminderEmailHtml({
   `;
 }
 
-async function runAbandonedCheckoutReminderJob() {
+async function runAbandonedCheckoutReminderJob(context = {}) {
   const now = new Date();
+  const leaseOwner = context.leaseOwner || `abandoned-reminder-${crypto.randomUUID()}`;
+  const claimUntil = new Date(now.getTime() + JOB_CONFIG.emailClaimMs);
   const holdStaleMinutes = getPendingCleanupStaleMinutes();
   const minAgeCutoff = new Date(now.getTime() - REMINDER_AFTER_MINUTES * 60 * 1000);
   // Still inside the hold window (same cutoff as pendingBookingCleanupJob uses for release).
@@ -109,14 +113,24 @@ async function runAbandonedCheckoutReminderJob() {
         { stripeCustomerId: null },
         { stripeCustomerId: "" },
       ],
+      $and: [
+        {
+          $or: [
+            { abandonedCheckoutReminderClaimedUntil: { $exists: false } },
+            { abandonedCheckoutReminderClaimedUntil: null },
+            { abandonedCheckoutReminderClaimedUntil: { $lte: now } },
+          ],
+        },
+      ],
     })
       .populate("studentId", "firstName lastName email")
       .populate("instructorId", "firstName lastName")
+      .limit(JOB_CONFIG.reminderBatchSize)
       .lean();
 
     if (!candidates.length) {
       console.log("[AbandonedCheckoutReminderJob] No pending incomplete checkouts eligible for reminder.");
-      return;
+      return { selected: 0, processed: 0, sent: 0, errors: 0 };
     }
 
     const transporter = nodemailer.createTransport({
@@ -137,22 +151,44 @@ async function runAbandonedCheckoutReminderJob() {
     for (const booking of candidates) {
       if (!isAbandonedPending(booking)) continue;
       if (!booking.studentId?.email) continue;
+      const claimed = await StudentBooking.findOneAndUpdate(
+        {
+          _id: booking._id,
+          status: "pending",
+          abandonedCheckoutReminderSentAt: { $exists: false },
+          $or: [
+            { abandonedCheckoutReminderClaimedUntil: { $exists: false } },
+            { abandonedCheckoutReminderClaimedUntil: null },
+            { abandonedCheckoutReminderClaimedUntil: { $lte: now } },
+          ],
+        },
+        {
+          $set: {
+            abandonedCheckoutReminderClaimedAt: now,
+            abandonedCheckoutReminderClaimedUntil: claimUntil,
+            abandonedCheckoutReminderClaimOwner: leaseOwner,
+          },
+          $inc: { abandonedCheckoutReminderAttemptCount: 1 },
+        },
+        { new: true },
+      ).lean();
+      if (!claimed) continue;
       const ageMinutes = Math.floor(
-        (now.getTime() - new Date(booking.createdAt).getTime()) / (60 * 1000),
+        (now.getTime() - new Date(claimed.createdAt).getTime()) / (60 * 1000),
       );
 
       const studentName =
-        `${booking.studentId.firstName || ""} ${booking.studentId.lastName || ""}`.trim() ||
+        `${claimed.studentId.firstName || ""} ${claimed.studentId.lastName || ""}`.trim() ||
         "Student";
       const instructorName =
-        `${booking.instructorId?.firstName || ""} ${booking.instructorId?.lastName || ""}`.trim() ||
+        `${claimed.instructorId?.firstName || ""} ${claimed.instructorId?.lastName || ""}`.trim() ||
         "your instructor";
 
       const resumeUrl = `${FRONTEND_BASE}/student-dashboard/book`;
       const html = buildReminderEmailHtml({
         studentName,
         instructorName,
-        slots: booking.slots || [],
+        slots: claimed.slots || [],
         resumeUrl,
         holdDurationPhrase,
       });
@@ -160,20 +196,27 @@ async function runAbandonedCheckoutReminderJob() {
       try {
         await transporter.sendMail({
           from: `"Driving School Platform" <${process.env.DOMAIN_MAIL}>`,
-          to: booking.studentId.email,
+          to: claimed.studentId.email,
           subject: "Finish your checkout to secure your lesson slot",
           html,
         });
 
         await StudentBooking.updateOne(
-          { _id: booking._id, abandonedCheckoutReminderSentAt: { $exists: false } },
-          { $set: { abandonedCheckoutReminderSentAt: new Date() } },
+          { _id: claimed._id, abandonedCheckoutReminderSentAt: { $exists: false }, abandonedCheckoutReminderClaimOwner: leaseOwner },
+          {
+            $set: { abandonedCheckoutReminderSentAt: new Date() },
+            $unset: { abandonedCheckoutReminderClaimedAt: "", abandonedCheckoutReminderClaimedUntil: "", abandonedCheckoutReminderClaimOwner: "" },
+          },
         );
         sent += 1;
         console.log(
           `[AbandonedCheckoutReminderJob] Sent reminder for booking ${booking._id} (age=${ageMinutes}min) to ${booking.studentId.email}`,
         );
       } catch (err) {
+        await StudentBooking.updateOne(
+          { _id: claimed._id, abandonedCheckoutReminderClaimOwner: leaseOwner },
+          { $unset: { abandonedCheckoutReminderClaimedAt: "", abandonedCheckoutReminderClaimedUntil: "", abandonedCheckoutReminderClaimOwner: "" } },
+        ).catch(() => {});
         errors += 1;
         console.error(
           `[AbandonedCheckoutReminderJob] Failed for booking ${booking._id}:`,
@@ -187,8 +230,10 @@ async function runAbandonedCheckoutReminderJob() {
         `[AbandonedCheckoutReminderJob] Done — sent=${sent} errors=${errors}`,
       );
     }
+    return { selected: candidates.length, processed: sent, sent, errors };
   } catch (err) {
     console.error("[AbandonedCheckoutReminderJob] Job error:", err);
+    throw err;
   }
 }
 

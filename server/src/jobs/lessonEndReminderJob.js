@@ -1,5 +1,7 @@
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 const StudentBooking = require("../models/studentBooking.model");
+const JOB_CONFIG = require("../config/jobConfig");
 
 const FRONTEND_BASE = (
   process.env.FRONTEND_URL ||
@@ -103,8 +105,10 @@ function buildEmailHtml({
   </div>`;
 }
 
-async function runLessonEndReminderJob() {
+async function runLessonEndReminderJob(context = {}) {
   const now = new Date();
+  const leaseOwner = context.leaseOwner || `lesson-end-reminder-${crypto.randomUUID()}`;
+  const claimUntil = new Date(now.getTime() + JOB_CONFIG.emailClaimMs);
   console.log(
     `[LessonEndReminder] Tick at ${now.toISOString()} — checking for lessons that just ended`,
   );
@@ -117,11 +121,12 @@ async function runLessonEndReminderJob() {
     })
       .populate("instructorId", "firstName lastName email")
       .populate("studentId", "firstName lastName")
+      .limit(JOB_CONFIG.reminderBatchSize)
       .lean();
 
     if (!bookings.length) {
       console.log("[LessonEndReminder] No pending reminders found.");
-      return;
+      return { selected: 0, processed: 0, sent: 0, errors: 0 };
     }
 
     // Collect all eligible slots and sort by end date DESC (most recently ended first)
@@ -211,6 +216,33 @@ async function runLessonEndReminderJob() {
         });
 
         try {
+          const claim = await StudentBooking.updateOne(
+            {
+              _id: booking._id,
+              slots: {
+                $elemMatch: {
+                  _id: slot._id,
+                  booked: true,
+                  status: "booked",
+                  lessonEndReminderSent: { $ne: true },
+                  $or: [
+                    { lessonEndReminderClaimedUntil: { $exists: false } },
+                    { lessonEndReminderClaimedUntil: null },
+                    { lessonEndReminderClaimedUntil: { $lte: now } },
+                  ],
+                },
+              },
+            },
+            {
+              $set: {
+                "slots.$.lessonEndReminderClaimedAt": now,
+                "slots.$.lessonEndReminderClaimedUntil": claimUntil,
+                "slots.$.lessonEndReminderClaimOwner": leaseOwner,
+              },
+              $inc: { "slots.$.lessonEndReminderAttemptCount": 1 },
+            },
+          );
+          if (!claim.modifiedCount) continue;
           await transporter.sendMail({
             from: `"Driving School Platform" <${process.env.DOMAIN_MAIL}>`,
             to: instructor.email,
@@ -219,8 +251,11 @@ async function runLessonEndReminderJob() {
           });
 
           await StudentBooking.updateOne(
-            { _id: booking._id, "slots._id": slot._id },
-            { $set: { "slots.$.lessonEndReminderSent": true } },
+            { _id: booking._id, "slots._id": slot._id, "slots.lessonEndReminderClaimOwner": leaseOwner },
+            {
+              $set: { "slots.$.lessonEndReminderSent": true },
+              $unset: { "slots.$.lessonEndReminderClaimedAt": "", "slots.$.lessonEndReminderClaimedUntil": "", "slots.$.lessonEndReminderClaimOwner": "" },
+            },
           );
 
           sent++;
@@ -229,6 +264,10 @@ async function runLessonEndReminderJob() {
           );
           if (sent >= MAX_REMINDERS_PER_RUN) break;
         } catch (emailErr) {
+          await StudentBooking.updateOne(
+            { _id: booking._id, "slots._id": slot._id, "slots.lessonEndReminderClaimOwner": leaseOwner },
+            { $unset: { "slots.$.lessonEndReminderClaimedAt": "", "slots.$.lessonEndReminderClaimedUntil": "", "slots.$.lessonEndReminderClaimOwner": "" } },
+          ).catch(() => {});
           errors++;
           console.error(
             `[LessonEndReminder] Failed to send email for slot ${slot._id}:`,
@@ -244,8 +283,10 @@ async function runLessonEndReminderJob() {
         `[LessonEndReminder] Done — sent: ${sent}, errors: ${errors} (max ${MAX_REMINDERS_PER_RUN} per run to respect email quota)`,
       );
     }
+    return { selected: bookings.length, processed: sent, sent, errors };
   } catch (err) {
     console.error("[LessonEndReminder] Job error:", err);
+    throw err;
   }
 }
 

@@ -29,67 +29,39 @@ const {
   runStripeWebhookProcessorJob,
 } = require("./services/stripeWebhookProcessor");
 const { runFinancialReconciliation } = require("./services/financialReconciliationService");
+const JOB_CONFIG = require("./config/jobConfig");
+const { createJobScheduler } = require("./services/jobScheduler");
+const mongoose = require("mongoose");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
-// ✅ Connect to MongoDB
-connectDB();
+const dbReady = connectDB();
+let schedulerController = null;
+let apiInitialized = false;
+let shuttingDown = false;
+let apolloServer = null;
 
-// CRON_RUNS=yes → start all background jobs on this instance.
-// CRON_RUNS=no  (or unset) → no crons at all. Use this on live while testing locally.
-const CRON_RUNS = ["yes", "true", "1"].includes(
-  String(process.env.CRON_RUNS || "")
-    .trim()
-    .toLowerCase(),
-);
-
-function scheduleJob(name, run, intervalMs) {
-  const tick = () =>
-    run().catch((err) => console.error(`[${name}] Error:`, err));
-  setInterval(tick, intervalMs);
-  tick();
-}
-
-if (CRON_RUNS) {
-  console.log("[Jobs] CRON_RUNS=yes — starting background jobs.");
-  scheduleJob(
-    "StripeWebhookProcessor",
-    runStripeWebhookProcessorJob,
-    Number(process.env.STRIPE_WEBHOOK_PROCESSOR_INTERVAL_MS || 5000),
-  );
-  scheduleJob(
-    "FinancialReconciliation",
-    runFinancialReconciliation,
-    Number(process.env.FINANCIAL_RECONCILIATION_INTERVAL_MS || 15 * 60 * 1000),
-  );
-  // Instructor payout every 3 min; for production use 6 * 60 * 60 * 1000 (6 hours)
-  scheduleJob("PayoutJob", runInstructorPayoutJob, 3 * 60 * 1000);
-  // T-48 charge: 1 min for testing; adjust for production as needed
-  scheduleJob("T48ChargeJob", runT48ChargeJob, 1 * 60 * 1000);
-  // T-48 follow-up reminders: 12h + 18h nudges and 24h auto-cancel
-  scheduleJob(
-    "T48PaymentReminderJob",
-    runT48PaymentReminderJob,
-    10 * 60 * 1000,
-  );
-  // Abandoned Stripe checkout cleanup: run daily
-  scheduleJob(
-    "PendingBookingCleanupJob",
-    runPendingBookingCleanupJob,
-    24 * 60 * 60 * 1000,
-  );
-  // Abandoned checkout reminder: single reminder per pending booking
-  scheduleJob(
-    "AbandonedCheckoutReminderJob",
-    runAbandonedCheckoutReminderJob,
-    10 * 60 * 1000,
-  );
-  // Lesson-end reminder: emails instructor to confirm lesson status
-  scheduleJob("LessonEndReminder", runLessonEndReminderJob, 2 * 60 * 1000);
-} else {
-  console.log(
-    '[Jobs] CRON_RUNS is not "yes" — background jobs are disabled on this instance.',
-  );
+function workerJobs() {
+  return [
+    {
+      name: "StripeWebhookProcessor",
+      run: (context) => runStripeWebhookProcessorJob({ batchSize: context.batchSize }),
+      intervalMs: JOB_CONFIG.webhookProcessorIntervalMs,
+      jobContext: { batchSize: JOB_CONFIG.defaultBatchSize },
+    },
+    {
+      name: "FinancialReconciliation",
+      run: (context) => runFinancialReconciliation({ batchSize: context.batchSize }),
+      intervalMs: JOB_CONFIG.reconciliationIntervalMs,
+      jobContext: { batchSize: JOB_CONFIG.defaultBatchSize },
+    },
+    { name: "PayoutJob", run: runInstructorPayoutJob, intervalMs: JOB_CONFIG.payoutIntervalMs },
+    { name: "T48ChargeJob", run: runT48ChargeJob, intervalMs: JOB_CONFIG.t48IntervalMs },
+    { name: "T48PaymentReminderJob", run: runT48PaymentReminderJob, intervalMs: JOB_CONFIG.t48ReminderIntervalMs },
+    { name: "PendingBookingCleanupJob", run: runPendingBookingCleanupJob, intervalMs: JOB_CONFIG.pendingCleanupIntervalMs },
+    { name: "AbandonedCheckoutReminderJob", run: runAbandonedCheckoutReminderJob, intervalMs: JOB_CONFIG.abandonedReminderIntervalMs },
+    { name: "LessonEndReminder", run: runLessonEndReminderJob, intervalMs: JOB_CONFIG.lessonEndReminderIntervalMs },
+  ];
 }
 
 // ✅ Initialize Express app and HTTP server
@@ -125,11 +97,18 @@ app.use(
 );
 
 // Stripe webhook needs raw body for signature verification (mount before any JSON body parser)
-app.use(
-  "/webhooks/stripe",
-  express.raw({ type: "application/json" }),
-  stripeWebhookRoutes,
-);
+if (JOB_CONFIG.runApi) {
+  app.use(
+    "/webhooks/stripe",
+    express.raw({ type: "application/json" }),
+    stripeWebhookRoutes,
+  );
+  app.get("/health", (_req, res) => res.status(200).json({ ok: true }));
+  app.get("/ready", (_req, res) => {
+    const ready = mongoose.connection.readyState === 1 && apiInitialized;
+    return res.status(ready ? 200 : 503).json({ ready });
+  });
+}
 
 // ✅ Init middleware and routes
 app.use(passport.initialize());
@@ -164,17 +143,20 @@ const sensitiveGraphQLRateLimit = rateLimit({
 app.use("/graphql", express.json({ limit: "1mb" }), sensitiveGraphQLRateLimit);
 
 // ✅ Create GraphQL schema
-const schema = makeExecutableSchema({ typeDefs, resolvers });
+const schema = JOB_CONFIG.runApi
+  ? makeExecutableSchema({ typeDefs, resolvers })
+  : null;
 
 // ✅ Initialize Socket.IO server (real-time chat)
-const io = initSocket(httpServer, allowedOrigins);
-
-// ✅ Store io instance globally for use in resolvers
-setIOInstance(io);
+if (JOB_CONFIG.runApi) {
+  const io = initSocket(httpServer, allowedOrigins);
+  setIOInstance(io);
+}
 
 // ✅ Setup Apollo Server (GraphQL API)
 async function startApolloServer() {
-  const server = new ApolloServer({
+  if (!JOB_CONFIG.runApi) return;
+  apolloServer = new ApolloServer({
     schema,
     context: async ({ req }) => {
       const auth = await authMiddleware(req);
@@ -183,14 +165,53 @@ async function startApolloServer() {
     },
   });
 
-  await server.start();
-  server.applyMiddleware({ app, path: "/graphql" });
+  await apolloServer.start();
+  apolloServer.applyMiddleware({ app, path: "/graphql" });
+  apiInitialized = true;
 
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
-    console.log(`🚀 HTTP: http://localhost:${PORT}${server.graphqlPath}`);
+    console.log(`🚀 HTTP: http://localhost:${PORT}${apolloServer.graphqlPath}`);
     console.log(`📡 Socket.IO active on same server`);
   });
 }
 
-startApolloServer();
+async function startApplication() {
+  await dbReady;
+  console.log(`[Process] mode api=${JOB_CONFIG.runApi} worker=${JOB_CONFIG.runWorker}`);
+  if (JOB_CONFIG.runWorker) {
+    schedulerController = createJobScheduler({
+      jobs: workerJobs(),
+      leaseMs: JOB_CONFIG.leaseMs,
+      heartbeatMs: JOB_CONFIG.heartbeatMs,
+      shutdownTimeoutMs: JOB_CONFIG.shutdownTimeoutMs,
+      maxRetryDelayMs: JOB_CONFIG.maxRetryDelayMs,
+    });
+    schedulerController.start();
+    console.log("[Worker] scheduler initialized");
+  }
+  await startApolloServer();
+}
+
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[Shutdown] ${signal} received`);
+  if (schedulerController) await schedulerController.stop();
+  if (apolloServer) await apolloServer.stop();
+  if (JOB_CONFIG.runApi) {
+    await new Promise((resolve) => {
+      if (!httpServer.listening) return resolve();
+      httpServer.close(() => resolve());
+    });
+  }
+  await mongoose.disconnect();
+}
+
+process.once("SIGTERM", () => shutdown("SIGTERM").then(() => process.exit(0)));
+process.once("SIGINT", () => shutdown("SIGINT").then(() => process.exit(0)));
+
+startApplication().catch((error) => {
+  console.error("[Startup] failed", error);
+  process.exitCode = 1;
+});

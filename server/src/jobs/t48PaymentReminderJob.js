@@ -1,9 +1,11 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 const StudentBooking = require("../models/studentBooking.model");
 const teacherAvailabilityModel = require("../models/teacherAvailability.model");
 const { sendBookingEmail } = require("../utils/SendOtpEmail");
 const { shouldAutoCancelUnpaidSlot, shouldCancelUnpaidPastLesson } = require("../utils/checkoutPaymentGuard");
 const { getSlotEndTimestampUtc } = require("../utils/slotTimezone");
+const JOB_CONFIG = require("../config/jobConfig");
 
 const GRACE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SECOND_REMINDER_AFTER_MS = 12 * 60 * 60 * 1000;
@@ -39,7 +41,7 @@ function resolveT48PaymentWindow(slot) {
   return { startedAt: started, deadlineAt, milestones };
 }
 
-async function sendStudentReminderEmail(bookingId, slotId, reminderNumber) {
+async function sendStudentReminderEmail(bookingId, slotId, reminderNumber, context = {}) {
   const booking = await StudentBooking.findById(bookingId)
     .populate(
       "instructorId",
@@ -67,27 +69,17 @@ async function sendStudentReminderEmail(bookingId, slotId, reminderNumber) {
         "Student",
     },
   ];
-
-  await sendBookingEmail(
-    recipients,
-    {
-      id: booking._id,
-      status: booking.status,
-      slots: [slot],
-      totalAmount: booking.totalAmount,
-      finalAmount: booking.finalAmount,
-      studentAddress: booking.studentId?.homeAddress,
-      instructorAddress: booking.instructorId?.address,
-      student: booking.studentId,
-      instructor: booking.instructorId,
-    },
-    slot.paymentStatus === "requires_action"
-      ? "payment_requires_action"
-      : "payment_failed",
-  );
-
   const now = new Date();
+  const leaseOwner = context.leaseOwner || `t48-reminder-${crypto.randomUUID()}`;
+  const claimUntil = new Date(now.getTime() + JOB_CONFIG.emailClaimMs);
   const setFields = {};
+  const sentField = `slots.$.${
+    reminderNumber === 1
+      ? "paymentReminder1SentAt"
+      : reminderNumber === 2
+        ? "paymentReminder2SentAt"
+        : "paymentReminder3SentAt"
+  }`;
   if (reminderNumber === 1) {
     const milestones = buildReminderMilestones(now);
     setFields["slots.$.paymentReminderStartedAt"] = now;
@@ -101,20 +93,66 @@ async function sendStudentReminderEmail(bookingId, slotId, reminderNumber) {
     return false;
   }
 
-  await StudentBooking.updateOne(
+  const claim = await StudentBooking.updateOne(
     {
       _id: booking._id,
       slots: {
         $elemMatch: {
           _id: slot._id,
           paymentStatus: { $in: ["requires_action", "payment_failed"] },
+          [sentField.replace("slots.$.", "")]: { $exists: false },
+          $or: [
+            { paymentReminderClaimedUntil: { $exists: false } },
+            { paymentReminderClaimedUntil: null },
+            { paymentReminderClaimedUntil: { $lte: now } },
+          ],
         },
       },
     },
-    { $set: setFields },
+    {
+      $set: {
+        "slots.$.paymentReminderClaimedAt": now,
+        "slots.$.paymentReminderClaimedUntil": claimUntil,
+        "slots.$.paymentReminderClaimOwner": leaseOwner,
+      },
+      $inc: { "slots.$.paymentReminderAttemptCount": 1 },
+    },
   );
+  if (!claim.modifiedCount) return false;
 
-  return true;
+  try {
+    await sendBookingEmail(
+      recipients,
+      {
+        id: booking._id,
+        status: booking.status,
+        slots: [slot],
+        totalAmount: booking.totalAmount,
+        finalAmount: booking.finalAmount,
+        studentAddress: booking.studentId?.homeAddress,
+        instructorAddress: booking.instructorId?.address,
+        student: booking.studentId,
+        instructor: booking.instructorId,
+      },
+      slot.paymentStatus === "requires_action"
+        ? "payment_requires_action"
+        : "payment_failed",
+    );
+    await StudentBooking.updateOne(
+      { _id: booking._id, "slots._id": slot._id, "slots.paymentReminderClaimOwner": leaseOwner },
+      {
+        $set: setFields,
+        $unset: { "slots.$.paymentReminderClaimedAt": "", "slots.$.paymentReminderClaimedUntil": "", "slots.$.paymentReminderClaimOwner": "" },
+      },
+    );
+    return true;
+  } catch (error) {
+    await StudentBooking.updateOne(
+      { _id: booking._id, "slots._id": slot._id, "slots.paymentReminderClaimOwner": leaseOwner },
+      { $unset: { "slots.$.paymentReminderClaimedAt": "", "slots.$.paymentReminderClaimedUntil": "", "slots.$.paymentReminderClaimOwner": "" } },
+    ).catch(() => {});
+    throw error;
+  }
 }
 
 async function cancelSlotAndReleaseAvailability(bookingId, slotId) {
@@ -217,7 +255,7 @@ async function cancelSlotAndReleaseAvailability(bookingId, slotId) {
   }
 }
 
-async function runT48PaymentReminderJob() {
+async function runT48PaymentReminderJob(context = {}) {
   const now = new Date();
   console.log(`[T48PaymentReminderJob] Tick at ${now.toISOString()}`);
 
@@ -233,6 +271,7 @@ async function runT48PaymentReminderJob() {
     },
   })
     .select("_id status slots paymentMethod stripeCustomerId")
+    .limit(JOB_CONFIG.reminderBatchSize)
     .lean();
 
   let secondSent = 0;
@@ -258,13 +297,27 @@ async function runT48PaymentReminderJob() {
         const { milestones } = window;
 
         if (!slot.paymentReminder2SentAt && now >= milestones.secondReminderAt) {
-          const sent = await sendStudentReminderEmail(booking._id, slot._id, 2);
-          if (sent) secondSent += 1;
+          try {
+            const sent = await sendStudentReminderEmail(booking._id, slot._id, 2, context);
+            if (sent) secondSent += 1;
+          } catch (error) {
+            console.error("[T48PaymentReminderJob] Reminder 2 failed", {
+              bookingId: String(booking._id), slotId: String(slot._id),
+              code: error?.code || "EMAIL_FAILED",
+            });
+          }
         }
 
         if (!slot.paymentReminder3SentAt && now >= milestones.thirdReminderAt) {
-          const sent = await sendStudentReminderEmail(booking._id, slot._id, 3);
-          if (sent) thirdSent += 1;
+          try {
+            const sent = await sendStudentReminderEmail(booking._id, slot._id, 3, context);
+            if (sent) thirdSent += 1;
+          } catch (error) {
+            console.error("[T48PaymentReminderJob] Reminder 3 failed", {
+              bookingId: String(booking._id), slotId: String(slot._id),
+              code: error?.code || "EMAIL_FAILED",
+            });
+          }
         }
       }
 
@@ -287,7 +340,7 @@ async function runT48PaymentReminderJob() {
     `[T48PaymentReminderJob] Done — reminder2=${secondSent}, reminder3=${thirdSent}, autoCancelled=${cancelled}`,
   );
 
-  return { secondSent, thirdSent, cancelled };
+  return { selected: bookings.length, processed: secondSent + thirdSent + cancelled, secondSent, thirdSent, cancelled };
 }
 
 module.exports = {

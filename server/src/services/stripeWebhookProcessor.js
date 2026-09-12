@@ -8,8 +8,6 @@ const {
 } = require("./stripeWebhookEventService");
 
 let eventHandler = null;
-let running = false;
-
 function setStripeWebhookEventHandler(handler) {
   eventHandler = handler;
 }
@@ -55,27 +53,21 @@ async function processStripeWebhookEventRecord(record, owner = executionId()) {
 }
 
 async function runStripeWebhookProcessorJob({ batchSize } = {}) {
-  if (running) return { skipped: true, reason: "overlap" };
-  running = true;
   const counters = { claimed: 0, processed: 0, retryable: 0, dead: 0, ignored: 0, skipped: 0 };
-  try {
-    const records = await listEligibleStripeWebhookEvents(batchSize);
-    for (const record of records) {
-      const result = await processStripeWebhookEventRecord(record);
-      if (result.status === "SKIPPED") counters.skipped += 1;
-      else {
-        counters.claimed += 1;
-        if (result.status === "PROCESSED") counters.processed += 1;
-        if (result.status === "RETRYABLE") counters.retryable += 1;
-        if (result.status === "DEAD") counters.dead += 1;
-        if (result.status === "IGNORED") counters.ignored += 1;
-      }
+  const records = await listEligibleStripeWebhookEvents(batchSize);
+  for (const record of records) {
+    const result = await processStripeWebhookEventRecord(record);
+    if (result.status === "SKIPPED") counters.skipped += 1;
+    else {
+      counters.claimed += 1;
+      if (result.status === "PROCESSED") counters.processed += 1;
+      if (result.status === "RETRYABLE") counters.retryable += 1;
+      if (result.status === "DEAD") counters.dead += 1;
+      if (result.status === "IGNORED") counters.ignored += 1;
     }
-    console.log("[StripeWebhookProcessor] completed", counters);
-    return counters;
-  } finally {
-    running = false;
   }
+  console.log("[StripeWebhookProcessor] completed", { selected: records.length, ...counters });
+  return { selected: records.length, ...counters };
 }
 
 module.exports = {

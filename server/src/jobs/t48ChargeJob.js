@@ -19,6 +19,7 @@ const {
   markCompleted,
   markRetryable,
 } = require("../services/financialOperationService");
+const JOB_CONFIG = require("../config/jobConfig");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -49,7 +50,7 @@ function buildReminderStartAndDeadline(now = new Date()) {
  * attempt to charge using the saved payment method on the booking.
  * Uses idempotency keys, conditional updates, and retry logic to avoid double charge and races.
  */
-async function runT48ChargeJob() {
+async function runT48ChargeJob(context = {}) {
   const now = new Date();
   const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
@@ -64,13 +65,14 @@ async function runT48ChargeJob() {
   })
     .populate("instructorId", "stripeAccount firstName lastName commission")
     .populate("studentId", "_id")
+    .limit(JOB_CONFIG.t48BatchSize)
     .lean();
 
   if (!bookings.length) {
     console.log(
       "[T48ChargeJob] No bookings with pending_payment slots and saved payment method.",
     );
-    return { processed: 0, requiresAction: 0, failed: 0 };
+    return { selected: 0, processed: 0, requiresAction: 0, failed: 0 };
   }
 
   console.log(
@@ -240,7 +242,7 @@ async function runT48ChargeJob() {
           if (r.modifiedCount) {
             await markLocalSuccess(paymentOperation, "requires_action");
             requiresAction += 1;
-            await sendStudentReminderEmail(booking._id, slot._id, 1);
+            await sendStudentReminderEmail(booking._id, slot._id, 1, context);
           }
           continue;
         }
@@ -265,7 +267,7 @@ async function runT48ChargeJob() {
               `[T48ChargeJob] Slot ${slot._id}: payment status "${paymentResult.status}" — marked payment_failed.`,
             );
             failed += 1;
-            await sendStudentReminderEmail(booking._id, slot._id, 1);
+            await sendStudentReminderEmail(booking._id, slot._id, 1, context);
           }
           await markRetryable(
             paymentOperation,
@@ -505,7 +507,7 @@ async function runT48ChargeJob() {
     `[T48ChargeJob] Done. charged=${processed}, requires_action=${requiresAction}, failed=${failed}`,
   );
 
-  return { processed, requiresAction, failed };
+  return { selected: bookings.length, processed, requiresAction, failed };
 }
 
 module.exports = { runT48ChargeJob };

@@ -21,7 +21,6 @@ const {
 const { dispatchStripeWebhookEvent } = require("./stripeWebhookProcessor");
 
 const BATCH_SIZE = Number(process.env.FINANCIAL_RECONCILIATION_BATCH_SIZE || 25);
-let running = false;
 
 function bookingHasSlot(booking, slotId) {
   return (booking?.slots || []).find((slot) => String(slot._id) === String(slotId));
@@ -121,38 +120,32 @@ async function reconcileOperation(operation, owner) {
 }
 
 async function runFinancialReconciliation({ batchSize = BATCH_SIZE } = {}) {
-  if (running) return { skipped: true, reason: "overlap" };
-  running = true;
   const counters = { scanned: 0, repaired: 0, retryable: 0, manualReview: 0 };
-  try {
-    const operations = await FinancialOperation.find({
-      operationType: { $in: ["DIRECT_PAYMENT", "T48_PAYMENT", "CHECKOUT_SESSION", "REFUND", "TRANSFER_REVERSAL", "PAYOUT"] },
-      status: { $in: ["PENDING", "PROCESSING", "VERIFYING_PROVIDER", "PROVIDER_SUCCEEDED", "RETRYABLE"] },
-      providerObjectId: { $type: "string" },
-    }).sort({ updatedAt: 1 }).limit(Math.max(1, Math.min(100, Number(batchSize) || BATCH_SIZE)));
-    for (const operation of operations) {
-      counters.scanned += 1;
-      const owner = executionId("reconcile");
-      const claimed = await claimOperationForReconciliation(operation, owner);
-      if (!claimed) continue;
-      try {
-        await reconcileOperation(claimed, owner);
-        counters.repaired += 1;
-      } catch (error) {
-        if (["PAYOUT_MAPPING_AMBIGUOUS", "REVERSAL_MAPPING_AMBIGUOUS", "PAYOUT_FAILED"].includes(error?.code)) {
-          await markManualReview(claimed, error, "reconciliation_manual_review");
-          counters.manualReview += 1;
-        } else {
-          await markRetryable(claimed, error);
-          counters.retryable += 1;
-        }
+  const operations = await FinancialOperation.find({
+    operationType: { $in: ["DIRECT_PAYMENT", "T48_PAYMENT", "CHECKOUT_SESSION", "REFUND", "TRANSFER_REVERSAL", "PAYOUT"] },
+    status: { $in: ["PENDING", "PROCESSING", "VERIFYING_PROVIDER", "PROVIDER_SUCCEEDED", "RETRYABLE"] },
+    providerObjectId: { $type: "string" },
+  }).sort({ updatedAt: 1 }).limit(Math.max(1, Math.min(100, Number(batchSize) || BATCH_SIZE)));
+  for (const operation of operations) {
+    counters.scanned += 1;
+    const owner = executionId("reconcile");
+    const claimed = await claimOperationForReconciliation(operation, owner);
+    if (!claimed) continue;
+    try {
+      await reconcileOperation(claimed, owner);
+      counters.repaired += 1;
+    } catch (error) {
+      if (["PAYOUT_MAPPING_AMBIGUOUS", "REVERSAL_MAPPING_AMBIGUOUS", "PAYOUT_FAILED"].includes(error?.code)) {
+        await markManualReview(claimed, error, "reconciliation_manual_review");
+        counters.manualReview += 1;
+      } else {
+        await markRetryable(claimed, error);
+        counters.retryable += 1;
       }
     }
-    console.log("[FinancialReconciliation] completed", counters);
-    return counters;
-  } finally {
-    running = false;
   }
+  console.log("[FinancialReconciliation] completed", { selected: operations.length, ...counters });
+  return { selected: operations.length, ...counters };
 }
 
 module.exports = { runFinancialReconciliation, reconcileOperation };
