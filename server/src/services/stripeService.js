@@ -369,6 +369,7 @@ async function createTransferToInstructor(opts) {
     currency = DEFAULT_CURRENCY,
     destinationAccountId,
     metadata = {},
+    idempotencyKey,
   } = opts;
 
   const transfer = await stripe.transfers.create({
@@ -376,7 +377,7 @@ async function createTransferToInstructor(opts) {
     currency: currency.toLowerCase(),
     destination: destinationAccountId,
     metadata: { ...metadata },
-  });
+  }, idempotencyKey ? { idempotencyKey: String(idempotencyKey).slice(0, 255) } : undefined);
   return { transferId: transfer.id };
 }
 
@@ -398,6 +399,7 @@ async function createManualPayoutForInstructor(opts) {
     amountCentimes,
     currency = DEFAULT_CURRENCY,
     metadata = {},
+    idempotencyKey,
   } = opts;
 
   const payout = await stripe.payouts.create(
@@ -408,6 +410,9 @@ async function createManualPayoutForInstructor(opts) {
     },
     {
       stripeAccount: accountId,
+      ...(idempotencyKey
+        ? { idempotencyKey: String(idempotencyKey).slice(0, 255) }
+        : {}),
     },
   );
 
@@ -420,12 +425,17 @@ async function createManualPayoutForInstructor(opts) {
  * - If amountCentimes omitted, full refund.
  */
 async function createRefund(opts) {
-  const { paymentIntentId, amountCentimes, reason } = opts;
+  const { paymentIntentId, amountCentimes, reason, idempotencyKey } = opts;
   const refundParams = { payment_intent: paymentIntentId };
   if (amountCentimes != null) refundParams.amount = Math.round(amountCentimes);
   if (reason) refundParams.reason = reason;
 
-  const refund = await stripe.refunds.create(refundParams);
+  const refund = await stripe.refunds.create(
+    refundParams,
+    idempotencyKey
+      ? { idempotencyKey: String(idempotencyKey).slice(0, 255) }
+      : undefined,
+  );
   return { refundId: refund.id };
 }
 
@@ -493,11 +503,17 @@ async function getChargeIdFromPaymentIntent(paymentIntentId) {
  * @returns {Promise<{ reversalId: string }>}
  */
 async function createTransferReversal(opts) {
-  const { transferId, amountCentimes, metadata = {} } = opts;
-  const reversal = await stripe.transfers.createReversal(transferId, {
-    amount: Math.round(amountCentimes),
-    metadata: { ...metadata },
-  });
+  const { transferId, amountCentimes, metadata = {}, idempotencyKey } = opts;
+  const reversal = await stripe.transfers.createReversal(
+    transferId,
+    {
+      amount: Math.round(amountCentimes),
+      metadata: { ...metadata },
+    },
+    idempotencyKey
+      ? { idempotencyKey: String(idempotencyKey).slice(0, 255) }
+      : undefined,
+  );
   return { reversalId: reversal.id };
 }
 
@@ -506,6 +522,26 @@ async function createTransferReversal(opts) {
  */
 async function retrievePaymentIntent(paymentIntentId) {
   return stripe.paymentIntents.retrieve(paymentIntentId);
+}
+
+async function retrieveRefund(refundId) {
+  return stripe.refunds.retrieve(refundId);
+}
+
+async function retrieveTransfer(transferId) {
+  return stripe.transfers.retrieve(transferId);
+}
+
+async function retrievePayout(payoutId, accountId) {
+  return stripe.payouts.retrieve(payoutId, { stripeAccount: accountId });
+}
+
+async function retrieveTransferReversal(transferId, reversalId) {
+  if (reversalId) {
+    return stripe.transfers.retrieveReversal(transferId, reversalId);
+  }
+  const reversals = await stripe.transfers.listReversals(transferId, { limit: 100 });
+  return reversals.data?.find((item) => item.metadata?.operationId) || null;
 }
 
 /**
@@ -540,6 +576,7 @@ async function confirmPaymentIntent(paymentIntentId, returnUrl) {
  *   mode?: "payment" | "setup",
  *   customerEmail?: string,
  *   customerId?: string,  // When set for setup mode, use this Stripe Customer (session.customer will be set).
+ *   idempotencyKey?: string,
  * }} opts
  * @returns {Promise<{ url: string, sessionId: string }>}
  */
@@ -556,6 +593,7 @@ async function createCheckoutSessionForBooking(opts) {
     mode = "payment",
     customerEmail,
     customerId,
+    idempotencyKey,
   } = opts;
 
   const base = FRONTEND_BASE.replace(/\/$/, "");
@@ -620,7 +658,12 @@ async function createCheckoutSessionForBooking(opts) {
     };
   }
 
-  const session = await stripe.checkout.sessions.create(sessionParams);
+  const session = await stripe.checkout.sessions.create(
+    sessionParams,
+    idempotencyKey
+      ? { idempotencyKey: String(idempotencyKey).slice(0, 255) }
+      : undefined,
+  );
 
   return { url: session.url, sessionId: session.id };
 }
@@ -686,6 +729,10 @@ module.exports = {
   getChargeIdFromPaymentIntent,
   createTransferReversal,
   retrievePaymentIntent,
+  retrieveRefund,
+  retrieveTransfer,
+  retrievePayout,
+  retrieveTransferReversal,
   confirmPaymentIntent,
   DEFAULT_CURRENCY,
   CENTIMES_PER_UNIT,

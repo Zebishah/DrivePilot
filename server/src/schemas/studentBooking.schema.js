@@ -20,6 +20,7 @@ const paymentMethodSchema = z.object({
 });
 
 const studentBookingSchema = z.object({
+  operationId: z.string().min(1).max(128).optional(),
   studentId: z.string().refine(isValidObjectId, {
     message: "Invalid student ID format",
   }),

@@ -16,6 +16,10 @@ const { Instructor, Admin } = require("../models/User");
 const StudentBooking = require("../models/studentBooking.model");
 const Transaction = require("../models/transaction.model");
 const { createTransaction } = require("../services/transactionService");
+const {
+  getOperationByProviderObjectId,
+  markProviderSuccess,
+} = require("../services/financialOperationService");
 const { getCommissionSplit } = require("../services/stripeService");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
 const {
@@ -27,6 +31,18 @@ const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const processedEvents = new Set();
 const MAX_PROCESSED_SIZE = 10000;
 const CENTIMES_PER_UNIT = 100;
+
+async function syncFinancialOperationFromWebhook(event) {
+  const providerObjectId = event.data?.object?.id;
+  if (!providerObjectId) return null;
+  const operation = await getOperationByProviderObjectId(providerObjectId);
+  if (!operation || operation.status === "COMPLETED") return operation;
+  return markProviderSuccess(operation, {
+    providerObjectId,
+    providerStatus: event.data?.object?.status || event.type,
+    localStatus: "webhook_received",
+  });
+}
 
 function getAccountIdFromEvent(event) {
   if (event.account) return event.account;
@@ -625,6 +641,9 @@ router.post("/", async (req, res) => {
     processedEvents.clear();
   }
   processedEvents.add(event.id);
+  await syncFinancialOperationFromWebhook(event).catch((error) => {
+    console.error("[Stripe Webhook] Financial operation sync failed:", error.message);
+  });
 
   // Platform payment events (no Connect accountId)
   if (event.type === "transfer.reversed") {

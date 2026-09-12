@@ -11,6 +11,21 @@ const {
   CENTIMES_PER_UNIT,
 } = require("../../services/stripeService");
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
+const {
+  getOrCreateOperation,
+  claimOperation,
+  markAttempt,
+  markProviderSuccess,
+  markLocalSuccess,
+  markCompleted,
+  markRetryable,
+  markManualReview,
+  getLatestOperation,
+} = require("../../services/financialOperationService");
+const {
+  retrieveRefund,
+  retrieveTransferReversal,
+} = require("../../services/stripeService");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -156,6 +171,12 @@ const refundRequestResolver = {
       const paymentIntentId =
         booking.stripePaymentIntentId || slot.paymentIntentId;
       if (!paymentIntentId || slot.chargeAmount == null) {
+        await RefundRequest.findByIdAndUpdate(id, {
+          status: "rejected",
+          processedAt: new Date(),
+          processedBy: user.id,
+          rejectionReason: "Payment information missing for refund.",
+        });
         throw new UserInputError("Payment information missing for refund.");
       }
 
@@ -221,12 +242,31 @@ const refundRequestResolver = {
         throw new ForbiddenError("Not authorized");
       }
 
-      const refundRequest = await RefundRequest.findById(id);
-      if (!refundRequest) throw new UserInputError("Refund request not found");
-      if (refundRequest.status !== "pending") {
-        throw new UserInputError(
-          `Refund request is already ${refundRequest.status}.`,
-        );
+      let refundRequest = await RefundRequest.findOneAndUpdate(
+        { _id: id, status: "pending" },
+        { $set: { status: "processing" } },
+        { new: true },
+      );
+      if (!refundRequest) {
+        const existingRequest = await RefundRequest.findById(id);
+        if (!existingRequest) throw new UserInputError("Refund request not found");
+        if (existingRequest.status === "processing") {
+          const existingOperation = await getLatestOperation({
+            aggregateType: "REFUND_REQUEST",
+            aggregateId: String(id),
+            operationType: "REFUND",
+          });
+          const leaseActive =
+            existingOperation?.status === "PROCESSING" &&
+            existingOperation.leaseExpiresAt &&
+            new Date(existingOperation.leaseExpiresAt) > new Date();
+          if (!leaseActive) refundRequest = existingRequest;
+          else throw new UserInputError("Refund request is already processing.");
+        } else {
+          throw new UserInputError(
+            `Refund request is already ${existingRequest.status}.`,
+          );
+        }
       }
 
       const booking = await StudentBooking.findById(refundRequest.bookingId)
@@ -305,6 +345,30 @@ const refundRequestResolver = {
 
       let refundId;
       let transferId = null;
+      let reversalId = null;
+      let reversalProviderSucceeded = false;
+      const refundOperation = await getOrCreateOperation({
+        operationType: "REFUND",
+        aggregateType: "REFUND_REQUEST",
+        aggregateId: String(refundRequest._id),
+        bookingId: booking._id,
+        slotId: refundRequest.slotId,
+        studentId: booking.studentId._id,
+        instructorId: booking.instructorId._id,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        requestedAmount: slot.chargeAmount,
+        idempotencyKey: `refund-${String(refundRequest._id)}`,
+        metadata: {
+          bookingId: String(booking._id),
+          slotId: String(refundRequest.slotId),
+        },
+      });
+      if (refundOperation.status === "FAILED_MANUAL_REVIEW") {
+        throw new UserInputError(
+          "This refund requires manual review before it can be retried.",
+        );
+      }
+      let reversalOperation = null;
       try {
         transferId = await getTransferIdFromPaymentIntent(
           paymentIntentId,
@@ -317,33 +381,105 @@ const refundRequestResolver = {
           const instructorShareCentimes = Math.round(
             Number(slot.instructorAmount) * CENTIMES_PER_UNIT,
           );
-          await createTransferReversal({
-            transferId,
-            amountCentimes: instructorShareCentimes,
+          reversalOperation = await getOrCreateOperation({
+            operationType: "TRANSFER_REVERSAL",
+            aggregateType: "REFUND_REQUEST",
+            aggregateId: String(refundRequest._id),
+            bookingId: booking._id,
+            slotId: refundRequest.slotId,
+            instructorId: booking.instructorId._id,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            requestedAmount: slot.instructorAmount,
+            idempotencyKey: `reversal-${String(refundRequest._id)}`,
             metadata: {
               bookingId: String(booking._id),
               slotId: String(refundRequest.slotId),
-              reason: "refund_approved_by_admin",
             },
           });
+          reversalId = reversalOperation.providerObjectId;
+          if (reversalId) {
+            const existingReversal = await retrieveTransferReversal(
+              transferId,
+              reversalId,
+            );
+            reversalId = existingReversal?.id || reversalId;
+            reversalProviderSucceeded = true;
+          } else {
+            const claimedReversal = await claimOperation(reversalOperation);
+            if (!claimedReversal) throw new Error("Transfer reversal is already processing");
+            await markAttempt(claimedReversal, claimedReversal.leaseOwner);
+            const reversal = await createTransferReversal({
+              transferId,
+              amountCentimes: instructorShareCentimes,
+              metadata: {
+                bookingId: String(booking._id),
+                slotId: String(refundRequest.slotId),
+                operationId: reversalOperation.operationId,
+                reason: "refund_approved_by_admin",
+              },
+              idempotencyKey: reversalOperation.idempotencyKey,
+            });
+            reversalId = reversal.reversalId;
+            await markProviderSuccess(reversalOperation, {
+              providerObjectId: reversalId,
+              providerStatus: "succeeded",
+              localStatus: "provider_succeeded",
+            });
+            reversalProviderSucceeded = true;
+          }
         }
 
-        const result = await createRefund({
-          paymentIntentId,
-          amountCentimes,
-          reason: "requested_by_customer",
-        });
-        refundId = result.refundId;
+        if (refundOperation.providerObjectId) {
+          const existingRefund = await retrieveRefund(
+            refundOperation.providerObjectId,
+          );
+          refundId = existingRefund.id;
+          if (refundOperation.providerStatus === "succeeded") {
+            await markProviderSuccess(refundOperation, {
+              providerObjectId: refundId,
+              providerStatus: existingRefund.status,
+              localStatus: "provider_succeeded",
+            });
+          }
+        } else {
+          const claimedRefund = await claimOperation(refundOperation);
+          if (!claimedRefund) throw new Error("Refund is already processing");
+          await markAttempt(claimedRefund, claimedRefund.leaseOwner);
+          const result = await createRefund({
+            paymentIntentId,
+            amountCentimes,
+            reason: "requested_by_customer",
+            idempotencyKey: refundOperation.idempotencyKey,
+          });
+          refundId = result.refundId;
+          await markProviderSuccess(refundOperation, {
+            providerObjectId: refundId,
+            providerStatus: "succeeded",
+            localStatus: "provider_succeeded",
+          });
+        }
       } catch (stripeErr) {
-        await RefundRequest.findByIdAndUpdate(id, {
-          status: "rejected",
-          processedAt: new Date(),
-          processedBy: user.id,
-          rejectionReason: `Stripe error: ${stripeErr.message || "Refund failed"}`,
-        });
+        const concurrentOperation = String(stripeErr?.message || "").includes(
+          "already processing",
+        );
+        if (concurrentOperation) {
+          throw new UserInputError("Refund is already being processed.");
+        }
+        if (reversalProviderSucceeded) {
+          await markManualReview(
+            refundOperation,
+            stripeErr,
+            "transfer_reversal_succeeded_refund_failed",
+          );
+        } else {
+          await markRetryable(refundOperation, stripeErr);
+        }
+        if (reversalOperation && !reversalProviderSucceeded) {
+          await markRetryable(reversalOperation, stripeErr);
+        }
         throw new UserInputError(
           stripeErr.message ||
-            "Refund could not be processed. Request marked as rejected.",
+            "Refund could not be completed. It remains available for recovery.",
         );
       }
 
@@ -367,6 +503,8 @@ const refundRequestResolver = {
         studentId: booking.studentId._id,
         stripePaymentIntentId: paymentIntentId,
         stripeRefundId: refundId,
+        financialOperationId: refundOperation.operationId,
+        eventType: "REFUND_STUDENT_CREDIT",
         description: "Refund for cancelled lesson (approved by admin)",
         occurredAt,
       });
@@ -387,6 +525,9 @@ const refundRequestResolver = {
           slotId: refundRequest.slotId,
           instructorId: booking.instructorId._id,
           stripePaymentIntentId: paymentIntentId,
+          stripeTransferReversalId: reversalId,
+          financialOperationId: reversalOperation?.operationId,
+          eventType: "TRANSFER_REVERSAL_INSTRUCTOR_DEBIT",
           description: "Reversal of instructor share due to refund",
           occurredAt,
         });
@@ -405,6 +546,8 @@ const refundRequestResolver = {
           instructorId: booking.instructorId._id,
           stripePaymentIntentId: paymentIntentId,
           stripeRefundId: refundId,
+          financialOperationId: refundOperation.operationId,
+          eventType: "REFUND_PLATFORM_COMMISSION_REVERSAL",
           description: "Platform commission reversed due to refund",
           occurredAt,
         });
@@ -433,6 +576,12 @@ const refundRequestResolver = {
       refundRequest.processedBy = user.id;
       refundRequest.stripeRefundId = refundId;
       await refundRequest.save();
+      await markLocalSuccess(refundOperation, "refund_request_and_booking_applied");
+      await markCompleted(refundOperation);
+      if (reversalOperation) {
+        await markLocalSuccess(reversalOperation, "booking_and_transaction_applied");
+        await markCompleted(reversalOperation);
+      }
       try {
         await notifyBookingParties(
           booking,

@@ -283,6 +283,7 @@ const BookingDetails: React.FC = () => {
         throw new Error("Invalid instructor information");
       }
       const mutationInput = {
+        operationId: crypto.randomUUID(),
         instructorId: resolvedInstructorId,
         slots: selectedAvailability.map((slot: { date: string; startTime: string; endTime: string }) => ({
           date: slot.date,

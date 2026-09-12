@@ -10,6 +10,15 @@ const { getCommissionSplit } = require("../services/stripeService");
 const { getSlotStartTimestampUtc } = require("../utils/slotTimezone");
 const { sendStudentReminderEmail } = require("./t48PaymentReminderJob");
 const { shouldSkipT48Charge } = require("../utils/checkoutPaymentGuard");
+const {
+  getOrCreateOperation,
+  claimOperation,
+  markAttempt,
+  markProviderSuccess,
+  markLocalSuccess,
+  markCompleted,
+  markRetryable,
+} = require("../services/financialOperationService");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -132,6 +141,7 @@ async function runT48ChargeJob() {
         `[T48ChargeJob] Charging slot ${slot._id} for booking ${booking._id} — lesson ${slot.date} ${slot.startTime}, amount CHF ${perSlotAmount.toFixed(2)}`,
       );
 
+      let paymentOperation = null;
       try {
         const { dspCommission, instructorAmount } = getCommissionSplit(
           perSlotAmount,
@@ -145,25 +155,68 @@ async function runT48ChargeJob() {
         );
 
         const idempotencyKey = `t48-${String(booking._id)}-${String(slot._id)}`;
-
-        const paymentResult = await createPaymentIntentForBooking({
-          amountCentimes,
-          paymentMethodId: booking.paymentMethod.paymentMethodId,
-          customerId: booking.stripeCustomerId || undefined,
+        paymentOperation = await getOrCreateOperation({
+          operationType: "T48_PAYMENT",
+          aggregateType: "BOOKING_SLOT",
+          aggregateId: `${String(booking._id)}:${String(slot._id)}`,
+          bookingId: booking._id,
+          slotId: slot._id,
+          studentId: booking.studentId,
+          instructorId: instructor._id,
+          currency: "CHF",
+          requestedAmount: perSlotAmount,
+          idempotencyKey,
           metadata: {
             bookingId: String(booking._id),
             slotId: String(slot._id),
-            studentId: String(booking.studentId),
-            instructorId: String(instructor._id),
           },
-          confirm: true,
-          offSession: true,
-          transferData: {
-            destinationAccountId: instructor.stripeAccount.accountId,
-            amountCentimes: instructorShareCentimes,
-          },
-          idempotencyKey,
         });
+
+        let paymentResult;
+        if (paymentOperation.providerObjectId) {
+          const existingPi = await retrievePaymentIntent(
+            paymentOperation.providerObjectId,
+          );
+          paymentResult = {
+            paymentIntentId: existingPi.id,
+            status: existingPi.status,
+            clientSecret: existingPi.client_secret,
+            requiresAction: existingPi.status === "requires_action",
+          };
+        } else {
+          const claimedOperation = await claimOperation(paymentOperation);
+          if (!claimedOperation) {
+            throw new Error("T-48 payment operation is already processing");
+          }
+          await markAttempt(claimedOperation, claimedOperation.leaseOwner);
+          paymentOperation = claimedOperation;
+          paymentResult = await createPaymentIntentForBooking({
+            amountCentimes,
+            paymentMethodId: booking.paymentMethod.paymentMethodId,
+            customerId: booking.stripeCustomerId || undefined,
+            metadata: {
+              bookingId: String(booking._id),
+              slotId: String(slot._id),
+              studentId: String(booking.studentId),
+              instructorId: String(instructor._id),
+              operationId: paymentOperation.operationId,
+            },
+            confirm: true,
+            offSession: true,
+            transferData: {
+              destinationAccountId: instructor.stripeAccount.accountId,
+              amountCentimes: instructorShareCentimes,
+            },
+            idempotencyKey: paymentOperation.idempotencyKey,
+          });
+          await markProviderSuccess(paymentOperation, {
+            providerObjectId: paymentResult.paymentIntentId,
+            providerStatus: paymentResult.status,
+            localStatus: paymentResult.requiresAction
+              ? "requires_action"
+              : "provider_succeeded",
+          });
+        }
 
         if (paymentResult.requiresAction) {
           const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
@@ -185,6 +238,7 @@ async function runT48ChargeJob() {
             },
           );
           if (r.modifiedCount) {
+            await markLocalSuccess(paymentOperation, "requires_action");
             requiresAction += 1;
             await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
@@ -213,6 +267,10 @@ async function runT48ChargeJob() {
             failed += 1;
             await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
+          await markRetryable(
+            paymentOperation,
+            new Error(`Stripe returned ${paymentResult.status}`),
+          );
           continue;
         }
 
@@ -257,6 +315,8 @@ async function runT48ChargeJob() {
           slotId: slot._id,
           studentId: booking.studentId,
           stripePaymentIntentId: paymentResult.paymentIntentId,
+          financialOperationId: paymentOperation.operationId,
+          eventType: "T48_PAYMENT_STUDENT_DEBIT",
           description: "Lesson payment (T-48 charge)",
           occurredAt,
         });
@@ -273,6 +333,8 @@ async function runT48ChargeJob() {
           studentId: booking.studentId,
           instructorId: instructor._id,
           stripePaymentIntentId: paymentResult.paymentIntentId,
+          financialOperationId: paymentOperation.operationId,
+          eventType: "T48_PAYMENT_PLATFORM_GROSS",
           description: "Platform gross receipt for lesson (T-48)",
           occurredAt,
         });
@@ -290,6 +352,8 @@ async function runT48ChargeJob() {
             instructorId: instructor._id,
             studentId: booking.studentId,
             stripePaymentIntentId: paymentResult.paymentIntentId,
+            financialOperationId: paymentOperation.operationId,
+            eventType: "T48_PAYMENT_INSTRUCTOR_SHARE",
             description: "Instructor share for lesson (T-48)",
             occurredAt,
           });
@@ -306,6 +370,8 @@ async function runT48ChargeJob() {
             bookingId: booking._id,
             slotId: slot._id,
             studentId: booking.studentId,
+            financialOperationId: paymentOperation.operationId,
+            eventType: "T48_PAYMENT_COMMISSION",
             description: "Platform commission for lesson (T-48)",
             occurredAt,
           });
@@ -330,11 +396,14 @@ async function runT48ChargeJob() {
             },
           );
         }
+        await markLocalSuccess(paymentOperation, "slot_and_transactions_applied");
+        await markCompleted(paymentOperation);
       } catch (err) {
         console.error(
           `[T48ChargeJob] Failed for booking ${booking._id} slot ${slot._id}:`,
           err.message,
         );
+        if (paymentOperation) await markRetryable(paymentOperation, err);
 
         // "This transaction requires authentication" = 3DS needed; show Complete payment immediately (no retries)
         const requiresAuth =
@@ -375,6 +444,12 @@ async function runT48ChargeJob() {
             { $set: updateFields },
           );
           if (r.modifiedCount) {
+            await markProviderSuccess(paymentOperation, {
+              providerObjectId: piIdToUse,
+              providerStatus: "requires_action",
+              localStatus: "requires_action",
+            });
+            await markLocalSuccess(paymentOperation, "requires_action");
             console.log(
               `[T48ChargeJob] Slot ${slot._id}: requires_action (3DS). Marked slot; student must complete payment.`,
             );

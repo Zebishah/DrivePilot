@@ -25,7 +25,7 @@ const refundRequestSchema = new mongoose.Schema(
     currency: { type: String, default: "CHF" },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "processing", "approved", "rejected"],
       default: "pending",
     },
     requestedAt: { type: Date, default: Date.now },

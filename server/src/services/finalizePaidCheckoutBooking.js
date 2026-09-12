@@ -12,6 +12,7 @@ const {
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
 const { getIOInstance } = require("../socket");
 const { canReviveAutoCancelledCheckout } = require("../utils/checkoutPaymentGuard");
+const { getLatestOperation } = require("./financialOperationService");
 
 async function getPlatformCommissionForSplit() {
   const admin = await Admin.findOne().lean();
@@ -149,6 +150,11 @@ async function finalizePaidCheckoutBooking({
 
   const bookingUpdated = await StudentBooking.findById(bookingId);
   if (!bookingUpdated) return null;
+  const checkoutOperation = await getLatestOperation({
+    bookingId,
+    operationType: "CHECKOUT_SESSION",
+  });
+  const financialOperationId = checkoutOperation?.operationId;
 
   if (wasCancelled) {
     await reholdCancelledSlots(bookingUpdated);
@@ -160,7 +166,7 @@ async function finalizePaidCheckoutBooking({
     type: "payment",
     role: "student",
   }).catch(() => null);
-  if (!existingPaymentTx) {
+  if (!existingPaymentTx || financialOperationId) {
     const occurredAt = new Date();
     await createTransaction({
       type: "payment",
@@ -172,6 +178,8 @@ async function finalizePaidCheckoutBooking({
       bookingId,
       studentId: bookingUpdated.studentId,
       stripePaymentIntentId: paymentIntentId,
+      financialOperationId,
+      eventType: "CHECKOUT_PAYMENT_STUDENT_DEBIT",
       description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
       occurredAt,
     });
@@ -186,6 +194,8 @@ async function finalizePaidCheckoutBooking({
       studentId: bookingUpdated.studentId,
       instructorId: instructor._id,
       stripePaymentIntentId: paymentIntentId,
+      financialOperationId,
+      eventType: "CHECKOUT_PAYMENT_PLATFORM_GROSS",
       description: "Platform gross receipt for booking",
       occurredAt,
     });
@@ -202,6 +212,8 @@ async function finalizePaidCheckoutBooking({
           instructorId: instructor._id,
           studentId: bookingUpdated.studentId,
           stripePaymentIntentId: paymentIntentId,
+          financialOperationId,
+          eventType: `CHECKOUT_PAYMENT_INSTRUCTOR_${String(slot._id)}`,
           description: "Instructor share for booked slot",
           occurredAt,
         });
@@ -215,7 +227,12 @@ async function finalizePaidCheckoutBooking({
           currency: DEFAULT_CURRENCY.toUpperCase(),
           status: "succeeded",
           bookingId,
+          slotId: slot._id,
           studentId: bookingUpdated.studentId,
+          instructorId: instructor._id,
+          stripePaymentIntentId: paymentIntentId,
+          financialOperationId,
+          eventType: `CHECKOUT_PAYMENT_COMMISSION_${String(slot._id)}`,
           description: "Platform commission for booked slot",
           occurredAt,
         });

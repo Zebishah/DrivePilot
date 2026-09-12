@@ -51,12 +51,30 @@ const transactionSchema = new mongoose.Schema(
     stripePayoutId: String,
     stripeRefundId: String,
     stripeTransferReversalId: String,
+    financialOperationId: String,
+    eventType: String,
+    correlationKey: String,
     description: String,
     occurredAt: {
       type: Date,
     },
   },
   { timestamps: true },
+);
+
+transactionSchema.index(
+  { financialOperationId: 1, eventType: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      financialOperationId: { $type: "string" },
+      eventType: { $type: "string" },
+    },
+  },
+);
+transactionSchema.index(
+  { correlationKey: 1 },
+  { unique: true, partialFilterExpression: { correlationKey: { $type: "string" } } },
 );
 
 module.exports = mongoose.model("Transaction", transactionSchema);

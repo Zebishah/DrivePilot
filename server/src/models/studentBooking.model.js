@@ -130,6 +130,8 @@ const studentBookingSchema = new mongoose.Schema(
     paymentCorrelationId: { type: String },
     /** Stripe Customer ID; required for off-session (T-48) charges when payment method was saved via setup mode */
     stripeCustomerId: { type: String },
+    checkoutSessionId: { type: String },
+    checkoutAttempt: { type: Number, default: 0 },
     /** Abandoned checkout reminder tracking (student incentive email) */
     abandonedCheckoutReminderSentAt: { type: Date },
     cancellationDate: { type: Date },

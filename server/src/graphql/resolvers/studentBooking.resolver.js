@@ -47,6 +47,18 @@ const {
   requireStudentOwnerOrAdmin,
 } = require("../../utils/authorization");
 const {
+  getOrCreateOperation,
+  claimOperation,
+  markAttempt,
+  markProviderSuccess,
+  markLocalSuccess,
+  markCompleted,
+  markRetryable,
+  attachBooking,
+  getOperationByProviderObjectId,
+  getLatestOperation,
+} = require("../../services/financialOperationService");
+const {
   finalizePaidCheckoutBooking,
 } = require("../../services/finalizePaidCheckoutBooking");
 const {
@@ -437,6 +449,7 @@ const studentBookingResolver = {
         let stripePaymentIntentId = null;
         let stripeTransferId = null;
         let stripeChargeId = null;
+        let directPaymentOperation = null;
         const numSlots = validatedInput.slots.length;
         const finalAmount = Number(validatedInput.finalAmount);
         const perSlotAmount = numSlots > 0 ? finalAmount / numSlots : 0;
@@ -458,20 +471,79 @@ const studentBookingResolver = {
           const instructorShareCentimes = Math.round(
             Number(instructorAmount) * CENTIMES_PER_UNIT,
           );
-          const paymentResult = await createPaymentIntentForBooking({
-            amountCentimes,
-            paymentMethodId: validatedInput.paymentMethod.paymentMethodId,
+          const operationKey = `direct-${validatedInput.operationId || paymentCorrelationId}`;
+          directPaymentOperation = await getOrCreateOperation({
+            operationType: "DIRECT_PAYMENT",
+            aggregateType: "BOOKING_REQUEST",
+            aggregateId: validatedInput.operationId || paymentCorrelationId,
+            studentId: user.id,
+            instructorId: instructor._id,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            requestedAmount: finalAmount,
+            idempotencyKey: operationKey,
             metadata: {
               studentId: String(user.id),
               instructorId: String(instructorId),
               paymentCorrelationId,
             },
-            confirm: true,
-            transferData: {
-              destinationAccountId: instructorAccountId,
-              amountCentimes: instructorShareCentimes,
-            },
           });
+
+          if (directPaymentOperation.bookingId) {
+            const existingBooking = await StudentBooking.findById(
+              directPaymentOperation.bookingId,
+            );
+            if (existingBooking) return { booking: existingBooking };
+          }
+
+          let paymentResult;
+          if (directPaymentOperation.providerObjectId) {
+            const existingPi = await retrievePaymentIntent(
+              directPaymentOperation.providerObjectId,
+            );
+            paymentResult = {
+              paymentIntentId: existingPi.id,
+              status: existingPi.status,
+              clientSecret: existingPi.client_secret,
+              requiresAction: existingPi.status === "requires_action",
+            };
+          } else {
+            const claimedOperation = await claimOperation(directPaymentOperation);
+            if (!claimedOperation) {
+              throw new UserInputError(
+                "This payment is already being processed. Please retry shortly.",
+              );
+            }
+            await markAttempt(claimedOperation, claimedOperation.leaseOwner);
+            directPaymentOperation = claimedOperation;
+            try {
+              paymentResult = await createPaymentIntentForBooking({
+                amountCentimes,
+                paymentMethodId: validatedInput.paymentMethod.paymentMethodId,
+                metadata: {
+                  studentId: String(user.id),
+                  instructorId: String(instructorId),
+                  paymentCorrelationId,
+                  operationId: directPaymentOperation.operationId,
+                },
+                confirm: true,
+                transferData: {
+                  destinationAccountId: instructorAccountId,
+                  amountCentimes: instructorShareCentimes,
+                },
+                idempotencyKey: directPaymentOperation.idempotencyKey,
+              });
+              await markProviderSuccess(directPaymentOperation, {
+                providerObjectId: paymentResult.paymentIntentId,
+                providerStatus: paymentResult.status,
+                localStatus: paymentResult.requiresAction
+                  ? "requires_action"
+                  : "provider_succeeded",
+              });
+            } catch (providerError) {
+              await markRetryable(directPaymentOperation, providerError);
+              throw providerError;
+            }
+          }
           directPaymentIntentId = paymentResult.paymentIntentId;
           if (paymentResult.requiresAction) {
             return {
@@ -578,6 +650,9 @@ const studentBookingResolver = {
         }
         const booking = new StudentBooking(bookingPayload);
         await booking.save();
+        if (directPaymentOperation) {
+          await attachBooking(directPaymentOperation, booking._id);
+        }
 
         // Log transactions for initial payment (student, instructor, platform) if card payment succeeded
         if (isCardPayment && stripePaymentIntentId) {
@@ -593,6 +668,8 @@ const studentBookingResolver = {
             bookingId: booking._id,
             studentId: user.id,
             stripePaymentIntentId: stripePaymentIntentId,
+            financialOperationId: directPaymentOperation.operationId,
+            eventType: "DIRECT_PAYMENT_STUDENT_DEBIT",
             description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
             occurredAt,
           });
@@ -608,6 +685,8 @@ const studentBookingResolver = {
             studentId: user.id,
             instructorId: instructor._id,
             stripePaymentIntentId: stripePaymentIntentId,
+            financialOperationId: directPaymentOperation.operationId,
+            eventType: "DIRECT_PAYMENT_PLATFORM_GROSS",
             description: "Platform gross receipt for booking",
             occurredAt,
           });
@@ -625,6 +704,8 @@ const studentBookingResolver = {
                 instructorId: instructor._id,
                 studentId: user.id,
                 stripePaymentIntentId: stripePaymentIntentId,
+                financialOperationId: directPaymentOperation.operationId,
+                eventType: `DIRECT_PAYMENT_INSTRUCTOR_${String(slot._id)}`,
                 description: "Instructor share for booked slot",
                 occurredAt,
               });
@@ -638,12 +719,22 @@ const studentBookingResolver = {
                 currency: DEFAULT_CURRENCY.toUpperCase(),
                 status: "succeeded",
                 bookingId: booking._id,
+                slotId: slot._id,
                 studentId: user.id,
+                instructorId: instructor._id,
+                stripePaymentIntentId: stripePaymentIntentId,
+                financialOperationId: directPaymentOperation.operationId,
+                eventType: `DIRECT_PAYMENT_COMMISSION_${String(slot._id)}`,
                 description: "Platform commission for booked slot",
                 occurredAt,
               });
             }
           }
+          await markLocalSuccess(
+            directPaymentOperation,
+            "booking_and_transactions_applied",
+          );
+          await markCompleted(directPaymentOperation);
         }
 
         // 3. Update availability and push booked sub-slots
@@ -839,6 +930,56 @@ const studentBookingResolver = {
         const gapHours = earliestSlotStart
           ? (earliestSlotStart.getTime() - now.getTime()) / (60 * 60 * 1000)
           : null;
+        const checkoutRequestId =
+          validatedInput.operationId || new mongoose.Types.ObjectId().toString();
+        let checkoutOperation = await getOrCreateOperation({
+          operationType: "CHECKOUT_SESSION",
+          aggregateType: "BOOKING_REQUEST",
+          aggregateId: checkoutRequestId,
+          studentId: user.id,
+          instructorId: instructor._id,
+          currency: DEFAULT_CURRENCY.toUpperCase(),
+          requestedAmount: finalAmount,
+          idempotencyKey: `checkout-${checkoutRequestId}`,
+          metadata: {
+            studentId: String(user.id),
+            instructorId: String(instructorId),
+            deferred: isDeferred ? "true" : "false",
+          },
+        });
+
+        if (checkoutOperation.bookingId && checkoutOperation.providerObjectId) {
+          const existingSession = await retrieveCheckoutSession(
+            checkoutOperation.providerObjectId,
+          );
+          if (existingSession?.status === "open" && existingSession.url) {
+            return {
+              url: existingSession.url,
+              bookingId: checkoutOperation.bookingId,
+              deferred: isDeferred,
+            };
+          }
+          if (existingSession?.status === "complete") {
+            throw new UserInputError(
+              "This checkout has already been completed. Please refresh your bookings.",
+            );
+          }
+        }
+        if (checkoutOperation.bookingId) {
+          throw new UserInputError(
+            "This booking already has a checkout attempt. Use the pending booking payment action to resume it.",
+          );
+        }
+        if (!checkoutOperation.providerObjectId) {
+          const claimedCheckout = await claimOperation(checkoutOperation);
+          if (!claimedCheckout) {
+            throw new UserInputError(
+              "This checkout is already being processed. Please retry shortly.",
+            );
+          }
+          await markAttempt(claimedCheckout, claimedCheckout.leaseOwner);
+          checkoutOperation = claimedCheckout;
+        }
         console.log(
           `[createBookingCheckoutSession] Earliest slot: ${earliestSlotStart?.toISOString()}, gap ${gapHours != null ? gapHours.toFixed(1) : "n/a"}h → ${isDeferred ? "DEFERRED (setup mode, charge at T-48)" : "INSTANT (payment now)"}`,
         );
@@ -870,6 +1011,7 @@ const studentBookingResolver = {
         };
         const booking = new StudentBooking(bookingPayload);
         await booking.save();
+        await attachBooking(checkoutOperation, booking._id);
 
         const slotsByAvailability = {};
         for (const slot of enrichedSlots) {
@@ -947,23 +1089,42 @@ const studentBookingResolver = {
           });
         }
 
-        const { url } = await createCheckoutSessionForBooking({
-          amountCentimes,
-          transferAmountCentimes: instructorShareCentimes,
-          destinationAccountId: instructorAccountId,
-          metadata: {
-            bookingId: String(booking._id),
-            studentId: String(user.id),
-            instructorId: String(instructorId),
-            deferred: isDeferred ? "true" : "false",
-          },
-          successPath: "/student-dashboard/booking-details",
-          cancelPath: "/student-dashboard/booking-details",
-          description: `${numSlots} lesson(s) — CHF ${finalAmount.toFixed(2)}`,
-          mode: isDeferred ? "setup" : "payment",
-          customerEmail: customerEmail || undefined,
-          customerId: stripeCustomerIdForSession || undefined,
+        let checkoutSession;
+        try {
+          checkoutSession = await createCheckoutSessionForBooking({
+            amountCentimes,
+            transferAmountCentimes: instructorShareCentimes,
+            destinationAccountId: instructorAccountId,
+            metadata: {
+              bookingId: String(booking._id),
+              studentId: String(user.id),
+              instructorId: String(instructorId),
+              operationId: checkoutOperation.operationId,
+              deferred: isDeferred ? "true" : "false",
+            },
+            successPath: "/student-dashboard/booking-details",
+            cancelPath: "/student-dashboard/booking-details",
+            description: `${numSlots} lesson(s) — CHF ${finalAmount.toFixed(2)}`,
+            mode: isDeferred ? "setup" : "payment",
+            customerEmail: customerEmail || undefined,
+            customerId: stripeCustomerIdForSession || undefined,
+            idempotencyKey: checkoutOperation.idempotencyKey,
+          });
+        } catch (providerError) {
+          await markRetryable(checkoutOperation, providerError);
+          throw providerError;
+        }
+        const { url, sessionId } = checkoutSession;
+        await markProviderSuccess(checkoutOperation, {
+          providerObjectId: sessionId,
+          providerStatus: "created",
         });
+        await StudentBooking.updateOne(
+          { _id: booking._id },
+          { $set: { checkoutSessionId: sessionId, updatedAt: new Date() } },
+        );
+        await markLocalSuccess(checkoutOperation, "booking_and_session_persisted");
+        await markCompleted(checkoutOperation);
         return { url, bookingId: booking._id, deferred: isDeferred };
       } catch (error) {
         console.error("createBookingCheckoutSession error:", error);
@@ -1010,6 +1171,23 @@ const studentBookingResolver = {
           "This instructor is not available for payment. Please contact support.",
         );
       }
+      if (booking.checkoutSessionId) {
+        const existingSession = await retrieveCheckoutSession(
+          booking.checkoutSessionId,
+        );
+        if (existingSession?.status === "open" && existingSession.url) {
+          return {
+            url: existingSession.url,
+            bookingId: booking._id,
+            deferred: existingSession.mode === "setup",
+          };
+        }
+        if (existingSession?.status === "complete") {
+          throw new UserInputError(
+            "This checkout has already been completed. Please refresh your bookings.",
+          );
+        }
+      }
       const now = new Date();
       const slotStartUtcTimes = (booking.slots || [])
         .map((slot) => getSlotStartTimestampUtc(slot.date, slot.startTime))
@@ -1044,6 +1222,50 @@ const studentBookingResolver = {
         Number(instructorAmount) * CENTIMES_PER_UNIT,
       );
       const instructorAccountId = instructor.stripeAccount.accountId;
+      const checkoutAttempt = (booking.checkoutAttempt || 0) + 1;
+      const unfinishedCheckoutOperation = await getLatestOperation({
+        bookingId: booking._id,
+        operationType: "CHECKOUT_SESSION",
+        status: { $in: ["PENDING", "PROCESSING", "RETRYABLE"] },
+      });
+      let resumeCheckoutOperation = unfinishedCheckoutOperation ||
+        (await getOrCreateOperation({
+          operationType: "CHECKOUT_SESSION",
+          aggregateType: "BOOKING",
+          aggregateId: String(booking._id),
+          bookingId: booking._id,
+          studentId: user.id,
+          instructorId: instructor._id,
+          currency: DEFAULT_CURRENCY.toUpperCase(),
+          requestedAmount: finalAmount,
+          idempotencyKey: `checkout-${String(booking._id)}-resume-${checkoutAttempt}`,
+          metadata: { bookingId: String(booking._id), resumed: "true" },
+        }));
+      if (resumeCheckoutOperation.providerObjectId) {
+        const existingSession = await retrieveCheckoutSession(
+          resumeCheckoutOperation.providerObjectId,
+        );
+        if (existingSession?.status === "open" && existingSession.url) {
+          return {
+            url: existingSession.url,
+            bookingId: booking._id,
+            deferred: isDeferred,
+          };
+        }
+        if (existingSession?.status === "complete") {
+          throw new UserInputError(
+            "This checkout has already been completed. Please refresh your bookings.",
+          );
+        }
+      }
+      const claimedResumeOperation = await claimOperation(resumeCheckoutOperation);
+      if (!claimedResumeOperation) {
+        throw new UserInputError(
+          "This checkout is already being processed. Please retry shortly.",
+        );
+      }
+      await markAttempt(claimedResumeOperation, claimedResumeOperation.leaseOwner);
+      resumeCheckoutOperation = claimedResumeOperation;
 
       const resumePaymentFields = { updatedAt: new Date() };
       (booking.slots || []).forEach((slot, index) => {
@@ -1077,7 +1299,9 @@ const studentBookingResolver = {
         });
       }
 
-      const { url } = await createCheckoutSessionForBooking({
+      let resumedSession;
+      try {
+        resumedSession = await createCheckoutSessionForBooking({
         amountCentimes,
         transferAmountCentimes: instructorShareCentimes,
         destinationAccountId: instructorAccountId,
@@ -1092,9 +1316,34 @@ const studentBookingResolver = {
         description: `${numSlots} lesson(s) — CHF ${finalAmount.toFixed(2)}`,
         mode: isDeferred ? "setup" : "payment",
         customerEmail: customerEmail || undefined,
-        customerId: stripeCustomerIdForSession || undefined,
+          customerId: stripeCustomerIdForSession || undefined,
+          idempotencyKey: resumeCheckoutOperation.idempotencyKey,
+        });
+      } catch (providerError) {
+        await markRetryable(resumeCheckoutOperation, providerError);
+        throw providerError;
+      }
+      await markProviderSuccess(resumeCheckoutOperation, {
+        providerObjectId: resumedSession.sessionId,
+        providerStatus: "created",
       });
-      return { url, bookingId: booking._id, deferred: isDeferred };
+      await StudentBooking.updateOne(
+        { _id: booking._id },
+        {
+          $set: {
+            checkoutSessionId: resumedSession.sessionId,
+            checkoutAttempt,
+            updatedAt: new Date(),
+          },
+        },
+      );
+      await markLocalSuccess(resumeCheckoutOperation, "booking_and_session_persisted");
+      await markCompleted(resumeCheckoutOperation);
+      return {
+        url: resumedSession.url,
+        bookingId: booking._id,
+        deferred: isDeferred,
+      };
     },
 
     completeBookingFromCheckout: async (_, { sessionId }, { user }) => {
@@ -1124,6 +1373,17 @@ const studentBookingResolver = {
         paymentIntentId: piId,
         expectedStudentId: user.id,
       });
+      const checkoutOperation = await getOperationByProviderObjectId(session.id);
+      if (checkoutOperation) {
+        await markProviderSuccess(checkoutOperation, {
+          providerObjectId: session.id,
+          secondaryProviderObjectId: piId,
+          providerStatus: session.payment_status,
+          localStatus: "checkout_payment_succeeded",
+        });
+        await markLocalSuccess(checkoutOperation, "booking_and_transactions_applied");
+        await markCompleted(checkoutOperation);
+      }
       if (!savedBooking) {
         throw new UserInputError("Booking not found.");
       }
@@ -1174,6 +1434,15 @@ const studentBookingResolver = {
       }
       if (String(booking.studentId) !== String(user.id)) {
         throw new UserInputError("This booking does not belong to you.");
+      }
+      const checkoutOperation = await getOperationByProviderObjectId(session.id);
+      if (checkoutOperation) {
+        await markProviderSuccess(checkoutOperation, {
+          providerObjectId: session.id,
+          secondaryProviderObjectId: setupIntent.id,
+          providerStatus: setupIntent.status,
+          localStatus: "setup_succeeded",
+        });
       }
       if (booking.status !== "pending") {
         console.log(
@@ -1265,6 +1534,10 @@ const studentBookingResolver = {
       });
 
       await booking.save();
+      if (checkoutOperation) {
+        await markLocalSuccess(checkoutOperation, "booking_and_setup_persisted");
+        await markCompleted(checkoutOperation);
+      }
 
       const savedBooking = await StudentBooking.findById(booking._id)
         .populate(
@@ -1421,24 +1694,67 @@ const studentBookingResolver = {
       const instructorShareCentimes = Math.round(
         Number(instructorAmount) * CENTIMES_PER_UNIT,
       );
-      const paymentResult = await createPaymentIntentForBooking({
-        amountCentimes,
-        paymentMethodId: booking.paymentMethod.paymentMethodId,
-        customerId: booking.stripeCustomerId,
-        metadata: {
-          bookingId: String(bookingId),
-          slotId: String(slotId),
-          studentId: String(user.id),
-          instructorId: String(instructor._id),
-        },
-        confirm: false,
-        offSession: false,
-        transferData: {
-          destinationAccountId: instructor.stripeAccount.accountId,
-          amountCentimes: instructorShareCentimes,
-        },
+      const completionOperation = await getOrCreateOperation({
+        operationType: "T48_PAYMENT",
+        aggregateType: "BOOKING_SLOT",
+        aggregateId: `${String(bookingId)}:${String(slotId)}:3ds`,
+        bookingId,
+        slotId,
+        studentId: user.id,
+        instructorId: instructor._id,
+        currency: "CHF",
+        requestedAmount: perSlotAmount,
         idempotencyKey: `complete-${String(bookingId)}-${String(slotId)}`,
+        metadata: { bookingId: String(bookingId), slotId: String(slotId) },
       });
+      let paymentResult;
+      if (completionOperation.providerObjectId) {
+        const existingPi = await retrievePaymentIntent(
+          completionOperation.providerObjectId,
+        );
+        paymentResult = {
+          paymentIntentId: existingPi.id,
+          status: existingPi.status,
+          clientSecret: existingPi.client_secret,
+        };
+      } else {
+        const claimedCompletion = await claimOperation(completionOperation);
+        if (!claimedCompletion) {
+          throw new UserInputError(
+            "This payment is already being processed. Please retry shortly.",
+          );
+        }
+        await markAttempt(claimedCompletion, claimedCompletion.leaseOwner);
+        try {
+          paymentResult = await createPaymentIntentForBooking({
+            amountCentimes,
+            paymentMethodId: booking.paymentMethod.paymentMethodId,
+            customerId: booking.stripeCustomerId,
+            metadata: {
+              bookingId: String(bookingId),
+              slotId: String(slotId),
+              studentId: String(user.id),
+              instructorId: String(instructor._id),
+              operationId: completionOperation.operationId,
+            },
+            confirm: false,
+            offSession: false,
+            transferData: {
+              destinationAccountId: instructor.stripeAccount.accountId,
+              amountCentimes: instructorShareCentimes,
+            },
+            idempotencyKey: completionOperation.idempotencyKey,
+          });
+          await markProviderSuccess(completionOperation, {
+            providerObjectId: paymentResult.paymentIntentId,
+            providerStatus: paymentResult.status,
+            localStatus: "provider_succeeded",
+          });
+        } catch (providerError) {
+          await markRetryable(completionOperation, providerError);
+          throw providerError;
+        }
+      }
       const newPiId = paymentResult?.paymentIntentId;
       const newSecret = paymentResult?.clientSecret;
       if (!newPiId || !newSecret) {
@@ -1468,6 +1784,7 @@ const studentBookingResolver = {
       // with redirect_to_url and can redirect the user to the bank (no stuck modal).
       const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}/student-dashboard/complete-payment?bookingId=${bookingId}&slotId=${slotId}`;
       await confirmPaymentIntent(newPiId, returnUrl);
+      await markLocalSuccess(completionOperation, "requires_action");
       return newSecret;
     },
 
@@ -1499,6 +1816,30 @@ const studentBookingResolver = {
       const slot = booking.slots?.find((s) => String(s._id) === String(slotId));
       if (!slot) {
         throw new UserInputError("Slot not found.");
+      }
+      let paymentOperation = await getOperationByProviderObjectId(
+        paymentIntentId,
+      );
+      if (!paymentOperation) {
+        paymentOperation = await getOrCreateOperation({
+          operationType: "T48_PAYMENT",
+          aggregateType: "BOOKING_SLOT",
+          aggregateId: `${String(booking._id)}:${String(slot._id)}`,
+          bookingId: booking._id,
+          slotId: slot._id,
+          studentId: booking.studentId._id,
+          instructorId: booking.instructorId._id,
+          currency: "CHF",
+          requestedAmount: Number(booking.finalAmount || booking.totalAmount) /
+            (booking.slots?.length || 1),
+          idempotencyKey: `t48-recovered-${paymentIntentId}`,
+          metadata: { recoveredFromProvider: true },
+        });
+        await markProviderSuccess(paymentOperation, {
+          providerObjectId: paymentIntentId,
+          providerStatus: pi.status,
+          localStatus: "provider_succeeded",
+        });
       }
       if (slot.paymentStatus === "paid") {
         return booking;
@@ -1548,6 +1889,8 @@ const studentBookingResolver = {
         slotId: slot._id,
         studentId: booking.studentId._id,
         stripePaymentIntentId: paymentIntentId,
+        financialOperationId: paymentOperation.operationId,
+        eventType: "T48_PAYMENT_STUDENT_DEBIT",
         description: "Lesson payment (T-48 3DS completed)",
         occurredAt,
       });
@@ -1560,6 +1903,8 @@ const studentBookingResolver = {
         slotId: slot._id,
         studentId: booking.studentId._id,
         stripePaymentIntentId: paymentIntentId,
+        financialOperationId: paymentOperation.operationId,
+        eventType: "T48_PAYMENT_PLATFORM_GROSS",
         description: "Platform gross receipt for lesson (T-48)",
         occurredAt,
       });
@@ -1576,6 +1921,8 @@ const studentBookingResolver = {
           instructorId: booking.instructorId._id,
           studentId: booking.studentId._id,
           stripePaymentIntentId: paymentIntentId,
+          financialOperationId: paymentOperation.operationId,
+          eventType: "T48_PAYMENT_INSTRUCTOR_SHARE",
           description: "Instructor share for lesson (T-48)",
           occurredAt,
         });
@@ -1590,10 +1937,14 @@ const studentBookingResolver = {
           bookingId: booking._id,
           slotId: slot._id,
           studentId: booking.studentId._id,
+          financialOperationId: paymentOperation.operationId,
+          eventType: "T48_PAYMENT_COMMISSION",
           description: "Platform commission for lesson (T-48)",
           occurredAt,
         });
       }
+      await markLocalSuccess(paymentOperation, "slot_and_transactions_applied");
+      await markCompleted(paymentOperation);
       const updated = await StudentBooking.findById(booking._id)
         .populate(
           "instructorId",
@@ -1618,6 +1969,26 @@ const studentBookingResolver = {
       }
       if (String(pi.metadata?.studentId) !== String(user.id)) {
         throw new UserInputError("Payment does not match this user.");
+      }
+      let directPaymentOperation = await getOperationByProviderObjectId(
+        paymentIntentId,
+      );
+      if (!directPaymentOperation) {
+        directPaymentOperation = await getOrCreateOperation({
+          operationType: "DIRECT_PAYMENT",
+          aggregateType: "BOOKING_REQUEST",
+          aggregateId: String(pi.metadata?.operationId || paymentIntentId),
+          studentId: user.id,
+          instructorId: pi.metadata?.instructorId,
+          currency: DEFAULT_CURRENCY.toUpperCase(),
+          idempotencyKey: `direct-recovered-${paymentIntentId}`,
+          metadata: { recoveredFromProvider: true },
+        });
+        await markProviderSuccess(directPaymentOperation, {
+          providerObjectId: paymentIntentId,
+          providerStatus: pi.status,
+          localStatus: "provider_succeeded",
+        });
       }
       const validatedInput = studentBookingSchema.parse({
         ...input,
@@ -1647,6 +2018,7 @@ const studentBookingResolver = {
           status: "booked",
           review: false,
           paymentStatus: "paid",
+          paymentIntentId,
           chargeAmount: perSlotAmount,
           dspCommission,
           instructorAmount,
@@ -1694,6 +2066,79 @@ const studentBookingResolver = {
       };
       const booking = new StudentBooking(bookingPayload);
       await booking.save();
+      await attachBooking(directPaymentOperation, booking._id);
+      const occurredAt = new Date();
+      await createTransaction({
+        type: "payment",
+        role: "student",
+        direction: "debit",
+        amount: finalAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: booking._id,
+        studentId: user.id,
+        stripePaymentIntentId: paymentIntentId,
+        financialOperationId: directPaymentOperation.operationId,
+        eventType: "DIRECT_PAYMENT_STUDENT_DEBIT",
+        description: `${numSlots} lesson(s) with instructor ${instructor.firstName} ${instructor.lastName}`,
+        occurredAt,
+      });
+      await createTransaction({
+        type: "payment",
+        role: "platform",
+        direction: "credit",
+        amount: finalAmount,
+        currency: DEFAULT_CURRENCY.toUpperCase(),
+        status: "succeeded",
+        bookingId: booking._id,
+        studentId: user.id,
+        instructorId: instructor._id,
+        stripePaymentIntentId: paymentIntentId,
+        financialOperationId: directPaymentOperation.operationId,
+        eventType: "DIRECT_PAYMENT_PLATFORM_GROSS",
+        description: "Platform gross receipt for booking",
+        occurredAt,
+      });
+      for (const slot of enrichedSlots) {
+        if (slot.instructorAmount != null) {
+          await createTransaction({
+            type: "payment",
+            role: "instructor",
+            direction: "credit",
+            amount: slot.instructorAmount,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: booking._id,
+            instructorId: instructor._id,
+            studentId: user.id,
+            stripePaymentIntentId: paymentIntentId,
+            financialOperationId: directPaymentOperation.operationId,
+            eventType: `DIRECT_PAYMENT_INSTRUCTOR_${String(slot._id)}`,
+            description: "Instructor share for booked slot",
+            occurredAt,
+          });
+        }
+        if (slot.dspCommission != null) {
+          await createTransaction({
+            type: "payment",
+            role: "platform",
+            direction: "credit",
+            amount: slot.dspCommission,
+            currency: DEFAULT_CURRENCY.toUpperCase(),
+            status: "succeeded",
+            bookingId: booking._id,
+            studentId: user.id,
+            instructorId: instructor._id,
+            stripePaymentIntentId: paymentIntentId,
+            financialOperationId: directPaymentOperation.operationId,
+            eventType: `DIRECT_PAYMENT_COMMISSION_${String(slot._id)}`,
+            description: "Platform commission for booked slot",
+            occurredAt,
+          });
+        }
+      }
+      await markLocalSuccess(directPaymentOperation, "booking_and_transactions_applied");
+      await markCompleted(directPaymentOperation);
       const slotsByAvailability = {};
       for (const slot of booking.slots) {
         const availability = await teacherAvailabilityModel.findOne({

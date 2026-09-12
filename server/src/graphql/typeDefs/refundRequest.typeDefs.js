@@ -3,6 +3,7 @@ const { gql } = require("apollo-server-express");
 const refundRequestTypeDefs = gql`
   enum RefundRequestStatus {
     pending
+    processing
     approved
     rejected
   }

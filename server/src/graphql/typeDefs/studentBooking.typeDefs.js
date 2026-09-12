@@ -121,6 +121,7 @@ const studentBookingTypeDefs = gql`
   }
 
   input StudentBookingInput {
+    operationId: ID
     instructorId: ID!
     slots: [SlotInput!]!
     totalAmount: Float!

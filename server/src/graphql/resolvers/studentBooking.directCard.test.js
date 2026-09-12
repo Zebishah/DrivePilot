@@ -4,7 +4,14 @@ const Module = require("node:module");
 
 test("createBooking completes the direct-card path with commission settings in scope", async () => {
   let paymentIntentArgs;
+  let paymentIntentCallCount = 0;
   const savedBookings = [];
+  const operationRecord = {
+    operationId: "operation-1",
+    idempotencyKey: "direct-request-1",
+    bookingId: null,
+    providerObjectId: null,
+  };
 
   class FakeStudentBooking {
     constructor(payload) {
@@ -57,6 +64,7 @@ test("createBooking completes the direct-card path with commission settings in s
       instructorAmount: amount * 0.8,
     }),
     createPaymentIntentForBooking: async (args) => {
+      paymentIntentCallCount += 1;
       paymentIntentArgs = args;
       return {
         paymentIntentId: "pi_test_direct_card",
@@ -68,6 +76,26 @@ test("createBooking completes the direct-card path with commission settings in s
     DEFAULT_CURRENCY: "chf",
     CENTIMES_PER_UNIT: 100,
     FRONTEND_BASE: "http://localhost:5173",
+  };
+  const fakeFinancialOperation = {
+    getOrCreateOperation: async (input) => {
+      operationRecord.idempotencyKey = input.idempotencyKey;
+      return operationRecord;
+    },
+    claimOperation: async (operation) => {
+      operation.leaseOwner = "test-owner";
+      return operation;
+    },
+    markAttempt: async (operation) => operation,
+    markProviderSuccess: async (operation, data) => Object.assign(operation, data),
+    markLocalSuccess: async (operation) => operation,
+    markCompleted: async (operation) => operation,
+    markRetryable: async (operation) => operation,
+    attachBooking: async (operation, bookingId) => {
+      operation.bookingId = bookingId;
+      return operation;
+    },
+    getOperationByProviderObjectId: async () => null,
   };
 
   const originalLoad = Module._load;
@@ -87,6 +115,9 @@ test("createBooking completes the direct-card path with commission settings in s
     if (request.endsWith("/services/transactionService")) {
       return { createTransaction: async () => ({}) };
     }
+    if (request.endsWith("/services/financialOperationService")) {
+      return fakeFinancialOperation;
+    }
     if (request.endsWith("/utils/instructorPaymentReady")) {
       return { isInstructorPaymentReady: () => true };
     }
@@ -104,6 +135,7 @@ test("createBooking completes the direct-card path with commission settings in s
       null,
       {
         input: {
+          operationId: "direct-request-1",
           studentId: "client-supplied-id-is-overridden",
           instructorId: "instructor-1",
           totalAmount: 100,
@@ -127,6 +159,27 @@ test("createBooking completes the direct-card path with commission settings in s
     assert.equal(paymentIntentArgs.metadata.studentId, "student-1");
     assert.equal(paymentIntentArgs.metadata.instructorId, "instructor-1");
     assert.match(paymentIntentArgs.metadata.paymentCorrelationId, /^[a-f0-9]{24}$/);
+
+    const retried = await resolver.Mutation.createBooking(
+      null,
+      {
+        input: {
+          operationId: "direct-request-1",
+          studentId: "client-supplied-id-is-overridden",
+          instructorId: "instructor-1",
+          totalAmount: 100,
+          finalAmount: 100,
+          paymentMethod: { type: "card", paymentMethodId: "pm_test" },
+          slots: [
+            { date: "2030-01-01", startTime: "09:00", endTime: "10:00" },
+            { date: "2030-01-02", startTime: "09:00", endTime: "10:00" },
+          ],
+        },
+      },
+      { user: { id: "student-1", role: "Student" } },
+    );
+    assert.equal(paymentIntentCallCount, 1);
+    assert.equal(retried.booking._id, "booking-1");
   } finally {
     Module._load = originalLoad;
   }
