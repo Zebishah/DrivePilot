@@ -1,5 +1,7 @@
 const crypto = require("crypto");
 const StripeWebhookEvent = require("../models/StripeWebhookEvent");
+const { logger, classifyError } = require("../utils/logger");
+const metrics = require("../utils/metrics");
 
 const LEASE_MS = Number(process.env.STRIPE_WEBHOOK_LEASE_MS || 5 * 60 * 1000);
 const MAX_ATTEMPTS = Number(process.env.STRIPE_WEBHOOK_MAX_ATTEMPTS || 8);
@@ -36,11 +38,23 @@ async function receiveStripeWebhookEvent(event) {
       payload,
       receivedAt: new Date(),
     });
+    metrics.increment("webhook.received", 1, { eventType: event.type });
+    logger.info("stripe_webhook_received", {
+      webhookEventId: event.id,
+      eventType: event.type,
+      providerObjectId: details.providerObjectId,
+    });
     return { record, duplicate: false };
   } catch (error) {
     if (error?.code !== 11000) throw error;
     const existing = await StripeWebhookEvent.findOne({ eventId: String(event.id) });
     if (!existing) throw error;
+    metrics.increment("webhook.duplicate", 1, { eventType: event.type });
+    logger.info("stripe_webhook_duplicate", {
+      webhookEventId: event.id,
+      eventType: event.type,
+      providerObjectId: details.providerObjectId,
+    });
     return { record: existing, duplicate: true };
   }
 }
@@ -127,6 +141,15 @@ async function markStripeWebhookRetryable(record, error, owner) {
   const normalized = safeError(error);
   const currentAttempt = Number(record.attemptCount || 1);
   const exhausted = currentAttempt >= MAX_ATTEMPTS;
+  metrics.increment(exhausted ? "webhook.dead" : "webhook.retryable");
+  logger.warn(exhausted ? "stripe_webhook_dead" : "stripe_webhook_retryable", {
+    webhookEventId: record.eventId,
+    eventType: record.eventType,
+    providerObjectId: record.providerObjectId,
+    attemptCount: currentAttempt,
+    errorCategory: classifyError(error),
+    error,
+  });
   return StripeWebhookEvent.findOneAndUpdate(
     { _id: record._id, status: "PROCESSING", leaseOwner: owner },
     {

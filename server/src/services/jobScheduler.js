@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { runDurableJob } = require("./jobExecutionService");
+const { logger, classifyError } = require("../utils/logger");
 
 function createJobScheduler({ jobs, leaseMs, heartbeatMs, shutdownTimeoutMs, maxRetryDelayMs = 60 * 60 * 1000 }) {
   const timers = new Set();
@@ -32,9 +33,11 @@ function createJobScheduler({ jobs, leaseMs, heartbeatMs, shutdownTimeoutMs, max
       .catch((error) => {
         failed = true;
         failureStreaks.set(entry.name, (failureStreaks.get(entry.name) || 0) + 1);
-        console.error(`[${entry.name}] execution failed`, {
+        logger.error("scheduled_job_failed", {
+          jobName: entry.name,
           code: error?.code || "JOB_FAILED",
-          message: String(error?.message || error).slice(0, 300),
+          errorCategory: classifyError(error),
+          error,
         });
       })
       .finally(() => {

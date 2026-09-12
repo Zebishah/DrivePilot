@@ -26,6 +26,7 @@ const {
 } = require("../services/financialOperationService");
 const { fromMinorUnits, getBookingMoneySnapshot } = require("../utils/money");
 const { toMinorUnits } = require("../utils/money");
+const { logger, classifyError } = require("../utils/logger");
 const { notifyBookingParties } = require("../utils/SendOtpEmail");
 const {
   finalizePaidCheckoutBooking,
@@ -128,7 +129,7 @@ async function handleDisputeClosed(accountId) {
       },
     });
   } catch (err) {
-    console.error("handleDisputeClosed error:", err);
+    logger.error("stripe_dispute_closed_sync_failed", { error: err, errorCategory: classifyError(err) });
   }
 }
 
@@ -207,12 +208,11 @@ async function recordBookingLevelRefundIfMissing({
     description: `Refund synced from Stripe manual refund (${reason})`,
     occurredAt: refundDate,
   });
-  console.log(
-    "[Stripe Webhook] Refund recorded without slot mapping:",
-    `booking=${booking._id}`,
-    `refund=${refundId || "(no-refund-id)"}`,
-    `reason=${reason}`,
-  );
+  logger.info("stripe_refund_recorded_without_slot_mapping", {
+    bookingId: booking._id,
+    providerObjectId: refundId,
+    reason,
+  });
 }
 
 async function handleConnectChargeSucceeded(charge, connectedAccountId) {
@@ -263,13 +263,12 @@ async function handleConnectChargeSucceeded(charge, connectedAccountId) {
   if (changed) {
     booking.updatedAt = new Date();
     await booking.save();
-    console.log(
-      "[Stripe Webhook] Connected charge mapped to slot:",
-      `booking=${booking._id}`,
-      `slot=${slot._id}`,
-      `connectChargeId=${chargeId}`,
-      transferId ? `transferId=${transferId}` : "",
-    );
+    logger.info("stripe_connected_charge_mapped", {
+      bookingId: booking._id,
+      slotId: slot._id,
+      providerObjectId: chargeId,
+      transferId,
+    });
   }
 }
 
@@ -289,11 +288,7 @@ async function syncManualRefundFromTransferReversal(
     .populate("instructorId", "_id firstName lastName email")
     .populate("studentId", "_id firstName lastName email");
   if (!booking) {
-    console.warn(
-      "[Stripe Webhook] transfer.reversed: no booking for transferId",
-      transferId,
-      connectedAccountId ? `(account ${connectedAccountId})` : "",
-    );
+    logger.warn("stripe_transfer_reversal_unmapped", { transferId, connectedAccountId });
     return false;
   }
 
@@ -301,12 +296,11 @@ async function syncManualRefundFromTransferReversal(
     (s) => String(s.transferId || "") === String(transferId),
   );
   if (matchedSlots.length !== 1) {
-    console.warn(
-      "[Stripe Webhook] transfer.reversed: ambiguous slot mapping",
-      `transferId=${transferId}`,
-      `booking=${booking._id}`,
-      `matchedSlots=${matchedSlots.length}`,
-    );
+    logger.warn("stripe_transfer_reversal_ambiguous", {
+      transferId,
+      bookingId: booking._id,
+      matchedSlots: matchedSlots.length,
+    });
     return false;
   }
 
@@ -362,21 +356,17 @@ async function syncManualRefundFromTransferReversal(
     });
   }
 
-  console.log(
-    "[Stripe Webhook] Refund synced via transfer.reversed:",
-    `booking=${booking._id}`,
-    `slot=${slot._id}`,
-    `transferId=${transferId}`,
-    `reversalId=${reversalId || "(none)"}`,
-  );
+  logger.info("stripe_refund_synced_from_transfer_reversal", {
+    bookingId: booking._id,
+    slotId: slot._id,
+    transferId,
+    providerObjectId: reversalId,
+  });
 
   try {
     await notifyBookingParties(booking, "booking_refunded");
   } catch (mailErr) {
-    console.error(
-      "[Stripe Webhook] Failed to send refund notification emails (transfer.reversed):",
-      mailErr,
-    );
+    logger.error("stripe_refund_notification_failed", { error: mailErr, errorCategory: classifyError(mailErr) });
   }
 
   return true;
@@ -408,10 +398,7 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
           : charge?.payment_intent?.id;
       if (paymentIntentId) paymentIntentSource = "charge.payment_intent";
     } catch (err) {
-      console.error(
-        "[Stripe Webhook] Unable to resolve payment_intent from charge:",
-        err?.message || err,
-      );
+      logger.warn("stripe_refund_payment_intent_lookup_failed", { error: err, errorCategory: classifyError(err) });
     }
   }
   let booking = null;
@@ -447,19 +434,13 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
   }
 
   if (!booking) {
-    console.log(
-      "[Stripe Webhook] Refund mapping trace:",
-      `refund=${refundId || "(unknown)"}`,
-      `chargeId=${chargeId || "(none)"}`,
-      `paymentIntentId=${paymentIntentId || "(none)"}`,
-      `source=${paymentIntentSource}`,
-      connectedAccountId ? `account=${connectedAccountId}` : "",
-    );
-    console.warn(
-      "[Stripe Webhook] Refund sync skipped: no exact mapping by chargeId/paymentIntentId",
-      refundObject?.id || "(unknown refund)",
-      connectedAccountId ? `(account ${connectedAccountId})` : "",
-    );
+    logger.warn("stripe_refund_mapping_missing", {
+      providerObjectId: refundId,
+      chargeId,
+      paymentIntentId,
+      paymentIntentSource,
+      connectedAccountId,
+    });
     return;
   }
 
@@ -528,22 +509,18 @@ async function syncManualRefundFromStripe(refundObject, connectedAccountId = nul
       occurredAt: refundDate,
     });
   }
-  console.log(
-    "[Stripe Webhook] Refund synced successfully:",
-    `booking=${booking._id}`,
-    `slot=${slot._id}`,
-    `paymentIntentId=${paymentIntentId || "(none)"}`,
-    `source=${paymentIntentSource}`,
-    `refund=${refundId || "(no-refund-id)"}`,
-  );
+  logger.info("stripe_refund_synced", {
+    bookingId: booking._id,
+    slotId: slot._id,
+    paymentIntentId,
+    paymentIntentSource,
+    providerObjectId: refundId,
+  });
 
   try {
     await notifyBookingParties(booking, "booking_refunded");
   } catch (mailErr) {
-    console.error(
-      "[Stripe Webhook] Failed to send refund notification emails:",
-      mailErr,
-    );
+    logger.error("stripe_refund_notification_failed", { error: mailErr, errorCategory: classifyError(mailErr) });
   }
 }
 
@@ -579,10 +556,7 @@ async function handleCheckoutSessionCompleted(sessionId) {
       const local = await markLocalSuccess(checkoutOperation, "booking_finalized");
       if (local) await markCompleted(local);
     }
-    console.log(
-      "[Stripe Webhook] Payment checkout completed: confirmed booking",
-      bookingId,
-    );
+    logger.info("stripe_checkout_booking_confirmed", { bookingId, providerObjectId: piId });
     return;
   }
   if (session.mode !== "setup") return;
@@ -662,10 +636,7 @@ async function handleCheckoutSessionCompleted(sessionId) {
     const local = await markLocalSuccess(provider || checkoutOperation, "payment_method_saved");
     if (local) await markCompleted(local);
   }
-  console.log(
-    "[Stripe Webhook] Deferred booking completed: saved stripeCustomerId for booking",
-    bookingId,
-  );
+  logger.info("stripe_deferred_booking_payment_method_saved", { bookingId, providerObjectId: setupIntent?.id });
 }
 
 async function findOperationForProviderEvent(providerObject, metadata = {}) {
@@ -771,7 +742,7 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
     error.code = "INVALID_WEBHOOK_EVENT";
     throw error;
   }
-  console.log("[Stripe Webhook] Processing event:", event.type, event.id);
+  logger.info("stripe_webhook_processing", { webhookEventId: event.id, eventType: event.type });
 
   await syncFinancialOperationFromWebhook(event);
 
@@ -900,9 +871,11 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
                 { $set: { status: "confirmed", stripePaymentIntentId: pi.id, updatedAt: new Date() } },
               );
             }
-            console.log("[Stripe Webhook] T48 payment applied", {
-              eventId: event.id, paymentIntentId: pi.id,
-              bookingId: String(booking._id), slotId: String(slot._id),
+            logger.info("stripe_t48_payment_applied", {
+              webhookEventId: event.id,
+              providerObjectId: pi.id,
+              bookingId: booking._id,
+              slotId: slot._id,
             });
             if (paymentOperation) {
               await markLocalSuccess(paymentOperation, "slot_and_transactions_applied");
@@ -979,7 +952,7 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
 
 router.post("/", async (req, res) => {
   if (!WEBHOOK_SECRET) {
-    console.error("STRIPE_WEBHOOK_SECRET is not set");
+    logger.error("stripe_webhook_secret_missing");
     return res.status(500).send("Webhook secret not configured");
   }
   const sig = req.headers["stripe-signature"];
@@ -990,20 +963,22 @@ router.post("/", async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
+    logger.warn("stripe_webhook_signature_invalid", { error: err, errorCategory: classifyError(err) });
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-  console.log("[Stripe Webhook] Received event:", event.type, event.id);
+  logger.info("stripe_webhook_received_http", { webhookEventId: event.id, eventType: event.type });
   try {
     const { duplicate } = await receiveStripeWebhookEvent(event);
     if (duplicate) {
-      console.log("[Stripe Webhook] Duplicate durable receipt", { eventId: event.id });
+      logger.info("stripe_webhook_duplicate_receipt", { webhookEventId: event.id, eventType: event.type });
     }
     return res.status(200).send("OK");
   } catch (error) {
-    console.error("[Stripe Webhook] Durable receipt failed", {
-      eventId: event.id,
+    logger.error("stripe_webhook_receipt_failed", {
+      webhookEventId: event.id,
       code: error?.code || "RECEIPT_FAILED",
+      errorCategory: classifyError(error),
+      error,
     });
     return res.status(503).send("Webhook receipt unavailable");
   }

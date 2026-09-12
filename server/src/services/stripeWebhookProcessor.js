@@ -6,6 +6,8 @@ const {
   markStripeWebhookIgnored,
   markStripeWebhookRetryable,
 } = require("./stripeWebhookEventService");
+const { logger } = require("../utils/logger");
+const metrics = require("../utils/metrics");
 
 let eventHandler = null;
 function setStripeWebhookEventHandler(handler) {
@@ -27,7 +29,10 @@ function isIgnoredError(error) {
 
 async function processStripeWebhookEventRecord(record, owner = executionId()) {
   const claimed = await claimStripeWebhookEvent(record, owner);
-  if (!claimed) return { status: "SKIPPED" };
+  if (!claimed) {
+    metrics.increment("webhook.lease_contention", 1, { eventType: record?.eventType });
+    return { status: "SKIPPED" };
+  }
   if (typeof eventHandler !== "function") {
     const error = new Error("Stripe webhook event handler is not registered");
     error.code = "HANDLER_NOT_REGISTERED";
@@ -38,13 +43,16 @@ async function processStripeWebhookEventRecord(record, owner = executionId()) {
     const result = await eventHandler(claimed.payload, claimed);
     if (result?.ignored) {
       await markStripeWebhookIgnored(claimed, owner, result.reason);
+      metrics.increment("webhook.ignored", 1, { eventType: claimed.eventType });
       return { status: "IGNORED" };
     }
     await markStripeWebhookProcessed(claimed, owner);
+    metrics.increment("webhook.processed", 1, { eventType: claimed.eventType });
     return { status: "PROCESSED" };
   } catch (error) {
     if (isIgnoredError(error)) {
       await markStripeWebhookIgnored(claimed, owner, error.message);
+      metrics.increment("webhook.ignored", 1, { eventType: claimed.eventType });
       return { status: "IGNORED" };
     }
     const updated = await markStripeWebhookRetryable(claimed, error, owner);
@@ -66,7 +74,7 @@ async function runStripeWebhookProcessorJob({ batchSize } = {}) {
       if (result.status === "IGNORED") counters.ignored += 1;
     }
   }
-  console.log("[StripeWebhookProcessor] completed", { selected: records.length, ...counters });
+  logger.info("stripe_webhook_processor_completed", { selected: records.length, ...counters });
   return { selected: records.length, ...counters };
 }
 

@@ -19,6 +19,7 @@ const {
   markRetryable,
 } = require("../services/financialOperationService");
 const JOB_CONFIG = require("../config/jobConfig");
+const { logger, classifyError } = require("../utils/logger");
 
 /** Max T-48 charge retries before marking slot payment_failed (0, 1, 2 = 3 attempts) */
 const T48_MAX_RETRIES = 2;
@@ -53,9 +54,7 @@ async function runT48ChargeJob(context = {}) {
   const now = new Date();
   const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
-  console.log(
-    `[T48ChargeJob] Tick at ${now.toISOString()} — checking for slots due for T-48 charge`,
-  );
+  logger.info("t48_charge_job_started", { jobName: "T48ChargeJob" });
 
   // Find bookings that have at least one pending_payment slot and a saved payment method
   const bookings = await StudentBooking.find({
@@ -68,15 +67,11 @@ async function runT48ChargeJob(context = {}) {
     .lean();
 
   if (!bookings.length) {
-    console.log(
-      "[T48ChargeJob] No bookings with pending_payment slots and saved payment method.",
-    );
+    logger.info("t48_charge_job_empty", { jobName: "T48ChargeJob" });
     return { selected: 0, processed: 0, requiresAction: 0, failed: 0 };
   }
 
-  console.log(
-    `[T48ChargeJob] Found ${bookings.length} booking(s) with pending_payment slots. Scanning each slot for T-48 window...`,
-  );
+  logger.info("t48_charge_candidates_selected", { jobName: "T48ChargeJob", selected: bookings.length });
 
   const admin = await Admin.findOne().lean();
   const platformCommission = admin?.platformCommission || {};
@@ -106,17 +101,13 @@ async function runT48ChargeJob(context = {}) {
         slot.startTime,
       );
       if (!Number.isFinite(slotStartUtcMs)) {
-        console.warn(
-          `[T48ChargeJob] Slot ${slot._id} (${slot.date} ${slot.startTime}): invalid slot start time; skipping.`,
-        );
+        logger.warn("t48_slot_time_invalid", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id });
         continue;
       }
       const chargeTimeUtcMs = slotStartUtcMs - FORTY_EIGHT_HOURS_MS;
       if (chargeTimeUtcMs > now.getTime()) {
         const chargeTimeIso = new Date(chargeTimeUtcMs).toISOString();
-        console.log(
-          `[T48ChargeJob] Slot ${slot._id} (${slot.date} ${slot.startTime}): not yet in T-48 window (chargeTime ${chargeTimeIso} > now). Skipping.`,
-        );
+        logger.info("t48_slot_not_due", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, chargeTime: chargeTimeIso });
         continue;
       }
 
@@ -124,14 +115,10 @@ async function runT48ChargeJob(context = {}) {
         // Incomplete checkout (pending, card never saved) must stay abandoned
         // until the 24h checkout cleanup — do not treat it as a failed T-48 charge.
         if (String(booking.status || "").toLowerCase() === "pending") {
-          console.log(
-            `[T48ChargeJob] Booking ${booking._id} slot ${slot._id}: pending checkout without saved card; skipping T-48 charge.`,
-          );
+          logger.info("t48_pending_checkout_skipped", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id });
           continue;
         }
-        console.warn(
-          `[T48ChargeJob] Booking ${booking._id} has no stripeCustomerId; cannot charge off-session. Marking slot ${slot._id} as payment_failed.`,
-        );
+        logger.warn("t48_customer_missing", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id });
         const r = await StudentBooking.updateOne(
           slotStillPendingFilter(booking._id, slot._id),
           { $set: { "slots.$.paymentStatus": "payment_failed" } },
@@ -140,9 +127,7 @@ async function runT48ChargeJob(context = {}) {
         continue;
       }
 
-      console.log(
-        `[T48ChargeJob] Charging slot ${slot._id} for booking ${booking._id} — lesson ${slot.date} ${slot.startTime}, amount CHF ${fromMinorUnits(bookingMoney.slots[i].grossAmountMinor)}`,
-      );
+      logger.info("t48_payment_attempted", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, amountMinor: bookingMoney.slots[i].grossAmountMinor, currency: "CHF" });
 
       let paymentOperation = null;
       try {
@@ -222,9 +207,7 @@ async function runT48ChargeJob(context = {}) {
           const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
             new Date(),
           );
-          console.log(
-            `[T48ChargeJob] Slot ${slot._id}: requires_action (3DS). Marked slot; student must complete payment.`,
-          );
+          logger.info("t48_payment_requires_action", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, providerObjectId: paymentResult.paymentIntentId });
           const r = await StudentBooking.updateOne(
             slotStillPendingFilter(booking._id, slot._id),
             {
@@ -261,9 +244,7 @@ async function runT48ChargeJob(context = {}) {
             },
           );
           if (r.modifiedCount) {
-            console.log(
-              `[T48ChargeJob] Slot ${slot._id}: payment status "${paymentResult.status}" — marked payment_failed.`,
-            );
+            logger.warn("t48_payment_failed", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, providerStatus: paymentResult.status });
             failed += 1;
             await sendStudentReminderEmail(booking._id, slot._id, 1, context);
           }
@@ -296,15 +277,11 @@ async function runT48ChargeJob(context = {}) {
         );
 
         if (updateResult.modifiedCount === 0) {
-          console.log(
-            `[T48ChargeJob] Slot ${slot._id}: already updated by another process; skipping transactions.`,
-          );
+          logger.info("t48_payment_claim_lost", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id });
           continue;
         }
 
-        console.log(
-          `[T48ChargeJob] Slot ${slot._id}: payment succeeded. Updated slot + created transactions.`,
-        );
+        logger.info("t48_payment_applied", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, providerObjectId: paymentResult.paymentIntentId, amountMinor: slotMoney.grossAmountMinor });
 
         // Create transactions only when we actually claimed the slot (no double ledger)
         await createTransaction({
@@ -406,10 +383,7 @@ async function runT48ChargeJob(context = {}) {
         await markLocalSuccess(paymentOperation, "slot_and_transactions_applied");
         await markCompleted(paymentOperation);
       } catch (err) {
-        console.error(
-          `[T48ChargeJob] Failed for booking ${booking._id} slot ${slot._id}:`,
-          err.message,
-        );
+        logger.error("t48_payment_error", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, error: err, errorCategory: classifyError(err) });
         if (paymentOperation) await markRetryable(paymentOperation, err);
 
         // "This transaction requires authentication" = 3DS needed; show Complete payment immediately (no retries)
@@ -457,9 +431,7 @@ async function runT48ChargeJob(context = {}) {
               localStatus: "requires_action",
             });
             await markLocalSuccess(paymentOperation, "requires_action");
-            console.log(
-              `[T48ChargeJob] Slot ${slot._id}: requires_action (3DS). Marked slot; student must complete payment.`,
-            );
+            logger.info("t48_payment_requires_action", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, providerObjectId: piIdToUse });
             requiresAction += 1;
             await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
@@ -477,9 +449,7 @@ async function runT48ChargeJob(context = {}) {
             },
           );
           if (retryResult.modifiedCount) {
-            console.log(
-              `[T48ChargeJob] Slot ${slot._id}: retry ${retryCount + 1}/${T48_MAX_RETRIES + 1}; will retry next run.`,
-            );
+            logger.info("t48_payment_retry_scheduled", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id, retry: retryCount + 1, maxRetries: T48_MAX_RETRIES + 1 });
           }
         } else {
           const { startedAt, deadlineAt } = buildReminderStartAndDeadline(
@@ -497,9 +467,7 @@ async function runT48ChargeJob(context = {}) {
             },
           );
           if (failResult.modifiedCount) {
-            console.log(
-              `[T48ChargeJob] Slot ${slot._id}: max retries reached; marked payment_failed.`,
-            );
+            logger.warn("t48_payment_max_retries", { jobName: "T48ChargeJob", bookingId: booking._id, slotId: slot._id });
             failed += 1;
             await sendStudentReminderEmail(booking._id, slot._id, 1);
           }
@@ -508,9 +476,7 @@ async function runT48ChargeJob(context = {}) {
     }
   }
 
-  console.log(
-    `[T48ChargeJob] Done. charged=${processed}, requires_action=${requiresAction}, failed=${failed}`,
-  );
+  logger.info("t48_charge_job_completed", { jobName: "T48ChargeJob", processed, requiresAction, failed });
 
   return { selected: bookings.length, processed, requiresAction, failed };
 }

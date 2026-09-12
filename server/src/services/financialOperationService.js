@@ -2,6 +2,8 @@ const crypto = require("crypto");
 const FinancialOperation = require("../models/FinancialOperation");
 const Transaction = require("../models/transaction.model");
 const { toMinorUnits, fromMinorUnits } = require("../utils/money");
+const { logger, classifyError } = require("../utils/logger");
+const metrics = require("../utils/metrics");
 
 const LEASE_MS = 5 * 60 * 1000;
 
@@ -12,6 +14,13 @@ function currentOperationQuery(operation, allowedStatuses) {
   };
   if (operation.leaseOwner) query.leaseOwner = operation.leaseOwner;
   return query;
+}
+
+function operationMetricPrefix(operationType) {
+  if (operationType === "PAYOUT") return "payout";
+  if (operationType === "REFUND") return "refund";
+  if (["DIRECT_PAYMENT", "T48_PAYMENT"].includes(operationType)) return "payment";
+  return "financial_operation";
 }
 
 async function updateOperation(operation, targetStatus, allowedStatuses, update) {
@@ -25,6 +34,21 @@ async function updateOperation(operation, targetStatus, allowedStatuses, update)
       status: updated.status,
       leaseOwner: updated.leaseOwner,
       leaseExpiresAt: updated.leaseExpiresAt,
+    });
+    metrics.increment("financial_operation.transition", 1, {
+      operationType: operation.operationType,
+      status: targetStatus,
+    });
+    const metricPrefix = operationMetricPrefix(operation.operationType);
+    if (targetStatus === "PROVIDER_SUCCEEDED") metrics.increment(`${metricPrefix}.succeeded`);
+    if (targetStatus === "RETRYABLE") metrics.increment(`${metricPrefix}.failed`);
+    logger.info("financial_operation_transition", {
+      operationId: operation.operationId,
+      operationType: operation.operationType,
+      bookingId: operation.bookingId,
+      slotId: operation.slotId,
+      providerObjectId: updated.providerObjectId,
+      status: targetStatus,
     });
     return updated;
   }
@@ -78,7 +102,16 @@ async function getOrCreateOperation(input) {
     metadata: input.metadata || {},
   };
   try {
-    return await FinancialOperation.create(payload);
+    const created = await FinancialOperation.create(payload);
+    metrics.increment("financial_operation.attempted", 1, { operationType: payload.operationType });
+    logger.info("financial_operation_created", {
+      operationId: created.operationId,
+      operationType: created.operationType,
+      bookingId: created.bookingId,
+      slotId: created.slotId,
+      status: created.status,
+    });
+    return created;
   } catch (error) {
     if (error?.code === 11000) {
       const raced = await FinancialOperation.findOne({
@@ -252,6 +285,9 @@ async function markCompleted(operation, localStatus = "completed") {
 }
 
 async function markRetryable(operation, error, nextAttemptAt) {
+  metrics.increment("financial_operation.retryable", 1, { operationType: operation?.operationType, errorCategory: classifyError(error) });
+  const metricPrefix = operationMetricPrefix(operation?.operationType);
+  if (error?.code === "REQUIRES_ACTION") metrics.increment(`${metricPrefix}.requires_action`);
   return updateOperation(
     operation,
     "RETRYABLE",
@@ -271,6 +307,8 @@ async function markRetryable(operation, error, nextAttemptAt) {
 }
 
 async function markManualReview(operation, error, localStatus = "manual_review") {
+  metrics.increment("financial_operation.manual_review", 1, { operationType: operation?.operationType, errorCategory: classifyError(error) });
+  metrics.increment(`${operationMetricPrefix(operation?.operationType)}.manual_review`);
   return updateOperation(
     operation,
     "FAILED_MANUAL_REVIEW",

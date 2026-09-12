@@ -15,13 +15,12 @@ const {
 } = require("../services/financialOperationService");
 const { retrievePayout } = require("../services/stripeService");
 const { fromMinorUnits, getBookingMoneySnapshot } = require("../utils/money");
+const { logger, classifyError } = require("../utils/logger");
 const JOB_CONFIG = require("../config/jobConfig");
 
 async function runInstructorPayoutJob() {
   const now = new Date();
-  console.log(
-    `[PayoutJob] Tick at ${now.toISOString()} — checking for slots eligible for instructor payout`,
-  );
+  logger.info("payout_job_started", { jobName: "PayoutJob" });
   const bookings = await StudentBooking.find({
     "slots.payoutStatus": { $in: ["pending", "processing"] },
     "slots.payoutEligibleAt": { $lte: now },
@@ -233,15 +232,16 @@ async function runInstructorPayoutJob() {
           });
           await markLocalSuccess(payoutOperation, "test_payout_simulated");
           await markCompleted(payoutOperation);
-          console.log(
-            `[PayoutJob] Test mode: simulated payout for booking ${booking._id} slot ${slot._id}`,
-          );
+          logger.info("payout_simulated_non_production", { jobName: "PayoutJob", bookingId: booking._id, slotId: slot._id });
           processed += 1;
         } else {
-          console.error(
-            `Payout failed for booking ${booking._id} slot ${slot._id}:`,
-            err.message,
-          );
+          logger.error("payout_failed", {
+            jobName: "PayoutJob",
+            bookingId: booking._id,
+            slotId: slot._id,
+            error: err,
+            errorCategory: classifyError(err),
+          });
           // Reset to pending so a future run can retry
           await StudentBooking.updateOne(
             { _id: booking._id, "slots._id": slot._id },
@@ -258,7 +258,7 @@ async function runInstructorPayoutJob() {
     }
   }
 
-  console.log(`[PayoutJob] Done. processed=${processed}, errors=${errors}`);
+  logger.info("payout_job_completed", { jobName: "PayoutJob", processed, errors });
   return { selected: bookings.length, processed, errors };
 }
 

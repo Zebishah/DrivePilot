@@ -1,5 +1,7 @@
 const crypto = require("crypto");
 const JobExecution = require("../models/JobExecution");
+const { logger, classifyError } = require("../utils/logger");
+const metrics = require("../utils/metrics");
 
 function runId(jobName) {
   return `${jobName}-${crypto.randomUUID()}`;
@@ -54,12 +56,14 @@ async function finishJobExecution(execution, leaseOwner, result = {}) {
   if (!execution?._id) return null;
   const processed = Number(result.processed ?? result.scanned ?? result.selected ?? 0);
   const failures = Number(result.errors ?? result.failed ?? result.retryable ?? 0);
-  console.log("[JobExecution] completed", {
+  const durationMs = execution.startedAt ? Date.now() - new Date(execution.startedAt).getTime() : undefined;
+  metrics.increment("job.run.succeeded", 1, { jobName: execution.jobName });
+  metrics.observe("job.duration_ms", durationMs, { jobName: execution.jobName });
+  logger.info("job_execution_completed", {
     jobName: execution.jobName,
     runId: execution.runId,
     leaseOwner,
-    startedAt: execution.startedAt,
-    finishedAt: new Date().toISOString(),
+    durationMs,
     selected: Number(result.selected ?? 0),
     processed,
     succeeded: Math.max(0, processed - failures),
@@ -89,12 +93,14 @@ async function finishJobExecution(execution, leaseOwner, result = {}) {
 
 async function failJobExecution(execution, leaseOwner, error, result = {}) {
   if (!execution?._id) return null;
-  console.error("[JobExecution] failed", {
+  metrics.increment("job.run.failed", 1, { jobName: execution.jobName });
+  logger.error("job_execution_failed", {
     jobName: execution.jobName,
     runId: execution.runId,
     leaseOwner,
     code: error?.code || "JOB_FAILED",
-    message: String(error?.message || error).slice(0, 300),
+    errorCategory: classifyError(error),
+    error,
   });
   return JobExecution.findOneAndUpdate(
     { _id: execution._id, status: "RUNNING", leaseOwner },
@@ -118,7 +124,11 @@ async function runDurableJob(jobName, job, options = {}) {
   const leaseMs = options.leaseMs || 10 * 60 * 1000;
   const heartbeatMs = Math.min(options.heartbeatMs || 60 * 1000, Math.max(1000, Math.floor(leaseMs / 3)));
   const execution = await acquireJobLease(jobName, leaseOwner, leaseMs);
-  if (!execution) return { skipped: true, reason: "lease_active" };
+  if (!execution) {
+    metrics.increment("job.lease_contention", 1, { jobName });
+    logger.info("job_lease_contended", { jobName, leaseOwner });
+    return { skipped: true, reason: "lease_active" };
+  }
 
   let leaseLost = false;
   let heartbeatStopped = false;
@@ -148,6 +158,7 @@ async function runDurableJob(jobName, job, options = {}) {
     if (leaseLost) {
       const error = new Error("Job lease was lost while execution was running");
       error.code = "JOB_LEASE_LOST";
+      metrics.increment("job.lease_lost", 1, { jobName });
       await failJobExecution(execution, leaseOwner, error, result);
       return { ...result, failed: true, leaseLost: true };
     }

@@ -32,6 +32,8 @@ const { runFinancialReconciliation } = require("./services/financialReconciliati
 const JOB_CONFIG = require("./config/jobConfig");
 const { createJobScheduler } = require("./services/jobScheduler");
 const mongoose = require("mongoose");
+const { requestCorrelationMiddleware } = require("./middleware/requestCorrelation");
+const { logger } = require("./utils/logger");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
@@ -72,6 +74,7 @@ const httpServer = http.createServer(app);
 // rate limiting uses the originating client IP rather than the shared proxy.
 app.set("trust proxy", 1);
 app.use(helmet());
+app.use(requestCorrelationMiddleware);
 
 // ✅ CORS configuration
 const configuredFrontendUrl = (
@@ -88,7 +91,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log("❌ Blocked by CORS:", origin);
+        logger.warn("cors_request_blocked", { origin });
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -161,7 +164,12 @@ async function startApolloServer() {
     context: async ({ req }) => {
       const auth = await authMiddleware(req);
       // No need to pass io here anymore
-      return { user: auth.user, req };
+      return {
+        user: auth.user,
+        req,
+        requestId: req.requestId,
+        correlationId: req.correlationId,
+      };
     },
   });
 
@@ -171,14 +179,14 @@ async function startApolloServer() {
 
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
-    console.log(`🚀 HTTP: http://localhost:${PORT}${apolloServer.graphqlPath}`);
-    console.log(`📡 Socket.IO active on same server`);
+    logger.info("api_started", { port: PORT, graphqlPath: apolloServer.graphqlPath });
+    logger.info("socket_io_initialized");
   });
 }
 
 async function startApplication() {
   await dbReady;
-  console.log(`[Process] mode api=${JOB_CONFIG.runApi} worker=${JOB_CONFIG.runWorker}`);
+  logger.info("process_mode", { api: JOB_CONFIG.runApi, worker: JOB_CONFIG.runWorker });
   if (JOB_CONFIG.runWorker) {
     schedulerController = createJobScheduler({
       jobs: workerJobs(),
@@ -188,7 +196,7 @@ async function startApplication() {
       maxRetryDelayMs: JOB_CONFIG.maxRetryDelayMs,
     });
     schedulerController.start();
-    console.log("[Worker] scheduler initialized");
+    logger.info("worker_scheduler_initialized");
   }
   await startApolloServer();
 }
@@ -196,7 +204,7 @@ async function startApplication() {
 async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`[Shutdown] ${signal} received`);
+  logger.info("process_shutdown_started", { signal });
   if (schedulerController) await schedulerController.stop();
   if (apolloServer) await apolloServer.stop();
   if (JOB_CONFIG.runApi) {
@@ -212,6 +220,6 @@ process.once("SIGTERM", () => shutdown("SIGTERM").then(() => process.exit(0)));
 process.once("SIGINT", () => shutdown("SIGINT").then(() => process.exit(0)));
 
 startApplication().catch((error) => {
-  console.error("[Startup] failed", error);
+  logger.error("startup_failed", { error, errorCategory: require("./utils/logger").classifyError(error) });
   process.exitCode = 1;
 });

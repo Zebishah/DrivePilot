@@ -3,6 +3,7 @@ import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import Cookies from "js-cookie";
 import CryptoJS from "crypto-js";
+import { getErrorReferenceId } from "../utils/errorReference";
 
 // ✅ ENV
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL; // http://localhost:3000/graphql
@@ -64,7 +65,9 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
     );
   }
   if (networkError) {
-    console.error("[Network error]:", networkError);
+    console.error("[Network error]:", networkError.message, {
+      referenceId: getErrorReferenceId(networkError),
+    });
   }
 });
 

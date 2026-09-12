@@ -37,9 +37,9 @@ function convertCurrency(value, label, id) {
   }
 }
 
-async function updateOne(model, filter, update, label) {
+async function updateOne(model, filter, update, label, apply = APPLY) {
   count(`${label}.candidates`);
-  if (APPLY) await model.updateOne(filter, { $set: update });
+  if (apply) await model.updateOne(filter, { $set: update });
   count(`${label}.converted`);
 }
 
@@ -140,7 +140,11 @@ async function main() {
   await require("mongoose").disconnect();
 }
 
-main().catch((error) => {
-  console.error("[MoneyBackfill] failed", error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("[MoneyBackfill] failed", error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { APPLY, counts, invalid, convert, convertCurrency, updateOne, backfillBookings, backfillSimpleModels, main };

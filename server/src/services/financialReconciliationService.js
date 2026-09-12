@@ -20,6 +20,8 @@ const {
 } = require("./financialOperationService");
 const { dispatchStripeWebhookEvent } = require("./stripeWebhookProcessor");
 const { fromMinorUnits, toMinorUnits } = require("../utils/money");
+const { logger, classifyError } = require("../utils/logger");
+const metrics = require("../utils/metrics");
 
 const BATCH_SIZE = Number(process.env.FINANCIAL_RECONCILIATION_BATCH_SIZE || 25);
 
@@ -138,17 +140,20 @@ async function runFinancialReconciliation({ batchSize = BATCH_SIZE } = {}) {
     try {
       await reconcileOperation(claimed, owner);
       counters.repaired += 1;
+      metrics.increment("reconciliation.repaired", 1, { operationType: operation.operationType });
     } catch (error) {
       if (["PAYOUT_MAPPING_AMBIGUOUS", "REVERSAL_MAPPING_AMBIGUOUS", "PAYOUT_FAILED"].includes(error?.code)) {
         await markManualReview(claimed, error, "reconciliation_manual_review");
         counters.manualReview += 1;
+        metrics.increment("reconciliation.manual_review", 1, { operationType: operation.operationType });
       } else {
         await markRetryable(claimed, error);
         counters.retryable += 1;
+        metrics.increment("reconciliation.failed", 1, { operationType: operation.operationType, errorCategory: classifyError(error) });
       }
     }
   }
-  console.log("[FinancialReconciliation] completed", { selected: operations.length, ...counters });
+  logger.info("financial_reconciliation_completed", { selected: operations.length, ...counters });
   return { selected: operations.length, ...counters };
 }
 
