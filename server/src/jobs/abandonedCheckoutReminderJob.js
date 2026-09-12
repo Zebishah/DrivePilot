@@ -1,6 +1,6 @@
-const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const StudentBooking = require("../models/studentBooking.model");
+const { enqueueEmailEvent } = require("../services/outboxService");
 const {
   getPendingCleanupStaleMinutes,
   describeHoldDurationMinutes,
@@ -24,69 +24,6 @@ function isAbandonedPending(booking) {
   const slots = booking.slots || [];
   if (slots.some((s) => s && String(s.paymentStatus) === "paid")) return false;
   return true;
-}
-
-function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function formatTime(timeStr) {
-  const [h, m] = String(timeStr || "00:00").split(":").map(Number);
-  const d = new Date();
-  d.setHours(h || 0, m || 0, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function buildReminderEmailHtml({
-  studentName,
-  instructorName,
-  slots,
-  resumeUrl,
-  holdDurationPhrase,
-}) {
-  const slotsHtml = (slots || [])
-    .map(
-      (slot) => `
-      <li style="margin-bottom: 8px;">
-        <strong>${formatDate(slot.date)}</strong> - ${formatTime(slot.startTime)} to ${formatTime(slot.endTime)}
-      </li>
-    `,
-    )
-    .join("");
-
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; border: 1px solid #e6e6e6; border-radius: 10px; overflow: hidden;">
-      <div style="background: #5FC2D3; color: #fff; padding: 20px 24px;">
-        <h2 style="margin: 0; font-size: 22px;">Complete your lesson checkout</h2>
-      </div>
-      <div style="padding: 24px; color: #222; line-height: 1.55;">
-        <p style="margin-top: 0;">Hi ${studentName},</p>
-        <p>You started a lesson booking with <strong>${instructorName}</strong>, but checkout was not completed yet.</p>
-        <p>Your selected slot(s) are still reserved for a limited time. Complete payment now to secure this schedule.</p>
-        <ul style="padding-left: 18px; margin: 14px 0;">
-          ${slotsHtml}
-        </ul>
-        <p style="margin: 0 0 18px 0; color: #555;">
-          If checkout is not completed within <strong>${holdDurationPhrase}</strong> from when you started this booking, your slot will be automatically released and this attempt will be cancelled.
-        </p>
-        <a href="${resumeUrl}" style="display: inline-block; background: #5FC2D3; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 7px; font-weight: 700;">
-          Continue Checkout
-        </a>
-      </div>
-      <div style="padding: 14px 24px; color: #777; font-size: 12px; border-top: 1px solid #f0f0f0;">
-        Driving School Platform
-      </div>
-    </div>
-  `;
 }
 
 async function runAbandonedCheckoutReminderJob(context = {}) {
@@ -133,18 +70,6 @@ async function runAbandonedCheckoutReminderJob(context = {}) {
       return { selected: 0, processed: 0, sent: 0, errors: 0 };
     }
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.DOMAIN_HOST,
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.DOMAIN_MAIL,
-        pass: process.env.DOMAIN_PASS,
-      },
-      connectionTimeout: 90_000,
-      socketTimeout: 90_000,
-    });
-
     let sent = 0;
     let errors = 0;
 
@@ -185,20 +110,23 @@ async function runAbandonedCheckoutReminderJob(context = {}) {
         "your instructor";
 
       const resumeUrl = `${FRONTEND_BASE}/student-dashboard/book`;
-      const html = buildReminderEmailHtml({
-        studentName,
-        instructorName,
-        slots: claimed.slots || [],
-        resumeUrl,
-        holdDurationPhrase,
-      });
-
       try {
-        await transporter.sendMail({
-          from: `"Driving School Platform" <${process.env.DOMAIN_MAIL}>`,
+        await enqueueEmailEvent({
+          eventType: "abandoned_checkout_reminder",
+          aggregateType: "BOOKING",
+          aggregateId: claimed._id,
+          dedupeKey: `abandoned-checkout:${claimed._id}`,
           to: claimed.studentId.email,
-          subject: "Finish your checkout to secure your lesson slot",
-          html,
+          template: "reminder",
+          data: {
+            recipientName: studentName,
+            recipientRole: "student",
+            instructorName,
+            status: "awaiting checkout",
+            slots: (claimed.slots || []).map((slot) => ({ date: slot.date, startTime: slot.startTime, endTime: slot.endTime })),
+            actionUrl: resumeUrl,
+            reason: `Complete checkout within ${holdDurationPhrase} to keep the reservation.`,
+          },
         });
 
         await StudentBooking.updateOne(

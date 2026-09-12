@@ -1,1172 +1,169 @@
-const nodemailer = require("nodemailer");
-const generateOTP = () => Math.floor(1000 + Math.random() * 9000);
-const FRONTEND_BASE = (
-  process.env.FRONTEND_URL ||
-  process.env.Frontend_URL ||
-  "http://localhost:5173"
-).replace(/\/$/, "");
-const buildFrontendUrl = (path = "/") =>
-  `${FRONTEND_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+const crypto = require("crypto");
+const { Otp } = require("../models/User");
+const SignupToken = require("../models/SignupLink");
+const { enqueueEmailEvent } = require("../services/outboxService");
 
-const sendOtpEmail = async (email, otp, type) => {
-  let subject = "";
-  let message = "";
+function digest(value) {
+  return crypto.createHash("sha256").update(String(value || "")).digest("hex").slice(0, 24);
+}
 
-  if (type === "email_verification") {
-    subject = "Verify Your Email Address";
-    message = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #4a6ee0; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
-      </div>
-      <div style="color: #333333; line-height: 1.6;">
-        <h1 style="color: #4a6ee0; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Verify Your Email Address</h1>
-        <p style="margin-bottom: 25px; font-size: 16px;">Thank you for signing up! Please use the verification code below to complete your registration:</p>
-        <div style="background-color: #f7f9fc; border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 25px;">
-          <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Your verification code is:</p>
-          <p style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #4a6ee0; margin: 0;">${otp}</p>
-        </div>
-        <p style="margin-bottom: 25px; font-size: 16px;">This code will expire in 10 minutes. If you didn't request this verification, please ignore this email.</p>
-      </div>
-      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
-        <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-        <p>If you have any questions, please contact our support team.</p>
-      </div>
-    </div>
-  `;
-  } else if (type === "instructor_Verification") {
-    subject = "Verification of Your Account";
-    message = `
-  <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-    <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="color: #5ec2d2; font-size: 24px; font-weight: 600; margin-bottom: 10px;">
-        Driving School Platform
-      </h1>
-    </div>
+function idOf(value) {
+  return value?._id?.toString?.() || value?.toString?.() || String(value || "");
+}
 
-    <div style="color: #333333; line-height: 1.6;">
-      <h2 style="color: ${
-        otp === "verified" ? "#28a745" : "#d9534f"
-      }; font-size: 22px; font-weight: 600; margin-bottom: 20px; text-align: center;">
-        ${
-          otp === "verified"
-            ? "Your Instructor Account Has Been Verified!"
-            : "Your Instructor Account Has Been Unverified"
-        }
-      </h2>
+function bookingEventType(type) {
+  return {
+    booking_created: "booking_confirmed",
+    booking_cancelled: "booking_cancelled",
+    booking_status_updated: "booking_status_updated",
+    booking_rescheduled: "booking_rescheduled",
+    booking_completed: "lesson_completed",
+    booking_refunded: "refund_approved",
+    payment_requires_action: "payment_requires_action",
+    payment_failed: "payment_failed",
+  }[type] || type || "booking_notification";
+}
 
-      <p style="margin-bottom: 25px; font-size: 16px;">
-        ${
-          otp === "verified"
-            ? `Congratulations! Your instructor account has been successfully <strong>verified</strong> by our administrative team. You can now log in to your dashboard, manage your lessons, and start accepting students.`
-            : `We wanted to let you know that your instructor account has been <strong>unverified</strong> by our administrative team. This may be due to missing information or an issue that requires further review.`
-        }
-      </p>
+async function sendOtpEmail(email, value, type) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("Email recipient is required");
 
-      ${
-        otp === "verified"
-          ? `<div style="background-color: #e8f9f0; border: 1px solid #b2f2bb; border-radius: 6px; padding: 15px; text-align: center; margin-bottom: 25px;">
-              <p style="color: #28a745; font-weight: 600; font-size: 16px;">✅ You now have full instructor access!</p>
-              <a href="${buildFrontendUrl("/")}" style="display: inline-block; margin-top: 10px; background-color: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: 500;">Go to Dashboard</a>
-            </div>`
-          : `<div style="background-color: #fff5f5; border: 1px solid #f5c2c7; border-radius: 6px; padding: 15px; text-align: center; margin-bottom: 25px;">
-              <p style="color: #d9534f; font-weight: 600; font-size: 16px;">⚠️ Your account is temporarily restricted.</p>
-              <p style="font-size: 14px; color: #555;">Please contact our support team for assistance or to provide any missing documentation.</p>
-              <a href="mailto:support@drivingschool.com" style="display: inline-block; margin-top: 10px; background-color: #d9534f; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: 500;">Contact Support</a>
-            </div>`
-      }
-
-      <p style="margin-bottom: 25px; font-size: 15px;">
-        ${
-          otp === "verified"
-            ? `We’re excited to have you on board and look forward to seeing your teaching journey grow with us!`
-            : `Once your account has been reviewed and verified again, you’ll regain full instructor privileges.`
-        }
-      </p>
-    </div>
-
-    <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
-      <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-      <p>If you have any questions, please contact our support team.</p>
-    </div>
-  </div>
-`;
-  } else if (type === "two_factor_auth") {
-    subject = "Your Security Authentication Code";
-    message = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 8px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-      <div style="text-align: center; margin-bottom: 30px;">
-       <h1 style="color: #2e7d32; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
-      </div>
-      <div style="color: #333333; line-height: 1.6;">
-        <h1 style="color: #2e7d32; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Two-Factor Authentication</h1>
-        <p style="margin-bottom: 25px; font-size: 16px;">We've received a login request for your account. To complete the authentication process, please use the following security code:</p>
-        <div style="background-color: #f1f8e9; border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 25px;">
-          <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Your 2FA code is:</p>
-          <p style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #2e7d32; margin: 0;">${otp}</p>
-        </div>
-        <p style="margin-bottom: 25px; font-size: 16px;">This code will expire in 10 minutes. If you didn't attempt to log in, please secure your account immediately.</p>
-      </div>
-      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #999; font-size: 13px;">
-        <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          <p>If you have any questions, please contact our support team.</p>
-      </div>
-    </div>
-  `;
-  } else if (type === "welcome_email_Instructor") {
-    subject = "Welcome to Your Driving Journey with DSP!";
-    message = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-      <div style="text-align: center; margin-bottom: 25px;">
-        <img src="https://yourdomain.com/logo.png" alt="Driving School Platform" style="max-height: 70px;" />
-      </div>
-      
-      <div style="color: #333333; line-height: 1.6;">
-        <h1 style="color: #3d5afe; font-size: 28px; font-weight: 700; margin-bottom: 20px; text-align: center;">Welcome to Our Driving School Platform!</h1>
-        
-        <div style="background: linear-gradient(135deg, #3d5afe 0%, #536dfe 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-          <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 15px; text-align: center;">We Will Review the documents you have submitted</h2>
-          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Once All Documents will approved you will be visible on the platform and students will be able to book lessons with you!</p>
-          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Thank you for choosing our Driving School Platform. We're excited to help you on your path to becoming a confident and skilled driver!</p>
-        </div>
-        
-        <p style="margin-bottom: 20px; font-size: 16px;">Dear ${otp},</p>
-        
-        <p style="margin-bottom: 20px; font-size: 16px;">Welcome to our driving community! We're thrilled to have you on board and can't wait to support you throughout your learning journey. Your account has been successfully created and is ready to use.</p>
-        
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${buildFrontendUrl("/auth/signin")}" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
-        </div>
-                
-        <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions or need assistance, our support team is always here to help. Simply reply to this email or contact us through our website.</p>
-        
-        <p style="margin-bottom: 25px; font-size: 16px;">We look forward to being part of your driving success story!</p>
-        
-        <p style="margin-bottom: 10px; font-size: 16px;">Safe driving,</p>
-        <p style="font-size: 16px; font-weight: 600; color: #3d5afe; margin-bottom: 0;">The DSP Team</p>
-      </div>
-      
-      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-       
-        <p style="margin-bottom: 8px;">&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-       
-        <p style="margin-top: 15px;">You received this email because you signed up for an account on our Driving School Platform.</p>
-      </div>
-    </div>
-  `;
-  } else if (type === "welcome_email_Student") {
-    subject = "Welcome to Your Driving Journey with DSP!";
-    message = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-      <div style="text-align: center; margin-bottom: 25px;">
-        <img src="https://yourdomain.com/logo.png" alt="Driving School Platform" style="max-height: 70px;" />
-      </div>
-      
-      <div style="color: #333333; line-height: 1.6;">
-        <h1 style="color: #3d5afe; font-size: 28px; font-weight: 700; margin-bottom: 20px; text-align: center;">Welcome to Our Driving School Platform!</h1>
-        
-        <div style="background: linear-gradient(135deg, #3d5afe 0%, #536dfe 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-          <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 15px; text-align: center;">We Will Review Your Profile Soon And Will Review Your Documents As Well</h2>
-          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Your Documents will approved Soon And Now you can easily Book lessons with the instructors!</p>
-          <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 16px; text-align: center;">Thank you for choosing our Driving School Platform. We're excited to help you on your path to becoming a confident and skilled driver!</p>
-        </div>
-        
-        <p style="margin-bottom: 20px; font-size: 16px;">Dear ${otp},</p>
-        
-        <p style="margin-bottom: 20px; font-size: 16px;">Welcome to our driving community! We're thrilled to have you on board and can't wait to support you throughout your learning journey. Your account has been successfully created and is ready to use.</p>
-        
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${buildFrontendUrl("/auth/signin")}" style="display: inline-block; background-color: #3d5afe; color: white; font-weight: bold; padding: 14px 30px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(61,90,254,0.3);">Log In to Your Account</a>
-        </div>
-                
-        <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions or need assistance, our support team is always here to help. Simply reply to this email or contact us through our website.</p>
-        
-        <p style="margin-bottom: 25px; font-size: 16px;">We look forward to being part of your driving success story!</p>
-        
-        <p style="margin-bottom: 10px; font-size: 16px;">Safe driving,</p>
-        <p style="font-size: 16px; font-weight: 600; color: #3d5afe; margin-bottom: 0;">The DSP Team</p>
-      </div>
-      
-      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-       
-        <p style="margin-bottom: 8px;">&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-      
-        <p style="margin-top: 15px;">You received this email because you signed up for an account on our Driving School Platform.</p>
-      </div>
-    </div>
-  `;
-  } else if (type === "signupLinkCreation") {
-    subject = "Welcome to DSP Admin Panel - Set Up Your Account";
-    message = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://domain.com/logo.png" alt="DSP Admin Panel" style="max-height: 70px;" />
-      </div>
-      <div style="color: #333333; line-height: 1.6;">
-        <h1 style="color: #3d5afe; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">Welcome to the DSP Admin Panel</h1>
-        
-        <p style="margin-bottom: 25px; font-size: 16px; text-align: center;">We're excited to have you join our administrative team! Your expertise will be invaluable to our platform's success.</p>
-        
-        <div style="background: linear-gradient(to right, #3d5afe, #536dfe); border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 30px;">
-          <p style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 15px;">Please create your password using the following link:</p>
-          <a href="${otp}" style="display: inline-block; background-color: white; color: #3d5afe; font-weight: bold; padding: 14px 28px; text-decoration: none; border-radius: 50px; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">Set Up Your Account</a>
-        </div>
-        
-        <p style="margin-bottom: 15px; font-size: 16px;">This link is all Yours now. If you need assistance, please contact our support team.</p>
-        
-        <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin: 25px 0;">
-          <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 15px;">What to expect as an admin:</h3>
-          <ul style="padding-left: 20px; margin-bottom: 0;">
-            <li style="margin-bottom: 10px;">Comprehensive dashboard access</li>
-            <li style="margin-bottom: 10px;">Student and instructor management tools</li>
-            <li style="margin-bottom: 10px;">Scheduling and booking oversight</li>
-            <li style="margin-bottom: 0;">Reporting and analytics features</li>
-          </ul>
-        </div>
-        
-        <p style="margin-bottom: 25px; font-size: 16px; text-align: center;">We look forward to your contribution to our driving school platform!</p>
-      </div>
-      
-      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-        <p style="margin-bottom: 8px;">&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-        <div style="margin: 15px 0;">
-          <a href="#" style="color: #3d5afe; text-decoration: none; margin: 0 10px;">Help Center</a>
-          <a href="#" style="color: #3d5afe; text-decoration: none; margin: 0 10px;">Privacy Policy</a>
-          <a href="#" style="color: #3d5afe; text-decoration: none; margin: 0 10px;">Terms of Service</a>
-        </div>
-        <p style="margin-top: 15px;">If you didn't request this email, please disregard it or contact support.</p>
-      </div>
-    </div>
-  `;
-  }
-
-  const mailOptions = {
-    from: `"Drive School" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject,
-    html: message,
-  };
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.DOMAIN_HOST,
-    port: 587,
-    secure: false, // true for port 465, false for 587
-    auth: {
-      user: process.env.DOMAIN_MAIL,
-      pass: process.env.DOMAIN_PASS,
-    },
-    connectionTimeout: 90_000, // 30 seconds
-    socketTimeout: 90_000, // 30 seconds
-  });
-
-  await transporter.sendMail(mailOptions);
-};
-
-// New booking notification functions
-const sendBookingEmail = async (recipients, bookingData, type) => {
-  const transporter = nodemailer.createTransport({
-    host: process.env.DOMAIN_HOST,
-    port: 587,
-    secure: false, // true for port 465, false for 587
-    auth: {
-      user: process.env.DOMAIN_MAIL,
-      pass: process.env.DOMAIN_PASS,
-    },
-    connectionTimeout: 90_000, // 30 seconds
-    socketTimeout: 90_000, // 30 seconds
-  });
-
-  let subject = "";
-  let message = "";
-
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+  if (["email_verification", "two_factor_auth"].includes(type)) {
+    const otp = await Otp.findOne({ email: normalizedEmail, otp: value, type, status: "unused" }).sort({ createdAt: -1 }).select("_id").lean();
+    if (!otp) throw new Error("OTP record must exist before notification enqueue");
+    return enqueueEmailEvent({
+      eventType: "otp_issued",
+      aggregateType: "OTP",
+      aggregateId: otp._id,
+      dedupeKey: `otp:${otp._id}`,
+      to: normalizedEmail,
+      template: "otp",
+      data: { type },
+      references: { otpId: otp._id },
     });
-  };
+  }
 
-  const formatTime = (timeStr) => {
-    const [hour, minute] = timeStr.split(":");
-    const date = new Date();
-    date.setHours(parseInt(hour), parseInt(minute));
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+  if (type === "signupLinkCreation") {
+    const signup = await SignupToken.findOne({ email: normalizedEmail, signupLink: value }).select("_id").lean();
+    if (!signup) throw new Error("Signup link record must exist before notification enqueue");
+    return enqueueEmailEvent({
+      eventType: "signup_link_created",
+      aggregateType: "SIGNUP_LINK",
+      aggregateId: signup._id,
+      dedupeKey: `signup-link:${signup._id}`,
+      to: normalizedEmail,
+      template: "signup_link",
+      references: { signupTokenId: signup._id },
     });
-  };
-  console.log("bookingData", bookingData);
-  const completePaymentBaseUrl = FRONTEND_BASE;
-  const pendingPaymentSlots = (bookingData.slots || []).filter(
-    (s) =>
-      s.paymentStatus === "requires_action" ||
-      s.paymentStatus === "payment_failed",
-  );
-  const firstPendingSlot = pendingPaymentSlots[0];
-  const computedCompletePaymentLink =
-    firstPendingSlot && bookingData.id
-      ? `${completePaymentBaseUrl}/student-dashboard/complete-payment?bookingId=${bookingData.id}&slotId=${firstPendingSlot._id}`
-      : `${completePaymentBaseUrl}/student-dashboard/book`;
-  const completePaymentLink =
-    bookingData.completePaymentLink || computedCompletePaymentLink;
-  const dashboardBookUrl = `${completePaymentBaseUrl}/student-dashboard/book`;
-
-  const buildPaymentAlertEmailForRole = (recipient, paymentType) => {
-    const isRequiresAction = paymentType === "payment_requires_action";
-    const isStudent = recipient.role === "student";
-    const isInstructor = recipient.role === "instructor";
-    const headingColor = isRequiresAction ? "#ff9800" : "#dc3545";
-
-    if (isStudent) {
-      return {
-        subject: isRequiresAction
-          ? "Action required: complete payment for your upcoming lesson"
-          : "Payment failed for your upcoming lesson",
-        message: `
-          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-            </div>
-            <div style="color: #333333; line-height: 1.6;">
-              <h2 style="color: ${headingColor}; font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center;">
-                ${
-                  isRequiresAction
-                    ? "Additional authentication required"
-                    : "Payment failed"
-                }
-              </h2>
-              <p style="margin-bottom: 16px; font-size: 16px;">
-                ${
-                  isRequiresAction
-                    ? "We tried to process your payment, but your bank requires an extra 3D Secure confirmation."
-                    : "We were unable to process your payment for an upcoming lesson."
-                }
-              </p>
-              <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
-                ${slotsHtml}
-              </div>
-              <p style="margin-bottom: 20px; font-size: 16px;">
-                Please open your booked lessons dashboard and complete payment there.
-              </p>
-              <div style="text-align: center; margin-bottom: 24px;">
-                <a href="${dashboardBookUrl}" style="display: inline-block; background: linear-gradient(135deg, ${headingColor} 0%, ${
-                  isRequiresAction ? "#f57c00" : "#c82333"
-                } 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Go to booked lessons</a>
-              </div>
-              <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
-                If you're not logged in, sign in first and then go to your booked lessons to complete payment.
-              </p>
-            </div>
-            <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-              <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-            </div>
-          </div>
-        `,
-      };
-    }
-
-    if (isInstructor) {
-      return {
-        subject: isRequiresAction
-          ? "Student payment pending authentication (T-48)"
-          : "Student payment failed (T-48)",
-        message: `
-          <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
-            <h2 style="color: ${headingColor}; font-size: 20px; margin-bottom: 16px;">Student payment status update</h2>
-            <p style="font-size: 15px; color: #333;">
-              ${
-                isRequiresAction
-                  ? "A student's lesson payment requires 3D Secure authentication."
-                  : "A student's lesson payment attempt failed."
-              }
-            </p>
-            <p style="font-size: 15px; color: #333;">
-              The student has been notified to complete payment from their booked lessons dashboard.
-            </p>
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-top: 16px;">
-              <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
-              ${slotsHtml}
-            </div>
-          </div>
-        `,
-      };
-    }
-
-    return {
-      subject: isRequiresAction
-        ? "Payment requires action (student notified)"
-        : "Payment failed (student notified)",
-      message: `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px; text-align: center;">Driving School Platform</h1>
-          <h2 style="color: ${headingColor}; font-size: 20px; margin-bottom: 16px;">T-48 payment status update</h2>
-          <p style="font-size: 15px; color: #333;">
-            ${
-              isRequiresAction
-                ? "A student payment requires 3D Secure authentication."
-                : "A student payment attempt failed."
-            }
-          </p>
-          <p style="font-size: 15px; color: #333;">
-            The student-only action email has been sent with dashboard instructions.
-          </p>
-          <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-top: 16px;">
-            <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
-            ${slotsHtml}
-          </div>
-        </div>
-      `,
-    };
-  };
-
-  // Generate slots HTML
-  const slotsHtml = bookingData.slots
-    .map(
-      (slot) => `
-    <div style="background-color: #f8f9fa; border-radius: 6px; padding: 15px; margin-bottom: 10px; border-left: 4px solid #3d5afe;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <strong style="color: #333; font-size: 16px;">${formatDate(
-            slot.date,
-          )}</strong>
-          <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">${formatTime(
-            slot.startTime,
-          )} - ${formatTime(slot.endTime)}</p>
-        </div>
-        <span style="background-color: ${
-          slot.status === "confirmed"
-            ? "#28a745"
-            : slot.status === "cancelled"
-              ? "#dc3545"
-              : "#ffc107"
-        }; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; text-transform: capitalize;">${
-          slot.status
-        }</span>
-      </div>
-    </div>
-  `,
-    )
-    .join("");
-
-  switch (type) {
-    case "booking_created":
-      subject = "🎉 New Booking Confirmed - DSP";
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: #28a745; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">🎉 Booking Confirmed!</h2>
-            
-            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${
-                bookingData.id || "N/A"
-              }</h3>
-              <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">Your driving lesson has been successfully booked!</p>
-            </div>
-            
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Booking Details</h3>
-              
-              <div style="margin-bottom: 20px;">
-                <p style="margin-bottom: 8px;"><strong>Student:</strong> ${
-                  bookingData.student?.firstName || ""
-                } ${bookingData.student?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${
-                  bookingData.instructor?.firstName || ""
-                } ${bookingData.instructor?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">${
-                  bookingData.status || "Confirmed"
-                }</span></p>
-                <p style="margin-bottom: 8px;"><strong>Total Price:</strong> CHF ${
-                  bookingData.totalAmount || "0"
-                }</p>
-                <p style="margin-bottom: 8px;"><strong>Final Price:</strong> CHF ${
-                  bookingData.finalAmount || "0"
-                }</p>
-              </div>
-              
-              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Cancelled Sessions:</h4>
-              ${slotsHtml}
-            </div>
-            
-            <div style="background-color: #e3f2fd; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-              <h4 style="color: #1976d2; margin-bottom: 15px;">📞 Address Information</h4>
-              <p style="margin-bottom: 8px;"><strong>Student Address:</strong> ${
-                bookingData.studentAddress || "N/A"
-              }</p>
-              <p style="margin-bottom: 0;"><strong>Instructor Address:</strong> ${
-                bookingData.instructorAddress || "N/A"
-              }</p>
-            </div>
-            
-            <p style="margin-bottom: 25px; font-size: 16px;">Please ensure you're available at the scheduled times. For any changes or questions, contact support immediately.</p>
-          </div>
-          
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
-
-    case "payment_requires_action":
-      subject = "Action required: complete payment for your upcoming lesson";
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: #ff9800; font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center;">Additional authentication required</h2>
-            
-            <p style="margin-bottom: 16px; font-size: 16px;">
-              We tried to process your payment for an upcoming lesson, but your bank requires an extra security confirmation (3D Secure).
-            </p>
-            
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-              <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
-              ${slotsHtml}
-            </div>
-            
-            <p style="margin-bottom: 20px; font-size: 16px;">
-              Please complete the payment using the button below (you may need to confirm with your bank via 3D Secure).
-            </p>
-            <div style="text-align: center; margin-bottom: 24px;">
-              <a href="${completePaymentLink}" style="display: inline-block; background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete payment</a>
-            </div>
-            <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
-              Or go to your <a href="${dashboardBookUrl}" style="color: #3d5afe;">dashboard</a> to see all pending payments.
-            </p>
-          </div>
-          
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
-
-    case "payment_failed":
-      subject = "Payment failed for your upcoming lesson";
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: #dc3545; font-size: 22px; font-weight: 700; margin-bottom: 20px; text-align: center;">Payment failed</h2>
-            
-            <p style="margin-bottom: 16px; font-size: 16px;">
-              We were unable to process the payment for one of your upcoming lessons. This may be due to insufficient funds, an expired card, or a bank block.
-            </p>
-            
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-              <h3 style="color: #3d5afe; font-size: 16px; margin-bottom: 12px;">Lesson details</h3>
-              ${slotsHtml}
-            </div>
-            
-            <p style="margin-bottom: 20px; font-size: 16px;">
-              Please complete the payment or update your payment method using the button below.
-            </p>
-            <div style="text-align: center; margin-bottom: 24px;">
-              <a href="${completePaymentLink}" style="display: inline-block; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Complete payment / Try again</a>
-            </div>
-            <p style="margin-bottom: 16px; font-size: 14px; color: #666;">
-              Or go to your <a href="${dashboardBookUrl}" style="color: #3d5afe;">dashboard</a> to see all pending payments. If payment is not completed, the lesson may be cancelled.
-            </p>
-          </div>
-          
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
-
-    case "booking_cancelled":
-      subject = "❌ Booking Cancelled - DSP";
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: #dc3545; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">❌ Booking Cancelled</h2>
-            
-            <div style="background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${
-                bookingData.id || "N/A"
-              }</h3>
-              <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">This booking has been cancelled</p>
-            </div>
-            
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Cancelled Booking Details</h3>
-              
-              <div style="margin-bottom: 20px;">
-                <p style="margin-bottom: 8px;"><strong>Student:</strong> ${
-                  bookingData.student?.firstName || ""
-                } ${bookingData.student?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${
-                  bookingData.instructor?.firstName || ""
-                } ${bookingData.instructor?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: #dc3545; font-weight: bold;">${
-                  bookingData.status || "Cancelled"
-                }</span></p>
-                <p style="margin-bottom: 8px;"><strong>Cancellation Date:</strong> ${new Date().toLocaleDateString()}</p>
-                ${
-                  bookingData.reason
-                    ? `<p style="margin-bottom: 8px;"><strong>Reason:</strong> ${bookingData.reason}</p>`
-                    : ""
-                }
-              </div>
-              
-              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Cancelled Sessions:</h4>
-              ${slotsHtml}
-            </div>
-            
-            <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions about this cancellation, please contact our support team.</p>
-          </div>
-          
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
-    case "booking_refunded":
-      subject = "Refund Completed - DSP";
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: #f59e0b; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">Refund Completed</h2>
-            <div style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #1f2937; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${
-                bookingData.id || "N/A"
-              }</h3>
-              <p style="color: rgba(0,0,0,0.75); margin: 0; font-size: 16px; text-align: center;">A cancelled lesson has been refunded.</p>
-            </div>
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">Refunded lesson details</h3>
-              ${slotsHtml}
-            </div>
-            <p style="margin-bottom: 25px; font-size: 16px;">This refund is now reflected in your dashboard status as Refunded.</p>
-          </div>
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
-    case "booking_completed":
-      subject = "✅ Booking Completed - DSP";
-      message = `
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-      </div>
-      
-      <div style="color: #333333; line-height: 1.6;">
-        <h2 style="color: #28a745; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">✅ Booking Completed Successfully</h2>
-        
-        <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-          <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${
-            bookingData.id || "N/A"
-          }</h3>
-          <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">Congratulations! This booking has been completed</p>
-        </div>
-        
-        <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-          <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Completed Booking Details</h3>
-          
-          <div style="margin-bottom: 20px;">
-            <p style="margin-bottom: 8px;"><strong>Student:</strong> ${
-              bookingData.student?.firstName || ""
-            } ${bookingData.student?.lastName || ""}</p>
-            <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${
-              bookingData.instructor?.firstName || ""
-            } ${bookingData.instructor?.lastName || ""}</p>
-            <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">${
-              bookingData.status || "Completed"
-            }</span></p>
-            <p style="margin-bottom: 8px;"><strong>Completion Date:</strong> ${new Date().toLocaleDateString()}</p>
-            ${
-              bookingData.notes
-                ? `<p style="margin-bottom: 8px;"><strong>Notes:</strong> ${bookingData.notes}</p>`
-                : ""
-            }
-          </div>
-          
-          <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Completed Sessions:</h4>
-          ${slotsHtml}
-        </div>
-        
-        <p style="margin-bottom: 25px; font-size: 16px;">Thank you for completing your driving lessons with us! We hope you had a great learning experience.</p>
-      </div>
-      
-      <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-        <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-      </div>
-    </div>
-  `;
-      break;
-    case "booking_status_updated":
-      subject = "📝 Booking Status Updated - DSP";
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: #ffc107; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">📝 Booking Status Updated</h2>
-            
-            <div style="background: linear-gradient(135deg, #ffc107 0%, #ffca28 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #333; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Booking ID: #${
-                bookingData.id || "N/A"
-              }</h3>
-              <p style="color: rgba(0,0,0,0.7); margin: 0; font-size: 16px; text-align: center;">Your booking status has been updated</p>
-            </div>
-            
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Updated Booking Details</h3>
-              
-              <div style="margin-bottom: 20px;">
-                <p style="margin-bottom: 8px;"><strong>Student:</strong> ${
-                  bookingData.student?.firstName || ""
-                } ${bookingData.student?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${
-                  bookingData.instructor?.firstName || ""
-                } ${bookingData.instructor?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>New Status:</strong> <span style="color: #ffc107; font-weight: bold;">${
-                  bookingData.status || "Updated"
-                }</span></p>
-                <p style="margin-bottom: 8px;"><strong>Update Date:</strong> ${new Date().toLocaleDateString()}</p>
-              </div>
-              
-              <h4 style="color: #3d5afe; font-size: 16px; margin-bottom: 15px;">📅 Session Details:</h4>
-              ${slotsHtml}
-            </div>
-            
-            <p style="margin-bottom: 25px; font-size: 16px;">Please review the updated status and contact support if you have any concerns.</p>
-          </div>
-          
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
-    case "booking_rescheduled":
-      const rescheduledSlot = bookingData.slots?.[0] || {};
-      const hasPreviousSlot =
-        rescheduledSlot.previousDate &&
-        rescheduledSlot.previousStartTime &&
-        rescheduledSlot.previousEndTime;
-      const rescheduledBy = String(rescheduledSlot.rescheduledBy || "student");
-      const actorLabel = rescheduledBy === "admin" ? "Admin" : "Student";
-      subject = `Lesson Rescheduled by ${actorLabel}`;
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 8px;">Driving School Platform</h1>
-            <h2 style="color: #0f766e; font-size: 22px; margin: 0;">${actorLabel} rescheduled a lesson</h2>
-          </div>
-          <div style="color: #333333; line-height: 1.6; font-size: 15px;">
-            <p style="margin-bottom: 14px;">
-              The lesson time was changed by ${actorLabel.toLowerCase()}. Please review the updated time and be prepared for the new slot.
-            </p>
-            <p style="margin-bottom: 10px;"><strong>Booking ID:</strong> #${bookingData.id || "N/A"}</p>
-            <p style="margin-bottom: 18px;"><strong>Student:</strong> ${
-              bookingData.student?.firstName || ""
-            } ${bookingData.student?.lastName || ""}</p>
-            ${
-              hasPreviousSlot
-                ? `
-              <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 14px; margin-bottom: 14px;">
-                <h3 style="font-size: 15px; margin: 0 0 8px 0; color: #9a3412;">Previous lesson time</h3>
-                <p style="margin: 0;">${formatDate(rescheduledSlot.previousDate)} • ${formatTime(
-                    rescheduledSlot.previousStartTime,
-                  )} - ${formatTime(rescheduledSlot.previousEndTime)}</p>
-              </div>
-            `
-                : ""
-            }
-            <div style="background-color: #ecfeff; border: 1px solid #a5f3fc; border-radius: 8px; padding: 14px;">
-              <h3 style="font-size: 15px; margin: 0 0 8px 0; color: #155e75;">New lesson time</h3>
-              <p style="margin: 0;">${formatDate(rescheduledSlot.date)} • ${formatTime(
-                rescheduledSlot.startTime,
-              )} - ${formatTime(rescheduledSlot.endTime)}</p>
-            </div>
-          </div>
-          <div style="border-top: 1px solid #eaeaea; margin-top: 24px; padding-top: 16px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-      break;
   }
 
-  const isPaymentAlertType =
-    type === "payment_requires_action" || type === "payment_failed";
-
-  if (isPaymentAlertType) {
-    const emailPromises = recipients.map((recipient) => {
-      const roleAware = buildPaymentAlertEmailForRole(recipient, type);
-      const mailOptions = {
-        from: `"Drive School" <${process.env.EMAIL_USER}>`,
-        to: recipient.email,
-        subject: roleAware.subject,
-        html: roleAware.message,
-      };
-      return transporter.sendMail(mailOptions);
-    });
-
-    try {
-      await Promise.all(emailPromises);
-      console.log(
-        `Role-based payment notification emails sent successfully to ${recipients.length} recipients`,
-      );
-    } catch (error) {
-      console.error("Error sending payment notification emails:", error);
-      throw error;
-    }
-    return;
-  }
-
-  // Send emails to all recipients (non-payment event types)
-  const emailPromises = recipients.map((recipient) => {
-    const mailOptions = {
-      from: `"Drive School" <${process.env.EMAIL_USER}>`,
-      to: recipient.email,
-      subject: subject,
-      html: message,
-    };
-    return transporter.sendMail(mailOptions);
+  const isWelcome = ["welcome_email_Student", "welcome_email_Instructor", "welcome_email"].includes(type);
+  const eventType = isWelcome ? "welcome_email" : "instructor_verification_updated";
+  return enqueueEmailEvent({
+    eventType,
+    aggregateType: "USER",
+    aggregateId: normalizedEmail,
+    dedupeKey: `${eventType}:${normalizedEmail}:${digest(value)}`,
+    to: normalizedEmail,
+    template: isWelcome ? "welcome" : "verification",
+    data: isWelcome ? { name: value } : { status: value },
   });
+}
 
-  try {
-    await Promise.all(emailPromises);
-    console.log(
-      `Booking notification emails sent successfully to ${recipients.length} recipients`,
-    );
-  } catch (error) {
-    console.error("Error sending booking notification emails:", error);
-    throw error;
-  }
-};
-const sendDocumentStatusEmail = async (recipients, documentData, type) => {
-  const transporter = nodemailer.createTransport({
-    host: process.env.DOMAIN_HOST,
-    port: 587,
-    secure: false, // true for port 465, false for 587
-    auth: {
-      user: process.env.DOMAIN_MAIL,
-      pass: process.env.DOMAIN_PASS,
-    },
-    connectionTimeout: 90_000, // 30 seconds
-    socketTimeout: 90_000, // 30 seconds
-  });
-
-  let subject = "";
-  let message = "";
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "accepted":
-        return "#28a745";
-      case "rejected":
-        return "#dc3545";
-      case "pending":
-        return "#ffc107";
-      default:
-        return "#6c757d";
-    }
+async function sendBookingEmail(recipients, bookingData, type, options = {}) {
+  const eventType = bookingEventType(type);
+  const bookingId = idOf(bookingData?.id || bookingData?._id);
+  const slots = (bookingData?.slots || []).map((slot) => ({
+    id: idOf(slot?._id || slot?.id),
+    date: slot?.date,
+    startTime: slot?.startTime,
+    endTime: slot?.endTime,
+    status: slot?.status,
+  }));
+  const student = bookingData?.student || {};
+  const instructor = bookingData?.instructor || {};
+  const baseData = {
+    status: bookingData?.status,
+    slots,
+    studentName: `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+    instructorName: `${instructor.firstName || ""} ${instructor.lastName || ""}`.trim(),
+    reason: bookingData?.reason || null,
+    actionUrl: bookingData?.completePaymentLink || undefined,
+    templateTitle: {
+      booking_created: "Booking confirmed",
+      booking_cancelled: "Booking cancelled",
+      booking_rescheduled: "Booking rescheduled",
+      booking_refunded: "Refund approved",
+      booking_completed: "Lesson completed",
+      payment_requires_action: "Payment action required",
+      payment_failed: "Payment failed",
+    }[type],
   };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "accepted":
-        return "✅";
-      case "rejected":
-        return "❌";
-      case "pending":
-        return "⏳";
-      default:
-        return "📄";
-    }
-  };
-
-  switch (type) {
-    case "document_status_updated":
-      const statusIcon = getStatusIcon(documentData.status);
-      const statusColor = getStatusColor(documentData.status);
-
-      subject = `${statusIcon} Document Status Updated - ${documentData.documentType} - DSP`;
-      message = `
-        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eaeaea; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3d5afe; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Driving School Platform</h1>
-          </div>
-          
-          <div style="color: #333333; line-height: 1.6;">
-            <h2 style="color: ${statusColor}; font-size: 26px; font-weight: 700; margin-bottom: 25px; text-align: center;">${statusIcon} Document Status Updated</h2>
-            
-            <div style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}cc 100%); border-radius: 10px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: white; font-size: 18px; font-weight: 600; margin-bottom: 10px; text-align: center;">Document ID: #${
-                documentData.id || "N/A"
-              }</h3>
-              <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 16px; text-align: center;">Your document status has been updated to: <strong>${documentData.status.toUpperCase()}</strong></p>
-            </div>
-            
-            <div style="background-color: #f7f9fc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-              <h3 style="color: #3d5afe; font-size: 18px; margin-bottom: 20px;">📋 Document Details</h3>
-              
-              <div style="margin-bottom: 20px;">
-                <p style="margin-bottom: 8px;"><strong>Instructor:</strong> ${
-                  documentData.instructor?.firstName || ""
-                } ${documentData.instructor?.lastName || ""}</p>
-                <p style="margin-bottom: 8px;"><strong>Email:</strong> ${
-                  documentData.instructor?.email || ""
-                }</p>
-                <p style="margin-bottom: 8px;"><strong>Document Type:</strong> ${
-                  documentData.documentType || "N/A"
-                }</p>
-                <p style="margin-bottom: 8px;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${
-                  documentData.status || "N/A"
-                }</span></p>
-                <p style="margin-bottom: 8px;"><strong>Update Date:</strong> ${new Date().toLocaleDateString(
-                  "en-US",
-                  {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  },
-                )}</p>
-                <p style="margin-bottom: 8px;"><strong>Update Time:</strong> ${new Date().toLocaleTimeString(
-                  "en-US",
-                  {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                  },
-                )}</p>
-              </div>
-              
-              ${
-                documentData.documentUrl
-                  ? `
-                <div style="background-color: #e3f2fd; border-radius: 6px; padding: 15px; margin-top: 15px;">
-                  <p style="margin-bottom: 8px; color: #1976d2;"><strong>📎 Document Link:</strong></p>
-                  <a href="${documentData.documentUrl}" target="_blank" style="color: #3d5afe; text-decoration: none; font-weight: 500;">View Document</a>
-                </div>
-              `
-                  : ""
-              }
-            </div>
-            
-            ${
-              documentData.status === "accepted"
-                ? `
-              <div style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                <h4 style="color: #155724; margin-bottom: 15px;">🎉 Congratulations!</h4>
-                <p style="color: #155724; margin: 0;">Your document has been approved. You can now proceed with your instructor registration process.</p>
-              </div>
-            `
-                : documentData.status === "rejected"
-                  ? `
-              <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                <h4 style="color: #721c24; margin-bottom: 15px;">⚠️ Document Rejected</h4>
-                <p style="color: #721c24; margin: 0;">Your document has been rejected. Please review the requirements and resubmit a new document. Contact support if you need assistance.</p>
-                ${
-                  documentData.rejectionReason
-                    ? `<p style="color: #721c24; margin: 10px 0 0 0;"><strong>Reason:</strong> ${documentData.rejectionReason}</p>`
-                    : ""
-                }
-              </div>
-            `
-                  : `
-              <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                <h4 style="color: #856404; margin-bottom: 15px;">⏳ Under Review</h4>
-                <p style="color: #856404; margin: 0;">Your document is currently under review. We'll notify you once the review is complete.</p>
-              </div>
-            `
-            }
-            
-            <p style="margin-bottom: 25px; font-size: 16px;">If you have any questions about this status update, please contact our support team.</p>
-          </div>
-          
-          <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center; color: #777; font-size: 13px;">
-            <p>&copy; ${new Date().getFullYear()} Driving School Platform. All rights reserved.</p>
-            <p style="margin-top: 10px;">
-              <a href="mailto:${
-                process.env.ADMIN_EMAIL || "support@drivingschool.com"
-              }" style="color: #3d5afe; text-decoration: none;">Contact Support</a>
-            </p>
-          </div>
-        </div>
-      `;
-      break;
-
-    default:
-      throw new Error(`Unknown email type: ${type}`);
+  const results = [];
+  for (const recipient of recipients || []) {
+    if (!recipient?.email) continue;
+    const address = String(recipient.email).trim().toLowerCase();
+    results.push(await enqueueEmailEvent({
+      eventType,
+      aggregateType: "BOOKING",
+      aggregateId: bookingId || digest(JSON.stringify(baseData)),
+      dedupeKey: `email:${eventType}:${bookingId}:${digest(`${address}:${JSON.stringify(slots)}:${bookingData?.status}`)}`,
+      to: address,
+      template: type === "payment_requires_action" || type === "payment_failed" ? "payment_alert" : type === "booking_refunded" ? "refund" : "booking",
+      data: { ...baseData, recipientName: recipient.name, recipientRole: recipient.role },
+      metadata: { role: recipient.role },
+      session: options.session,
+    }));
   }
+  return results;
+}
 
-  // Send emails to all recipients
-  const emailPromises = recipients.map((recipient) => {
-    const mailOptions = {
-      from: `"Driving School Platform" <${process.env.EMAIL_USER}>`,
-      to: recipient.email,
-      subject: subject,
-      html: message,
-    };
-    return transporter.sendMail(mailOptions);
-  });
+async function notifyBookingParties(bookingData, type, adminEmail = process.env.ADMIN_EMAIL, options = {}) {
+  const recipients = [];
+  if (bookingData?.studentId?.email) recipients.push({ email: bookingData.studentId.email, role: "student", name: `${bookingData.studentId.firstName || ""} ${bookingData.studentId.lastName || ""}`.trim() });
+  if (bookingData?.instructorId?.email) recipients.push({ email: bookingData.instructorId.email, role: "instructor", name: `${bookingData.instructorId.firstName || ""} ${bookingData.instructorId.lastName || ""}`.trim() });
+  if (adminEmail) recipients.push({ email: adminEmail, role: "admin", name: "Admin Team" });
+  await sendBookingEmail(recipients, {
+    id: bookingData?._id,
+    status: bookingData?.status,
+    slots: bookingData?.slots,
+    reason: bookingData?.reason,
+    student: bookingData?.studentId,
+    instructor: bookingData?.instructorId,
+  }, type, options);
+  return true;
+}
 
-  try {
-    await Promise.all(emailPromises);
-    console.log(
-      `Document status notification emails sent successfully to ${recipients.length} recipients`,
-    );
-  } catch (error) {
-    console.error("Error sending document status notification emails:", error);
-    throw error;
+async function sendDocumentStatusEmail(recipients, documentData, type, options = {}) {
+  const results = [];
+  for (const recipient of recipients || []) {
+    if (!recipient?.email) continue;
+    const address = String(recipient.email).trim().toLowerCase();
+    results.push(await enqueueEmailEvent({
+      eventType: "document_status_updated",
+      aggregateType: "INSTRUCTOR_DOCUMENT",
+      aggregateId: idOf(documentData?._id || documentData?.id) || digest(address),
+      dedupeKey: `document-status:${idOf(documentData?._id || documentData?.id)}:${documentData?.status}:${digest(address)}`,
+      to: address,
+      template: "document_status",
+      data: { documentType: documentData?.documentType, status: documentData?.status, rejectionReason: documentData?.rejectionReason },
+      metadata: { role: recipient.role, sourceType: type },
+      session: options.session,
+    }));
   }
-};
-// Function to notify all parties about booking events
-const notifyBookingParties = async (
-  bookingData,
-  type,
-  adminEmail = process.env.ADMIN_EMAIL,
-) => {
-  try {
-    const recipients = [];
+  return results;
+}
 
-    // Add student
-    if (bookingData.studentId && bookingData.studentId.email) {
-      recipients.push({
-        email: bookingData.studentId.email,
-        role: "student",
-        name: `${bookingData.studentId.firstName} ${bookingData.studentId.lastName}`,
-      });
-    }
+async function notifyDocumentStatusParties(documentData, instructorData, type, adminEmail = process.env.ADMIN_EMAIL, options = {}) {
+  const recipients = [];
+  if (instructorData?.email) recipients.push({ email: instructorData.email, role: "instructor", name: `${instructorData.firstName || ""} ${instructorData.lastName || ""}`.trim() });
+  if (adminEmail) recipients.push({ email: adminEmail, role: "admin", name: "Admin Team" });
+  await sendDocumentStatusEmail(recipients, { ...documentData, instructor: undefined }, type, options);
+  return true;
+}
 
-    // Add instructor
-    if (bookingData.instructorId && bookingData.instructorId.email) {
-      recipients.push({
-        email: bookingData.instructorId.email,
-        role: "instructor",
-        name: `${bookingData.instructorId.firstName} ${bookingData.instructorId.lastName}`,
-      });
-    }
+function generateOTP() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
-    // Add admin
-    if (adminEmail) {
-      recipients.push({
-        email: adminEmail,
-        role: "admin",
-        name: "Admin Team",
-      });
-    }
-
-    if (recipients.length > 0) {
-      await sendBookingEmail(
-        recipients,
-        {
-          id: bookingData._id,
-          status: bookingData.status,
-          slots: bookingData.slots,
-          totalAmount: bookingData.totalAmount,
-          finalAmount: bookingData.finalAmount,
-          studentAddress: bookingData.studentId.homeAddress,
-          instructorAddress: bookingData.instructorId.address,
-          student: bookingData.studentId, // Changed from bookingData.studentId
-          instructor: bookingData.instructorId, // Changed from bookingData.instructorId
-          reason: bookingData.reason || null,
-        },
-        type,
-      );
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error in notifyBookingParties:", error);
-    return false;
-  }
-};
-const notifyDocumentStatusParties = async (
-  documentData,
-  instructorData,
-  type,
-  adminEmail = process.env.ADMIN_EMAIL,
-) => {
-  try {
-    const recipients = [];
-
-    // Add instructor (always notify the instructor whose document status changed)
-    if (instructorData && instructorData.email) {
-      recipients.push({
-        email: instructorData.email,
-        role: "instructor",
-        name: `${instructorData.firstName || ""} ${
-          instructorData.lastName || ""
-        }`.trim(),
-      });
-    }
-
-    // Add admin (always notify admin about status changes)
-    if (adminEmail) {
-      recipients.push({
-        email: adminEmail,
-        role: "admin",
-        name: "Admin Team",
-      });
-    }
-
-    if (recipients.length > 0) {
-      await sendDocumentStatusEmail(
-        recipients,
-        {
-          id: documentData._id || documentData.id,
-          documentType: documentData.documentType,
-          documentUrl: documentData.documentUrl,
-          status: documentData.status,
-          instructor: instructorData,
-          rejectionReason: documentData.rejectionReason || null,
-        },
-        type,
-      );
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error in notifyDocumentStatusParties:", error);
-    return false;
-  }
-};
-
-module.exports = {
-  generateOTP,
-  sendOtpEmail,
-  sendBookingEmail,
-  notifyBookingParties,
-  sendDocumentStatusEmail, // New function
-  notifyDocumentStatusParties, // New function
-};
+module.exports = { generateOTP, sendOtpEmail, sendBookingEmail, notifyBookingParties, sendDocumentStatusEmail, notifyDocumentStatusParties };

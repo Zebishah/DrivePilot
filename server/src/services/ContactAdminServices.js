@@ -1,4 +1,14 @@
+const crypto = require("crypto");
 const { ContactDetailModel } = require("../models/AdminContact");
+const { enqueueEmailEvent } = require("./outboxService");
+
+function submissionDigest(name, email, description) {
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ name, email, description }))
+    .digest("hex")
+    .slice(0, 24);
+}
 
 class ContactDetailService {
   async createContactDetail(supportEmail, adminId) {
@@ -33,12 +43,15 @@ class ContactDetailService {
 
       // const savedContact = await contact.save();
 
-      // Send email notification
-      await EmailService.sendContactFormEmail({
-        name,
-        email,
-        description,
-        submittedAt: new Date(),
+      const submissionKey = submissionDigest(name, email, description);
+      await enqueueEmailEvent({
+        eventType: "contact_form_submitted",
+        aggregateType: "CONTACT_FORM",
+        aggregateId: submissionKey,
+        dedupeKey: `contact-legacy:${submissionKey}`,
+        to: process.env.ADMIN_EMAIL,
+        template: "contact_admin",
+        data: { name, email, description },
       });
 
       return {

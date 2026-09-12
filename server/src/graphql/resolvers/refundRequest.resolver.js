@@ -27,6 +27,7 @@ const {
 } = require("../../services/stripeService");
 const { fromMinorUnits, toMinorUnits } = require("../../utils/money");
 const { invalidateAvailability } = require("../../services/cacheInvalidation");
+const { enqueueEmailEvent } = require("../../services/outboxService");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -237,6 +238,24 @@ const refundRequestResolver = {
           );
         }
         throw err;
+      }
+
+      if (process.env.ADMIN_EMAIL) {
+        await enqueueEmailEvent({
+          eventType: "refund_requested",
+          aggregateType: "REFUND_REQUEST",
+          aggregateId: refundRequest._id,
+          dedupeKey: `refund-requested:${refundRequest._id}`,
+          to: process.env.ADMIN_EMAIL,
+          template: "refund",
+          data: {
+            recipientName: "Admin Team",
+            recipientRole: "admin",
+            status: "requested",
+            reason: trimmedMessage,
+            slots: [{ date: slot.slotDate, startTime: slot.slotStartTime, endTime: slot.slotEndTime }],
+          },
+        });
       }
 
       return refundRequest;
@@ -648,7 +667,28 @@ const refundRequestResolver = {
         },
         { new: true },
       );
-      if (refundRequest) return refundRequest;
+      if (refundRequest) {
+        const booking = await StudentBooking.findById(refundRequest.bookingId)
+          .populate("studentId", "firstName lastName email")
+          .lean();
+        if (booking?.studentId?.email) {
+          await enqueueEmailEvent({
+            eventType: "refund_rejected",
+            aggregateType: "REFUND_REQUEST",
+            aggregateId: refundRequest._id,
+            dedupeKey: `refund-rejected:${refundRequest._id}`,
+            to: booking.studentId.email,
+            template: "refund",
+            data: {
+              recipientName: `${booking.studentId.firstName || ""} ${booking.studentId.lastName || ""}`.trim(),
+              recipientRole: "student",
+              status: "rejected",
+              reason: refundRequest.rejectionReason || "The request was not approved.",
+            },
+          });
+        }
+        return refundRequest;
+      }
 
       const existingRequest = await RefundRequest.findById(id);
       if (!existingRequest) throw new UserInputError("Refund request not found");

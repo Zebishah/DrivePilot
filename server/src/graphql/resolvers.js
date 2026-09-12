@@ -435,14 +435,15 @@ instead.`);
         // Save OTP to DB
         const otp = generateOTP();
 
-        await sendOtpEmail(user.email, otp, "email_verification");
-        // const token = createToken(user);
         await Otp.create({
           email: user.email,
           otp,
           type: "email_verification",
+          status: "unused",
           expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         });
+        await sendOtpEmail(user.email, otp, "email_verification");
+        // const token = createToken(user);
         return {
           // token,
           success: true,
@@ -1272,7 +1273,8 @@ instead.`);
           ...genericResponse,
         };
       } catch (error) {
-        throw new Error("Failed to send reset email");
+        console.error("Password reset notification enqueue failed:", error.code || error.message);
+        return genericResponse;
       }
     },
 

@@ -2555,18 +2555,16 @@ const studentBookingResolver = {
           await teacherAvailability.save({ session });
         }
 
+        // Keep the cancellation state and its notification intent atomic.
+        await notifyBookingParties(
+          booking,
+          "booking_cancelled",
+          process.env.ADMIN_EMAIL,
+          { session },
+        );
+
         await session.commitTransaction();
         await invalidateAvailability(booking.instructorId._id);
-        // 7. Send email notifications
-        try {
-          await notifyBookingParties(booking, "booking_cancelled");
-          console.log("Booking cancellation emails sent successfully");
-        } catch (emailError) {
-          console.error(
-            "Failed to send booking cancellation emails:",
-            emailError,
-          );
-        }
 
         return booking;
       } catch (err) {
@@ -2793,54 +2791,46 @@ const studentBookingResolver = {
         booking.updatedAt = new Date();
         await booking.save({ session });
 
-        await session.commitTransaction();
-        await invalidateAvailability(teacherId);
-
-        // Dedicated instructor alert when student/admin reschedules a lesson.
+        // These are intent records only; delivery happens after commit in the
+        // worker. Keep both reschedule notifications in the same transaction.
         if ((isOwner || isAdmin) && booking?.instructorId?.email) {
-          try {
-            const actorRole = isAdmin ? "admin" : "student";
-            await sendBookingEmail(
-              [
+          const actorRole = isAdmin ? "admin" : "student";
+          await sendBookingEmail(
+            [
+              {
+                email: booking.instructorId.email,
+                role: "instructor",
+                name: `${booking.instructorId.firstName || ""} ${booking.instructorId.lastName || ""}`.trim(),
+              },
+            ],
+            {
+              id: booking._id,
+              status: booking.status,
+              slots: [
                 {
-                  email: booking.instructorId.email,
-                  role: "instructor",
-                  name: `${booking.instructorId.firstName || ""} ${booking.instructorId.lastName || ""}`.trim(),
+                  ...slot.toObject(),
+                  previousDate: previousSlotSnapshot.date,
+                  previousStartTime: previousSlotSnapshot.startTime,
+                  previousEndTime: previousSlotSnapshot.endTime,
+                  rescheduledBy: actorRole,
                 },
               ],
-              {
-                id: booking._id,
-                status: booking.status,
-                slots: [
-                  {
-                    ...slot.toObject(),
-                    previousDate: previousSlotSnapshot.date,
-                    previousStartTime: previousSlotSnapshot.startTime,
-                    previousEndTime: previousSlotSnapshot.endTime,
-                    rescheduledBy: actorRole,
-                  },
-                ],
-                student: booking.studentId,
-                instructor: booking.instructorId,
-              },
-              "booking_rescheduled",
-            );
-          } catch (emailError) {
-            console.error(
-              "Failed to send instructor reschedule alert email:",
-              emailError,
-            );
-          }
-        }
-
-        try {
-          await notifyBookingParties(booking, "booking_status_updated");
-        } catch (emailError) {
-          console.error(
-            "Failed to send reschedule notification emails:",
-            emailError,
+              student: booking.studentId,
+              instructor: booking.instructorId,
+            },
+            "booking_rescheduled",
+            { session },
           );
         }
+        await notifyBookingParties(
+          booking,
+          "booking_status_updated",
+          process.env.ADMIN_EMAIL,
+          { session },
+        );
+
+        await session.commitTransaction();
+        await invalidateAvailability(teacherId);
 
         return booking;
       } catch (err) {

@@ -17,6 +17,20 @@ const { retrievePayout } = require("../services/stripeService");
 const { fromMinorUnits, getBookingMoneySnapshot } = require("../utils/money");
 const { logger, classifyError } = require("../utils/logger");
 const JOB_CONFIG = require("../config/jobConfig");
+const { enqueueEmailEvent } = require("../services/outboxService");
+
+async function enqueuePayoutNotification({ booking, slot, instructor, amount }) {
+  if (!instructor?.email) return;
+  await enqueueEmailEvent({
+    eventType: "payout_completed",
+    aggregateType: "BOOKING_SLOT",
+    aggregateId: `${booking._id}:${slot._id}`,
+    dedupeKey: `payout-email:${booking._id}:${slot._id}`,
+    to: instructor.email,
+    template: "payout",
+    data: { amount: Number(amount).toFixed(2), lessonDate: slot.date },
+  });
+}
 
 async function runInstructorPayoutJob() {
   const now = new Date();
@@ -27,7 +41,7 @@ async function runInstructorPayoutJob() {
     "slots.paymentStatus": "paid",
     "slots.instructorAmount": { $gt: 0 },
   })
-    .populate("instructorId", "stripeAccount commission")
+    .populate("instructorId", "stripeAccount commission email firstName lastName")
     .limit(JOB_CONFIG.payoutBatchSize)
     .lean();
 
@@ -188,6 +202,12 @@ async function runInstructorPayoutJob() {
         });
         await markLocalSuccess(payoutOperation, "slot_and_transaction_applied");
         await markCompleted(payoutOperation);
+        await enqueuePayoutNotification({
+          booking,
+          slot,
+          instructor,
+          amount: fromMinorUnits(slotMoney.instructorAmountMinor),
+        }).catch((emailError) => logger.warn("payout_notification_enqueue_failed", { bookingId: booking._id, slotId: slot._id, error: emailError }));
         processed += 1;
       } catch (err) {
         await markRetryable(payoutOperation, err);
@@ -232,6 +252,12 @@ async function runInstructorPayoutJob() {
           });
           await markLocalSuccess(payoutOperation, "test_payout_simulated");
           await markCompleted(payoutOperation);
+          await enqueuePayoutNotification({
+            booking,
+            slot,
+            instructor,
+            amount: fromMinorUnits(slotMoney.instructorAmountMinor),
+          }).catch((emailError) => logger.warn("payout_notification_enqueue_failed", { bookingId: booking._id, slotId: slot._id, error: emailError }));
           logger.info("payout_simulated_non_production", { jobName: "PayoutJob", bookingId: booking._id, slotId: slot._id });
           processed += 1;
         } else {

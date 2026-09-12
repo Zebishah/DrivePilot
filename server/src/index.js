@@ -23,6 +23,7 @@ const {
 } = require("./jobs/abandonedCheckoutReminderJob");
 const { runLessonEndReminderJob } = require("./jobs/lessonEndReminderJob");
 const { runT48PaymentReminderJob } = require("./jobs/t48PaymentReminderJob");
+const { runOutboxEmailJob } = require("./services/outboxEmailWorker");
 const stripeWebhookRoutes = require("./routes/stripeWebhook.routes");
 const {
   setStripeWebhookEventHandler,
@@ -65,6 +66,7 @@ function workerJobs() {
     { name: "PendingBookingCleanupJob", run: runPendingBookingCleanupJob, intervalMs: JOB_CONFIG.pendingCleanupIntervalMs },
     { name: "AbandonedCheckoutReminderJob", run: runAbandonedCheckoutReminderJob, intervalMs: JOB_CONFIG.abandonedReminderIntervalMs },
     { name: "LessonEndReminder", run: runLessonEndReminderJob, intervalMs: JOB_CONFIG.lessonEndReminderIntervalMs },
+    { name: "OutboxEmail", run: (context) => runOutboxEmailJob({ ...context, batchSize: JOB_CONFIG.outboxEmailBatchSize, leaseMs: JOB_CONFIG.outboxEmailLeaseMs }), intervalMs: JOB_CONFIG.outboxEmailIntervalMs },
   ];
 }
 

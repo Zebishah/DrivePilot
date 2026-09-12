@@ -42,6 +42,9 @@ const JOB_CONFIG = {
   reminderBatchSize: positiveInteger("REMINDER_JOB_BATCH_SIZE", 25),
   cleanupBatchSize: positiveInteger("PENDING_CLEANUP_BATCH_SIZE", 25),
   emailClaimMs: positiveInteger("EMAIL_CLAIM_MS", 15 * 60 * 1000),
+  outboxEmailIntervalMs: positiveInteger("OUTBOX_EMAIL_PROCESSOR_INTERVAL_MS", 5 * 1000),
+  outboxEmailLeaseMs: positiveInteger("OUTBOX_EMAIL_LEASE_MS", 10 * 60 * 1000),
+  outboxEmailBatchSize: positiveInteger("OUTBOX_EMAIL_BATCH_SIZE", 25),
 };
 
 if (!JOB_CONFIG.runApi && !JOB_CONFIG.runWorker) {

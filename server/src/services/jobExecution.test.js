@@ -115,7 +115,7 @@ test("reminder claim prevents two workers from sending the same notification", a
   await withMocks(
     {
       "studentBooking.model": fakeBookingModel,
-      SendOtpEmail: { sendBookingEmail: async () => { sends += 1; } },
+      "services/outboxService": { enqueueEmailEvent: async () => { sends += 1; } },
     },
     async () => {
       delete require.cache[require.resolve("../jobs/t48PaymentReminderJob")];

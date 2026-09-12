@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const crypto = require("crypto");
 const StudentBooking = require("../models/studentBooking.model");
 const teacherAvailabilityModel = require("../models/teacherAvailability.model");
-const { sendBookingEmail } = require("../utils/SendOtpEmail");
+const { enqueueEmailEvent } = require("../services/outboxService");
 const { shouldAutoCancelUnpaidSlot, shouldCancelUnpaidPastLesson } = require("../utils/checkoutPaymentGuard");
 const { getSlotEndTimestampUtc } = require("../utils/slotTimezone");
 const JOB_CONFIG = require("../config/jobConfig");
@@ -121,23 +121,22 @@ async function sendStudentReminderEmail(bookingId, slotId, reminderNumber, conte
   if (!claim.modifiedCount) return false;
 
   try {
-    await sendBookingEmail(
-      recipients,
-      {
-        id: booking._id,
-        status: booking.status,
-        slots: [slot],
-        totalAmount: booking.totalAmount,
-        finalAmount: booking.finalAmount,
-        studentAddress: booking.studentId?.homeAddress,
-        instructorAddress: booking.instructorId?.address,
-        student: booking.studentId,
-        instructor: booking.instructorId,
+    await enqueueEmailEvent({
+      eventType: slot.paymentStatus === "requires_action" ? "payment_requires_action" : "payment_failed",
+      aggregateType: "BOOKING_SLOT",
+      aggregateId: `${booking._id}:${slot._id}`,
+      dedupeKey: `t48-payment-reminder:${booking._id}:${slot._id}:${reminderNumber}`,
+      to: recipients[0].email,
+      template: "payment_alert",
+      data: {
+        recipientName: recipients[0].name,
+        recipientRole: "student",
+        status: slot.paymentStatus,
+        slots: [{ date: slot.date, startTime: slot.startTime, endTime: slot.endTime }],
+        instructorName: `${booking.instructorId?.firstName || ""} ${booking.instructorId?.lastName || ""}`.trim(),
+        actionUrl: `${process.env.FRONTEND_URL || process.env.Frontend_URL || "http://localhost:5173"}/student-dashboard/complete-payment?bookingId=${booking._id}&slotId=${slot._id}`,
       },
-      slot.paymentStatus === "requires_action"
-        ? "payment_requires_action"
-        : "payment_failed",
-    );
+    });
     await StudentBooking.updateOne(
       { _id: booking._id, "slots._id": slot._id, "slots.paymentReminderClaimOwner": leaseOwner },
       {
