@@ -11,6 +11,8 @@ const studentBookingModel = require("../../models/studentBooking.model");
 const dayjs = require("dayjs");
 const { getSlotEndTimestampUtc } = require("../../utils/slotTimezone");
 const { requireInstructorOwnership } = require("../../utils/authorization");
+const { cache } = require("../../services/cacheService");
+const cacheKeys = require("../../services/cacheKeys");
 
 const toPublicInstructor = (instructor, extras = {}) => {
   if (!instructor) return null;
@@ -43,10 +45,20 @@ const toPublicInstructor = (instructor, extras = {}) => {
 
 const instructorResolver = {
   Query: {
-    getNearbyInstructors: async (
-      _,
-      { filter = {}, offset = 0, limit = 10 },
-    ) => {
+    getNearbyInstructors: async (_, args = {}) => {
+      const { filter = {}, offset = 0, limit = 10, __skipCache } = args;
+      if (!__skipCache) {
+        return cache.getOrSet({
+          category: "instructor_search",
+          key: cacheKeys.instructorSearch({ filter, offset, limit }),
+          ttlSeconds: 30,
+          loader: () =>
+            instructorResolver.Query.getNearbyInstructors(_, {
+              ...args,
+              __skipCache: true,
+            }),
+        });
+      }
       try {
         const safeOffset = Math.max(Number(offset) || 0, 0);
         const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
@@ -633,7 +645,19 @@ const instructorResolver = {
         instructor: await User.Instructor.findById(instructorId),
       };
     },
-    getInstructorPublicProfile: async (_, { id }) => {
+    getInstructorPublicProfile: async (_, { id, __skipCache }) => {
+      if (!__skipCache) {
+        return cache.getOrSet({
+          category: "instructor_profile",
+          key: cacheKeys.instructorProfile(id),
+          ttlSeconds: 300,
+          loader: () =>
+            instructorResolver.Query.getInstructorPublicProfile(_, {
+              id,
+              __skipCache: true,
+            }),
+        });
+      }
       try {
         if (!mongoose.Types.ObjectId.isValid(id)) {
           throw new Error("Invalid instructor ID");
@@ -648,7 +672,7 @@ const instructorResolver = {
         }
 
         const [tariff, availability] = await Promise.all([
-          teacherTariffModel.findOne({ teacherId: id }),
+          teacherTariffModel.findOne({ teacherId: id }).lean(),
           teacherAvailabilityModel
             .find({ teacherId: id, status: "available" })
             .sort({ date: 1, startTime: 1 })

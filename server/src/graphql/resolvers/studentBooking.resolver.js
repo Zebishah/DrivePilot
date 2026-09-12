@@ -41,6 +41,7 @@ const {
   recordBookedAvailabilitySlots,
 } = require("../../services/availabilityService");
 const { createTransaction } = require("../../services/transactionService");
+const { invalidateAvailability } = require("../../services/cacheInvalidation");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 const { buildDirectCardSlotSplits } = require("../../utils/directCardBookingPricing");
 const {
@@ -787,6 +788,7 @@ const studentBookingResolver = {
           bookingId: booking._id,
           slots: booking.slots,
         });
+        await invalidateAvailability(instructorId);
         // 4. Optional: populate instructor
         const savedBooking = await StudentBooking.findById(booking._id)
           .populate(
@@ -1002,6 +1004,7 @@ const studentBookingResolver = {
           bookingId: booking._id,
           slots: booking.slots,
         });
+        await invalidateAvailability(instructorId);
 
         let customerEmail = null;
         let stripeCustomerIdForSession = null;
@@ -1466,6 +1469,7 @@ const studentBookingResolver = {
       });
 
       await booking.save();
+      await invalidateAvailability(booking.instructorId._id);
       if (checkoutOperation) {
         await markLocalSuccess(checkoutOperation, "booking_and_setup_persisted");
         await markCompleted(checkoutOperation);
@@ -2104,6 +2108,7 @@ const studentBookingResolver = {
         bookingId: booking._id,
         slots: booking.slots,
       });
+      await invalidateAvailability(instructorId);
       const savedBooking = await StudentBooking.findById(booking._id)
         .populate(
           "instructorId",
@@ -2355,6 +2360,7 @@ const studentBookingResolver = {
             availability.availableSlots.every((s) => s.booked === true);
           availability.status = allBooked ? "booked" : "available";
           await availability.save();
+          await invalidateAvailability(booking.instructorId._id);
         }
 
         // Send email notifications if status changed
@@ -2550,6 +2556,7 @@ const studentBookingResolver = {
         }
 
         await session.commitTransaction();
+        await invalidateAvailability(booking.instructorId._id);
         // 7. Send email notifications
         try {
           await notifyBookingParties(booking, "booking_cancelled");
@@ -2787,6 +2794,7 @@ const studentBookingResolver = {
         await booking.save({ session });
 
         await session.commitTransaction();
+        await invalidateAvailability(teacherId);
 
         // Dedicated instructor alert when student/admin reschedules a lesson.
         if ((isOwner || isAdmin) && booking?.instructorId?.email) {

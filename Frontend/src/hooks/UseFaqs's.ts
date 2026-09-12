@@ -8,6 +8,8 @@ export const useFAQs = (itemsPerLoad = 5) => {
 
   const { loading, error, data } = useQuery(GET_ALL_FAQS, {
     errorPolicy: "all",
+    fetchPolicy: "cache-first",
+    nextFetchPolicy: "cache-first",
   });
 
   const faqs = data?.getAllFaqs || [];

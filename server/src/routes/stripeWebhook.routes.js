@@ -31,6 +31,7 @@ const { notifyBookingParties } = require("../utils/SendOtpEmail");
 const {
   finalizePaidCheckoutBooking,
 } = require("../services/finalizePaidCheckoutBooking");
+const { invalidateInstructorPublic } = require("../services/cacheInvalidation");
 
 const router = express.Router();
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -89,10 +90,11 @@ async function handleAccountUpdated(accountId) {
       "stripeFinancialStatus.lastWebhookSync": new Date(),
     },
   });
+  await invalidateInstructorPublic(instructor._id);
 }
 
 async function handleAccountDeauthorized(accountId) {
-  await Instructor.findOneAndUpdate(
+  const instructor = await Instructor.findOneAndUpdate(
     { "stripeAccount.accountId": accountId },
     {
       $set: {
@@ -102,7 +104,9 @@ async function handleAccountDeauthorized(accountId) {
         "stripeFinancialStatus.lastWebhookSync": new Date(),
       },
     },
+    { new: true },
   );
+  if (instructor) await invalidateInstructorPublic(instructor._id);
 }
 
 async function handleDisputeCreated(accountId) {

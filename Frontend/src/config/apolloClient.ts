@@ -75,6 +75,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 export const apolloClient = new ApolloClient({
   link: errorLink.concat(authLink.concat(httpLink)),
   cache: new InMemoryCache(),
+  queryDeduplication: true,
   defaultOptions: {
     watchQuery: { fetchPolicy: "network-only", errorPolicy: "all" },
     query: { fetchPolicy: "network-only", errorPolicy: "all" },

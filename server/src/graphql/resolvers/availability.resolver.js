@@ -2,6 +2,9 @@ const { default: mongoose } = require("mongoose");
 const TeacherAvailability = require("../../models/teacherAvailability.model");
 const { startOfMonth, endOfMonth } = require("date-fns");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
+const { cache } = require("../../services/cacheService");
+const cacheKeys = require("../../services/cacheKeys");
+const { invalidateAvailability } = require("../../services/cacheInvalidation");
 
 const resolvers = {
   Query: {
@@ -9,6 +12,11 @@ const resolvers = {
       if (!user) throw new Error("Not authenticated");
 
       try {
+        return await cache.getOrSet({
+          category: "instructor_availability",
+          key: cacheKeys.instructorAvailability(user.id, month),
+          ttlSeconds: 15,
+          loader: async () => {
         const monthDate = new Date(month);
         const startDate = startOfMonth(monthDate);
         const endDate = endOfMonth(monthDate);
@@ -17,7 +25,7 @@ const resolvers = {
         const availabilities = await TeacherAvailability.find({
           teacherId: user.id,
           date: { $gte: startDate, $lte: endDate },
-        }).sort({ date: 1 });
+        }).sort({ date: 1 }).lean();
 
         // ✅ Format response: only include availableSlots whose status is available or cancelled (exclude booked, completed, refund)
         return availabilities.map((availability) => ({
@@ -38,6 +46,8 @@ const resolvers = {
               booked: slot.booked,
             })),
         }));
+          },
+        });
       } catch (error) {
         console.error("Error fetching teacher availability:", error);
         throw new Error("Error fetching teacher availability");
@@ -148,6 +158,8 @@ const resolvers = {
           });
         }
 
+        await invalidateAvailability(user.id);
+
         return {
           id: availability._id,
           date: availability.date.toISOString(),
@@ -177,6 +189,8 @@ const resolvers = {
             $pull: { availableSlots: { id } }, // remove that specific slot
           },
         );
+
+        await invalidateAvailability(user.id);
 
         // result.modifiedCount > 0 means the slot was deleted
         return result.modifiedCount > 0;

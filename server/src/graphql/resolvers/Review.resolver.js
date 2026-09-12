@@ -8,6 +8,7 @@ const {
   requireStudentDataAccess,
   identityId,
 } = require("../../utils/authorization");
+const { invalidateInstructorPublic } = require("../../services/cacheInvalidation");
 const reviewResolver = {
   Query: {
     getAllStudentBookingSlots: async (_, __, { user }) => {
@@ -287,6 +288,7 @@ const reviewResolver = {
       // ✅ Mark slot as reviewed
       lesson.slots[slotIndex].review = true;
       await lesson.save();
+      await invalidateInstructorPublic(input.instructorId);
 
       // ✅ Populate review
       const populatedReview = await Review.findById(newReview._id)
@@ -320,6 +322,7 @@ const reviewResolver = {
 
       review.updatedAt = new Date();
       await review.save();
+      await invalidateInstructorPublic(review.instructorId);
 
       // Return populated review
       const populatedReview = await Review.findById(reviewId)
@@ -363,6 +366,7 @@ const reviewResolver = {
 
       // Step 2: Delete the review
       await Review.findByIdAndDelete(reviewId);
+      await invalidateInstructorPublic(review.instructorId);
 
       return {
         success: true,

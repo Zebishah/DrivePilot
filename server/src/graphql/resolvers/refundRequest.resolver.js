@@ -26,6 +26,7 @@ const {
   retrieveTransferReversal,
 } = require("../../services/stripeService");
 const { fromMinorUnits, toMinorUnits } = require("../../utils/money");
+const { invalidateAvailability } = require("../../services/cacheInvalidation");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -601,6 +602,7 @@ const refundRequestResolver = {
         if (availableSlot) availableSlot.status = "refund";
         await availability.save();
       }
+      await invalidateAvailability(booking.instructorId._id);
 
       refundRequest.status = "approved";
       refundRequest.processedAt = new Date();

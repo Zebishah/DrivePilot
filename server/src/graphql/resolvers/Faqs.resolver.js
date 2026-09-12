@@ -1,9 +1,22 @@
 const faqService = require("../../services/FaqServices");
 const { AuthenticationError } = require("apollo-server-express");
+const { cache } = require("../../services/cacheService");
+const { invalidateFaqs } = require("../../services/cacheInvalidation");
 
 const faqResolvers = {
   Query: {
-    getAllFaqs: () => faqService.getAllFaqs(),
+    getAllFaqs: () =>
+      cache.getOrSet({
+        category: "faq",
+        key: "public",
+        ttlSeconds: 300,
+        loader: async () => {
+          const faqs = await faqService.getAllFaqs();
+          return faqs.map((faq) =>
+            typeof faq.toObject === "function" ? faq.toObject() : faq,
+          );
+        },
+      }),
 
     getFaqsByAdmin: (_, __, { user }) => {
       if (!user || user.role !== "Admin") {
@@ -28,25 +41,33 @@ const faqResolvers = {
       );
       if (existingFaq) {
         // Update existing FAQ
-        return faqService.updateFaq(existingFaq._id, { question, answer });
+        const result = await faqService.updateFaq(existingFaq._id, { question, answer });
+        await invalidateFaqs();
+        return result;
       } else {
         // Create new FAQ
-        return faqService.createFaq(question, answer, user.id);
+        const result = await faqService.createFaq(question, answer, user.id);
+        await invalidateFaqs();
+        return result;
       }
     },
 
-    updateFaq: (_, { id, question, answer }, { user }) => {
+    updateFaq: async (_, { id, question, answer }, { user }) => {
       if (!user || user.role !== "Admin") {
         throw new AuthenticationError("Unauthorized");
       }
-      return faqService.updateFaq(id, { question, answer });
+      const result = await faqService.updateFaq(id, { question, answer });
+      await invalidateFaqs();
+      return result;
     },
 
-    deleteFaq: (_, { id }, { user }) => {
+    deleteFaq: async (_, { id }, { user }) => {
       if (!user || user.role !== "Admin") {
         throw new AuthenticationError("Unauthorized");
       }
-      return faqService.deleteFaq(id);
+      const result = await faqService.deleteFaq(id);
+      await invalidateFaqs();
+      return result;
     },
   },
 };

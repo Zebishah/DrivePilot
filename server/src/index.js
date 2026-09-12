@@ -35,6 +35,7 @@ const mongoose = require("mongoose");
 const { requestCorrelationMiddleware } = require("./middleware/requestCorrelation");
 const { logger } = require("./utils/logger");
 const { createRequestLoaders } = require("./graphql/requestLoaders");
+const { connectRedis, closeRedis } = require("./services/redisClient");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
@@ -188,6 +189,8 @@ async function startApolloServer() {
 
 async function startApplication() {
   await dbReady;
+  // Redis is an optional read cache; do not block API startup on it.
+  connectRedis();
   logger.info("process_mode", { api: JOB_CONFIG.runApi, worker: JOB_CONFIG.runWorker });
   if (JOB_CONFIG.runWorker) {
     schedulerController = createJobScheduler({
@@ -216,6 +219,7 @@ async function shutdown(signal) {
     });
   }
   await mongoose.disconnect();
+  await closeRedis();
 }
 
 process.once("SIGTERM", () => shutdown("SIGTERM").then(() => process.exit(0)));

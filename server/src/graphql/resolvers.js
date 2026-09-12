@@ -28,6 +28,7 @@ const {
 } = require("../utils/SendOtpEmail");
 const studentBookingModel = require("../models/studentBooking.model");
 const { Review } = require("../models/Reviews");
+const { invalidateInstructorPublic } = require("../services/cacheInvalidation");
 const {
   createExpressAccount,
   createAccountLink,
@@ -471,6 +472,7 @@ instead.`);
       if (!updatedInstructor) {
         throw new Error("Instructor not found");
       }
+      await invalidateInstructorPublic(updatedInstructor._id);
       await sendOtpEmail(
         updatedInstructor.email,
         status,
@@ -635,6 +637,7 @@ instead.`);
           },
           { new: true },
         );
+        await invalidateInstructorPublic(instructorId);
 
         return {
           _id: updatedInstructor._id,
@@ -1099,6 +1102,7 @@ instead.`);
           },
           { new: true },
         );
+        await invalidateInstructorPublic(user.id);
 
         // Delete existing unused email verification OTPs
 
@@ -1389,6 +1393,7 @@ instead.`);
           await Instructor.findByIdAndUpdate(user.id, {
             onboardingStatus: "link_generated",
           });
+          await invalidateInstructorPublic(user.id);
           return {
             success: true,
             message: "Onboarding link generated",
@@ -1416,6 +1421,7 @@ instead.`);
         await Instructor.findByIdAndUpdate(user.id, {
           onboardingStatus: "link_generated",
         });
+        await invalidateInstructorPublic(user.id);
         return {
           success: true,
           message: "Stripe account created",
@@ -1501,6 +1507,7 @@ instead.`);
           },
           { new: true },
         );
+        await invalidateInstructorPublic(user.id);
         return {
           success: true,
           message: "Status updated",

@@ -11,6 +11,7 @@ const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = studentBookingModel;
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
 const { requireAdmin } = require("../../utils/authorization");
+const { invalidateAvailability } = require("../../services/cacheInvalidation");
 
 const AdminBookingResolvers = {
   StudentBookingAdmin: {
@@ -259,6 +260,7 @@ const AdminBookingResolvers = {
           availability.status = allBooked ? "booked" : "available";
           await availability.save();
         }
+        await invalidateAvailability(booking.instructorId._id);
 
         if (oldStatus !== status) {
           try {
@@ -376,6 +378,7 @@ const AdminBookingResolvers = {
 
           await teacherAvailability.save();
         }
+        await invalidateAvailability(booking.instructorId._id);
 
         // Notify parties
         try {

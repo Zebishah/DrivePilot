@@ -2,6 +2,12 @@ const TeacherTariff = require("../../models/teacherTariff.model");
 const Instructor = require("../../models/User").Instructor;
 const { updateInstructorProfileSchema } = require("../../schemas/validation");
 const { toMinorUnits } = require("../../utils/money");
+const { cache } = require("../../services/cacheService");
+const cacheKeys = require("../../services/cacheKeys");
+const {
+  invalidateTariff,
+  invalidateInstructorPublic,
+} = require("../../services/cacheInvalidation");
 
 // Default tariff values for new teachers
 const DEFAULT_TARIFF = {
@@ -21,18 +27,18 @@ const resolvers = {
       if (!user) throw new Error("Not authenticated");
 
       try {
-        const tariff = await TeacherTariff.findOne({ teacherId: user.id });
-        if (!tariff) {
-          // Return default values with a flag indicating they are defaults
-          return {
-            ...DEFAULT_TARIFF,
-            isDefault: true,
-          };
-        }
-        return {
-          ...tariff.toObject(),
-          isDefault: false,
-        };
+        return await cache.getOrSet({
+          category: "instructor_tariff",
+          key: cacheKeys.instructorTariff(user.id),
+          ttlSeconds: 300,
+          loader: async () => {
+            const tariff = await TeacherTariff.findOne({ teacherId: user.id }).lean();
+            if (!tariff) {
+              return { ...DEFAULT_TARIFF, isDefault: true };
+            }
+            return { ...tariff, isDefault: tariff.isDefault ?? false };
+          },
+        });
       } catch (error) {
         throw new Error("Error fetching teacher tariff");
       }
@@ -75,6 +81,8 @@ const resolvers = {
           updateData,
           { new: true, upsert: true }
         );
+
+        await invalidateTariff(user.id);
 
         return {
           ...tariff.toObject(),
@@ -161,6 +169,8 @@ const resolvers = {
         if (!instructor) {
           throw new Error("Failed to update instructor profile");
         }
+
+        await invalidateInstructorPublic(user.id);
 
         // Return only the fields that are defined in the InstructorProfile type
         return {
