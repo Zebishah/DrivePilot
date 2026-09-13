@@ -30,12 +30,13 @@ const studentBookingModel = require("../models/studentBooking.model");
 const { Review } = require("../models/Reviews");
 const { invalidateInstructorPublic } = require("../services/cacheInvalidation");
 const {
-  createExpressAccount,
+  createConnectedAccount,
   createAccountLink,
   createLoginLink,
   setManualPayoutSchedule,
   retrieveAccount,
   accountToStripeSnapshot,
+  shouldCreateConnectedAccount,
 } = require("../services/stripeService");
 const {
   requireAuthenticatedUser,
@@ -142,9 +143,12 @@ const resolvers = {
           stripeAccount: sa.accountId
             ? {
                 accountId: sa.accountId,
+                accountVersion: sa.accountVersion || "v1",
                 chargesEnabled: !!sa.chargesEnabled,
                 payoutsEnabled: !!sa.payoutsEnabled,
                 detailsSubmitted: !!sa.detailsSubmitted,
+                recipientTransfersStatus: sa.recipientTransfersStatus || null,
+                recipientPayoutsStatus: sa.recipientPayoutsStatus || null,
                 lastSyncedAt: sa.lastSyncedAt
                   ? new Date(sa.lastSyncedAt).toISOString()
                   : null,
@@ -1395,17 +1399,18 @@ instead.`);
       }
       try {
         const accountId = instructor.stripeAccount?.accountId;
-        if (accountId) {
+        const accountVersion = instructor.stripeAccount?.accountVersion || "v1";
+        if (!shouldCreateConnectedAccount(instructor)) {
           // Ensure existing accounts use manual payouts so we control payout timing
           try {
-            await setManualPayoutSchedule(accountId);
+            await setManualPayoutSchedule(accountId, { accountVersion });
           } catch (e) {
             console.error(
               "Failed to set manual payout schedule for existing account:",
               e.message,
             );
           }
-          const { url } = await createAccountLink(accountId);
+          const { url } = await createAccountLink(accountId, { accountVersion });
           await Instructor.findByIdAndUpdate(user.id, {
             onboardingStatus: "link_generated",
           });
@@ -1417,11 +1422,14 @@ instead.`);
             onboardingStatus: "link_generated",
           };
         }
-        const account = await createExpressAccount(instructor.email);
+        const account = await createConnectedAccount(instructor.email, {
+          accountVersion: "v2",
+          idempotencyKey: `connect-account:${user.id}`,
+        });
         // Configure new instructor accounts to use manual payouts so funds
         // stay in Stripe balance until we explicitly create payouts.
         try {
-          await setManualPayoutSchedule(account.id);
+          await setManualPayoutSchedule(account.id, { accountVersion: "v2" });
         } catch (e) {
           console.error(
             "Failed to set manual payout schedule for new account:",
@@ -1430,10 +1438,13 @@ instead.`);
         }
         await Instructor.findByIdAndUpdate(user.id, {
           "stripeAccount.accountId": account.id,
+          "stripeAccount.accountVersion": "v2",
           "stripeAccount.accountCreatedAt": new Date(),
           onboardingStatus: "account_created",
         });
-        const { url } = await createAccountLink(account.id);
+        const { url } = await createAccountLink(account.id, {
+          accountVersion: "v2",
+        });
         await Instructor.findByIdAndUpdate(user.id, {
           onboardingStatus: "link_generated",
         });
@@ -1466,6 +1477,7 @@ instead.`);
       const instructor = await Instructor.findById(instructorId);
       if (!instructor) throw new UserInputError("Instructor not found");
       const accountId = instructor.stripeAccount?.accountId;
+      const accountVersion = instructor.stripeAccount?.accountVersion || "v1";
       if (!accountId) {
         return {
           success: false,
@@ -1473,7 +1485,7 @@ instead.`);
         };
       }
       try {
-        await setManualPayoutSchedule(accountId);
+        await setManualPayoutSchedule(accountId, { accountVersion });
         return {
           success: true,
           message:
@@ -1498,6 +1510,7 @@ instead.`);
       const instructor = await Instructor.findById(user.id);
       if (!instructor) throw new UserInputError("Instructor not found");
       const accountId = instructor.stripeAccount?.accountId;
+      const accountVersion = instructor.stripeAccount?.accountVersion || "v1";
       if (!accountId) {
         return {
           success: false,
@@ -1508,7 +1521,7 @@ instead.`);
         };
       }
       try {
-        const account = await retrieveAccount(accountId);
+        const account = await retrieveAccount(accountId, { accountVersion });
         const { stripeAccountUpdate, onboardingStatus, isActive } =
           accountToStripeSnapshot(account);
         await Instructor.findByIdAndUpdate(
@@ -1528,8 +1541,8 @@ instead.`);
           success: true,
           message: "Status updated",
           onboardingStatus,
-          chargesEnabled: account.charges_enabled,
-          payoutsEnabled: account.payouts_enabled,
+          chargesEnabled: account.charges_enabled ?? false,
+          payoutsEnabled: account.payouts_enabled ?? false,
         };
       } catch (err) {
         console.error("verifyStripeOnboarding error:", err);
@@ -1547,6 +1560,7 @@ instead.`);
       const instructor = await Instructor.findById(user.id);
       if (!instructor) throw new UserInputError("Instructor not found");
       const accountId = instructor.stripeAccount?.accountId;
+      const accountVersion = instructor.stripeAccount?.accountVersion || "v1";
       if (!accountId) {
         throw new UserInputError(
           "No Stripe account found. Use Connect with Stripe first.",
@@ -1565,7 +1579,7 @@ instead.`);
         };
       }
       try {
-        const { url } = await createAccountLink(accountId);
+        const { url } = await createAccountLink(accountId, { accountVersion });
         return {
           success: true,
           message: "New onboarding link generated",

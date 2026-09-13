@@ -1,6 +1,9 @@
 /**
- * Stripe Express onboarding service for instructors.
- * Uses Stripe Connect with type: "express"; country CH.
+ * Stripe Connect lifecycle service for instructors.
+ *
+ * New accounts use Accounts v2 with the recipient configuration because DSP
+ * uses indirect destination charges. Existing Accounts v1 continue through
+ * the v1 compatibility paths until they are explicitly migrated.
  */
 const Stripe = require("stripe");
 const {
@@ -18,49 +21,109 @@ const FRONTEND_BASE =
   process.env.FRONTEND_URL ||
   "http://localhost:5173";
 
+function normalizeAccountVersion(accountVersion) {
+  return accountVersion === "v2" ? "v2" : "v1";
+}
+
+function buildV2ConnectedAccountParams(email) {
+  return {
+    contact_email: String(email).trim().toLowerCase(),
+    dashboard: "express",
+    identity: { country: "ch" },
+    defaults: {
+      currency: DEFAULT_CURRENCY,
+      responsibilities: {
+        fees_collector: "application",
+        losses_collector: "application",
+      },
+    },
+    // DSP uses destination charges without on_behalf_of, so the instructor
+    // is a recipient rather than the merchant of record.
+    configuration: {
+      recipient: {
+        capabilities: {
+          stripe_balance: {
+            stripe_transfers: { requested: true },
+          },
+        },
+      },
+    },
+    include: ["configuration.recipient", "identity", "requirements"],
+  };
+}
+
 /**
- * Create a Stripe Express connected account for an instructor.
+ * Create a connected account. New accounts use Accounts v2; the v1 branch is
+ * retained for explicit compatibility callers and historical records.
  * @param {string} email - Instructor email
+ * @param {{ accountVersion?: "v1"|"v2", idempotencyKey?: string, stripeClient?: object }} [options]
  * @returns {Promise<import('stripe').Stripe.Account>}
  */
-async function createExpressAccount(email) {
-  const account = await stripe.accounts.create({
-    type: "express",
-    country: "CH",
-    email: String(email).toLowerCase(),
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
+async function createConnectedAccount(email, options = {}) {
+  const accountVersion = normalizeAccountVersion(options.accountVersion || "v2");
+  const stripeClient = options.stripeClient || stripe;
+  const requestOptions = options.idempotencyKey
+    ? { idempotencyKey: String(options.idempotencyKey).slice(0, 255) }
+    : undefined;
+
+  if (accountVersion === "v2") {
+    return stripeClient.v2.core.accounts.create(
+      buildV2ConnectedAccountParams(email),
+      requestOptions,
+    );
+  }
+
+  return stripeClient.accounts.create(
+    {
+      type: "express",
+      country: "CH",
+      email: String(email).toLowerCase(),
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
     },
-  });
-  return account;
+    requestOptions,
+  );
 }
+
+// Kept as a compatibility export for code outside the current resolver.
+const createExpressAccount = createConnectedAccount;
 
 /**
  * Configure a connected account to use manual payouts.
  * With manual payouts, funds stay in the instructor's Stripe balance until
  * we explicitly create a payout via the Payouts API.
  * @param {string} accountId - Stripe connected account ID
+ * @param {{ accountVersion?: "v1"|"v2", stripeClient?: object }} [options]
  * @returns {Promise<import('stripe').Stripe.Account>}
  */
-async function setManualPayoutSchedule(accountId) {
-  // For Accounts v1-style settings we can still use accounts.update with
-  // settings.payouts.schedule.interval = 'manual'.
-  return stripe.accounts.update(accountId, {
-    settings: {
-      payouts: {
-        schedule: {
-          interval: "manual",
+async function setManualPayoutSchedule(accountId, options = {}) {
+  const accountVersion = normalizeAccountVersion(options.accountVersion);
+  const stripeClient = options.stripeClient || stripe;
+  if (accountVersion === "v2") {
+    return stripeClient.balanceSettings.update(
+      {
+        payments: {
+          payouts: {
+            schedule: { interval: "manual" },
+          },
         },
       },
-    },
+      { stripeAccount: accountId },
+    );
+  }
+
+  // Existing v1 Accounts continue using their supported settings endpoint.
+  return stripeClient.accounts.update(accountId, {
+    settings: { payouts: { schedule: { interval: "manual" } } },
   });
 }
 
 /**
  * Create an account link for onboarding (or re-onboarding).
  * @param {string} accountId - Stripe connected account ID
- * @param {{ refreshPath?: string, returnPath?: string }} paths - Optional path overrides
+ * @param {{ refreshPath?: string, returnPath?: string, accountVersion?: "v1"|"v2", stripeClient?: object }} paths - Optional path overrides
  * @returns {Promise<{ url: string }>}
  */
 async function createAccountLink(accountId, paths = {}) {
@@ -69,12 +132,26 @@ async function createAccountLink(accountId, paths = {}) {
   const refreshUrl = `${FRONTEND_BASE.replace(/\/$/, "")}${refreshPath.startsWith("/") ? refreshPath : `/${refreshPath}`}`;
   const returnUrl = `${FRONTEND_BASE.replace(/\/$/, "")}${returnPath.startsWith("/") ? returnPath : `/${returnPath}`}`;
 
-  const link = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: refreshUrl,
-    return_url: returnUrl,
-    type: "account_onboarding",
-  });
+  const stripeClient = paths.stripeClient || stripe;
+  const accountVersion = normalizeAccountVersion(paths.accountVersion);
+  const link = accountVersion === "v2"
+    ? await stripeClient.v2.core.accountLinks.create({
+        account: accountId,
+        use_case: {
+          type: "account_onboarding",
+          account_onboarding: {
+            configurations: ["recipient"],
+            refresh_url: refreshUrl,
+            return_url: returnUrl,
+          },
+        },
+      })
+    : await stripeClient.accountLinks.create({
+        account: accountId,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+        type: "account_onboarding",
+      });
   return { url: link.url };
 }
 
@@ -93,8 +170,15 @@ async function createLoginLink(accountId) {
  * @param {string} accountId
  * @returns {Promise<import('stripe').Stripe.Account>}
  */
-async function retrieveAccount(accountId) {
-  return stripe.accounts.retrieve(accountId);
+async function retrieveAccount(accountId, options = {}) {
+  const accountVersion = normalizeAccountVersion(options.accountVersion);
+  const stripeClient = options.stripeClient || stripe;
+  if (accountVersion === "v2") {
+    return stripeClient.v2.core.accounts.retrieve(accountId, {
+      include: ["configuration.recipient", "identity", "requirements"],
+    });
+  }
+  return stripeClient.accounts.retrieve(accountId);
 }
 
 /**
@@ -102,6 +186,10 @@ async function retrieveAccount(accountId) {
  * Used by verifyStripeOnboarding and webhooks.
  */
 function accountToStripeSnapshot(account) {
+  if (account?.object === "v2.core.account") {
+    return accountV2ToStripeSnapshot(account);
+  }
+
   const chargesEnabled = Boolean(account.charges_enabled);
   const payoutsEnabled = Boolean(account.payouts_enabled);
   const detailsSubmitted = Boolean(account.details_submitted);
@@ -148,6 +236,67 @@ function accountToStripeSnapshot(account) {
     onboardingStatus,
     isActive: chargesEnabled && payoutsEnabled,
   };
+}
+
+function requirementReferences(account, status) {
+  const entries = account?.requirements?.entries;
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .filter((entry) => entry?.minimum_deadline?.status === status)
+    .map((entry) => entry.reference?.path || entry.description)
+    .filter(Boolean);
+}
+
+/**
+ * Normalize v2 requirements and recipient capability state into the local
+ * snapshot. The v1-looking booleans are intentionally not populated here:
+ * v2 uses recipient transfer/payout capabilities instead of charges_enabled
+ * and the old transfers capability.
+ */
+function accountV2ToStripeSnapshot(account) {
+  const recipient = account.configuration?.recipient;
+  const stripeBalance = recipient?.capabilities?.stripe_balance || {};
+  const transfersStatus = stripeBalance.stripe_transfers?.status || null;
+  const payoutsStatus = stripeBalance.payouts?.status || null;
+  const currentlyDue = requirementReferences(account, "currently_due");
+  const eventuallyDue = requirementReferences(account, "eventually_due");
+  const pastDue = requirementReferences(account, "past_due");
+  const isRestricted = [transfersStatus, payoutsStatus].some((status) =>
+    ["restricted", "unsupported"].includes(status),
+  ) || pastDue.length > 0;
+  const isActive = transfersStatus === "active" && payoutsStatus === "active";
+  const hasIdentity = Boolean(account.identity);
+
+  let onboardingStatus = "submitted";
+  if (isActive) onboardingStatus = "verified";
+  else if (isRestricted) onboardingStatus = "restricted";
+  else if (!hasIdentity || currentlyDue.length > 0) onboardingStatus = "link_generated";
+
+  const stripeAccountUpdate = {
+    "stripeAccount.accountVersion": "v2",
+    "stripeAccount.recipientTransfersStatus": transfersStatus,
+    "stripeAccount.recipientPayoutsStatus": payoutsStatus,
+    "stripeAccount.detailsSubmitted": hasIdentity && currentlyDue.length === 0,
+    "stripeAccount.lastSyncedAt": new Date(),
+    "stripeAccount.requirements.currentlyDue": currentlyDue,
+    "stripeAccount.requirements.eventuallyDue": eventuallyDue,
+    "stripeAccount.requirements.pastDue": pastDue,
+    "stripeAccount.requirements.disabledReason": null,
+    "stripeAccount.capabilities.transfers": transfersStatus,
+  };
+
+  return {
+    stripeAccountUpdate,
+    onboardingStatus,
+    isActive,
+    accountVersion: "v2",
+    recipientTransfersStatus: transfersStatus,
+    recipientPayoutsStatus: payoutsStatus,
+  };
+}
+
+function shouldCreateConnectedAccount(instructor) {
+  return !instructor?.stripeAccount?.accountId;
 }
 
 const DEFAULT_CURRENCY = MONEY_CURRENCY.toLowerCase();
@@ -648,12 +797,17 @@ async function retrievePaymentMethod(paymentMethodId) {
 
 module.exports = {
   stripe,
+  normalizeAccountVersion,
+  buildV2ConnectedAccountParams,
+  createConnectedAccount,
   createExpressAccount,
+  shouldCreateConnectedAccount,
   setManualPayoutSchedule,
   createAccountLink,
   createLoginLink,
   retrieveAccount,
   accountToStripeSnapshot,
+  accountV2ToStripeSnapshot,
   FRONTEND_BASE,
   getCommissionSplit,
   getCommissionSplitMinor,

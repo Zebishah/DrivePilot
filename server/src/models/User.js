@@ -186,6 +186,14 @@ const InstructorSchema = new mongoose.Schema({
       default: "express",
     },
 
+    // v1 is the legacy Express account shape; new accounts are created with
+    // Accounts v2 while retaining the same Express Dashboard experience.
+    accountVersion: {
+      type: String,
+      enum: ["v1", "v2"],
+      default: "v1",
+    },
+
     country: {
       type: String,
       default: "CH",
@@ -240,6 +248,11 @@ const InstructorSchema = new mongoose.Schema({
       cardPayments: String,
       transfers: String,
     },
+
+    // Accounts v2 uses recipient capabilities instead of the v1
+    // charges_enabled/transfers fields.
+    recipientTransfersStatus: String,
+    recipientPayoutsStatus: String,
 
     lastSyncedAt: Date,
   },

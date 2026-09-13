@@ -183,9 +183,12 @@ const typeDefs = gql`
 
   type StripeAccountSnapshot {
     accountId: String
+    accountVersion: String
     chargesEnabled: Boolean!
     payoutsEnabled: Boolean!
     detailsSubmitted: Boolean!
+    recipientTransfersStatus: String
+    recipientPayoutsStatus: String
     lastSyncedAt: String
   }
   type StripeFinancialStatusSnapshot {

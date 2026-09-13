@@ -7,10 +7,17 @@
  */
 const isInstructorPaymentReady = (instructor) => {
   if (!instructor) return false;
+  const stripeAccount = instructor.stripeAccount || {};
+  const stripeReady =
+    stripeAccount.accountVersion === "v2"
+      ? stripeAccount.recipientTransfersStatus === "active" &&
+        stripeAccount.recipientPayoutsStatus === "active"
+      : instructor.onboardingStatus === "verified" && instructor.isActive === true;
   return (
     instructor.isProfileComplete === true &&
     instructor.isActive === true &&
-    instructor.onboardingStatus === "verified"
+    instructor.onboardingStatus === "verified" &&
+    stripeReady
   );
 };
 

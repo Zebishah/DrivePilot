@@ -18,7 +18,7 @@ function providerDetails(event) {
   const object = event?.data?.object || {};
   return {
     providerObjectType: object.object || event?.type?.split(".")[0],
-    providerObjectId: object.id,
+    providerObjectId: object.id || event?.related_object?.id,
   };
 }
 

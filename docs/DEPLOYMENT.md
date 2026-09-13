@@ -111,6 +111,8 @@ JWT_SECRET=<random-secret-at-least-32-characters>
 FRONTEND_URL=https://<vercel-project>.vercel.app
 STRIPE_SECRET_KEY=sk_test_<test-secret>
 STRIPE_WEBHOOK_SECRET=whsec_<test-webhook-signing-secret>
+STRIPE_CONNECT_WEBHOOK_ENABLED=true
+STRIPE_CONNECT_WEBHOOK_SECRET=whsec_<test-connect-webhook-signing-secret>
 GOOGLE_CLIENT_ID=<google-client-id>
 GOOGLE_CLIENT_SECRET=<google-client-secret>
 AWS_ACCESS_KEY_ID=<s3-access-key-id>
@@ -321,6 +323,20 @@ Create one Stripe test-mode webhook endpoint:
 https://<render-api-service>.onrender.com/webhooks/stripe
 ```
 
+Create a second test-mode destination for connected-account events:
+
+```text
+https://<render-api-service>.onrender.com/webhooks/stripe/connect
+```
+
+Store its signing secret as `STRIPE_CONNECT_WEBHOOK_SECRET`. The platform and
+Connect routes verify independently, then write to the same durable webhook
+inbox. The worker performs all business processing. Configure the Connect
+destination for connected-account v1 snapshot events and Accounts v2 thin
+events, including `v2.core.account.created`,
+`v2.core.account.updated`, and
+`v2.core.account[requirements].updated`.
+
 The route is mounted before JSON parsing, verifies the raw body signature,
 stores a durable `StripeWebhookEvent`, and returns the receipt response. The
 worker processes the durable inbox. Subscribe only to events handled by the
@@ -329,6 +345,10 @@ current code:
 ```text
 account.updated
 account.application.deauthorized
+v2.core.account.created
+v2.core.account.updated
+v2.core.account[configuration.recipient].updated
+v2.core.account[requirements].updated
 charge.dispute.created
 charge.dispute.closed
 payout.failed
@@ -350,8 +370,13 @@ provider tests during deployment verification.
 
 ### Stripe Connect URLs
 
-The current Connect account-link implementation derives these from
-`FRONTEND_URL`:
+New instructor accounts use Stripe Accounts v2 with the recipient
+configuration and Express Dashboard. The current destination-charge payment
+flow is unchanged. Existing v1 Express accounts are detected from their
+stored account version and continue using the v1-compatible lifecycle calls;
+they are never recreated.
+
+The Connect account-link implementation derives these from `FRONTEND_URL`:
 
 ```text
 Refresh URL: https://<vercel-project>.vercel.app/payment/refresh
@@ -360,6 +385,13 @@ Return URL:  https://<vercel-project>.vercel.app/payment/complete
 
 The current implementation uses Express connected accounts and does not read
 `STRIPE_CLIENT_ID`. No Connect OAuth client ID is required by this code path.
+
+Accounts v2 uses the v2 Account Links API for onboarding and the Balance
+Settings API to set manual payouts. The Payouts API, destination charges,
+transfers, refunds, and transfer reversals remain v1 APIs because Stripe
+supports those endpoints for v2 account IDs and the existing financial
+semantics are preserved. Express Dashboard login links continue using the
+supported v1 login-link endpoint.
 
 ## 9. Google OAuth
 

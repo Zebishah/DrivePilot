@@ -135,9 +135,23 @@ async function syncFinancialOperationFromWebhook(event) {
 
 function getAccountIdFromEvent(event) {
   if (event.account) return event.account;
+  if (event.type?.startsWith("v2.core.account")) {
+    return (
+      event.related_object?.id ||
+      event.data?.account_id ||
+      event.data?.object?.account_id ||
+      event.data?.object?.id ||
+      null
+    );
+  }
   const obj = event.data?.object;
   if (!obj) return null;
-  if (event.type.startsWith("account.")) return obj.id;
+  if (
+    event.type.startsWith("account.") ||
+    event.type.startsWith("v2.core.account")
+  ) {
+    return obj.id;
+  }
   if (obj.account) return obj.account;
   return null;
 }
@@ -147,7 +161,8 @@ async function handleAccountUpdated(accountId) {
     "stripeAccount.accountId": accountId,
   });
   if (!instructor) return;
-  const account = await retrieveAccount(accountId);
+  const accountVersion = instructor.stripeAccount?.accountVersion || "v1";
+  const account = await retrieveAccount(accountId, { accountVersion });
   const { stripeAccountUpdate, onboardingStatus, isActive } =
     accountToStripeSnapshot(account);
   await Instructor.findByIdAndUpdate(instructor._id, {
@@ -998,6 +1013,22 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
   const accountId = getAccountIdFromEvent(event);
   if (!accountId) return { ignored: true, reason: "unsupported_event" };
 
+  // Accounts v2 emits thin, property-specific lifecycle events instead of
+  // relying only on the v1 account.updated snapshot event. The durable inbox
+  // is shared, so both event families use the same account sync handler.
+  if (event.type.startsWith("v2.core.account") && event.type.endsWith(".created")) {
+    await handleAccountUpdated(accountId);
+    return;
+  }
+  if (event.type.startsWith("v2.core.account") && event.type.endsWith(".updated")) {
+    await handleAccountUpdated(accountId);
+    return;
+  }
+  if (event.type === "v2.core.account.closed") {
+    await handleAccountDeauthorized(accountId);
+    return;
+  }
+
   switch (event.type) {
     case "account.updated":
       await handleAccountUpdated(accountId);
@@ -1027,4 +1058,5 @@ router.use(platformWebhookRouter);
 router.processStripeWebhookEvent = processStripeWebhookEvent;
 router.connectWebhookRouter = connectWebhookRouter;
 router.createStripeWebhookIngressRouter = createStripeWebhookIngressRouter;
+router.getAccountIdFromEvent = getAccountIdFromEvent;
 module.exports = router;

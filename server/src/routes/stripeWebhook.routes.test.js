@@ -169,3 +169,18 @@ test("the same event ID remains deduplicated while preserving connected account 
     else process.env.STRIPE_CONNECT_WEBHOOK_SECRET = previousSecret;
   }
 });
+
+test("Accounts v2 thin notifications resolve the related account ID", () => {
+  assert.equal(
+    stripeWebhookRoutes.getAccountIdFromEvent({
+      id: "evt_v2_account_update",
+      type: "v2.core.account[requirements].updated",
+      object: "v2.core.event",
+      related_object: {
+        id: "acct_v2_test",
+        type: "v2.core.account",
+      },
+    }),
+    "acct_v2_test",
+  );
+});
