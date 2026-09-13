@@ -12,12 +12,12 @@ const adminSockets = new Map(); // userId -> socketId
 const instructorSockets = new Map(); // instructorId -> socketId
 const studentSockets = new Map(); // studentId -> socketId
 
-function initSocket(server) {
+function initSocket(server, configuredOrigins = allowedOrigins) {
   const io = new Server(server, {
     transports: ["polling", "websocket"],
     cors: {
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || configuredOrigins.includes(origin)) {
           callback(null, true);
         } else {
           console.log("❌ Blocked socket by CORS:", origin);
@@ -260,4 +260,10 @@ function getIOInstance() {
   return ioInstance;
 }
 
-module.exports = { initSocket, setIOInstance, getIOInstance };
+async function closeSocket() {
+  if (!ioInstance) return;
+  await new Promise((resolve) => ioInstance.close(resolve));
+  ioInstance = null;
+}
+
+module.exports = { initSocket, setIOInstance, getIOInstance, closeSocket };

@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "start": "node src/index.js",
+    "start:api": "RUN_API=true RUN_WORKER=false node src/index.js",
+    "start:worker": "RUN_API=false RUN_WORKER=true node src/index.js",
     "dev": "npx nodemon src/index.js",
     "test": "node --test --test-concurrency=1",
     "test:financial": "node --test --test-concurrency=1 src/services/financialReliability.test.js src/services/financialOperationService.test.js src/services/stripeWebhookDurability.test.js src/services/transactionService.test.js src/utils/money.test.js src/scripts/backfillMoneyMinor.test.js src/utils/logger.test.js src/utils/metrics.test.js src/middleware/requestCorrelation.test.js",

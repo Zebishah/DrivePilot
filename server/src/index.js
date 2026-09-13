@@ -1,4 +1,8 @@
 require("dotenv").config();
+const { validateEnvironment } = require("./config/envValidation");
+
+validateEnvironment();
+
 const express = require("express");
 const { ApolloServer } = require("apollo-server-express");
 const { makeExecutableSchema } = require("@graphql-tools/schema");
@@ -12,7 +16,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
 const http = require("http");
-const { initSocket, setIOInstance } = require("./socket");
+const { initSocket, setIOInstance, closeSocket } = require("./socket");
 const { runInstructorPayoutJob } = require("./jobs/payoutJob");
 const { runT48ChargeJob } = require("./jobs/t48ChargeJob");
 const {
@@ -185,7 +189,7 @@ async function startApolloServer() {
   apiInitialized = true;
 
   const PORT = process.env.PORT || 4000;
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     logger.info("api_started", { port: PORT, graphqlPath: apolloServer.graphqlPath });
     logger.info("socket_io_initialized");
   });
@@ -217,6 +221,7 @@ async function shutdown(signal) {
   if (schedulerController) await schedulerController.stop();
   if (apolloServer) await apolloServer.stop();
   if (JOB_CONFIG.runApi) {
+    await closeSocket();
     await new Promise((resolve) => {
       if (!httpServer.listening) return resolve();
       httpServer.close(() => resolve());
