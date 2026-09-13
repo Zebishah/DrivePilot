@@ -79,7 +79,7 @@ const schema = z.object({
 const steps = [
   "Personal Information",
   "More Information",
-  "Payment Information",
+  "Finish Setup",
 ];
 
 const InstructorProfileSetup: React.FC = () => {
@@ -914,10 +914,20 @@ const InstructorProfileSetup: React.FC = () => {
               aria-controls="optional-documents-content"
               id="optional-documents-header"
               sx={{
-                backgroundColor: "primary.light",
-                color: "primary.contrastText",
+                backgroundColor: "#168a72",
+                color: "#ffffff",
                 borderRadius: "4px",
+                "&:hover": {
+                  backgroundColor: "#11705d",
+                },
+                "& .MuiAccordionSummary-expandIconWrapper": {
+                  color: "#ffffff",
+                },
+                "& .MuiTypography-root": {
+                  color: "#ffffff",
+                },
                 "&.Mui-expanded": {
+                  backgroundColor: "#168a72",
                   borderBottomLeftRadius: 0,
                   borderBottomRightRadius: 0,
                 },
@@ -929,7 +939,7 @@ const InstructorProfileSetup: React.FC = () => {
               sx={{
                 pt: 3,
                 border: "1px solid",
-                borderColor: "primary.light",
+                borderColor: "#168a72",
                 borderTop: "none",
                 borderBottomLeftRadius: "4px",
                 borderBottomRightRadius: "4px",
@@ -1107,10 +1117,13 @@ const InstructorProfileSetup: React.FC = () => {
   );
   const renderPaymentInfo = () => (
     <Box sx={{ mt: 4 }}>
-      <Box sx={{ mt: 4 }}>
-        {/* Payment information form fields will go here */}
-        <Typography>Click Submit to complete your profile setup...</Typography>
-      </Box>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Your profile is ready to submit
+      </Typography>
+      <Typography variant="body1" color="text.secondary">
+        Submit your details and documents for review. Once approved, you can
+        finish payment and payout setup from your instructor dashboard.
+      </Typography>
     </Box>
   );
 
