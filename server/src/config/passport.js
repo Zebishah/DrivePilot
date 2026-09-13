@@ -1,9 +1,24 @@
 const passport = require("passport");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const FacebookStrategy = require("passport-facebook").Strategy;
 const { User } = require("../models/User");
 
-passport.use(
+function hasProviderCredentials(clientId, clientSecret) {
+  return Boolean(
+    String(clientId || "").trim() && String(clientSecret || "").trim(),
+  );
+}
+
+const googleOAuthEnabled = hasProviderCredentials(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+);
+const facebookOAuthEnabled = hasProviderCredentials(
+  process.env.FACEBOOK_APP_ID,
+  process.env.FACEBOOK_APP_SECRET,
+);
+
+if (googleOAuthEnabled) {
+  const GoogleStrategy = require("passport-google-oauth20").Strategy;
+  passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
@@ -33,10 +48,13 @@ passport.use(
         return done(error, null);
       }
     }
-  )
-);
+    ),
+  );
+}
 
-passport.use(
+if (facebookOAuthEnabled) {
+  const FacebookStrategy = require("passport-facebook").Strategy;
+  passport.use(
   new FacebookStrategy(
     {
       clientID: process.env.FACEBOOK_APP_ID,
@@ -67,7 +85,13 @@ passport.use(
         return done(error, null);
       }
     }
-  )
-);
+    ),
+  );
+}
+
+passport.oauthProviders = {
+  google: googleOAuthEnabled,
+  facebook: facebookOAuthEnabled,
+};
 
 module.exports = passport;

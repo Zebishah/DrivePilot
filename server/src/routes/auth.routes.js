@@ -11,11 +11,17 @@ const frontendBase = (
 
 router.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] }),
+  passport.oauthProviders.google
+    ? passport.authenticate("google", { scope: ["profile", "email"] })
+    : (_req, res) =>
+        res.status(404).json({ error: "Google OAuth is not configured" }),
 );
 router.get(
   "/auth/google/callback",
-  passport.authenticate("google", { session: false }),
+  passport.oauthProviders.google
+    ? passport.authenticate("google", { session: false })
+    : (_req, res) =>
+        res.status(404).json({ error: "Google OAuth is not configured" }),
   (req, res) => {
     // if (req?.user.authProvider !== "google") {
     //   return res.redirect(
@@ -50,12 +56,18 @@ router.get(
 
 router.get(
   "/auth/facebook",
-  passport.authenticate("facebook", { scope: ["email"] }),
+  passport.oauthProviders.facebook
+    ? passport.authenticate("facebook", { scope: ["email"] })
+    : (_req, res) =>
+        res.status(404).json({ error: "Facebook OAuth is not configured" }),
 );
 
 router.get(
   "/auth/facebook/callback",
-  passport.authenticate("facebook", { session: false }),
+  passport.oauthProviders.facebook
+    ? passport.authenticate("facebook", { session: false })
+    : (_req, res) =>
+        res.status(404).json({ error: "Facebook OAuth is not configured" }),
   (req, res) => {
     const token = jwt.sign(
       {
