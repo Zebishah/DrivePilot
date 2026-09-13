@@ -1,7 +1,7 @@
 "use client";
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Box, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { Box, CssBaseline } from "@mui/material";
 import Sidebar, { type MenuItem } from "../components/common/SideBar";
 import Navbar from "../components/common/DashNavBar";
 import {
@@ -34,20 +34,6 @@ import { useBookingNotifications } from "../utils/useBookingNotification";
 import { MdOutlineFeedback } from "react-icons/md";
 import AssistantPanel from "../components/assistant/AssistantPanel";
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#5ec2d2",
-    },
-    secondary: {
-      main: "#de4ef5",
-    },
-    background: {
-      default: "#fafafa",
-    },
-  },
-});
-
 interface StudentLayoutProps {
   children: React.ReactNode;
 }
@@ -60,6 +46,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const dispatch = useDispatch();
   const location = useLocation();
+  const isChatRoute = location.pathname.includes("/chat");
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
@@ -68,7 +55,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   useEffect(() => {
     if (user?.role === "Student") {
-      console.log("🔌 Initializing socket for student:", user.id);
       initSocket(token || undefined);
     }
   }, [user, token]);
@@ -82,7 +68,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   // ✅ Clear unseen count when visiting booking management page
   useEffect(() => {
     if (location.pathname === "/student-dashboard/book") {
-      console.log("📍 On booking management page, clearing count");
       clearUnseenCount();
     }
   }, [location.pathname, clearUnseenCount]);
@@ -98,7 +83,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
   const { data } = useQuery(GET_STUDENT_BOOKINGS, {
     variables: { studentId: user?.id },
-    skip: !user?.id,
+    skip: !user?.id || !isChatRoute,
     fetchPolicy: "network-only",
   });
 
@@ -295,7 +280,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   ];
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
       <Box sx={{ display: "flex", minHeight: "100vh" }}>
         <Sidebar
@@ -320,6 +305,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           <AssistantPanel pageContext="student-dashboard" />
         </Box>
       </Box>
-    </ThemeProvider>
+    </>
   );
 }

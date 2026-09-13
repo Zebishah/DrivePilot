@@ -3,7 +3,7 @@ import { Users, Calendar, DollarSign, BookOpen } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { LastTrainedStudent } from "./LastTrainedStudent";
 
-import { InstructorMap } from "./InstructorMap";
+import InstructorMap from "./LazyInstructorMap";
 import { ProgressMetric } from "./ProgressMetric";
 import { InstructorAnalytics } from "../../../types/InstructorAnalytics";
 import { gql, useQuery } from "@apollo/client";
@@ -138,13 +138,13 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
   const totalReceived = transactionStatsData?.getInstructorTransactionStats?.totalReceived ?? 0;
 
   return (
-    <div className=" bg-gray-50 p-6 w-full ">
+    <div className="bg-slate-50 p-4 sm:p-6 lg:p-8 w-full min-h-screen">
       <div className=" w-full space-y-6 ">
         {/* Top Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-6 w-full ">
           {" "}
           <div className="grid grid-rows-2 md:grid-rows-2 lg:grid-rows-2 gap-6 w-full ">
-            <div className="flex gap-4 w-full ">
+            <div className="flex flex-col sm:flex-row gap-4 w-full ">
               <StatsCard
                 title="Cumulative Students Count"
                 value={analytics?.totalStudents}
@@ -168,7 +168,7 @@ export const InstructorAnalyticsDashboard: React.FC = () => {
                 }
               />
             </div>
-            <div className="flex gap-4 w-full">
+            <div className="flex flex-col sm:flex-row gap-4 w-full">
               <StatsCard
                 title="Total Received"
                 value={formatCHF(Number(totalReceived))}

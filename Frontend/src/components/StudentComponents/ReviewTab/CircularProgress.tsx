@@ -1,5 +1,5 @@
 import { ApexOptions } from "apexcharts";
-import Chart from "react-apexcharts";
+import Chart from "../../performance/LazyApexChart";
 // Mock data for demonstration
 export const mockStudentData = {
   studentInfo: {

@@ -1,6 +1,6 @@
 import React from "react";
-import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
+import Chart from "../../performance/LazyApexChart";
 
 interface ProgressChartProps {
   completedHours: number;

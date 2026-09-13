@@ -1,10 +1,55 @@
-@import url("https://fonts.cdnfonts.com/css/harabara-mais-demo");
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-* {
-  font-family: "Poppins", sans-serif !important;
+:root {
+  color: #102a43;
+  background: #f7fafc;
+  font-family: "Poppins", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --dsp-ink: #102a43;
+  --dsp-muted: #627d98;
+  --dsp-canvas: #f7fafc;
+  --dsp-surface: #ffffff;
+  --dsp-border: #d9e2ec;
+  --dsp-primary: #167d91;
+  --dsp-primary-hover: #0f6475;
+  --dsp-primary-soft: #e4f4f6;
+  --dsp-radius-sm: 8px;
+  --dsp-radius-md: 12px;
+  --dsp-shadow-sm: 0 1px 3px rgba(16, 42, 67, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--dsp-canvas);
+  color: var(--dsp-ink);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(22, 125, 145, 0.42);
+  outline-offset: 2px;
 }
 .MuiTextField-root .MuiInputBase-root {
   border-radius: 10px;
@@ -68,4 +113,117 @@
 
 .apexcharts-svg {
   overflow: visible !important;
+}
+
+.route-loading {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--dsp-muted);
+  font-size: 0.9rem;
+}
+
+.route-loading__spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--dsp-border);
+  border-top-color: var(--dsp-primary);
+  border-radius: 999px;
+  animation: dsp-spin 700ms linear infinite;
+}
+
+.route-error {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--dsp-ink);
+}
+
+.route-error__eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--dsp-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-error h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.route-error p:not(.route-error__eyebrow) {
+  margin: 0;
+  color: var(--dsp-muted);
+}
+
+.route-error__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.route-error__actions button,
+.route-error__actions a {
+  border: 0;
+  border-radius: var(--dsp-radius-sm);
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.route-error__actions button {
+  background: var(--dsp-primary);
+  color: white;
+}
+
+.route-error__actions a {
+  border: 1px solid var(--dsp-border);
+  background: var(--dsp-surface);
+  color: var(--dsp-ink);
+}
+
+.chart-loading {
+  min-height: 220px;
+  border-radius: var(--dsp-radius-md);
+  background: linear-gradient(90deg, #eef4f7 25%, #f8fbfc 37%, #eef4f7 63%);
+  background-size: 400% 100%;
+  animation: dsp-shimmer 1.4s ease infinite;
+}
+
+.assistant-spin {
+  animation: dsp-spin 700ms linear infinite;
+}
+
+@keyframes dsp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dsp-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

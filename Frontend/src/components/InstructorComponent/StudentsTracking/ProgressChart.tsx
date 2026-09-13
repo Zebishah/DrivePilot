@@ -1,6 +1,6 @@
 import React from "react";
-import ApexCharts from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
+import ApexCharts from "../../performance/LazyApexChart";
 import { DateFilter, GraphStats } from "../../../types/Student";
 
 interface ProgressChartProps {

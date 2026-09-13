@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@mui/material";
 import { FaBars, FaTimes } from "react-icons/fa";
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -25,16 +26,24 @@ const Navbar: React.FC = () => {
       </div>
 
       {/* Hamburger Menu Icon */}
-      <div className="md:hidden" onClick={toggleMenu}>
+      <button
+        type="button"
+        className="md:hidden rounded-md p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+        onClick={toggleMenu}
+        aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={isMenuOpen}
+        aria-controls="public-navigation"
+      >
         {isMenuOpen ? (
-          <FaTimes className="h-6 w-6 cursor-pointer" />
+          <FaTimes className="h-6 w-6" aria-hidden="true" />
         ) : (
-          <FaBars className="h-6 w-6 cursor-pointer" />
+          <FaBars className="h-6 w-6" aria-hidden="true" />
         )}
-      </div>
+      </button>
 
       {/* Links Section */}
       <ul
+        id="public-navigation"
         className={`flex flex-col p-6 md:p-4 md:flex-row space-y-6 md:space-y-0 md:space-x-6 absolute md:relative top-14 md:top-auto left-0 w-full md:w-auto bg-gray-900 md:bg-transparent transition-all duration-300 ease-in-out ${
           isMenuOpen ? "block" : "hidden md:flex"
         }`}
@@ -79,10 +88,10 @@ const Navbar: React.FC = () => {
             Our Instructors
           </NavLink>
         </li>
-        <div className="block md:hidden w-full">
+        <li className="block md:hidden w-full">
           <Button
             onClick={() => {
-              window.location.href = "/auth/signin";
+              navigate("/auth/signin");
             }}
             variant="contained"
             sx={{
@@ -98,15 +107,14 @@ const Navbar: React.FC = () => {
           >
             Sign In
           </Button>
-        </div>
-        .{" "}
+        </li>
       </ul>
 
       {/* Button Section */}
       <div className="hidden md:block mr-8">
         <Button
           onClick={() => {
-            window.location.href = "/auth/signin";
+            navigate("/auth/signin");
           }}
           variant="contained"
           sx={{

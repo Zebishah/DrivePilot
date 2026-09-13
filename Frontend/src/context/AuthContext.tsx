@@ -11,7 +11,6 @@ import { ApolloClient, createHttpLink, InMemoryCache } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import CryptoJS from "crypto-js";
 import type { AuthPayload, TempAuthPayload } from "../types/auth";
-import { disconnectSocket } from "../utils/socket";
 
 // Constants
 const COOKIE_TOKEN_KEY = "token_dsp";
@@ -101,7 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
-    disconnectSocket();
+    void import("../utils/socket").then(({ disconnectSocket }) => {
+      disconnectSocket();
+    });
     Cookies.remove(COOKIE_TOKEN_KEY);
     Cookies.remove(COOKIE_USER_KEY);
 

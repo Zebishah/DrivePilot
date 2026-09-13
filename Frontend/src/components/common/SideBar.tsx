@@ -87,7 +87,7 @@ export default function Sidebar({
   };
 
   const drawer = (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, bgcolor: "background.paper", minHeight: "100%" }}>
       <Box
         sx={{
           mb: 1,
@@ -107,7 +107,10 @@ export default function Sidebar({
         />
       </Box>
 
-      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+      <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: "0.12em" }}>
+        DSP Marketplace
+      </Typography>
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: "text.primary" }}>
         Welcome, {userName}
       </Typography>
 
@@ -170,18 +173,21 @@ export default function Sidebar({
                 >
                   <ListItemButton
                     component={motion.div}
+                    aria-current={isActive ? "page" : undefined}
                     whileHover={{ x: 5 }}
                     whileTap={{ scale: 0.98 }}
                     sx={{
-                      borderRadius: 1,
+                      borderRadius: 2,
                       mb: 0.5,
                       backgroundColor: isActive
-                        ? "rgba(0, 0, 0, 0.08)"
+                        ? "primary.light"
                         : "transparent",
+                      borderLeft: isActive ? "3px solid" : "3px solid transparent",
+                      borderColor: isActive ? "primary.main" : "transparent",
                       "&:hover": {
                         backgroundColor: isActive
-                          ? "rgba(0, 0, 0, 0.12)"
-                          : "rgba(0, 0, 0, 0.04)",
+                          ? "primary.light"
+                          : "grey.50",
                       },
                       position: "relative",
                     }}

@@ -1,7 +1,7 @@
 "use client";
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Box, CssBaseline, ThemeProvider, createTheme, Alert } from "@mui/material";
+import { Box, CssBaseline, Alert } from "@mui/material";
 import {
   LayoutGrid,
   MessageSquare,
@@ -32,20 +32,6 @@ import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import AssistantPanel from "../components/assistant/AssistantPanel";
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#5ec2d2",
-    },
-    secondary: {
-      main: "#de4ef5",
-    },
-    background: {
-      default: "#fafafa",
-    },
-  },
-});
-
 interface TeacherLayoutProps {
   children: React.ReactNode;
 }
@@ -58,6 +44,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const dispatch = useDispatch();
   const location = useLocation();
+  const isChatRoute = location.pathname.includes("/chat");
   const conversations = useSelector(
     (state: RootState) => state.chat.conversations
   );
@@ -67,32 +54,17 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   // ✅ Initialize socket for instructor (check for both cases)
   useEffect(() => {
     if (user?.role === "Instructor" || user?.role === "instructor") {
-      console.log(
-        "🔌 Initializing socket for instructor:",
-        user.id,
-        "Role:",
-        user.role
-      );
       initSocket(token || undefined);
     }
   }, [user, token]);
 
   // ✅ Use booking notifications hook
-  const { unseenBookingsCount, clearUnseenCount, isRegistered } =
+  const { unseenBookingsCount, clearUnseenCount } =
     useBookingNotifications(user?.id || "", user?.role || "");
-
-  console.log("Teacher Layout State:", {
-    unseenBookingsCount,
-    isRegistered,
-    userId: user?.id,
-    role: user?.role,
-    pathname: location.pathname,
-  });
 
   // ✅ Clear unseen count when visiting booking management page - FIXED PATH
   useEffect(() => {
     if (location.pathname === "/teacher-dashboard/bookingManagement") {
-      console.log("📍 On booking management page, clearing count");
       clearUnseenCount();
     }
   }, [location.pathname, clearUnseenCount]);
@@ -113,7 +85,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
         sortBy: "RECENT_TO_OLDEST",
       },
     },
-    skip: !user?.id,
+    skip: !user?.id || !isChatRoute,
     fetchPolicy: "network-only",
   });
 
@@ -311,15 +283,8 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     { text: "Logout", icon: LogOut, path: "/logout" },
   ];
 
-  console.log(
-    "Teacher Layout Rendered - Unseen Count:",
-    unseenBookingsCount,
-    "Is Registered:",
-    isRegistered
-  );
-
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
       <Box sx={{ display: "flex", minHeight: "100vh" }}>
         <Sidebar
@@ -355,6 +320,6 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
           <AssistantPanel pageContext="instructor-dashboard" />
         </Box>
       </Box>
-    </ThemeProvider>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { ApexOptions } from "apexcharts";
-import Chart from "react-apexcharts";
+import Chart from "../../performance/LazyApexChart";
 
 // Types
 interface StudentInfo {

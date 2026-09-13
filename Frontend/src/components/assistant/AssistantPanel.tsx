@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Box, Button, Chip, Divider, Drawer, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
-import { Bot, RotateCcw, Send, X } from "lucide-react";
+import { Bot, Loader2, RotateCcw, Send, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 type AssistantRole = "Student" | "Instructor" | "Admin";
@@ -24,6 +24,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [responseMode, setResponseMode] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>([
     { role: "assistant", content: "Ask me about your authorized DSP Marketplace information." },
   ]);
@@ -47,6 +48,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "The assistant is temporarily unavailable.");
+      setResponseMode(body.mode === "fallback" ? "fallback" : null);
       setMessages((current) => [...current, { role: "assistant", content: body.answer || "I could not find an answer." }]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The assistant is temporarily unavailable.");
@@ -58,6 +60,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
   const clearConversation = () => {
     setMessages([{ role: "assistant", content: "Ask me about your authorized DSP Marketplace information." }]);
     setError(null);
+    setResponseMode(null);
   };
 
   const retryLastMessage = () => {
@@ -77,10 +80,11 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
             <Stack direction="row"><IconButton aria-label="Clear conversation" onClick={clearConversation}><RotateCcw size={18} /></IconButton><IconButton aria-label="Close assistant" onClick={() => setOpen(false)}><X size={20} /></IconButton></Stack>
           </Stack>
           <Divider />
-          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }} role="log" aria-live="polite" aria-busy={sending}>
             <Stack spacing={1.5}>
-              {messages.map((message, index) => <Paper key={`${message.role}-${index}`} elevation={0} sx={{ p: 1.5, alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "88%", bgcolor: message.role === "user" ? "primary.main" : "grey.100", color: message.role === "user" ? "white" : "text.primary", borderRadius: 2 }}><Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{message.content}</Typography></Paper>)}
-              {sending && <Typography variant="body2" color="text.secondary">Checking your authorized data…</Typography>}
+              {messages.map((message, index) => <Paper key={`${message.role}-${index}`} elevation={0} aria-label={`${message.role === "user" ? "You" : "DSP Assistant"} message`} sx={{ p: 1.5, alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "88%", bgcolor: message.role === "user" ? "primary.main" : "grey.100", color: message.role === "user" ? "white" : "text.primary", borderRadius: 2 }}><Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{message.content}</Typography></Paper>)}
+              {sending && <Stack direction="row" spacing={1} alignItems="center"><Loader2 size={16} className="assistant-spin" aria-hidden="true" /><Typography variant="body2" color="text.secondary">Checking your authorized data…</Typography></Stack>}
+              {responseMode === "fallback" && <Typography variant="caption" color="text.secondary">Based on your latest verified DSP data.</Typography>}
               {error && <Stack spacing={0.5}><Typography variant="body2" color="error">{error}</Typography><Button size="small" onClick={retryLastMessage} disabled={sending} sx={{ alignSelf: "flex-start" }}>Retry</Button></Stack>}
             </Stack>
           </Box>
@@ -88,8 +92,8 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
           <Box sx={{ p: 2 }}>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>{roleSuggestions.map((suggestion) => <Chip key={suggestion} label={suggestion} size="small" onClick={() => void sendMessage(suggestion)} disabled={sending} />)}</Stack>
             <Stack component="form" direction="row" spacing={1} onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
-              <TextField value={input} onChange={(event) => setInput(event.target.value)} fullWidth size="small" placeholder="Ask about your dashboard" inputProps={{ maxLength: 4000, "aria-label": "Assistant message" }} disabled={sending} />
-              <Button type="submit" variant="contained" aria-label="Send message" disabled={sending || !input.trim()} sx={{ minWidth: 48 }}><Send size={18} /></Button>
+              <TextField value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} fullWidth size="small" multiline maxRows={4} placeholder="Ask about your dashboard" helperText="Enter to send · Shift+Enter for a new line" inputProps={{ maxLength: 4000, "aria-label": "Assistant message" }} disabled={sending} />
+              <Button type="submit" variant="contained" aria-label="Send message" disabled={sending || !input.trim()} sx={{ minWidth: 48, alignSelf: "flex-start", minHeight: 40 }}>{sending ? <Loader2 size={18} className="assistant-spin" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}</Button>
             </Stack>
           </Box>
         </Box>

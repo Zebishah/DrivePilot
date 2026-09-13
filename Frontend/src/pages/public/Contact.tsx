@@ -1,7 +1,7 @@
 import type React from "react";
 import Banner2 from "../../components/public/Banner2";
 import Container from "../../components/common/Container";
-import MapComponent from "./map/ContactMap";
+import MapComponent from "./map/LazyContactMap";
 
 type Props = {};
 

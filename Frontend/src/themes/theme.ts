@@ -1,19 +1,25 @@
 import { createTheme } from "@mui/material/styles";
+import { designTokens } from "./tokens";
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#5FC2D3",
-      dark: "#3AB7E0",
+      main: designTokens.color.primary,
+      dark: designTokens.color.primaryHover,
+      light: designTokens.color.primarySoft,
       contrastText: "#FFFFFF",
     },
     secondary: {
-      main: "#333333",
+      main: designTokens.color.ink,
       contrastText: "#FFFFFF",
     },
     background: {
-      default: "#F8F9FA",
-      paper: "#FFFFFF",
+      default: designTokens.color.canvas,
+      paper: designTokens.color.surface,
+    },
+    text: {
+      primary: designTokens.color.ink,
+      secondary: designTokens.color.muted,
     },
   },
   typography: {
@@ -54,7 +60,7 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: designTokens.radius.sm,
           boxShadow: "none",
           "&:hover": {
             boxShadow: "none",
@@ -81,12 +87,12 @@ const theme = createTheme({
         root: {
           "& .MuiOutlinedInput-root": {
             // height: "54px",
-            borderRadius: 6,
+          borderRadius: designTokens.radius.sm,
             "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#5FC2D3",
+              borderColor: designTokens.color.primary,
             },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#5FC2D3",
+              borderColor: designTokens.color.primary,
               borderWidth: "2px",
             },
           },
@@ -132,8 +138,8 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.08)",
+          borderRadius: designTokens.radius.md,
+          boxShadow: designTokens.shadow.sm,
         },
       },
     },

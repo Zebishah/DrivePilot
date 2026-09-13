@@ -17,7 +17,7 @@ import {
   Info,
 } from "lucide-react";
 import { endOfMonth, format, startOfMonth } from "date-fns";
-import dynamic from "next/dynamic";
+import Chart from "../../../components/performance/LazyApexChart";
 import {
   GET_ADMIN_ANALYTICS,
   GET_ALL_INSTRUCTORS,
@@ -29,8 +29,6 @@ import {
   type Instructor,
 } from "../../../types/AdminContact";
 import { Tooltip } from "@mui/material";
-// Dynamically import ApexCharts to avoid SSR issues
-const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 /** Native `title` / `aria-label` on SVG does not show hover hints; MUI Tooltip does. */
 function StatInfoTooltip({ text }: { text: string }) {
@@ -1005,9 +1003,9 @@ export function AnalyticsDashboard() {
   );
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 bg-slate-50 min-h-screen">
       {/* Filter Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">
           Platform Usage Reports
         </h1>

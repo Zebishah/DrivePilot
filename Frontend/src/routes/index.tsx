@@ -1,206 +1,140 @@
-import { createBrowserRouter } from "react-router-dom";
-import PublicRoutes from "./PublicRoutes";
-import OurInstructor from "../pages/public/OurInstructor";
-import Home from "../pages/public/Home";
-import AboutUs from "../pages/public/AboutUs";
-import Contact from "../pages/public/Contact";
-import SignIn from "../pages/public/auth/SignIn";
-import SignUp from "../pages/public/auth/SignUp";
-import ForgotPassword from "../pages/public/auth/ForgotPassoword";
-import ResetPassword from "../pages/public/auth/ResetPassword";
-import OnboardingRoutes from "./OnBoardingRoutes";
-import RoleSelection from "../pages/private/onboarding/RoleSelection";
-import InstructorProfileSetup from "../pages/private/onboarding/InstructorProfileSetup";
-import NotFound from "../components/common/NotFound";
-import StudentProfileSetup from "../pages/private/onboarding/StudentProfileSetup";
-import StudentRoutes from "./StudentRoutes";
-
-import TeacherRoutes from "./TeacherRoutes";
-import AuthSuccess from "../pages/public/auth/AuthSucess";
-import TeacherOverview from "../pages/private/teacher-dashboard/teacher0verview";
-import StudentOverview from "../pages/private/student-dashboard/studentOverview";
-import AdminRoutes from "./AdminRoutes";
-import AdminOverview, {
-  AnalyticsDashboard,
-} from "../pages/private/admin-dashboard/adminOverview";
-import AdminAccess from "../pages/private/admin-dashboard/AdminAccess";
-import ProfileSetting from "../pages/private/teacher-dashboard/profileSetting";
-import EditProfile from "../pages/private/teacher-dashboard/editProfile";
-import AllInstructor from "../components/ProfessionalInstructor/Allinstructor";
-import OtpVerification from "../pages/public/auth/OtpVerify";
-import TwoFactorAuth from "../pages/public/auth/TwoFactorAuth";
-import StudentProfileSetting from "../pages/private/student-dashboard/profileSetting";
-import StudentBookings from "../pages/private/student-dashboard/bookLesson";
-import { CompletePaymentPage } from "../pages/private/student-dashboard/CompletePaymentPage";
-import SearchInstructor from "../pages/private/student-dashboard/searchInstructor";
-import BookingDetails from "../pages/private/student-dashboard/bookingDetails";
-import RefundRequestPage from "../pages/private/student-dashboard/RefundRequestPage";
-import EditStudentProfile from "../pages/private/student-dashboard/EditStudentProfile";
-import QuestionsAnswers from "../pages/private/admin-dashboard/HelpSupport";
-import FAQPage from "../pages/private/teacher-dashboard/HelpSuportPage";
+import { lazy, Suspense } from "react";
+import type { ComponentType } from "react";
+import { createBrowserRouter, Outlet } from "react-router-dom";
 import SuperAdminRoute from "./SuperAdminRoutes";
-import StudentFeedback from "../pages/private/teacher-dashboard/CompleteBookings";
-import FeedbackForm from "../pages/private/teacher-dashboard/FeedBackForm";
-import StudentsProgressDashboard from "../pages/private/teacher-dashboard/MyStudentsTrack";
-import StudentDashboard from "../pages/private/teacher-dashboard/StudentProgress";
-import Dashboard from "../components/StudentComponents/ReviewTab/Dashboard";
-import ReviewForm from "../components/StudentComponents/ReviewTab/ReviewForm";
-import ReviewDisplay from "../components/StudentComponents/ReviewTab/ReviewDisplay";
-import AllBookingSlotsPage from "../components/StudentComponents/ReviewTab/AllBookingSlotPage";
-import { DocumentDetailsPage } from "../pages/private/admin-dashboard/DocumentsDetailPage";
-import InstructorDocumentsTable from "../components/AdminComponents/InstructorDocumentsTable";
-import { InstructorManagement } from "../pages/private/admin-dashboard/InstructorManagement";
-import { StudentManagement } from "../pages/private/admin-dashboard/StudentManagement";
-import InstructorChatPage from "../pages/private/teacher-dashboard/chat";
-import StudentChatPage from "../pages/private/student-dashboard/chat";
-import { InstructorAnalyticsDashboard } from "../components/InstructorComponent/InstructorAnalytics/InstructorAnalyticsDashboard";
-import StripePaymentRefresh from "../pages/private/teacher-dashboard/StripePaymentRefresh";
-import StripePaymentComplete from "../pages/private/teacher-dashboard/StripePaymentComplete";
-import { Outlet } from "react-router-dom";
-import StudentBookingTable from "../components/AdminComponents/StudentBookingTable";
-import AdminTransactionsPage from "../pages/private/admin-dashboard/AdminTransactionsPage";
-import AdminRefundRequestsPage from "../pages/private/admin-dashboard/AdminRefundRequestsPage";
-import StudentBookingWInst from "../components/InstructorComponent/StudentBookingWInst";
-import FeedBackAndRating from "../components/StudentComponents/ReviewTab/OnlyReviewsTab";
-import FeedbackDetailsPage from "../components/StudentComponents/ReviewTab/FeedbackDetailsPage";
-import StudentPaymentHistoryPage from "../pages/private/student-dashboard/StudentPaymentHistoryPage";
-import InstructorTransactionHistoryPage from "../pages/private/teacher-dashboard/InstructorTransactionHistoryPage";
+import RouteLoadingFallback from "../components/loaders/RouteLoadingFallback";
+import RouteErrorBoundary from "../components/common/RouteErrorBoundary";
+
+function lazyPage(loader: () => Promise<{ default: ComponentType }>) {
+  const Page = lazy(loader);
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Page />
+      </Suspense>
+    </RouteErrorBoundary>
+  );
+}
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <PublicRoutes />,
+    element: lazyPage(() => import("./PublicRoutes")),
     children: [
-      { path: "instructors/:id", element: <OurInstructor /> },
-      { path: "", element: <Home /> },
-      { path: "about", element: <AboutUs /> },
-      { path: "contact", element: <Contact /> },
-      { path: "professional", element: <AllInstructor /> },
+      { path: "instructors/:id", element: lazyPage(() => import("../pages/public/OurInstructor")) },
+      { path: "", element: lazyPage(() => import("../pages/public/Home")) },
+      { path: "about", element: lazyPage(() => import("../pages/public/AboutUs")) },
+      { path: "contact", element: lazyPage(() => import("../pages/public/Contact")) },
+      { path: "professional", element: lazyPage(() => import("../components/ProfessionalInstructor/Allinstructor")) },
     ],
   },
-  { path: "signup/:token", element: <SignUp /> },
+  { path: "signup/:token", element: lazyPage(() => import("../pages/public/auth/SignUp")) },
   {
     path: "/auth",
     children: [
-      { path: "signin", element: <SignIn /> },
-      { path: "signup/", element: <SignUp /> },
-      { path: "forgot-password", element: <ForgotPassword /> },
-      { path: "reset-password/:token", element: <ResetPassword /> },
-      { path: "auth-success", element: <AuthSuccess /> },
-      { path: "verificationPage/:email", element: <OtpVerification /> },
-      { path: "twoFactorAuthPage/:email", element: <TwoFactorAuth /> },
+      { path: "signin", element: lazyPage(() => import("../pages/public/auth/SignIn")) },
+      { path: "signup/", element: lazyPage(() => import("../pages/public/auth/SignUp")) },
+      { path: "forgot-password", element: lazyPage(() => import("../pages/public/auth/ForgotPassoword")) },
+      { path: "reset-password/:token", element: lazyPage(() => import("../pages/public/auth/ResetPassword")) },
+      { path: "auth-success", element: lazyPage(() => import("../pages/public/auth/AuthSucess")) },
+      { path: "verificationPage/:email", element: lazyPage(() => import("../pages/public/auth/OtpVerify")) },
+      { path: "twoFactorAuthPage/:email", element: lazyPage(() => import("../pages/public/auth/TwoFactorAuth")) },
     ],
   },
   {
     path: "/onboarding",
-    element: <OnboardingRoutes />,
+    element: lazyPage(() => import("./OnBoardingRoutes")),
     children: [
-      { path: "role-selection", element: <RoleSelection /> },
-      { path: "instructor-profile", element: <InstructorProfileSetup /> },
-      { path: "student-profile", element: <StudentProfileSetup /> },
+      { path: "role-selection", element: lazyPage(() => import("../pages/private/onboarding/RoleSelection")) },
+      { path: "instructor-profile", element: lazyPage(() => import("../pages/private/onboarding/InstructorProfileSetup")) },
+      { path: "student-profile", element: lazyPage(() => import("../pages/private/onboarding/StudentProfileSetup")) },
     ],
   },
   {
     path: "/student-dashboard",
-    element: <StudentRoutes />,
+    element: lazyPage(() => import("./StudentRoutes")),
     children: [
-      { path: "overview", element: <StudentOverview /> },
+      { path: "overview", element: lazyPage(() => import("../pages/private/student-dashboard/studentOverview")) },
       {
         path: "settings",
-        element: <StudentProfileSetting />,
+        element: lazyPage(() => import("../pages/private/student-dashboard/profileSetting")),
         children: [
-          { path: "edit-profile", element: <EditStudentProfile /> }, // Nested under settings
+          { path: "edit-profile", element: lazyPage(() => import("../pages/private/student-dashboard/EditStudentProfile")) },
         ],
       },
-      {
-        path: "book",
-        element: <StudentBookings />,
-      },
-      { path: "payment-history", element: <StudentPaymentHistoryPage /> },
-      {
-        path: "search",
-        element: <SearchInstructor />,
-      },
-      { path: "search/instructors/:id", element: <OurInstructor /> },
-      { path: "booking-details", element: <BookingDetails /> },
-      { path: "refund-request", element: <RefundRequestPage /> },
-      { path: "complete-payment", element: <CompletePaymentPage /> },
-      { path: "help-support", element: <FAQPage /> },
-      { path: "reviews", element: <Dashboard /> },
-      { path: "Feedback", element: <FeedBackAndRating /> },
-      { path: "feedback-details", element: <FeedbackDetailsPage /> },
-      { path: "review-form", element: <ReviewForm /> },
-      { path: "review-display", element: <ReviewDisplay /> },
-      { path: "allBookingSlots", element: <AllBookingSlotsPage /> },
-      { path: "chat", element: <StudentChatPage /> },
+      { path: "book", element: lazyPage(() => import("../pages/private/student-dashboard/bookLesson")) },
+      { path: "payment-history", element: lazyPage(() => import("../pages/private/student-dashboard/StudentPaymentHistoryPage")) },
+      { path: "search", element: lazyPage(() => import("../pages/private/student-dashboard/searchInstructor")) },
+      { path: "search/instructors/:id", element: lazyPage(() => import("../pages/public/OurInstructor")) },
+      { path: "booking-details", element: lazyPage(() => import("../pages/private/student-dashboard/bookingDetails")) },
+      { path: "refund-request", element: lazyPage(() => import("../pages/private/student-dashboard/RefundRequestPage")) },
+      { path: "complete-payment", element: lazyPage(() => import("../pages/private/student-dashboard/CompletePaymentPage").then((module) => ({ default: module.CompletePaymentPage }))) },
+      { path: "help-support", element: lazyPage(() => import("../pages/private/teacher-dashboard/HelpSuportPage")) },
+      { path: "reviews", element: lazyPage(() => import("../components/StudentComponents/ReviewTab/Dashboard")) },
+      { path: "Feedback", element: lazyPage(() => import("../components/StudentComponents/ReviewTab/OnlyReviewsTab")) },
+      { path: "feedback-details", element: lazyPage(() => import("../components/StudentComponents/ReviewTab/FeedbackDetailsPage")) },
+      { path: "review-form", element: lazyPage(() => import("../components/StudentComponents/ReviewTab/ReviewForm")) },
+      { path: "review-display", element: lazyPage(() => import("../components/StudentComponents/ReviewTab/ReviewDisplay")) },
+      { path: "allBookingSlots", element: lazyPage(() => import("../components/StudentComponents/ReviewTab/AllBookingSlotPage")) },
+      { path: "chat", element: lazyPage(() => import("../pages/private/student-dashboard/chat")) },
     ],
   },
   {
     path: "/payment",
     element: <Outlet />,
     children: [
-      { path: "refresh", element: <StripePaymentRefresh /> },
-      { path: "complete", element: <StripePaymentComplete /> },
+      { path: "refresh", element: lazyPage(() => import("../pages/private/teacher-dashboard/StripePaymentRefresh")) },
+      { path: "complete", element: lazyPage(() => import("../pages/private/teacher-dashboard/StripePaymentComplete")) },
     ],
   },
   {
     path: "/teacher-dashboard",
-    element: <TeacherRoutes />,
+    element: lazyPage(() => import("./TeacherRoutes")),
     children: [
-      { path: "overview", element: <InstructorAnalyticsDashboard /> },
+      { path: "overview", element: lazyPage(() => import("../components/InstructorComponent/InstructorAnalytics/InstructorAnalyticsDashboard").then((module) => ({ default: module.InstructorAnalyticsDashboard }))) },
       {
         path: "settings",
-        element: <ProfileSetting />,
+        element: lazyPage(() => import("../pages/private/teacher-dashboard/profileSetting")),
         children: [
-          { path: "edit-profile", element: <EditProfile /> }, // Nested under settings
+          { path: "edit-profile", element: lazyPage(() => import("../pages/private/teacher-dashboard/editProfile")) },
         ],
       },
-
-      { path: "search/instructors/:id", element: <OurInstructor /> },
-      { path: "booking-details", element: <BookingDetails /> },
-      { path: "help-support", element: <FAQPage /> },
-      { path: "feedback", element: <StudentFeedback /> },
-      { path: "bookingManagement", element: <StudentBookingWInst /> },
+      { path: "search/instructors/:id", element: lazyPage(() => import("../pages/public/OurInstructor")) },
+      { path: "booking-details", element: lazyPage(() => import("../pages/private/student-dashboard/bookingDetails")) },
+      { path: "help-support", element: lazyPage(() => import("../pages/private/teacher-dashboard/HelpSuportPage")) },
+      { path: "feedback", element: lazyPage(() => import("../pages/private/teacher-dashboard/CompleteBookings")) },
+      { path: "bookingManagement", element: lazyPage(() => import("../components/InstructorComponent/StudentBookingWInst")) },
       {
         path: "feedbackForm/:bookingId/:lessonId/:studentId",
-        element: <FeedbackForm />,
+        element: lazyPage(() => import("../pages/private/teacher-dashboard/FeedBackForm")),
       },
-      { path: "studentProgress/:studentId", element: <StudentDashboard /> },
-      { path: "my-students", element: <StudentsProgressDashboard /> },
-      { path: "chat", element: <InstructorChatPage /> },
-      { path: "transaction-history", element: <InstructorTransactionHistoryPage /> },
+      { path: "studentProgress/:studentId", element: lazyPage(() => import("../pages/private/teacher-dashboard/StudentProgress")) },
+      { path: "my-students", element: lazyPage(() => import("../pages/private/teacher-dashboard/MyStudentsTrack")) },
+      { path: "chat", element: lazyPage(() => import("../pages/private/teacher-dashboard/chat")) },
+      { path: "transaction-history", element: lazyPage(() => import("../pages/private/teacher-dashboard/InstructorTransactionHistoryPage")) },
     ],
   },
   {
     path: "/admin-dashboard",
-    element: <AdminRoutes />,
+    element: lazyPage(() => import("./AdminRoutes")),
     children: [
-      { path: "overview", element: <AnalyticsDashboard /> },
-      { path: "bookingManagement", element: <StudentBookingTable /> },
-      { path: "admin-access", element: <AdminAccess /> },
-      {
-        path: "documentsManagement",
-        element: <InstructorDocumentsTable />,
-      },
-      {
-        path: "InstructorManagement",
-        element: <InstructorManagement />,
-      },
-      {
-        path: "StudentManagement",
-        element: <StudentManagement />,
-      },
-      { path: "transactions", element: <AdminTransactionsPage /> },
-      { path: "refund-requests", element: <AdminRefundRequestsPage /> },
+      { path: "overview", element: lazyPage(() => import("../pages/private/admin-dashboard/adminOverview").then((module) => ({ default: module.AnalyticsDashboard }))) },
+      { path: "bookingManagement", element: lazyPage(() => import("../components/AdminComponents/StudentBookingTable")) },
+      { path: "admin-access", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminAccess")) },
+      { path: "documentsManagement", element: lazyPage(() => import("../components/AdminComponents/InstructorDocumentsTable")) },
+      { path: "InstructorManagement", element: lazyPage(() => import("../pages/private/admin-dashboard/InstructorManagement").then((module) => ({ default: module.InstructorManagement }))) },
+      { path: "StudentManagement", element: lazyPage(() => import("../pages/private/admin-dashboard/StudentManagement").then((module) => ({ default: module.StudentManagement }))) },
+      { path: "transactions", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminTransactionsPage")) },
+      { path: "refund-requests", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminRefundRequestsPage")) },
       {
         path: "document-details/:instructorId/:documentType",
-        element: <DocumentDetailsPage />,
+        element: lazyPage(() => import("../pages/private/admin-dashboard/DocumentsDetailPage").then((module) => ({ default: module.DocumentDetailsPage }))),
       },
       {
         path: "help-support",
         element: (
           <SuperAdminRoute>
-            <QuestionsAnswers />
+            {lazyPage(() => import("../pages/private/admin-dashboard/HelpSupport"))}
           </SuperAdminRoute>
         ),
       },
@@ -208,7 +142,7 @@ const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <NotFound />,
+    element: lazyPage(() => import("../components/common/NotFound")),
   },
 ]);
 
