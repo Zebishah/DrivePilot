@@ -1,5 +1,5 @@
 const express = require("express");
-const { rateLimit } = require("express-rate-limit");
+const { ipKeyGenerator, rateLimit } = require("express-rate-limit");
 const authMiddleware = require("../../middleware/auth");
 const { assistantService } = require("./assistantService");
 const { logger } = require("../../utils/logger");
@@ -7,12 +7,18 @@ const { logger } = require("../../utils/logger");
 const router = express.Router();
 const configuredWindow = Number(process.env.AI_RATE_LIMIT_WINDOW_MS);
 const configuredMax = Number(process.env.AI_RATE_LIMIT_MAX);
+function assistantRateLimitKey(req) {
+  return req.assistantUser?.id
+    ? `user:${req.assistantUser.id}`
+    : `ip:${ipKeyGenerator(req.ip)}`;
+}
+
 const aiRateLimit = rateLimit({
   windowMs: Number.isInteger(configuredWindow) && configuredWindow > 0 ? configuredWindow : 60_000,
   limit: Number.isInteger(configuredMax) && configuredMax > 0 ? configuredMax : 10,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  keyGenerator: (req) => req.assistantUser?.id || req.ip,
+  keyGenerator: assistantRateLimitKey,
   handler: (_req, res) => res.status(429).json({ error: "Assistant rate limit exceeded. Please try again shortly." }),
 });
 
@@ -42,3 +48,4 @@ router.post("/api/v1/assistant/chat", requireAssistantAuth, aiRateLimit, async (
 });
 
 module.exports = router;
+module.exports.assistantRateLimitKey = assistantRateLimitKey;

@@ -3,20 +3,7 @@ const { validateEnvironment } = require("./config/envValidation");
 
 validateEnvironment();
 
-const express = require("express");
-const { ApolloServer } = require("apollo-server-express");
-const { makeExecutableSchema } = require("@graphql-tools/schema");
-const passport = require("./config/passport");
-const typeDefs = require("./config/CombineTypeDefs");
-const resolvers = require("./config/CombineResolvers");
-const authMiddleware = require("./middleware/auth");
 const connectDB = require("./config/database");
-const authRoutes = require("./routes/auth.routes");
-const cors = require("cors");
-const helmet = require("helmet");
-const { rateLimit } = require("express-rate-limit");
-const http = require("http");
-const { initSocket, setIOInstance, closeSocket } = require("./socket");
 const { runInstructorPayoutJob } = require("./jobs/payoutJob");
 const { runT48ChargeJob } = require("./jobs/t48ChargeJob");
 const {
@@ -37,11 +24,8 @@ const { runFinancialReconciliation } = require("./services/financialReconciliati
 const JOB_CONFIG = require("./config/jobConfig");
 const { createJobScheduler } = require("./services/jobScheduler");
 const mongoose = require("mongoose");
-const { requestCorrelationMiddleware } = require("./middleware/requestCorrelation");
 const { logger } = require("./utils/logger");
-const { createRequestLoaders } = require("./graphql/requestLoaders");
-const { connectRedis, closeRedis } = require("./services/redisClient");
-const assistantRoutes = require("./modules/assistant/assistant.routes");
+const { closeRedis, connectRedis, redisStatus } = require("./services/redisClient");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
@@ -50,6 +34,9 @@ let schedulerController = null;
 let apiInitialized = false;
 let shuttingDown = false;
 let apolloServer = null;
+let httpServer = null;
+let closeSocket = null;
+let startApolloServer = async () => {};
 
 function workerJobs() {
   return [
@@ -75,41 +62,57 @@ function workerJobs() {
   ];
 }
 
-// ✅ Initialize Express app and HTTP server
-const app = express();
-const httpServer = http.createServer(app);
+function initializeApi() {
+  const express = require("express");
+  const http = require("http");
+  const { ApolloServer } = require("apollo-server-express");
+  const { makeExecutableSchema } = require("@graphql-tools/schema");
+  const passport = require("./config/passport");
+  const typeDefs = require("./config/CombineTypeDefs");
+  const resolvers = require("./config/CombineResolvers");
+  const authMiddleware = require("./middleware/auth");
+  const authRoutes = require("./routes/auth.routes");
+  const cors = require("cors");
+  const helmet = require("helmet");
+  const { rateLimit } = require("express-rate-limit");
+  const { initSocket, setIOInstance, closeSocket: closeApiSocket } = require("./socket");
+  const { requestCorrelationMiddleware } = require("./middleware/requestCorrelation");
+  const { createRequestLoaders } = require("./graphql/requestLoaders");
+  const assistantRoutes = require("./modules/assistant/assistant.routes");
 
-// Render terminates TLS in front of the app; trust its single proxy hop so
-// rate limiting uses the originating client IP rather than the shared proxy.
-app.set("trust proxy", 1);
-app.use(helmet());
-app.use(requestCorrelationMiddleware);
+  app = express();
+  httpServer = http.createServer(app);
+  closeSocket = closeApiSocket;
 
-// ✅ CORS configuration
-const configuredFrontendUrl = (
-  process.env.FRONTEND_URL || process.env.Frontend_URL || ""
-).replace(/\/$/, "");
-const allowedOrigins = [
-  configuredFrontendUrl,
-  ...(process.env.NODE_ENV === "production" ? [] : ["http://localhost:5173"]),
-].filter(Boolean);
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Requests without an Origin are not browser cross-origin requests.
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        logger.warn("cors_request_blocked", { origin });
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  }),
-);
+  // Render terminates TLS in front of the app; trust its single proxy hop so
+  // rate limiting uses the originating client IP rather than the shared proxy.
+  app.set("trust proxy", 1);
+  app.use(helmet());
+  app.use(requestCorrelationMiddleware);
 
-// Stripe webhook needs raw body for signature verification (mount before any JSON body parser)
-if (JOB_CONFIG.runApi) {
+  const configuredFrontendUrl = (
+    process.env.FRONTEND_URL || process.env.Frontend_URL || ""
+  ).replace(/\/$/, "");
+  const allowedOrigins = [
+    configuredFrontendUrl,
+    ...(process.env.NODE_ENV === "production" ? [] : ["http://localhost:5173"]),
+  ].filter(Boolean);
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          logger.warn("cors_request_blocked", { origin });
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      credentials: true,
+    }),
+  );
+
+  // Stripe webhook needs raw body for signature verification and must be
+  // mounted before any JSON body parser.
   app.use(
     "/webhooks/stripe/connect",
     JOB_CONFIG.connectWebhookEnabled
@@ -129,85 +132,75 @@ if (JOB_CONFIG.runApi) {
     const ready = mongoose.connection.readyState === 1 && apiInitialized;
     return res.status(ready ? 200 : 503).json({ ready });
   });
-}
 
-// ✅ Init middleware and routes
-app.use(passport.initialize());
-app.use(authRoutes);
-app.use(assistantRoutes);
+  app.use(passport.initialize());
+  app.use(authRoutes);
+  app.use(assistantRoutes);
 
-const rateLimitedGraphQLOperations = new Set([
-  "SignIn",
-  "SignUp",
-  "ForgotPassword",
-  "ResetPassword",
-  "VerifyUserOtp",
-  "ResendOtp",
-  "SendContactEmail",
-]);
-const sensitiveGraphQLFieldPattern = /\b(signIn|signUp|forgotPassword|resetPassword|verifyUser|resendOtp|sendContactEmail)\s*\(/i;
-const sensitiveGraphQLRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  skip: (req) => {
-    const requests = Array.isArray(req.body) ? req.body : [req.body];
-    return !requests.some((body) =>
-      rateLimitedGraphQLOperations.has(body?.operationName) ||
-      sensitiveGraphQLFieldPattern.test(body?.query || ""),
-    );
-  },
-});
-
-// Apollo parses GraphQL requests after middleware is mounted. Parse the small
-// GraphQL envelope here so sensitive operations can be rate limited by name.
-app.use("/graphql", express.json({ limit: "1mb" }), sensitiveGraphQLRateLimit);
-
-// ✅ Create GraphQL schema
-const schema = JOB_CONFIG.runApi
-  ? makeExecutableSchema({ typeDefs, resolvers })
-  : null;
-
-// ✅ Initialize Socket.IO server (real-time chat)
-if (JOB_CONFIG.runApi) {
-  const io = initSocket(httpServer, allowedOrigins);
-  setIOInstance(io);
-}
-
-// ✅ Setup Apollo Server (GraphQL API)
-async function startApolloServer() {
-  if (!JOB_CONFIG.runApi) return;
-  apolloServer = new ApolloServer({
-    schema,
-    context: async ({ req }) => {
-      const auth = await authMiddleware(req);
-      // No need to pass io here anymore
-      return {
-        user: auth.user,
-        req,
-        requestId: req.requestId,
-        correlationId: req.correlationId,
-        loaders: createRequestLoaders(),
-      };
+  const rateLimitedGraphQLOperations = new Set([
+    "SignIn",
+    "SignUp",
+    "ForgotPassword",
+    "ResetPassword",
+    "VerifyUserOtp",
+    "ResendOtp",
+    "SendContactEmail",
+  ]);
+  const sensitiveGraphQLFieldPattern = /\b(signIn|signUp|forgotPassword|resetPassword|verifyUser|resendOtp|sendContactEmail)\s*\(/i;
+  const sensitiveGraphQLRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    skip: (req) => {
+      const requests = Array.isArray(req.body) ? req.body : [req.body];
+      return !requests.some((body) =>
+        rateLimitedGraphQLOperations.has(body?.operationName) ||
+        sensitiveGraphQLFieldPattern.test(body?.query || ""),
+      );
     },
   });
+  app.use("/graphql", express.json({ limit: "1mb" }), sensitiveGraphQLRateLimit);
 
-  await apolloServer.start();
-  apolloServer.applyMiddleware({ app, path: "/graphql" });
-  apiInitialized = true;
+  const schema = makeExecutableSchema({ typeDefs, resolvers });
+  const io = initSocket(httpServer, allowedOrigins);
+  setIOInstance(io);
 
-  const PORT = process.env.PORT || 4000;
-  httpServer.listen(PORT, "0.0.0.0", () => {
-    logger.info("api_started", { port: PORT, graphqlPath: apolloServer.graphqlPath });
-    logger.info("socket_io_initialized");
-  });
+  startApolloServer = async function startApiServer() {
+    apolloServer = new ApolloServer({
+      schema,
+      context: async ({ req }) => {
+        const auth = await authMiddleware(req);
+        return {
+          user: auth.user,
+          req,
+          requestId: req.requestId,
+          correlationId: req.correlationId,
+          loaders: createRequestLoaders(),
+        };
+      },
+    });
+
+    await apolloServer.start();
+    apolloServer.applyMiddleware({ app, path: "/graphql" });
+    apiInitialized = true;
+
+    const PORT = process.env.PORT || 4000;
+    httpServer.listen(PORT, "0.0.0.0", () => {
+      logger.info("api_started", { port: PORT, graphqlPath: apolloServer.graphqlPath });
+      logger.info("socket_io_initialized");
+    });
+  };
 }
+
+let app = null;
+if (JOB_CONFIG.runApi) initializeApi();
 
 async function startApplication() {
   await dbReady;
-  // Redis is an optional read cache; do not block API startup on it.
-  connectRedis();
+  // Redis is an optional read cache. In worker mode with CACHE_ENABLED=false,
+  // do not even attempt to establish a connection.
+  if (redisStatus().configured) connectRedis();
   logger.info("process_mode", { api: JOB_CONFIG.runApi, worker: JOB_CONFIG.runWorker });
   if (JOB_CONFIG.runWorker) {
     schedulerController = createJobScheduler({
