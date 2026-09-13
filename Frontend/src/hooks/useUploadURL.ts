@@ -8,6 +8,13 @@ interface UploadResponse {
   message?: string;
 }
 
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
 export const useFileUpload = () => {
   const [generateUploadUrl, { loading }] = useMutation(GENERATE_UPLOAD_URL);
   const { user } = useAuth();
@@ -27,6 +34,9 @@ export const useFileUpload = () => {
     }
     if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
       return { success: false, message: "Files must be smaller than 10 MB" };
+    }
+    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type.toLowerCase())) {
+      return { success: false, message: "Only PDF, JPEG, PNG, and WebP files are allowed" };
     }
 
     try {
@@ -53,7 +63,6 @@ export const useFileUpload = () => {
         body: file,
         headers: {
           "Content-Type": file.type,
-          "Content-Length": String(file.size),
         },
       });
 

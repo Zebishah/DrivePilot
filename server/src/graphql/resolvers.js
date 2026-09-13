@@ -1194,7 +1194,6 @@ instead.`);
         Key: fileKey,
         Expires: 60,
         ContentType: fileType,
-        ContentLength: fileSize,
       };
 
       const uploadUrl = await s3.getSignedUrlPromise("putObject", s3Params);
