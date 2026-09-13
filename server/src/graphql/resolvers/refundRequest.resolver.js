@@ -28,6 +28,7 @@ const {
 const { fromMinorUnits, toMinorUnits } = require("../../utils/money");
 const { invalidateAvailability } = require("../../services/cacheInvalidation");
 const { enqueueEmailEvent } = require("../../services/outboxService");
+const { getPrivateDocumentUrl } = require("../../services/documentUrlService");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -57,6 +58,9 @@ const refundRequestResolver = {
     message: (parent) => String(parent?.message ?? ""),
     attachments: (parent) =>
       Array.isArray(parent?.attachments) ? parent.attachments : [],
+  },
+  RefundAttachment: {
+    url: (parent) => getPrivateDocumentUrl(parent?.url),
   },
 
   Query: {

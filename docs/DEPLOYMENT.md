@@ -261,11 +261,10 @@ operations actually needed by the current code:
 
 The current GraphQL upload resolver validates file type/size, authorizes the
 target, sanitizes the object key, and returns a presigned `PUT` URL. It also
-returns a direct bucket-style `fileUrl`; there is no current presigned GET
-or DELETE flow in the audited code. Therefore a private bucket is not fully
-compatible with document downloads until a later API change returns bounded
-presigned GET URLs (or serves authorized downloads). Do not turn the bucket
-public to hide this limitation.
+returns a canonical bucket-style `fileUrl`. GraphQL document fields now
+translate that stored URL into a short-lived signed `GET` URL for authorized
+document queries and refund attachments. Keep the bucket private; do not turn
+it public to hide this limitation.
 
 For browser upload, configure S3 CORS with only the actual origins and
 methods:
@@ -478,8 +477,9 @@ refund, payout, or transfer reversal as a diagnostic.
 3. Sign in with a test account and complete Google OAuth with a test user.
 4. Verify Redis-backed reads and then verify the app still functions with
    Redis unavailable.
-5. Verify an authorized S3 upload; treat private download incompatibility as
-   the known follow-up blocker.
+5. Verify an authorized S3 upload and open the returned document from an
+   authorized document screen; confirm the private bucket denies unsigned
+   object URLs.
 6. Verify one assistant response and one bounded fallback scenario.
 7. Send one Resend test-mode message to the test recipient.
 8. Create a Stripe test-mode booking/payment, confirm the webhook receipt,

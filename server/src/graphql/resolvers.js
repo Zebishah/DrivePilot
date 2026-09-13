@@ -45,6 +45,7 @@ const {
   requireInstructorOwnership,
 } = require("../utils/authorization");
 const path = require("path");
+const { getPrivateDocumentUrl } = require("../services/documentUrlService");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -60,6 +61,15 @@ const createToken = (user) => {
 };
 
 const resolvers = {
+  Document: {
+    documentUrl: (parent) => getPrivateDocumentUrl(parent?.documentUrl),
+  },
+  DocumentStudent: {
+    documentUrl: (parent) => getPrivateDocumentUrl(parent?.documentUrl),
+  },
+  InstructorDocument: {
+    documentUrl: (parent) => getPrivateDocumentUrl(parent?.documentUrl),
+  },
   Query: {
     me: async (_, __, { user }) => {
       if (!user) {
