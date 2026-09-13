@@ -93,7 +93,7 @@ async function markDelivered(event, leaseOwner, result) {
         $set: {
           status: "DELIVERED",
           deliveredAt: new Date(),
-          provider: result.provider || "resend",
+          provider: result.provider || "elasticemail",
           providerMessageId: result.providerMessageId || null,
           leaseOwner: null,
           leaseExpiresAt: null,
@@ -134,7 +134,7 @@ async function deliverEvent(event, { provider = emailProvider } = {}) {
   const payload = event.payload || {};
   const data = await resolveReferences(event);
   const message = renderEmailTemplate(payload.template, data);
-  const from = process.env.EMAIL_FROM || "DSP <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "";
   logger.info("email_send_attempt", { eventId: event.eventId, eventType: event.eventType, attempt: event.attemptCount });
   return provider.send({ to: payload.to, from, subject: message.subject, html: message.html, text: message.text, metadata: event.metadata });
 }

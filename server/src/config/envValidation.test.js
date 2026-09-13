@@ -91,3 +91,36 @@ test("Connect webhook secret is required only for an enabled API Connect ingress
     }),
   );
 });
+
+test("Elastic Email production configuration is validated without Resend credentials", () => {
+  assert.doesNotThrow(() => validateEnvironment({
+    env: productionBase({
+      RUN_API: "false",
+      RUN_WORKER: "true",
+      EMAIL_ENABLED: "true",
+      EMAIL_PROVIDER: "elasticemail",
+      ELASTIC_EMAIL_API_KEY: "elastic-test-key",
+      EMAIL_FROM: "DSP Marketplace <sender@example.com>",
+      EMAIL_MODE: "production",
+    }),
+  }));
+  assert.throws(
+    () => validateEnvironment({
+      env: productionBase({
+        RUN_API: "false",
+        RUN_WORKER: "true",
+        EMAIL_ENABLED: "true",
+        EMAIL_PROVIDER: "elasticemail",
+        EMAIL_FROM: "DSP Marketplace <sender@example.com>",
+        EMAIL_MODE: "production",
+      }),
+    }),
+    /Missing required environment variable: ELASTIC_EMAIL_API_KEY/,
+  );
+  assert.throws(
+    () => validateEnvironment({
+      env: productionBase({ EMAIL_PROVIDER: "resend" }),
+    }),
+    /EMAIL_PROVIDER must be elasticemail/,
+  );
+});

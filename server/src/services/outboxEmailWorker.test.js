@@ -74,14 +74,14 @@ function loadWorker(outboxModel) {
 }
 
 function provider({ send, enabled = true } = {}) {
-  return { isEnabled: () => enabled, send: send || (async () => ({ provider: "resend", providerMessageId: "msg-1" })) };
+  return { isEnabled: () => enabled, send: send || (async () => ({ provider: "elasticemail", providerMessageId: "msg-1" })) };
 }
 
 test("one worker claims and delivers an event while a concurrent worker gets no event", async () => {
   const model = createFakeOutboxModel([event()]);
   const worker = loadWorker(model);
   let sends = 0;
-  const emailProvider = provider({ send: async () => { sends += 1; return { provider: "resend", providerMessageId: "msg-1" }; } });
+  const emailProvider = provider({ send: async () => { sends += 1; return { provider: "elasticemail", providerMessageId: "msg-1" }; } });
 
   const results = await Promise.all([
     worker.runOutboxEmailJob({ provider: emailProvider, batchSize: 1, leaseOwner: "worker-1" }),
@@ -96,7 +96,7 @@ test("one worker claims and delivers an event while a concurrent worker gets no 
 test("stale processing leases are reclaimed and retryable errors are bounded", async () => {
   const model = createFakeOutboxModel([event({ status: "PROCESSING", leaseExpiresAt: new Date(Date.now() - 1000), maxAttempts: 2 })]);
   const worker = loadWorker(model);
-  const retryError = Object.assign(new Error("rate limited"), { code: "RESEND_429", retryable: true });
+  const retryError = Object.assign(new Error("rate limited"), { code: "ELASTICEMAIL_429", retryable: true });
   const result = await worker.runOutboxEmailJob({ provider: provider({ send: async () => { throw retryError; } }), batchSize: 1, leaseOwner: "worker-retry" });
   assert.equal(result.retryable, 1);
   assert.equal(model.records.get("event-1").status, "RETRYABLE");

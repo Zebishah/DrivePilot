@@ -76,16 +76,17 @@ function validateEnvironment({ env = process.env } = {}) {
   }
 
   const emailEnabled = booleanValue("EMAIL_ENABLED", env.EMAIL_ENABLED, true);
+  const emailProvider = String(env.EMAIL_PROVIDER || "elasticemail").trim().toLowerCase();
+  if (emailProvider !== "elasticemail") {
+    throw new Error("EMAIL_PROVIDER must be elasticemail");
+  }
   if (emailEnabled && (runApi || runWorker)) {
-    required.push("RESEND_API_KEY", "EMAIL_FROM");
+    required.push("ELASTIC_EMAIL_API_KEY", "EMAIL_FROM");
     const emailMode = String(env.EMAIL_MODE || "test").trim().toLowerCase();
     if (!["test", "production"].includes(emailMode)) {
       throw new Error("EMAIL_MODE must be test or production");
     }
     if (emailMode === "test") required.push("EMAIL_TEST_RECIPIENT");
-    if (isPresent(env.EMAIL_PROVIDER) && String(env.EMAIL_PROVIDER).toLowerCase() !== "resend") {
-      throw new Error("EMAIL_PROVIDER must be resend");
-    }
   }
 
   const aiEnabled = booleanValue("AI_ENABLED", env.AI_ENABLED, true);
@@ -147,6 +148,7 @@ function validateEnvironment({ env = process.env } = {}) {
     runWorker,
     connectWebhookEnabled,
     emailEnabled,
+    emailProvider,
     aiEnabled,
     aiMode,
     aiProvider,
