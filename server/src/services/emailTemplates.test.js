@@ -34,3 +34,56 @@ test("supported templates return complete provider messages", () => {
     assert.ok(rendered.text);
   }
 });
+
+test("OTP templates identify and render a six-digit code", () => {
+  const rendered = renderEmailTemplate("otp", {
+    otp: "081305",
+    type: "email_verification",
+  });
+
+  assert.match(rendered.text, /6-digit/);
+  assert.match(rendered.text, /081305/);
+  assert.match(rendered.html, /Your 6-digit verification code/);
+  assert.match(rendered.html, /081305/);
+});
+
+test("all supported HTML templates use the DSP email shell", () => {
+  for (const template of [
+    "otp",
+    "welcome",
+    "verification",
+    "signup_link",
+    "password_reset",
+    "document_status",
+    "payout",
+    "contact_admin",
+    "contact_confirmation",
+    "custom",
+    "booking",
+    "payment_alert",
+    "reminder",
+    "refund",
+  ]) {
+    const rendered = renderEmailTemplate(template, {
+      otp: "123456",
+      type: "email_verification",
+      name: "Student",
+      recipientName: "Student",
+      status: "approved",
+      templateTitle: "Booking confirmed",
+      signupLink: "https://example.com/signup/token",
+      resetUrl: "https://example.com/reset/token",
+      actionUrl: "https://example.com/dashboard",
+      documentType: "license",
+      amount: "75.00",
+      lessonDate: "2026-09-13",
+      description: "A message",
+      subject: "A subject",
+      text: "A message",
+      slots: [],
+    });
+    assert.match(rendered.html, /DSP Marketplace/);
+    assert.match(rendered.html, /Learn with confidence/);
+    assert.match(rendered.html, /automated message from DSP Marketplace/);
+  }
+});

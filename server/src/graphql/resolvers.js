@@ -46,6 +46,7 @@ const {
 } = require("../utils/authorization");
 const path = require("path");
 const { getPrivateDocumentUrl } = require("../services/documentUrlService");
+const { OTP_PATTERN } = require("../constants/auth");
 require("dotenv").config();
 
 const createToken = (user) => {
@@ -801,6 +802,10 @@ instead.`);
     verifyUser: async (_, { input }) => {
       try {
         const { email, otp, type } = input;
+
+        if (typeof otp !== "string" || !OTP_PATTERN.test(otp)) {
+          throw new UserInputError("OTP must be exactly 6 digits.");
+        }
 
         const otpEntry = await Otp.findOne({
           email,

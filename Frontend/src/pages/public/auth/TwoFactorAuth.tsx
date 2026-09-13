@@ -19,6 +19,7 @@ import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
+import { OTP_LENGTH } from "../../../constants/auth";
 
 // Styled OTP input for consistent sizing and spacing
 const OtpInput = styled(TextField)(({ theme }) => ({
@@ -34,20 +35,18 @@ const OtpInput = styled(TextField)(({ theme }) => ({
 interface TwoFactorAuthProps {
   logoSrc?: string; // Optional logo source URL
   onVerify?: (otp: string) => Promise<boolean>; // Optional verification handler
-  digits?: number; // Number of OTP digits, default 6
   title?: string; // Custom title
   subtitle?: string; // Custom subtitle
 }
 
 const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
-  digits = 4,
   title = "Two Factor Authentication",
   subtitle = "Please enter the Two Factor verification code sent to your device",
 }) => {
   const { email } = useParams();
-  const [otp, setOtp] = useState<string[]>(Array(digits).fill(""));
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
-    Array(digits).fill(null)
+    Array(OTP_LENGTH).fill(null)
   );
   const { login, tempUser } = useAuth();
   // State for toast messages
@@ -73,7 +72,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
       setOtp(newOtp);
 
       // Auto focus next input
-      if (numericValue && index < digits - 1) {
+      if (numericValue && index < OTP_LENGTH - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     }
@@ -97,7 +96,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
     } else if (e.key === "ArrowLeft" && index > 0) {
       // Navigate left
       inputRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < digits - 1) {
+    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
       // Navigate right
       inputRefs.current[index + 1]?.focus();
     }
@@ -107,8 +106,8 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
   const handleVerify = async () => {
     const otpString = otp.join("");
 
-    if (otpString.length !== digits) {
-      setError(`Please enter all ${digits} digits`);
+    if (otpString.length !== OTP_LENGTH || !/^\d{6}$/.test(otpString)) {
+      setError(`Please enter all ${OTP_LENGTH} digits`);
       return;
     }
 
@@ -202,18 +201,20 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
     const pastedData = e.clipboardData.getData("text/plain").trim();
     const numericValue = pastedData.replace(/[^0-9]/g, "");
 
-    if (numericValue.length <= digits) {
+    if (numericValue.length <= OTP_LENGTH) {
       const newOtp = [...otp];
       for (let i = 0; i < numericValue.length; i++) {
-        if (i < digits) {
+        if (i < OTP_LENGTH) {
           newOtp[i] = numericValue[i];
         }
       }
       setOtp(newOtp);
 
       // Focus appropriate field
-      if (numericValue.length < digits) {
+      if (numericValue.length < OTP_LENGTH) {
         inputRefs.current[numericValue.length]?.focus();
+      } else {
+        inputRefs.current[OTP_LENGTH - 1]?.focus();
       }
     }
   };
@@ -322,7 +323,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
                           inputMode: "numeric",
                           pattern: "[0-9]*",
                         }}
-                        autoComplete="off"
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
                         disabled={verifying || isVerified}
                         error={!!error}
                       />

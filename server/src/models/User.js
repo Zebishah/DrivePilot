@@ -38,7 +38,8 @@ const User = mongoose.model("User", baseSchema);
 
 const otpSchema = new mongoose.Schema({
   email: { type: String, required: true },
-  otp: { type: Number, required: true },
+  // OTPs are strings so a valid code can never lose a leading zero.
+  otp: { type: String, required: true, match: /^\d{6}$/ },
   status: {
     type: String,
     enum: ["unused", "used", "expired"],

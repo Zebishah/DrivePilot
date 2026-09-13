@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { Otp } = require("../models/User");
 const SignupToken = require("../models/SignupLink");
 const { enqueueEmailEvent } = require("../services/outboxService");
+const { OTP_LENGTH, OTP_PATTERN } = require("../constants/auth");
 
 function digest(value) {
   return crypto.createHash("sha256").update(String(value || "")).digest("hex").slice(0, 24);
@@ -29,6 +30,9 @@ async function sendOtpEmail(email, value, type) {
   if (!normalizedEmail) throw new Error("Email recipient is required");
 
   if (["email_verification", "two_factor_auth"].includes(type)) {
+    if (typeof value !== "string" || !OTP_PATTERN.test(value)) {
+      throw new Error("OTP must be a six-digit string");
+    }
     const otp = await Otp.findOne({ email: normalizedEmail, otp: value, type, status: "unused" }).sort({ createdAt: -1 }).select("_id").lean();
     if (!otp) throw new Error("OTP record must exist before notification enqueue");
     return enqueueEmailEvent({
@@ -163,7 +167,7 @@ async function notifyDocumentStatusParties(documentData, instructorData, type, a
 }
 
 function generateOTP() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, "0");
 }
 
 module.exports = { generateOTP, sendOtpEmail, sendBookingEmail, notifyBookingParties, sendDocumentStatusEmail, notifyDocumentStatusParties };
