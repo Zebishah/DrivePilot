@@ -30,6 +30,7 @@ import { RootState } from "../store";
 import { Student } from "../types/Student";
 import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
+import AssistantPanel from "../components/assistant/AssistantPanel";
 
 const theme = createTheme({
   palette: {
@@ -351,6 +352,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
               </Box>
             )}
           {children}
+          <AssistantPanel pageContext="instructor-dashboard" />
         </Box>
       </Box>
     </ThemeProvider>

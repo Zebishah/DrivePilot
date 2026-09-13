@@ -37,6 +37,7 @@ const { requestCorrelationMiddleware } = require("./middleware/requestCorrelatio
 const { logger } = require("./utils/logger");
 const { createRequestLoaders } = require("./graphql/requestLoaders");
 const { connectRedis, closeRedis } = require("./services/redisClient");
+const assistantRoutes = require("./routes/assistant.routes");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 
@@ -120,6 +121,7 @@ if (JOB_CONFIG.runApi) {
 // ✅ Init middleware and routes
 app.use(passport.initialize());
 app.use(authRoutes);
+app.use(assistantRoutes);
 
 const rateLimitedGraphQLOperations = new Set([
   "SignIn",

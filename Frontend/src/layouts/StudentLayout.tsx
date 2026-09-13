@@ -32,6 +32,7 @@ import { RootState } from "../store";
 import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import { MdOutlineFeedback } from "react-icons/md";
+import AssistantPanel from "../components/assistant/AssistantPanel";
 
 const theme = createTheme({
   palette: {
@@ -316,6 +317,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             menuItems={menuItems}
           />
           {children}
+          <AssistantPanel pageContext="student-dashboard" />
         </Box>
       </Box>
     </ThemeProvider>

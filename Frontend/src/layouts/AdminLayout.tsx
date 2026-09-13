@@ -11,6 +11,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import { initSocket } from "../utils/socket";
+import AssistantPanel from "../components/assistant/AssistantPanel";
 // ✅ Import initSocket
 
 const theme = createTheme({
@@ -150,6 +151,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             menuItems={menuItems}
           />
           {children}
+          <AssistantPanel pageContext="admin-dashboard" />
         </Box>
       </Box>
     </ThemeProvider>
