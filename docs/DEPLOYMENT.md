@@ -90,6 +90,16 @@ binds the Render-provided `PORT` through Node's HTTP server and exposes:
 - `/auth/facebook` and `/auth/facebook/callback`
 - Socket.IO on the API origin
 
+### Manual demo-user seed
+
+`pnpm run seed:demo-users` is a manual maintenance command. It connects to
+MongoDB, creates the configured demo Admin, Instructor, and Student only when
+their exact email addresses do not already exist, and then closes the
+connection. It must never be added to API or worker startup commands and must
+not run automatically during deployment. Demo credentials belong only in the
+hosting environment or a local untracked `.env`; never commit them to the
+repository.
+
 ### API production environment
 
 Required by the current production startup validation:
