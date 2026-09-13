@@ -49,6 +49,8 @@ test("webhook receipt is durable-first and duplicate-safe", async () => {
     assert.equal(second.duplicate, true);
     assert.equal(createCalls, 2);
     assert.equal(second.record.eventId, "evt_test_1");
+    assert.equal(first.record.stripeAccountId, "acct_test");
+    assert.equal(first.record.payload.account, "acct_test");
   });
 });
 
@@ -81,6 +83,55 @@ test("webhook processor claims work once and records retry/dead outcomes", async
     assert.equal(result.claimed, 1);
     assert.equal(result.dead, 1);
     assert.deepEqual(calls.map((call) => call[0]), ["claim", "retryable"]);
+  });
+});
+
+test("worker processes a durably stored webhook event through the existing handler", async () => {
+  const calls = [];
+  const storedEvent = {
+    _id: "event-success-1",
+    eventType: "account.updated",
+    payload: {
+      id: "evt-success-1",
+      type: "account.updated",
+      account: "acct-success-1",
+    },
+  };
+  const fakeEventService = {
+    executionId: () => "worker-success-test",
+    listEligibleStripeWebhookEvents: async () => [storedEvent],
+    claimStripeWebhookEvent: async (record, owner) => {
+      calls.push(["claim", record._id, owner]);
+      return { ...record, status: "PROCESSING", attemptCount: 1 };
+    },
+    markStripeWebhookProcessed: async (record, owner) => {
+      calls.push(["processed", record.payload.id, owner]);
+      return { ...record, status: "PROCESSED" };
+    },
+    markStripeWebhookIgnored: async () => calls.push(["ignored"]),
+    markStripeWebhookRetryable: async () => calls.push(["retryable"]),
+  };
+
+  await withMocks({ "stripeWebhookEventService": fakeEventService }, async () => {
+    delete require.cache[require.resolve("./stripeWebhookProcessor")];
+    const processor = require("./stripeWebhookProcessor");
+    const handled = [];
+    processor.setStripeWebhookEventHandler(async (event, record) => {
+      handled.push({ event, record });
+    });
+    const result = await processor.runStripeWebhookProcessorJob({ batchSize: 1 });
+    assert.deepEqual(result, {
+      selected: 1,
+      claimed: 1,
+      processed: 1,
+      retryable: 0,
+      dead: 0,
+      ignored: 0,
+      skipped: 0,
+    });
+    assert.equal(handled[0].event.account, "acct-success-1");
+    assert.equal(handled[0].record._id, "event-success-1");
+    assert.deepEqual(calls.map((call) => call[0]), ["claim", "processed"]);
   });
 });
 

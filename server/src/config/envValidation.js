@@ -42,6 +42,11 @@ function validateEnvironment({ env = process.env } = {}) {
     env.RUN_WORKER,
     booleanValue("CRON_RUNS", env.CRON_RUNS, false),
   );
+  const connectWebhookEnabled = booleanValue(
+    "STRIPE_CONNECT_WEBHOOK_ENABLED",
+    env.STRIPE_CONNECT_WEBHOOK_ENABLED,
+    false,
+  );
 
   if (!runApi && !runWorker) {
     throw new Error("At least one of RUN_API or RUN_WORKER must be enabled");
@@ -57,6 +62,7 @@ function validateEnvironment({ env = process.env } = {}) {
 
   if (runApi) {
     required.push("JWT_SECRET", "STRIPE_WEBHOOK_SECRET");
+    if (connectWebhookEnabled) required.push("STRIPE_CONNECT_WEBHOOK_SECRET");
     if (production) {
       required.push(
         "AWS_ACCESS_KEY_ID",
@@ -104,6 +110,16 @@ function validateEnvironment({ env = process.env } = {}) {
     throw new Error("STRIPE_WEBHOOK_SECRET must be a Stripe webhook signing secret");
   }
 
+  if (
+    production &&
+    runApi &&
+    connectWebhookEnabled &&
+    isPresent(env.STRIPE_CONNECT_WEBHOOK_SECRET) &&
+    !String(env.STRIPE_CONNECT_WEBHOOK_SECRET).startsWith("whsec_")
+  ) {
+    throw new Error("STRIPE_CONNECT_WEBHOOK_SECRET must be a Stripe webhook signing secret");
+  }
+
   if (production && runApi && isPresent(env.JWT_SECRET) && String(env.JWT_SECRET).length < 32) {
     throw new Error("JWT_SECRET must be at least 32 characters in production");
   }
@@ -124,7 +140,17 @@ function validateEnvironment({ env = process.env } = {}) {
     throw new Error(`Missing required environment variable: ${missing[0]}`);
   }
 
-  return { nodeEnv, production, runApi, runWorker, emailEnabled, aiEnabled, aiMode, aiProvider };
+  return {
+    nodeEnv,
+    production,
+    runApi,
+    runWorker,
+    connectWebhookEnabled,
+    emailEnabled,
+    aiEnabled,
+    aiMode,
+    aiProvider,
+  };
 }
 
 module.exports = { booleanValue, validateEnvironment };

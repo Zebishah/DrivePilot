@@ -111,6 +111,15 @@ app.use(
 // Stripe webhook needs raw body for signature verification (mount before any JSON body parser)
 if (JOB_CONFIG.runApi) {
   app.use(
+    "/webhooks/stripe/connect",
+    JOB_CONFIG.connectWebhookEnabled
+      ? express.raw({ type: "application/json" })
+      : (_req, _res, next) => next(),
+    JOB_CONFIG.connectWebhookEnabled
+      ? stripeWebhookRoutes.connectWebhookRouter
+      : (_req, res) => res.status(404).send("Stripe Connect webhook not enabled"),
+  );
+  app.use(
     "/webhooks/stripe",
     express.raw({ type: "application/json" }),
     stripeWebhookRoutes,

@@ -20,10 +20,15 @@ function booleanValue(name, fallback) {
 const CRON_RUNS = booleanValue("CRON_RUNS", false);
 const RUN_API = booleanValue("RUN_API", true);
 const RUN_WORKER = booleanValue("RUN_WORKER", CRON_RUNS);
+const STRIPE_CONNECT_WEBHOOK_ENABLED = booleanValue(
+  "STRIPE_CONNECT_WEBHOOK_ENABLED",
+  false,
+);
 
 const JOB_CONFIG = {
   runApi: RUN_API,
   runWorker: RUN_WORKER,
+  connectWebhookEnabled: STRIPE_CONNECT_WEBHOOK_ENABLED,
   leaseMs: positiveInteger("JOB_LEASE_MS", 10 * 60 * 1000),
   heartbeatMs: positiveInteger("JOB_HEARTBEAT_MS", 60 * 1000),
   shutdownTimeoutMs: positiveInteger("JOB_SHUTDOWN_TIMEOUT_MS", 30 * 1000),

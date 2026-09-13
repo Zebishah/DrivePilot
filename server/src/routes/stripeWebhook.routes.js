@@ -34,10 +34,78 @@ const {
 const { invalidateInstructorPublic } = require("../services/cacheInvalidation");
 
 const router = express.Router();
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const {
   receiveStripeWebhookEvent,
 } = require("../services/stripeWebhookEventService");
+
+function createStripeWebhookIngressRouter({
+  secretEnvName,
+  stripeClient = stripe,
+  receiveEvent = receiveStripeWebhookEvent,
+} = {}) {
+  if (!secretEnvName) {
+    throw new Error("Stripe webhook secret environment variable is required");
+  }
+
+  const ingressRouter = express.Router();
+  ingressRouter.post("/", async (req, res) => {
+    const webhookSecret = process.env[secretEnvName];
+    if (!webhookSecret) {
+      logger.error("stripe_webhook_secret_missing", { secretEnvName });
+      return res.status(500).send("Webhook secret not configured");
+    }
+    const sig = req.headers["stripe-signature"];
+    if (!sig) {
+      return res.status(400).send("Missing stripe-signature");
+    }
+    let event;
+    try {
+      event = stripeClient.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      logger.warn("stripe_webhook_signature_invalid", {
+        error: err,
+        errorCategory: classifyError(err),
+        secretEnvName,
+      });
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    logger.info("stripe_webhook_received_http", {
+      webhookEventId: event.id,
+      eventType: event.type,
+      stripeAccountId: event.account || null,
+      secretEnvName,
+    });
+    try {
+      const { duplicate } = await receiveEvent(event);
+      if (duplicate) {
+        logger.info("stripe_webhook_duplicate_receipt", {
+          webhookEventId: event.id,
+          eventType: event.type,
+          secretEnvName,
+        });
+      }
+      return res.status(200).send("OK");
+    } catch (error) {
+      logger.error("stripe_webhook_receipt_failed", {
+        webhookEventId: event.id,
+        code: error?.code || "RECEIPT_FAILED",
+        errorCategory: classifyError(error),
+        error,
+        secretEnvName,
+      });
+      return res.status(503).send("Webhook receipt unavailable");
+    }
+  });
+
+  return ingressRouter;
+}
+
+const platformWebhookRouter = createStripeWebhookIngressRouter({
+  secretEnvName: "STRIPE_WEBHOOK_SECRET",
+});
+const connectWebhookRouter = createStripeWebhookIngressRouter({
+  secretEnvName: "STRIPE_CONNECT_WEBHOOK_SECRET",
+});
 
 async function syncFinancialOperationFromWebhook(event) {
   const providerObjectId = event.data?.object?.id;
@@ -954,40 +1022,9 @@ async function processStripeWebhookEvent(event, eventRecord = null) {
   }
 }
 
-router.post("/", async (req, res) => {
-  if (!WEBHOOK_SECRET) {
-    logger.error("stripe_webhook_secret_missing");
-    return res.status(500).send("Webhook secret not configured");
-  }
-  const sig = req.headers["stripe-signature"];
-  if (!sig) {
-    return res.status(400).send("Missing stripe-signature");
-  }
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
-  } catch (err) {
-    logger.warn("stripe_webhook_signature_invalid", { error: err, errorCategory: classifyError(err) });
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-  logger.info("stripe_webhook_received_http", { webhookEventId: event.id, eventType: event.type });
-  try {
-    const { duplicate } = await receiveStripeWebhookEvent(event);
-    if (duplicate) {
-      logger.info("stripe_webhook_duplicate_receipt", { webhookEventId: event.id, eventType: event.type });
-    }
-    return res.status(200).send("OK");
-  } catch (error) {
-    logger.error("stripe_webhook_receipt_failed", {
-      webhookEventId: event.id,
-      code: error?.code || "RECEIPT_FAILED",
-      errorCategory: classifyError(error),
-      error,
-    });
-    return res.status(503).send("Webhook receipt unavailable");
-  }
-
-});
+router.use(platformWebhookRouter);
 
 router.processStripeWebhookEvent = processStripeWebhookEvent;
+router.connectWebhookRouter = connectWebhookRouter;
+router.createStripeWebhookIngressRouter = createStripeWebhookIngressRouter;
 module.exports = router;

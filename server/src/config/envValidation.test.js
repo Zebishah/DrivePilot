@@ -54,3 +54,40 @@ test("production rejects fixture AI and live Stripe keys", () => {
     /Stripe test-mode secret key/,
   );
 });
+
+test("Connect webhook secret is required only for an enabled API Connect ingress", () => {
+  const apiEnvironment = productionBase({
+    RUN_API: "true",
+    RUN_WORKER: "false",
+    JWT_SECRET: "startup-probe-jwt-secret-32-characters",
+    STRIPE_WEBHOOK_SECRET: "whsec_platform_probe",
+    AWS_ACCESS_KEY_ID: "startup-probe-access-key",
+    AWS_SECRET_ACCESS_KEY: "startup-probe-secret-key",
+    AWS_REGION: "eu-central-1",
+    BUCKET_NAME: "startup-probe-bucket",
+    GOOGLE_CLIENT_ID: "configured-google-client-id",
+    GOOGLE_CLIENT_SECRET: "configured-google-client-secret",
+  });
+
+  assert.doesNotThrow(() =>
+    validateEnvironment({
+      env: { ...apiEnvironment, STRIPE_CONNECT_WEBHOOK_ENABLED: "false" },
+    }),
+  );
+  assert.throws(
+    () =>
+      validateEnvironment({
+        env: { ...apiEnvironment, STRIPE_CONNECT_WEBHOOK_ENABLED: "true" },
+      }),
+    /Missing required environment variable: STRIPE_CONNECT_WEBHOOK_SECRET/,
+  );
+  assert.doesNotThrow(() =>
+    validateEnvironment({
+      env: {
+        ...apiEnvironment,
+        STRIPE_CONNECT_WEBHOOK_ENABLED: "true",
+        STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_connect_probe",
+      },
+    }),
+  );
+});
