@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { Loader2 } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 import type { AuthPayload } from "../../../types/auth";
@@ -10,7 +10,7 @@ import AuthLayout from "../../../layouts/AuthLayout";
 const AuthSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, tempUser } = useAuth();
+  const { login } = useAuth();
 
   useEffect(() => {
     const handleAuth = async () => {
@@ -53,7 +53,7 @@ const AuthSuccess = () => {
             navigate("/teacher-dashboard/overview");
           }
         } else {
-          tempUser(authPayload);
+          login(authPayload);
           const userRole = authPayload.user.role.toLowerCase();
           if (userRole === "userbase") {
             navigate("/onboarding/role-selection");
@@ -63,13 +63,13 @@ const AuthSuccess = () => {
             navigate("/onboarding/instructor-profile");
           }
         }
-      } catch (error) {
+      } catch {
         navigate("/auth/signin?error=auth_failed");
       }
     };
 
     handleAuth();
-  }, [navigate, searchParams]);
+  }, [login, navigate, searchParams]);
 
   return (
     <AuthLayout>

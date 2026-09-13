@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  Alert,
   Paper,
   List,
   ListItem,
@@ -29,6 +30,11 @@ import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
 import _ from "lodash";
 import SingleDocumentUploader from "../../../components/SingleDocumentUploader";
+import {
+  clearOnboardingDraft,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+} from "../../../utils/onboardingDraft";
 
 const schema = z.object({
   homeAddress: z.string().min(1, "Home address is required"),
@@ -44,7 +50,7 @@ const schema = z.object({
     .min(1, "At least one document is required"),
 });
 
-const steps = ["More Information", "Payment Method"];
+const steps = ["More Information", "Finish Setup"];
 type DocumentType = "Driving License" | "ID Card";
 
 type DocumentFile = {
@@ -61,6 +67,9 @@ const StudentProfileSetup = () => {
     control,
     handleSubmit,
     setValue,
+    reset,
+    watch,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
@@ -72,20 +81,16 @@ const StudentProfileSetup = () => {
     },
   });
 
-  const [setupProfile] = useMutation(SETUP_STUDENT_PROFILE, {
-    onCompleted: (data) => {
-      toast.success("Profile setup successfully");
-      navigate("/student-dashboard/overview");
-    },
-    onError: (error) => {
-      toast.error(`Profile setup failed :${error?.message}`);
-    },
-  });
+  const [setupProfile] = useMutation(SETUP_STUDENT_PROFILE);
 
   const [loading, setLoading] = useState(false);
   const [documentFiles, setDocumentFiles] = useState<{
     [key in DocumentType]?: DocumentFile;
   }>({});
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [restoredDocumentMetadata, setRestoredDocumentMetadata] = useState<
+    Array<{ documentType: string; fileName?: string }>
+  >([]);
 
   const handleNext = async (data) => {
     if (activeStep === steps.length - 1) {
@@ -125,29 +130,63 @@ const StudentProfileSetup = () => {
           documents,
         };
 
-        await setupProfile({
+        const result = await setupProfile({
           variables: {
             input: finalData,
           },
         });
 
+        if (!result.data?.setupStudentProfile) {
+          throw new Error("Profile setup did not complete");
+        }
+
         markUserProfileComplete();
+        if (user?.id) clearOnboardingDraft(user.id, "Student");
+        toast.success("Profile setup successfully");
+        navigate("/student-dashboard/overview");
       } catch (error) {
-        toast.error(`Profile setup failed: ${error?.message}`);
+        toast.error(
+          `Profile setup failed: ${error instanceof Error ? error.message : "Please try again."}`
+        );
       } finally {
         setLoading(false);
       }
     } else {
+      if (user?.id) {
+        saveOnboardingDraft(user.id, "Student", {
+          activeStep: activeStep + 1,
+          formValues: getValues(),
+          coordinates,
+          documents: Object.values(documentFiles).map(({ file, documentType }) => ({
+            documentType,
+            fileName: file.name,
+          })),
+        });
+      }
       setActiveStep((prevStep) => prevStep + 1);
     }
   };
 
   const handleBack = () => {
+    if (user?.id) {
+      saveOnboardingDraft(user.id, "Student", {
+        activeStep: Math.max(activeStep - 1, 0),
+        formValues: getValues(),
+        coordinates,
+        documents: Object.values(documentFiles).map(({ file, documentType }) => ({
+          documentType,
+          fileName: file.name,
+        })),
+      });
+    }
     setActiveStep((prevStep) => prevStep - 1);
   };
 
   const handleFileUpload = (file: File | null, documentType: DocumentType) => {
     if (file) {
+      setRestoredDocumentMetadata((prev) =>
+        prev.filter((document) => document.documentType !== documentType)
+      );
       setDocumentFiles((prev) => ({
         ...prev,
         [documentType]: {
@@ -201,6 +240,44 @@ const StudentProfileSetup = () => {
     type: "Point",
     coordinates: [0, 0],
   });
+
+  useEffect(() => {
+    if (!user?.id) {
+      setDraftHydrated(true);
+      return;
+    }
+
+    const draft = loadOnboardingDraft(user.id, "Student");
+    if (draft) {
+      reset({
+        homeAddress: typeof draft.formValues.homeAddress === "string" ? draft.formValues.homeAddress : "",
+        location: typeof draft.formValues.location === "string" ? draft.formValues.location : "",
+        zipCode: typeof draft.formValues.zipCode === "string" ? draft.formValues.zipCode : "",
+        documents: Array.isArray(draft.formValues.documents) ? draft.formValues.documents : [],
+      } as never);
+      setActiveStep(Math.min(Math.max(draft.activeStep, 0), steps.length - 1));
+      if (draft.coordinates) setCoordinates(draft.coordinates);
+      setRestoredDocumentMetadata(draft.documents);
+    }
+    setDraftHydrated(true);
+  }, [user?.id, reset]);
+
+  const watchedValues = watch();
+  useEffect(() => {
+    if (!draftHydrated || !user?.id) return;
+    const timeout = window.setTimeout(() => {
+      saveOnboardingDraft(user.id, "Student", {
+        activeStep,
+        formValues: watchedValues,
+        coordinates,
+        documents: Object.values(documentFiles).map(({ file, documentType }) => ({
+          documentType,
+          fileName: file.name,
+        })),
+      });
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [activeStep, coordinates, documentFiles, draftHydrated, user?.id, watchedValues]);
   const fetchLocations = useRef(
     _.debounce(async (inputValue) => {
       if (!inputValue) {
@@ -451,6 +528,12 @@ const StudentProfileSetup = () => {
         Upload Documents
       </Typography>
 
+      {restoredDocumentMetadata.length > 0 && Object.keys(documentFiles).length === 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Previously selected files cannot be restored after a refresh. Please select them again before submitting.
+        </Alert>
+      )}
+
       {/* Driving License Document */}
       <FormControl fullWidth sx={{ mb: 3 }} margin="normal">
         <Select value="Driving License" disabled>
@@ -481,12 +564,13 @@ const StudentProfileSetup = () => {
     </Box>
   );
 
-  const renderPaymentMethod = () => (
+  const renderFinishSetup = () => (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6">Payment Method</Typography>
-      {/* Payment method form fields will be added here */}
+      <Typography variant="h6">You’re ready to learn</Typography>
       <Typography variant="body1" sx={{ mt: 2 }}>
-        Payment integration coming soon...
+        Your profile information and documents are ready to submit.
+        Payments are handled securely in your student dashboard when you book
+        a lesson, so you can choose the right payment option at checkout.
       </Typography>
     </Box>
   );
@@ -496,7 +580,7 @@ const StudentProfileSetup = () => {
       case 0:
         return renderMoreInfo();
       case 1:
-        return renderPaymentMethod();
+        return renderFinishSetup();
       default:
         return null;
     }

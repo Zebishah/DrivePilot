@@ -19,6 +19,7 @@ import {
   FormHelperText,
   IconButton,
   InputAdornment,
+  Alert,
 } from "@mui/material";
 import { DeleteIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +41,11 @@ import _ from "lodash";
 // Add this to your MUI imports
 import { Description as DescriptionIcon } from "@mui/icons-material";
 import DocumentUploaderInstructor from "../../../components/public/DocumentUploaderInstructor";
+import {
+  clearOnboardingDraft,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+} from "../../../utils/onboardingDraft";
 const schema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -88,6 +94,9 @@ const InstructorProfileSetup: React.FC = () => {
     control,
     handleSubmit,
     setValue,
+    reset,
+    watch,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
@@ -102,6 +111,7 @@ const InstructorProfileSetup: React.FC = () => {
       description: "",
       experience: "",
       documents: [],
+      optionalDocuments: [],
       carName: "",
       transmissionType: "Manual",
       gender: "Male",
@@ -132,8 +142,17 @@ const InstructorProfileSetup: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<
     { file: File; documentType: string }[]
   >([]);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [restoredDocumentMetadata, setRestoredDocumentMetadata] = useState<
+    Array<{ documentType: string; fileName?: string }>
+  >([]);
 
   const handleFileUpload = (file: File | null, documentType: string) => {
+    if (file) {
+      setRestoredDocumentMetadata((prev) =>
+        prev.filter((document) => document.documentType !== documentType)
+      );
+    }
     if (file) {
       if (
         documentType === "Other Document (Optional)" ||
@@ -156,6 +175,17 @@ const InstructorProfileSetup: React.FC = () => {
     }
   };
   const handleBack = () => {
+    if (user?.id) {
+      saveOnboardingDraft(user.id, "Instructor", {
+        activeStep: Math.max(activeStep - 1, 0),
+        formValues: getValues(),
+        coordinates,
+        documents: selectedFiles.map(({ file, documentType }) => ({
+          documentType,
+          fileName: file.name,
+        })),
+      });
+    }
     setActiveStep((prevStep) => prevStep - 1);
   };
 
@@ -163,6 +193,7 @@ const InstructorProfileSetup: React.FC = () => {
 
   const handleNext = async (data) => {
     const { email, ...mutationData } = data;
+    void email;
 
     if (activeStep === 1) {
       if (!data?.experience) {
@@ -199,6 +230,10 @@ const InstructorProfileSetup: React.FC = () => {
       try {
         setLoading(true); // Start loading
 
+        if (selectedFiles.length === 0) {
+          throw new Error("Please re-select your document files before submitting.");
+        }
+
         // Upload all files and collect their URLs
         const documentUploads = await Promise.all(
           selectedFiles.map(async (file) => {
@@ -220,6 +255,7 @@ const InstructorProfileSetup: React.FC = () => {
 
         // Prepare the final data for the mutation
         const { optionalDocuments, ...filteredData } = mutationData;
+        void optionalDocuments;
 
         const finalData = {
           ...filteredData,
@@ -227,21 +263,39 @@ const InstructorProfileSetup: React.FC = () => {
           coordinates: coordinates,
         };
         // Call the mutation
-        await setupInstructorProfile({
+        const result = await setupInstructorProfile({
           variables: {
             input: finalData,
           },
         });
 
+        if (!result.data?.setupInstructorProfile) {
+          throw new Error("Profile setup did not complete");
+        }
+
         markUserProfileComplete();
+        if (user?.id) clearOnboardingDraft(user.id, "Instructor");
         toast.success("Profile setup successfully");
         navigate("/teacher-dashboard/overview");
       } catch (err) {
-        toast.error(`Profile setup failed: ${err?.message}`);
+        toast.error(
+          `Profile setup failed: ${err instanceof Error ? err.message : "Please try again."}`
+        );
       } finally {
         setLoading(false); // Stop loading
       }
     } else {
+      if (user?.id) {
+        saveOnboardingDraft(user.id, "Instructor", {
+          activeStep: activeStep + 1,
+          formValues: getValues(),
+          coordinates,
+          documents: selectedFiles.map(({ file, documentType }) => ({
+            documentType,
+            fileName: file.name,
+          })),
+        });
+      }
       setActiveStep((prevStep) => prevStep + 1);
     }
   };
@@ -255,6 +309,54 @@ const InstructorProfileSetup: React.FC = () => {
     type: "Point",
     coordinates: [0, 0],
   });
+
+  useEffect(() => {
+    if (!user?.id) {
+      setDraftHydrated(true);
+      return;
+    }
+
+    const draft = loadOnboardingDraft(user.id, "Instructor");
+    if (draft) {
+      reset({
+        firstName: typeof draft.formValues.firstName === "string" ? draft.formValues.firstName : user.firstName || "",
+        lastName: typeof draft.formValues.lastName === "string" ? draft.formValues.lastName : user.lastName || "",
+        email: typeof draft.formValues.email === "string" ? draft.formValues.email : user.email || "",
+        phone: typeof draft.formValues.phone === "string" ? draft.formValues.phone : "",
+        address: typeof draft.formValues.address === "string" ? draft.formValues.address : "",
+        location: typeof draft.formValues.location === "string" ? draft.formValues.location : "",
+        zipCode: typeof draft.formValues.zipCode === "string" ? draft.formValues.zipCode : "",
+        description: typeof draft.formValues.description === "string" ? draft.formValues.description : "",
+        experience: typeof draft.formValues.experience === "string" ? draft.formValues.experience : "",
+        documents: Array.isArray(draft.formValues.documents) ? draft.formValues.documents : [],
+        optionalDocuments: Array.isArray(draft.formValues.optionalDocuments) ? draft.formValues.optionalDocuments : [],
+        carName: typeof draft.formValues.carName === "string" ? draft.formValues.carName : "",
+        transmissionType: draft.formValues.transmissionType === "Automatic" ? "Automatic" : "Manual",
+        gender: draft.formValues.gender === "Female" || draft.formValues.gender === "Other" ? draft.formValues.gender : "Male",
+      } as never);
+      setActiveStep(Math.min(Math.max(draft.activeStep, 0), steps.length - 1));
+      if (draft.coordinates) setCoordinates(draft.coordinates);
+      setRestoredDocumentMetadata(draft.documents);
+    }
+    setDraftHydrated(true);
+  }, [reset, user]);
+
+  const watchedValues = watch();
+  useEffect(() => {
+    if (!draftHydrated || !user?.id) return;
+    const timeout = window.setTimeout(() => {
+      saveOnboardingDraft(user.id, "Instructor", {
+        activeStep,
+        formValues: watchedValues,
+        coordinates,
+        documents: selectedFiles.map(({ file, documentType }) => ({
+          documentType,
+          fileName: file.name,
+        })),
+      });
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [activeStep, coordinates, draftHydrated, selectedFiles, user?.id, watchedValues]);
   const fetchLocations = useRef(
     _.debounce(async (inputValue) => {
       if (!inputValue) {
@@ -710,6 +812,12 @@ const InstructorProfileSetup: React.FC = () => {
           Upload Documents
         </Typography>
 
+        {restoredDocumentMetadata.length > 0 && selectedFiles.length === 0 && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Previously selected files cannot be restored after a refresh. Please select them again before submitting.
+          </Alert>
+        )}
+
         {requiredDocuments.map((docType, index) => (
           <Box key={index} sx={{ mb: 2 }}>
             <FormControl fullWidth margin="normal">
@@ -911,7 +1019,7 @@ const InstructorProfileSetup: React.FC = () => {
                                 size="small"
                                 onClick={() => {
                                   const updatedFiles = selectedFiles.filter(
-                                    (f, i) =>
+                                    (f) =>
                                       !(
                                         f.documentType ===
                                           "Other Document (Optional)" &&

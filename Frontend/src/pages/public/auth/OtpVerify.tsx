@@ -47,9 +47,9 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
     Array(OTP_LENGTH).fill(null)
   );
-  const { login, tempUser, user } = useAuth();
+  const { login } = useAuth();
   // State for toast messages
-  const [toast, setToast] = useState<{
+  const [, setToast] = useState<{
     open: boolean;
     message: string;
     severity: "success" | "error" | "info" | "warning";
@@ -63,7 +63,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   const [verifyUser, { loading: verifying }] = useMutation(VERIFY_OTP);
   const [resendOtp, { loading: resending }] = useMutation(RESEND_OTP);
 
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Handle OTP input change
@@ -133,7 +133,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
 
       if (data?.verifyUser?.success) {
         // Update the user state first
-        await tempUser(data.verifyUser);
+        login(data.verifyUser);
 
         setToast({
           open: true,
@@ -228,11 +228,6 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
         inputRefs.current[OTP_LENGTH - 1]?.focus();
       }
     }
-  };
-
-  // Close toast notification
-  const handleCloseToast = () => {
-    setToast({ ...toast, open: false });
   };
 
   // Check if OTP is complete to enable verification

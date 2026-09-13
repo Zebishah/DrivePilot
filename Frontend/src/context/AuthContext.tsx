@@ -7,10 +7,17 @@ import {
   useCallback,
 } from "react";
 import Cookies from "js-cookie";
-import { ApolloClient, createHttpLink, InMemoryCache } from "@apollo/client";
+import {
+  ApolloClient,
+  createHttpLink,
+  gql,
+  InMemoryCache,
+} from "@apollo/client";
+import type { NormalizedCacheObject } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import CryptoJS from "crypto-js";
 import type { AuthPayload, TempAuthPayload } from "../types/auth";
+import { clearAllOnboardingDrafts } from "../utils/onboardingDraft";
 
 // Constants
 const COOKIE_TOKEN_KEY = "token_dsp";
@@ -20,6 +27,25 @@ const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword"];
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 const ENCRYPTION_KEY =
   import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secure";
+
+const CURRENT_USER_QUERY = gql`
+  query CurrentUser {
+    me {
+      id
+      firstName
+      lastName
+      email
+      role
+      isProfileComplete
+      isUserVerified
+      isUserAuthenticated
+      authProvider
+      adminLevel
+      createdAt
+      updatedAt
+    }
+  }
+`;
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -32,16 +58,18 @@ interface AuthContextType {
   tempUser: (authPayload: AuthPayload) => void;
   verifyUser: (authPayload: TempAuthPayload) => void;
   logout: () => void;
-  client: ApolloClient<any>;
+  client: ApolloClient<NormalizedCacheObject>;
   markUserProfileComplete: () => void;
+  authLoading: boolean;
+  authInitialized: boolean;
 }
 
 // Encryption utilities
-const encrypt = (data: any): string => {
+const encrypt = (data: unknown): string => {
   return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
 };
 
-const decrypt = (encryptedData: string): any => {
+const decrypt = (encryptedData: string): unknown => {
   try {
     if (!encryptedData || typeof encryptedData !== "string") return null;
     const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
@@ -64,9 +92,10 @@ const createApolloClient = () => {
       return { headers };
     }
 
-    let token = null;
+    let token: string | null = null;
     if (encryptedToken) {
-      token = decrypt(encryptedToken);
+      const decryptedToken = decrypt(encryptedToken);
+      if (typeof decryptedToken === "string") token = decryptedToken;
     }
 
     return {
@@ -112,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsTempAuthenticated(false);
     setIsVerified(false);
     setTempUserData(null);
+    clearAllOnboardingDrafts();
 
     client.resetStore();
   }, [client]);
@@ -125,8 +155,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setToken(authPayload.token); // ✅ set token
     setIsAuthenticated(true);
+    setIsTempAuthenticated(false);
     setUser(authPayload.user);
-    setIsVerified(authPayload.user.isUserVerified);
+    setIsVerified(Boolean(authPayload.user.isUserVerified));
+    setTempUserData(null);
   }, []);
 
   const tempUser = useCallback((authPayload: AuthPayload) => {
@@ -137,8 +169,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     Cookies.set(COOKIE_USER_KEY, encryptedUser, { expires: COOKIE_EXPIRES });
 
     setToken(authPayload.token); // ✅ set token for temp
+    setIsAuthenticated(false);
     setIsTempAuthenticated(true);
-    setIsVerified(authPayload.user.isUserVerified);
+    setIsVerified(Boolean(authPayload.user.isUserVerified));
     setUser(authPayload.user);
   }, []);
 
@@ -164,16 +197,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const encryptedUser = Cookies.get(COOKIE_USER_KEY);
 
         if (encryptedToken && encryptedUser) {
-          const decryptedUser = decrypt(encryptedUser);
+          const decryptedUser = decrypt(encryptedUser) as AuthPayload["user"] | null;
           const decryptedToken = decrypt(encryptedToken);
 
-          if (decryptedUser && decryptedToken) {
+          if (decryptedUser && typeof decryptedToken === "string") {
             setUser(decryptedUser);
             setToken(decryptedToken); // ✅ set token after decryption
-            const verified = decryptedUser.isUserVerified;
-            setIsAuthenticated(verified || false);
+            const verified = Boolean(decryptedUser.isUserVerified);
+            setIsAuthenticated(verified);
             setIsTempAuthenticated(!verified);
-            setIsVerified(verified || false);
+            setIsVerified(verified);
+
+            try {
+              const { data } = await client.query({
+                query: CURRENT_USER_QUERY,
+                fetchPolicy: "network-only",
+              });
+              const currentUser = data?.me;
+
+              if (currentUser) {
+                const currentVerified = Boolean(currentUser.isUserVerified);
+                Cookies.set(COOKIE_USER_KEY, encrypt(currentUser), {
+                  expires: COOKIE_EXPIRES,
+                });
+                setUser(currentUser);
+                setIsAuthenticated(currentVerified);
+                setIsTempAuthenticated(!currentVerified);
+                setIsVerified(currentVerified);
+              }
+            } catch (error) {
+              const graphQLErrors = (error as { graphQLErrors?: Array<{ extensions?: { code?: string } }> })
+                .graphQLErrors || [];
+              const isAuthError = graphQLErrors.some((item) =>
+                ["UNAUTHENTICATED", "FORBIDDEN"].includes(item.extensions?.code || "")
+              );
+              if (isAuthError) {
+                Cookies.remove(COOKIE_TOKEN_KEY);
+                Cookies.remove(COOKIE_USER_KEY);
+                setUser(null);
+                setToken(null);
+                setIsAuthenticated(false);
+                setIsTempAuthenticated(false);
+                setIsVerified(false);
+              } else {
+                console.warn("Could not reconcile the restored session; retaining local session.", error);
+              }
+            }
           } else {
             Cookies.remove(COOKIE_TOKEN_KEY);
             Cookies.remove(COOKIE_USER_KEY);
@@ -189,7 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     checkAuthStatus();
-  }, []);
+  }, [client]);
 
   if (loading) {
     return (
@@ -214,6 +283,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         tempUser,
         verifyUser,
         markUserProfileComplete,
+        authLoading: loading,
+        authInitialized: !loading,
       }}
     >
       {children}

@@ -48,7 +48,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
     Array(OTP_LENGTH).fill(null)
   );
-  const { login, tempUser } = useAuth();
+  const { login } = useAuth();
   // State for toast messages
 
   const navigate = useNavigate();
@@ -56,7 +56,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
   const [verifyUser, { loading: verifying }] = useMutation(VERIFY_OTP);
   const [resendOtp, { loading: resending }] = useMutation(RESEND_OTP);
 
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Handle OTP input change
@@ -125,7 +125,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
       });
 
       if (data && data.verifyUser) {
-        await tempUser(data.verifyUser);
+        login(data.verifyUser);
         toast.success(
           "OTP verified successfully!Sign Up Successful .Please Select Role"
         );
@@ -145,7 +145,6 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
             toast.error("Profile not complete. Please complete your profile.");
 
             const userRole = data.verifyUser?.user?.role.toLowerCase();
-            tempUser(data.verifyUser);
             if (userRole === "userbase") {
               navigate("/onboarding/role-selection");
             } else if (userRole === "student") {
