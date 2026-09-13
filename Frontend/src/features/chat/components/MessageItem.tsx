@@ -1,5 +1,5 @@
 import React, { memo, useState } from "react";
-import { MessageType } from "../../types/chatTypes";
+import { MessageType } from "../../../types/chatTypes";
 import { Avatar } from "antd";
 import dayjs from "dayjs";
 

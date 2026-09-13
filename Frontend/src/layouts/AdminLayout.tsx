@@ -11,7 +11,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import { initSocket } from "../utils/socket";
-import AssistantPanel from "../components/assistant/AssistantPanel";
+import AssistantPanel from "../features/assistant/components/AssistantPanel";
 // ✅ Import initSocket
 
 interface AdminLayoutProps {

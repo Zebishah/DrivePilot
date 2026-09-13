@@ -1,6 +1,6 @@
 import { StudentBooking } from "../../../types/Bookings";
-import { FeedbackButton } from "./FeedBackButton";
-import { FeedbackStatus } from "./FeedBackStatus";
+import { FeedbackButton } from "./FeedbackButton";
+import { FeedbackStatus } from "./FeedbackStatus";
 import { StudentAvatar } from "./StudentAvatar";
 import { formatCHF } from "../../../utils/money";
 

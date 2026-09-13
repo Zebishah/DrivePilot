@@ -1,6 +1,6 @@
 import { StudentBooking } from "../../../types/Bookings";
-import { EmptyState } from "../Help&Support/EmptyState";
-import { FeedbackTableRow } from "./FeedBackTableRow";
+import { EmptyState } from "../../../components/common/EmptyState";
+import { FeedbackTableRow } from "./FeedbackTableRow";
 
 interface FeedbackTableProps {
   bookings: StudentBooking[];

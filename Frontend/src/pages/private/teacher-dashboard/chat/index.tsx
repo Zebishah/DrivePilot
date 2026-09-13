@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import ChatList from "../../../../components/Chat/ChatList";
-import ChatWindow from "../../../../components/Chat/ChatWindow";
+import ChatList from "../../../../features/chat/components/ChatList";
+import ChatWindow from "../../../../features/chat/components/ChatWindow";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../../../store";
 import {
@@ -95,7 +95,6 @@ const InstructorChatPage: React.FC = () => {
           {conversations.length > 0 ? (
             <ChatList
               conversations={conversations}
-              currentUserId={currentUser?._id || ""}
               selectedUserId={selectedConversation?._id}
               onSelect={(conversation) => {
                 if (selectedConversation?._id === conversation._id) {

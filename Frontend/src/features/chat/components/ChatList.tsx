@@ -4,22 +4,20 @@ import { SearchOutlined, MessageOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
-import { ConversationType } from "../../types/chatTypes";
-import { useAuth } from "../../context/AuthContext";
+import { ConversationType } from "../../../types/chatTypes";
+import { useAuth } from "../../../context/AuthContext";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 
 interface ChatListProps {
   conversations: ConversationType[];
-  currentUserId: string;
   selectedUserId?: string;
   onSelect: (conversation: ConversationType) => void;
 }
 
 const ChatList: React.FC<ChatListProps> = ({
   conversations,
-  currentUserId,
   selectedUserId,
   onSelect,
 }) => {

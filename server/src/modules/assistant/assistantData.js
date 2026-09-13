@@ -1,9 +1,9 @@
-const StudentBooking = require("../models/studentBooking.model");
-const Transaction = require("../models/transaction.model");
-const RefundRequest = require("../models/refundRequest.model");
-const FinancialOperation = require("../models/FinancialOperation");
-const TeacherAvailability = require("../models/teacherAvailability.model");
-const { User } = require("../models/User");
+const StudentBooking = require("../../models/studentBooking.model");
+const Transaction = require("../../models/transaction.model");
+const RefundRequest = require("../../models/refundRequest.model");
+const FinancialOperation = require("../../models/FinancialOperation");
+const TeacherAvailability = require("../../models/teacherAvailability.model");
+const { User } = require("../../models/User");
 
 const MAX_RESULTS = 25;
 const id = (value) => value?._id?.toString?.() || value?.toString?.() || null;

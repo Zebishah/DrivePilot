@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 
 import { useFeedback } from "../../../hooks/UseFeedBack";
-import { SkillsDropdown } from "../../../components/InstructorComponent/StudentFeedBack/SkillsDropdown";
-import { FormInput } from "../../../components/InstructorComponent/StudentFeedBack/FormInput";
+import { SkillsDropdown } from "../components/SkillsDropdown";
+import { FormInput } from "../components/FormInput";
 
-import { ActionButtons } from "../../../components/InstructorComponent/StudentFeedBack/ActionButtons";
-import { DeleteModal } from "../../../components/InstructorComponent/StudentFeedBack/DeleteModal";
+import { ActionButtons } from "../components/ActionButtons";
+import { DeleteModal } from "../components/DeleteModal";
 import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
-import { RichTextEditor } from "../../../components/InstructorComponent/StudentFeedBack/RichTextBox";
+import { RichTextEditor } from "../components/RichTextEditor";
 
 const FeedbackForm: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -25,7 +25,6 @@ const FeedbackForm: React.FC = () => {
     handleEdit,
     handleCancelEdit,
     handleCancel,
-    studentId,
   } = useFeedback();
 
   const isReadOnly = viewMode === "view";

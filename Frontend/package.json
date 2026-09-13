@@ -51,7 +51,6 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
     "material-ui-popup-state": "^5.3.5",
-    "next": "^15.4.2",
     "pdfjs-dist": "^5.4.296",
     "prop-types": "^15.8.1",
     "react": "^18.3.1",

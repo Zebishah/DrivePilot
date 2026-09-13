@@ -1,8 +1,8 @@
 const express = require("express");
 const { rateLimit } = require("express-rate-limit");
-const authMiddleware = require("../middleware/auth");
-const { assistantService } = require("../services/assistantService");
-const { logger } = require("../utils/logger");
+const authMiddleware = require("../../middleware/auth");
+const { assistantService } = require("./assistantService");
+const { logger } = require("../../utils/logger");
 
 const router = express.Router();
 const configuredWindow = Number(process.env.AI_RATE_LIMIT_WINDOW_MS);

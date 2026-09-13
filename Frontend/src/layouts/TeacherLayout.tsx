@@ -30,7 +30,7 @@ import { RootState } from "../store";
 import { Student } from "../types/Student";
 import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
-import AssistantPanel from "../components/assistant/AssistantPanel";
+import AssistantPanel from "../features/assistant/components/AssistantPanel";
 
 interface TeacherLayoutProps {
   children: React.ReactNode;

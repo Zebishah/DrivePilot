@@ -106,7 +106,7 @@ const router = createBrowserRouter([
       { path: "bookingManagement", element: lazyPage(() => import("../components/InstructorComponent/StudentBookingWInst")) },
       {
         path: "feedbackForm/:bookingId/:lessonId/:studentId",
-        element: lazyPage(() => import("../pages/private/teacher-dashboard/FeedBackForm")),
+        element: lazyPage(() => import("../features/feedback/pages/FeedbackForm")),
       },
       { path: "studentProgress/:studentId", element: lazyPage(() => import("../pages/private/teacher-dashboard/StudentProgress")) },
       { path: "my-students", element: lazyPage(() => import("../pages/private/teacher-dashboard/MyStudentsTrack")) },

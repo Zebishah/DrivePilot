@@ -1,10 +1,10 @@
-const aiConfig = require("../config/aiConfig");
+const aiConfig = require("../../config/aiConfig");
 const { aiProvider } = require("./aiProvider");
 const { createAssistantToolRegistry } = require("./assistantTools");
 const { SYSTEM_PROMPT } = require("./assistantPrompt");
 const { deterministicAnswer, fallbackForMessage } = require("./assistantFallback");
-const metrics = require("../utils/metrics");
-const { logger } = require("../utils/logger");
+const metrics = require("../../utils/metrics");
+const { logger } = require("../../utils/logger");
 
 const OPERATIONAL_WORDS = /\b(lesson|booking|payment|refund|payout|schedule|availability|student|instructor|spent|operational|financial|attention)\b/i;
 const MUTATION_WORDS = /\b(cancel|reschedule|refund\s+my|pay|approve|modify|change|send|delete|upload|remove)\b/i;

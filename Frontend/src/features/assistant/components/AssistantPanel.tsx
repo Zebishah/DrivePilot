@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Box, Button, Chip, Divider, Drawer, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
 import { Bot, Loader2, RotateCcw, Send, X } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 
 type AssistantRole = "Student" | "Instructor" | "Admin";
 type AssistantMessage = { role: "user" | "assistant"; content: string };

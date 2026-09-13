@@ -1,5 +1,5 @@
-const { logger } = require("../utils/logger");
-const aiConfig = require("../config/aiConfig");
+const { logger } = require("../../utils/logger");
+const aiConfig = require("../../config/aiConfig");
 
 class AiProviderError extends Error {
   constructor(message, { code = "AI_PROVIDER_ERROR", status, retryable = true } = {}) {

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import ChatList from "../../../../components/Chat/ChatList";
-import ChatWindow from "../../../../components/Chat/ChatWindow";
+import ChatList from "../../../../features/chat/components/ChatList";
+import ChatWindow from "../../../../features/chat/components/ChatWindow";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../../../store";
 import {
@@ -46,7 +46,6 @@ const StudentChatPage: React.FC = () => {
           {conversations.length > 0 ? (
             <ChatList
               conversations={conversations}
-              currentUserId={user.id}
               selectedUserId={selectedConversation?._id}
               onSelect={(conv) => {
                 if (selectedConversation?._id === conv._id) {

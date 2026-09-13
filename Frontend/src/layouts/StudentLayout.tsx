@@ -32,7 +32,7 @@ import { RootState } from "../store";
 import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import { MdOutlineFeedback } from "react-icons/md";
-import AssistantPanel from "../components/assistant/AssistantPanel";
+import AssistantPanel from "../features/assistant/components/AssistantPanel";
 
 interface StudentLayoutProps {
   children: React.ReactNode;

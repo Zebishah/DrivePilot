@@ -37,7 +37,7 @@ const { requestCorrelationMiddleware } = require("./middleware/requestCorrelatio
 const { logger } = require("./utils/logger");
 const { createRequestLoaders } = require("./graphql/requestLoaders");
 const { connectRedis, closeRedis } = require("./services/redisClient");
-const assistantRoutes = require("./routes/assistant.routes");
+const assistantRoutes = require("./modules/assistant/assistant.routes");
 
 setStripeWebhookEventHandler(stripeWebhookRoutes.processStripeWebhookEvent);
 

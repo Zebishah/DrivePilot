@@ -10,19 +10,19 @@ import {
   GET_MESSAGES,
   SEND_MESSAGE,
   NEW_MESSAGE_SUBSCRIPTION,
-} from "../../graphql/Queries/Chat";
+} from "../api/chat.queries";
 import { BsEmojiSmile } from "react-icons/bs";
 import { IoSend } from "react-icons/io5";
 import MessageItem from "./MessageItem";
 import { useDispatch, useSelector } from "react-redux";
-import { addMessage, setMessages } from "../../store/slices/chatSlice";
-import { RootState } from "../../store";
-import { MessageType, UserType } from "../../types/chatTypes";
-import { useAuth } from "../../context/AuthContext";
+import { addMessage, setMessages } from "../../../store/slices/chatSlice";
+import { RootState } from "../../../store";
+import { MessageType, UserType } from "../../../types/chatTypes";
+import { useAuth } from "../../../context/AuthContext";
 import { Spin, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import EmojiPicker from "emoji-picker-react";
-import { getSocket } from "../../utils/socket";
+import { getSocket } from "../../../utils/socket";
 import { debounce } from "lodash";
 import { createSelector } from "reselect";
 import { shallowEqual } from "react-redux";
@@ -30,6 +30,10 @@ import { shallowEqual } from "react-redux";
 interface ChatWindowProps {
   conversation: { _id: string; participants: UserType[] } | null;
 }
+
+type IncomingMessage = Omit<MessageType, "conversationId"> & {
+  conversationId?: string;
+};
 
 // Memoized selector
 const selectMessages = createSelector(
@@ -96,7 +100,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           setMessages({
             conversationId: conversation._id,
             messages:
-              data.getMessages?.map((msg: any) => ({
+                data.getMessages?.map((msg: MessageType) => ({
                 ...msg,
                 conversationId: msg.conversationId || conversation._id,
               })) || [],
@@ -194,7 +198,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
       }
     };
 
-    const handleReceiveMessage = (msg: any) => {
+    const handleReceiveMessage = (msg: IncomingMessage) => {
       if (!msg?.conversationId || !conversation?._id) return;
       if (String(msg.conversationId) !== String(conversation._id)) return;
 
@@ -364,7 +368,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
     )}`;
   };
 
-  const onEmojiClick = (emojiData: any) => {
+  const onEmojiClick = (emojiData: { emoji: string }) => {
     setNewMessage((prev) => prev + emojiData.emoji);
   };
 
