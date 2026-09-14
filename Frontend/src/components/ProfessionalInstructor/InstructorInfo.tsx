@@ -460,12 +460,12 @@ const InstructorsInfo: React.FC = () => {
             p={3}
           >
             <Typography variant="h5" gutterBottom>
-              No Instructors Found
+              No instructors are available yet
             </Typography>
             <Typography variant="body1" color="textSecondary" paragraph>
-              {filters.coordinates
-                ? "We couldn't find any instructors near your location."
-                : "Try adjusting your filters or search in a different area."}
+              {filtersApplied
+                ? "No instructors match your current filters. Try resetting the filters to broaden your search."
+                : "Instructors appear here after completing their profile, verification, and payment setup."}
             </Typography>
             <Button
               variant="contained"
