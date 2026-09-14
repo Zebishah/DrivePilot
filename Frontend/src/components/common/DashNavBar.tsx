@@ -46,6 +46,7 @@ interface NavbarProps {
 
 export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(
     LANGUAGES[0]
   );
@@ -97,13 +98,21 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
     setAnchorEl(null);
   };
 
+  const handleProfileClose = () => {
+    setProfileAnchorEl(null);
+  };
+
   const handleLanguageChange = (language: Language) => {
     setSelectedLanguage(language);
     setAnchorEl(null);
     // Add actual i18n language change logic here
   };
   const renderAvatar = () => {
-    const handleAvatarClick = () => {
+    const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
+      if (isStudent || isInstructor) {
+        setProfileAnchorEl(event.currentTarget);
+        return;
+      }
       switch (user?.role) {
         case "Admin":
           navigate("/admin-dashboard/overview");
@@ -122,7 +131,21 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
 
     return (
       <Box
-        sx={{ position: "relative", width: 40, height: 40, cursor: "pointer" }}
+        component="button"
+        type="button"
+        aria-label="Open profile menu"
+        aria-controls={profileAnchorEl ? "profile-menu" : undefined}
+        aria-haspopup="true"
+        sx={{
+          position: "relative",
+          width: 46,
+          height: 46,
+          p: 0.35,
+          border: 0,
+          borderRadius: "50%",
+          cursor: "pointer",
+          background: "linear-gradient(135deg, #FF5A36, #F7B32B)",
+        }}
         onClick={handleAvatarClick}
       >
         {(isLoading || (isImageLoading && !!profileImage)) && (
@@ -147,7 +170,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
 
         <Avatar
           src={profileImage || "/default-avatar.jpg"}
-          sx={{ width: 40, height: 40, zIndex: isImageLoading ? 0 : 2 }}
+          sx={{ width: 40, height: 40, zIndex: isImageLoading ? 0 : 2, backgroundColor: "#1C1F26" }}
           imgProps={{
             onLoad: () => setIsImageLoading(false),
             onError: () => {
@@ -161,14 +184,15 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
 
   return (
     <AppBar
-      position="static"
+      position="sticky"
       elevation={0}
       className="dsp-dashboard-topbar"
       sx={{
-        borderBottom: "1px solid rgba(22, 27, 39, 0.08)",
-        backgroundColor: "rgba(255, 253, 250, 0.92)",
-        color: "#171923",
+        borderBottom: "1px solid rgba(231, 229, 228, 0.9)",
+        backgroundColor: "rgba(255, 255, 255, 0.86)",
+        color: "#15171D",
         backdropFilter: "blur(12px)",
+        zIndex: (theme) => theme.zIndex.appBar,
       }}
     >
       <Toolbar sx={{ minHeight: { xs: 64, sm: 72 }, px: { xs: 1.5, sm: 3 } }}>
@@ -182,13 +206,10 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
           <MenuIcon />
         </IconButton>
 
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{ flexGrow: 1, color: "#000" }}
-        >
-          {pageTitle}
-        </Typography>
+        <Box className="dsp-topbar__context">
+          <Typography className="dsp-topbar__crumb">DSP / {user?.role || "Workspace"}</Typography>
+          <Typography className="dsp-topbar__title">{pageTitle}</Typography>
+        </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, sm: 1.25 } }}>
           <selectedLanguage.Flag
@@ -237,6 +258,31 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
           </Menu>
 
           {renderAvatar()}
+          <Menu
+            id="profile-menu"
+            anchorEl={profileAnchorEl}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            open={Boolean(profileAnchorEl)}
+            onClose={handleProfileClose}
+          >
+            <Box className="dsp-profile-menu__header">
+              <Typography className="dsp-profile-menu__name">
+                {user?.firstName || "Your profile"} {user?.lastName || ""}
+              </Typography>
+              <Typography className="dsp-profile-menu__role">
+                {user?.role || "Workspace"}
+              </Typography>
+            </Box>
+            <MenuItem
+              onClick={() => {
+                handleProfileClose();
+                navigate(isStudent ? "/student-dashboard/settings" : "/teacher-dashboard/settings");
+              }}
+            >
+              Profile settings
+            </MenuItem>
+          </Menu>
         </Box>
       </Toolbar>
     </AppBar>

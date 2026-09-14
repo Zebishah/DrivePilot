@@ -114,6 +114,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           handleDrawerToggle={handleDrawerToggle}
           menuItems={menuItems}
           userName={user?.firstName}
+          roleLabel="Admin"
           onLogout={handleLogout}
         />
         <Box

@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Box,
   Button,
   Dialog,
@@ -19,7 +20,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import type { MouseEvent } from "react";
 import type { IconType } from "react-icons/lib";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -38,7 +40,8 @@ interface SidebarProps {
   handleDrawerToggle: () => void;
   menuItems: MenuItem[];
   userName?: string;
-  roleLabel?: "Student" | "Instructor";
+  userAvatar?: string;
+  roleLabel?: "Student" | "Instructor" | "Admin";
   onLogout?: () => void;
 }
 
@@ -50,6 +53,7 @@ export default function Sidebar({
   handleDrawerToggle,
   menuItems,
   userName = "John",
+  userAvatar,
   roleLabel = "Student",
   onLogout,
 }: SidebarProps) {
@@ -72,7 +76,7 @@ export default function Sidebar({
     }),
   };
 
-  const handleLogoutClick = (e: React.MouseEvent) => {
+  const handleLogoutClick = (e: MouseEvent) => {
     e.preventDefault();
     setLogoutDialogOpen(true);
   };
@@ -88,24 +92,32 @@ export default function Sidebar({
     setLogoutDialogOpen(false);
   };
 
+  const initials = userName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const groupLabels: Record<number, string> = roleLabel === "Student"
+    ? { 0: "Workspace", 5: "Account" }
+    : roleLabel === "Instructor"
+      ? { 0: "Workspace", 4: "Manage" }
+      : { 0: "Workspace" };
+
   const drawer = (
     <Box className="dsp-sidebar__content" sx={{ p: 2.25, minHeight: "100%" }}>
       <Box
-        sx={{
-          mb: 1.5,
-          display: "flex",
-          justifyContent: "flex-start",
-          width: "fit-content",
-          px: 1,
-          py: 0.75,
-          borderRadius: 2.5,
-          backgroundColor: "#F7F4EF",
-          cursor: "pointer",
-        }}
+        className="dsp-sidebar__brand"
         onClick={handleDrawerToggle}
         component={motion.div}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close navigation"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") handleDrawerToggle();
+        }}
       >
         <img
           src="/Website-new-logo.png"
@@ -115,9 +127,17 @@ export default function Sidebar({
       </Box>
 
       <Box className="dsp-sidebar__identity">
+        <Box className="dsp-sidebar__profile">
+          <Avatar src={userAvatar || undefined} alt="" className="dsp-sidebar__avatar">
+            {initials}
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography className="dsp-sidebar__greeting">{userName}</Typography>
+            <span className="dsp-sidebar__role-badge">{roleLabel}</span>
+          </Box>
+        </Box>
         <Typography className="dsp-sidebar__eyebrow">DSP Marketplace</Typography>
-        <Typography className="dsp-sidebar__greeting">Welcome, {userName}</Typography>
-        <Typography className="dsp-sidebar__role">{roleLabel} workspace</Typography>
+        <Typography className="dsp-sidebar__role">Your {roleLabel.toLowerCase()} workspace</Typography>
       </Box>
 
       <List className="dsp-sidebar__nav">
@@ -125,16 +145,23 @@ export default function Sidebar({
           const isLogout = item.text.toLowerCase() === "logout";
           const isActive = router.pathname.startsWith(item.path);
           const Icon = item.icon;
+          const hasBadge = (item.badge && item.badge > 0) ||
+            (item.text === "Messages" && unreadMessages > 0);
 
           return (
-            <MotionListItem
-              key={item.text}
-              disablePadding
-              custom={index}
-              initial="hidden"
-              animate="visible"
-              variants={listItemVariants}
-            >
+            <Fragment key={item.text}>
+              {groupLabels[index] && (
+                <Typography component="li" className="dsp-sidebar__group-label">
+                  {groupLabels[index]}
+                </Typography>
+              )}
+              <MotionListItem
+                disablePadding
+                custom={index}
+                initial="hidden"
+                animate="visible"
+                variants={listItemVariants}
+              >
               {isLogout ? (
                 <ListItemButton
                   component={motion.div}
@@ -145,15 +172,15 @@ export default function Sidebar({
                     borderRadius: 2,
                     mb: 0.5,
                     minHeight: 44,
-                    backgroundColor: isActive ? "rgba(242, 139, 109, 0.16)" : "transparent",
-                    borderLeft: isActive ? "3px solid #F28B6D" : "3px solid transparent",
+                    backgroundColor: isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
+                    borderLeft: isActive ? "3px solid #FF5A36" : "3px solid transparent",
                     "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.06)" },
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
                     <Icon
                       size={20}
-                      color={isActive ? "#F28B6D" : "#AEB7C7"}
+                      color={isActive ? "#FF8A70" : "#AEB4C0"}
                     />
                   </ListItemIcon>
                   <ListItemText
@@ -179,10 +206,10 @@ export default function Sidebar({
                       borderRadius: 2,
                       mb: 0.5,
                       minHeight: 44,
-                      backgroundColor: isActive ? "rgba(242, 139, 109, 0.16)" : "transparent",
+                      backgroundColor: isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
                       borderLeft: isActive ? "3px solid" : "3px solid transparent",
-                      borderColor: isActive ? "#F28B6D" : "transparent",
-                      "&:hover": { backgroundColor: isActive ? "rgba(242, 139, 109, 0.22)" : "rgba(255, 255, 255, 0.06)" },
+                      borderColor: isActive ? "#FF5A36" : "transparent",
+                      "&:hover": { backgroundColor: isActive ? "rgba(255, 90, 54, 0.22)" : "rgba(255, 255, 255, 0.06)" },
                       position: "relative",
                     }}
                     onClick={() => {
@@ -195,7 +222,7 @@ export default function Sidebar({
                     <ListItemIcon sx={{ minWidth: 40 }}>
                       <Icon
                         size={20}
-                        color={isActive ? "#F28B6D" : "#AEB7C7"}
+                        color={isActive ? "#FF8A70" : "#AEB4C0"}
                       />
                     </ListItemIcon>
                     <ListItemText
@@ -205,15 +232,14 @@ export default function Sidebar({
                         fontWeight: isActive ? 600 : 500,
                       }}
                     />
-                    {((item.badge && item.badge > 0) ||
-                      (item.text === "Messages" && unreadMessages > 0)) && (
+                    {hasBadge && (
                       <Box
                         sx={{
                           position: "absolute",
                           right: 10,
                           top: "50%",
                           transform: "translateY(-50%)",
-                          bgcolor: "#F28B6D",
+                          bgcolor: "#FF5A36",
                           color: "white",
                           borderRadius: "50%",
                           minWidth: 18,
@@ -228,11 +254,12 @@ export default function Sidebar({
                       >
                         {item.badge ? item.badge : unreadMessages}
                       </Box>
-                    )}
+                      )}
                   </ListItemButton>
                 </Link>
               )}
-            </MotionListItem>
+              </MotionListItem>
+            </Fragment>
           );
         })}
       </List>
@@ -284,7 +311,7 @@ export default function Sidebar({
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              background: "#171923",
+              background: "#111216",
               color: "#FFFFFF",
               borderRight: "1px solid rgba(255, 255, 255, 0.08)",
             },
@@ -300,7 +327,7 @@ export default function Sidebar({
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              background: "#171923",
+              background: "#111216",
               color: "#FFFFFF",
               borderRight: "1px solid rgba(255, 255, 255, 0.08)",
             },

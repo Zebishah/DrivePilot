@@ -290,6 +290,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       handleDrawerToggle={handleDrawerToggle}
       menuItems={menuItems}
       userName={user?.firstName}
+      userAvatar={user?.profileImage}
       roleLabel="Student"
       onLogout={handleLogout}
     >

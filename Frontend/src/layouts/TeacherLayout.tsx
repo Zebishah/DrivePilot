@@ -295,6 +295,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       handleDrawerToggle={handleDrawerToggle}
       menuItems={menuItems}
       userName={user?.firstName}
+      userAvatar={user?.profileImage}
       roleLabel="Instructor"
       onLogout={handleLogout}
       topContent={

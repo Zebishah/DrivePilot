@@ -10,6 +10,7 @@ interface DashboardShellProps {
   handleDrawerToggle: () => void;
   menuItems: MenuItem[];
   userName?: string;
+  userAvatar?: string;
   roleLabel: "Student" | "Instructor";
   onLogout?: () => void;
   topContent?: React.ReactNode;
@@ -23,6 +24,7 @@ export default function DashboardShell({
   handleDrawerToggle,
   menuItems,
   userName,
+  userAvatar,
   roleLabel,
   onLogout,
   topContent,
@@ -37,6 +39,7 @@ export default function DashboardShell({
           handleDrawerToggle={handleDrawerToggle}
           menuItems={menuItems}
           userName={userName}
+          userAvatar={userAvatar}
           roleLabel={roleLabel}
           onLogout={onLogout}
         />
