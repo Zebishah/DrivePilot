@@ -102,8 +102,8 @@ export default function StudentOverview() {
     <div className="dsp-overview-page">
       <PageHero
         eyebrow="Student workspace"
-        title={`Good to see you, ${user?.firstName || "there"}.`}
-        description="Keep your next lesson in sight, follow your progress, and stay ready for the road ahead."
+        title="Your next lesson starts here."
+        description={`Keep your schedule, progress, and payments organized in one place${user?.firstName ? `, ${user.firstName}` : ""}.`}
         icon={BookOpen}
         accent="coral"
         visual={

@@ -31,12 +31,14 @@ export default function PageHero({
         {description && <Typography className="dsp-page-hero__description">{description}</Typography>}
       </Box>
       <Box className="dsp-page-hero__aside">
-        {Icon && (
-          <Box className="dsp-page-hero__icon" aria-hidden="true">
-            <Icon size={24} />
-          </Box>
-        )}
-        {visual}
+        <Box className="dsp-page-hero__context">
+          {Icon && (
+            <Box className="dsp-page-hero__icon" aria-hidden="true">
+              <Icon size={20} />
+            </Box>
+          )}
+          {visual}
+        </Box>
         {action}
       </Box>
     </Box>
