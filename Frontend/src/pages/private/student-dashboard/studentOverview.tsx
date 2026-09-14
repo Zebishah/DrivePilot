@@ -1,462 +1,210 @@
-import { useState } from "react";
-import { BookOpen, User, Calendar, Eye, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, BookOpen, CalendarDays, CreditCard, MessageCircle, Search, Settings2, UsersRound } from "lucide-react";
 import { useQuery } from "@apollo/client";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
 import { Feedback, SlotLesson } from "../../../types/StudentDashboard";
 import {
   GET_STUDENT_DASHBOARD_STATS,
   GET_STUDENT_FEEDBACKS,
   GET_STUDENT_LESSONS,
 } from "../../../graphql/Queries/StudentDashboard";
-import { LoadingCard } from "../../../components/StudentComponents/StudentDashboard/LoadingCard";
-import { CircularProgress } from "../../../components/StudentComponents/StudentDashboard/CircularProgressDashboard";
+import { GET_STUDENT_TRANSACTION_STATS } from "../../../graphql/Queries/transactionQueries";
 import { FeedbackModal } from "../../../components/StudentComponents/StudentDashboard/FeedBackModal";
-import { useAuth } from "../../../context/AuthContext";
-import { Link, useNavigate } from "react-router-dom";
+import PageHero from "../../../components/dashboard/PageHero";
+import { ErrorState, LoadingState } from "../../../components/dashboard/DashboardStates";
+import {
+  ActivityItem,
+  DashboardStatCard,
+  NextLessonCard,
+  OverviewEmpty,
+  OverviewSection,
+  QuickActionCard,
+} from "../../../components/dashboard/OverviewWidgets";
+import { formatCHF } from "../../../utils/money";
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf())
+    ? value
+    : new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(date);
+}
+
+function formatFeedbackDate(value: string) {
+  const numericValue = Number(value);
+  const date = Number.isFinite(numericValue) && numericValue > 0
+    ? new Date(numericValue)
+    : new Date(value);
+  return Number.isNaN(date.valueOf()) ? "Recently" : formatDate(date.toISOString());
+}
+
+function formatTime(value?: string) {
+  if (!value) return "Time to be confirmed";
+  const [hours, minutes] = value.split(":");
+  const date = new Date();
+  date.setHours(Number(hours), Number(minutes || 0), 0, 0);
+  return Number.isNaN(date.valueOf())
+    ? value
+    : new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "2-digit" }).format(date);
+}
+
+function lessonTimestamp(lesson: SlotLesson) {
+  return `${lesson.date}T${lesson.startTime || "00:00"}`;
+}
 
 export default function StudentOverview() {
-  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
-    null,
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-
   const studentId = user?.id || "";
-  // GraphQL Queries
-  const {
-    data: statsData,
-    loading: statsLoading,
-    error: statsError,
-  } = useQuery(GET_STUDENT_DASHBOARD_STATS, {
-    variables: { studentId },
-    skip: !studentId, // 🚫 skip if no student ID
-    fetchPolicy: "network-only", // 🚨 always fetch fresh on mount
-  });
 
-  const {
-    data: lessonsData,
-    loading: lessonsLoading,
-    error: lessonsError,
-  } = useQuery(GET_STUDENT_LESSONS, {
+  const { data: statsData, loading: statsLoading, error: statsError } = useQuery(GET_STUDENT_DASHBOARD_STATS, {
     variables: { studentId },
     skip: !studentId,
     fetchPolicy: "network-only",
   });
-
-  const {
-    data: feedbacksData,
-    loading: feedbacksLoading,
-    error: feedbacksError,
-  } = useQuery(GET_STUDENT_FEEDBACKS, {
+  const { data: lessonsData, loading: lessonsLoading, error: lessonsError } = useQuery(GET_STUDENT_LESSONS, {
     variables: { studentId },
     skip: !studentId,
     fetchPolicy: "network-only",
   });
+  const { data: feedbacksData, loading: feedbacksLoading, error: feedbacksError } = useQuery(GET_STUDENT_FEEDBACKS, {
+    variables: { studentId },
+    skip: !studentId,
+    fetchPolicy: "network-only",
+  });
+  const { data: transactionData } = useQuery(GET_STUDENT_TRANSACTION_STATS, {
+    skip: !studentId,
+    fetchPolicy: "network-only",
+  });
 
-  // Helper function to check if lesson is this week
-  const isThisWeek = (lessonDate: string): boolean => {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 7);
+  const stats = statsData?.getStudentDashboardStats;
+  const lessonRecords = lessonsData?.getStudentLesson;
+  const lessons = useMemo(() => (lessonRecords || []) as SlotLesson[], [lessonRecords]);
+  const feedbacks = (feedbacksData?.getStudentFeedbacks || []) as Feedback[];
+  const upcomingLessons = useMemo(
+    () => lessons.filter((lesson) => !lesson.isCompleted).sort((a, b) => lessonTimestamp(a).localeCompare(lessonTimestamp(b))),
+    [lessons],
+  );
+  const nextLesson = upcomingLessons[0];
+  const recentLessons = lessons
+    .slice()
+    .sort((a, b) => lessonTimestamp(b).localeCompare(lessonTimestamp(a)))
+    .slice(0, 4);
+  const totalSpent = transactionData?.getStudentTransactionStats?.totalSpent;
+  const remainingHours = stats?.remainingHours ?? "0";
 
-    const date = new Date(lessonDate);
-    return date >= startOfWeek && date < endOfWeek;
-  };
-
-  // Filter lessons for this week
-  const thisWeeksLessons =
-    lessonsData?.getStudentLesson?.filter((lesson: SlotLesson) =>
-      isThisWeek(lesson.date),
-    ) || [];
-
-  // Get all lessons (you can limit this as needed)
-  const allLessons = lessonsData?.getStudentLesson || [];
-
-  // Get feedbacks
-  const feedbacks = feedbacksData?.getStudentFeedbacks || [];
-
-  // Handle feedback modal
-  const handleFeedbackClick = (feedback: Feedback) => {
-    setSelectedFeedback(feedback);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedFeedback(null);
-  };
-
-  // Circular progress: remaining hours as % of scale (max 50hrs = 100% fill)
-  const getRemainingHoursPercentage = () => {
-    const raw = statsData?.getStudentDashboardStats?.remainingHours;
-    if (raw == null || raw === "") return 0;
-    const remaining = parseFloat(String(raw)) || 0;
-    const maxHours = 50; // 40hrs = 80%, 50hrs = 100%
-    return Math.min(100, (remaining / maxHours) * 100);
-  };
-
-  // Block only when main dashboard stats fail; lessons/feedbacks show inline errors
   if (statsError) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline">
-            {" "}
-            Failed to load dashboard data. Please try again.
-          </span>
-        </div>
-      </div>
-    );
+    return <ErrorState title="Your learning dashboard is unavailable" description="We couldn’t load your latest learning summary. Please try again shortly." />;
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {statsLoading ? (
-          <>
-            <LoadingCard />
-            <LoadingCard />
-            <LoadingCard />
-            <LoadingCard />
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/student-dashboard/book", {
-                  state: { tab: "history" },
-                })
-              }
-              className="bg-red-200 rounded-lg p-6 flex flex-col justify-center items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400 transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-center justify-center bg-white rounded-full mb-2 p-4">
-                <BookOpen className="w-6 h-6 text-red-500" />
-              </div>
-              <div className="flex items-center gap-1 mb-1">
-                <h3 className="text-sm font-medium text-gray-700">
-                  Total Lessons
-                </h3>
-                <span className="relative group inline-flex">
-                  <Info className="w-4 h-4 text-gray-600" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
-                    This is the total number of driving lessons you&apos;ve
-                    already completed with your instructors.
-                  </span>
-                </span>
-              </div>
-              <p className="text-3xl font-bold text-gray-900">
-                {statsData?.getStudentDashboardStats?.totalLessons || 0}
-              </p>
-            </button>
+    <div className="dsp-overview-page">
+      <PageHero
+        eyebrow="Student workspace"
+        title={`Good to see you, ${user?.firstName || "there"}.`}
+        description="Keep your next lesson in sight, follow your progress, and stay ready for the road ahead."
+        icon={BookOpen}
+        accent="coral"
+        action={<Link to="/student-dashboard/search" className="dsp-overview__hero-action">Find an instructor<ArrowRight size={16} /></Link>}
+      />
 
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/student-dashboard/book", {
-                  state: { tab: "upcoming" },
-                })
-              }
-              className="bg-purple-200 rounded-lg px-6 flex flex-col justify-center items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-center justify-center p-4 bg-white rounded-full mb-2">
-                <Calendar className="w-6 h-6 text-purple-500" />
-              </div>
-              <div className="flex items-center gap-1 mb-1">
-                <h3 className="text-sm font-medium text-gray-700">
-                  Upcoming Bookings
-                </h3>
-                <span className="relative group inline-flex">
-                  <Info className="w-4 h-4 text-gray-600" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
-                    This shows how many upcoming lessons you&apos;ve scheduled.
-                  </span>
-                </span>
-              </div>
-              <p className="text-3xl font-bold text-gray-900">
-                {statsData?.getStudentDashboardStats?.currentBookings || 0}
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/student-dashboard/Feedback")}
-              className="bg-yellow-200 rounded-lg p-6 flex flex-col justify-center items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition-shadow hover:shadow-md"
-            >
-              <div className="flex items-center justify-center p-4 bg-white rounded-full mb-2">
-                <User className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="flex items-center gap-1 mb-1">
-                <h3 className="text-sm font-medium text-gray-700">
-                  Total Instructors
-                </h3>
-                <span className="relative group inline-flex">
-                  <Info className="w-4 h-4 text-gray-600" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
-                    This is the total number of different instructors you&apos;ve
-                    learned with.
-                  </span>
-                </span>
-              </div>
-              <p className="text-3xl font-bold text-gray-900">
-                {statsData?.getStudentDashboardStats?.totalInstructors || 0}
-              </p>
-            </button>
-
-            <div className="bg-cyan-200 rounded-lg p-6 flex flex-col justify-between items-center">
-              <div className="flex items-center gap-1 mb-1">
-                <h3 className="text-sm font-medium text-gray-700">
-                  Remaining Hours
-                </h3>
-                <span className="relative group inline-flex">
-                  <Info className="w-4 h-4 text-gray-600" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-normal rounded-md bg-gray-900 px-4 py-2 text-xs leading-relaxed text-white shadow-lg max-w-sm w-56 text-left z-10">
-                    This estimate was provided by your most recent instructor
-                    based on your current progress.
-                  </span>
-                </span>
-              </div>
-              <CircularProgress
-                value={getRemainingHoursPercentage()}
-                text={`${statsData?.getStudentDashboardStats?.remainingHours || 0}hrs`}
-              />
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* This Week's Lessons */}
-        <div className="lg:col-span-2">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900">
-              This Week's Lessons
-            </h2>
-            <Link
-              to={"/student-dashboard/search"}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              Find Instructor
-            </Link>
-          </div>
-
-          {lessonsError ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm">
-              Could not load lessons. You can try again later.
-            </div>
-          ) : lessonsLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="bg-gray-200 rounded-lg p-4 h-16 animate-pulse"
-                ></div>
-              ))}
-            </div>
+      <main className="dsp-overview-page__content">
+        <div className="dsp-overview__stats-grid" aria-label="Learning summary">
+          {statsLoading ? (
+            <LoadingState label="Loading your learning summary…" />
           ) : (
-            <div className="space-y-3">
-              {thisWeeksLessons.length > 0 ? (
-                thisWeeksLessons.map((lesson: SlotLesson, index: number) => (
-                  <div
-                    key={lesson.lessonId}
-                    className="bg-cyan-50 rounded-lg p-4 flex justify-between items-center"
-                  >
-                    <div className="flex items-center justify-between w-[60%]">
-                      <div className="flex items-center space-x-3">
-                        <BookOpen className="w-5 h-5 text-cyan-600" />
-                        <span className="font-medium text-gray-900">
-                          Lesson {index + 1}
-                        </span>
-                      </div>
-
-                      <span className="text-sm text-gray-600">
-                        with {lesson.instructorName}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {new Date(lesson.date).toLocaleDateString()}{" "}
-                      </span>
-                    </div>
-                    <span
-                      className={`text-sm font-medium ${
-                        lesson.isCompleted
-                          ? "text-green-600"
-                          : "text-yellow-600"
-                      }`}
-                    >
-                      {lesson.isCompleted ? "Completed" : "Upcoming"}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                  <p className="text-gray-500">
-                    No lessons scheduled for this week
-                  </p>
-                </div>
-              )}
-            </div>
+            <>
+              <DashboardStatCard label="Upcoming lessons" value={stats?.currentBookings ?? 0} helper="Scheduled ahead" icon={CalendarDays} tone="coral" onClick={() => navigate("/student-dashboard/book", { state: { tab: "upcoming" } })} />
+              <DashboardStatCard label="Completed lessons" value={stats?.totalLessons ?? 0} helper="Lessons completed" icon={BookOpen} tone="green" onClick={() => navigate("/student-dashboard/book", { state: { tab: "history" } })} />
+              <DashboardStatCard label="Instructors" value={stats?.totalInstructors ?? 0} helper="People you’ve learned with" icon={UsersRound} tone="amber" onClick={() => navigate("/student-dashboard/Feedback")} />
+              <DashboardStatCard label="Hours remaining" value={`${remainingHours} hrs`} helper="Latest instructor estimate" icon={ArrowRight} tone="navy" />
+              {totalSpent !== undefined && <DashboardStatCard label="Total spent" value={formatCHF(totalSpent)} helper="Recorded payments" icon={CreditCard} tone="coral" onClick={() => navigate("/student-dashboard/payment-history")} />}
+            </>
           )}
+        </div>
 
-          {/* All Lessons */}
-          <div className="mt-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              All Lessons
-            </h2>
+        <div className="dsp-overview__primary-grid">
+          <OverviewSection title="Next lesson" description="Your closest scheduled driving session.">
             {lessonsError ? (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm">
-                Could not load lessons.
-              </div>
+              <div className="dsp-overview__inline-error">Lessons could not be loaded right now.</div>
             ) : lessonsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="bg-gray-200 rounded-lg p-4 h-16 animate-pulse"
-                  ></div>
+              <LoadingState label="Finding your next lesson…" />
+            ) : nextLesson ? (
+              <NextLessonCard
+                personLabel="Instructor"
+                personName={nextLesson.instructorName || "Instructor"}
+                date={formatDate(nextLesson.date)}
+                time={`Switzerland ${formatTime(nextLesson.startTime)}–${formatTime(nextLesson.endTime)}`}
+                duration="Lesson time is shown in Switzerland time"
+                status={nextLesson.slotStatus || "Upcoming"}
+                statusTone="info"
+                actionTo="/student-dashboard/book"
+                actionLabel="View lessons"
+              />
+            ) : (
+              <OverviewEmpty title="Your next lesson starts here" description="Find an instructor and book your first lesson when you’re ready." to="/student-dashboard/search" actionLabel="Find an instructor" />
+            )}
+          </OverviewSection>
+
+          <OverviewSection title="Learning progress" description="A clear view of the information your instructors have recorded.">
+            <div className="dsp-overview__progress-card">
+              <div className="dsp-overview__progress-ring" aria-hidden="true"><BookOpen size={24} /></div>
+              <div>
+                <span className="dsp-overview__kicker">Current learning record</span>
+                <strong>{stats?.totalLessons ?? 0} completed lessons</strong>
+                <p>{remainingHours} hours remaining according to your latest progress update.</p>
+              </div>
+            </div>
+            <div className="dsp-overview__progress-footer">
+              <span>Recent lesson status</span>
+              <strong>{recentLessons[0]?.isCompleted ? "Completed" : recentLessons[0] ? "Upcoming" : "No lessons yet"}</strong>
+            </div>
+          </OverviewSection>
+        </div>
+
+        <div className="dsp-overview__secondary-grid">
+          <OverviewSection title="Recent activity" description="The latest lessons and instructor notes on your account.">
+            {lessonsLoading || feedbacksLoading ? (
+              <LoadingState label="Loading recent activity…" />
+            ) : lessonsError && feedbacksError ? (
+              <div className="dsp-overview__inline-error">Recent activity could not be loaded.</div>
+            ) : recentLessons.length || feedbacks.length ? (
+              <div className="dsp-overview__activity-list">
+                {recentLessons.slice(0, 2).map((lesson) => (
+                  <ActivityItem key={lesson.lessonId} title={lesson.isCompleted ? "Lesson completed" : "Lesson scheduled"} detail={`${lesson.instructorName || "Instructor"} · ${formatDate(lesson.date)}`} meta={formatTime(lesson.startTime)} tone={lesson.isCompleted ? "green" : "coral"} />
+                ))}
+                {feedbacks.slice(0, 2).map((feedback) => (
+                  <button type="button" className="dsp-overview__activity-button" key={feedback._id} onClick={() => setSelectedFeedback(feedback)}>
+                    <ActivityItem title="Instructor note added" detail={feedback.message || "Open the latest instructor feedback"} meta={formatFeedbackDate(feedback.createdAt)} tone="amber" />
+                  </button>
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
-                {allLessons.length > 0 ? (
-                  allLessons
-                    .slice(0, 5)
-                    .map((lesson: SlotLesson, index: number) => (
-                      <div
-                        key={`all-${lesson.lessonId}-${index}`}
-                        className="bg-cyan-50 rounded-lg p-4 flex justify-between items-center"
-                      >
-                        <div className="flex items-center justify-between w-[60%]">
-                          <div className="flex items-center space-x-3">
-                            <BookOpen className="w-5 h-5 text-cyan-600" />
-                            <span className="font-medium text-gray-900">
-                              Lesson {index + 1}
-                            </span>
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            with {lesson.instructorName}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            {new Date(lesson.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <span
-                          className={`text-sm font-medium ${
-                            lesson.isCompleted
-                              ? "text-green-600"
-                              : "text-yellow-600"
-                          }`}
-                        >
-                          {lesson.isCompleted ? "Completed" : "Upcoming"}
-                        </span>
-                      </div>
-                    ))
-                ) : (
-                  <div className="bg-gray-100 rounded-lg p-8 text-center">
-                    <p className="text-gray-500">No lessons found</p>
-                  </div>
-                )}
-              </div>
+              <OverviewEmpty title="No activity yet" description="Your lessons and instructor notes will appear here as you use DSP." />
             )}
+            {feedbacksError && <p className="dsp-overview__muted-note">Instructor notes are temporarily unavailable.</p>}
+          </OverviewSection>
+
+          <OverviewSection title="Keep moving" description="Useful shortcuts for your next step.">
+            <div className="dsp-overview__quick-grid">
+              <QuickActionCard to="/student-dashboard/search" label="Find an instructor" description="Explore nearby instructors" icon={Search} tone="coral" />
+              <QuickActionCard to="/student-dashboard/book" label="View bookings" description="Check your lesson schedule" icon={CalendarDays} tone="amber" />
+              <QuickActionCard to="/student-dashboard/chat" label="Open messages" description="Stay in touch with instructors" icon={MessageCircle} tone="navy" />
+              <QuickActionCard to="/student-dashboard/settings" label="Update profile" description="Keep your details current" icon={Settings2} tone="green" />
+            </div>
+          </OverviewSection>
+        </div>
+
+        {!lessonsLoading && !lessons.length && !lessonsError && (
+          <div className="dsp-overview__onboarding-strip">
+            <div><span className="dsp-overview__kicker">Ready when you are</span><h2>Build your driving routine with DSP.</h2><p>Choose an instructor, book a time that works for you, and keep every lesson in one place.</p></div>
+            <Link to="/student-dashboard/search" className="dsp-overview__action-link">Start exploring<ArrowRight size={16} /></Link>
           </div>
-        </div>
+        )}
+      </main>
 
-        {/* Notes From Instructors */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
-            Notes From Instructors
-          </h2>
-          {feedbacksError ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm">
-              Could not load feedbacks. You can try again later.
-            </div>
-          ) : feedbacksLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="bg-gray-200 rounded-lg p-4 h-20 animate-pulse"
-                ></div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {feedbacks.length > 0 ? (
-                feedbacks.map((feedback: Feedback, index: number) => (
-                  <div
-                    key={feedback._id}
-                    className="bg-white rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => handleFeedbackClick(feedback)}
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <svg
-                            className="w-4 h-4 text-blue-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M7 8h10m0 0V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2m0 0v8a2 2 0 002 2h8a2 2 0 002-2V8m-9 4h4"
-                            />
-                          </svg>
-                        </div>
-                        <h3 className="font-medium text-gray-900">
-                          Lesson{index + 1} ({feedback.hoursRemaining} hrs)
-                        </h3>
-                      </div>
-                      <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-600 ml-11 -mt-1">
-                      {new Date(Number(feedback.createdAt)).toLocaleDateString(
-                        "en-US",
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        },
-                      )}{" "}
-                      {new Date(Number(feedback.createdAt)).toLocaleTimeString(
-                        "en-US",
-                        {
-                          hour: "numeric",
-                          minute: "2-digit",
-                          hour12: true,
-                        },
-                      )}
-                    </p>
-                    {/* <p className="text-xs text-gray-500 mt-1 truncate"> 
-          {feedback.message} 
-        </p> */}
-                  </div>
-                ))
-              ) : (
-                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                  <p className="text-gray-500">No feedback available</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Feedback Modal */}
-      {selectedFeedback && (
-        <FeedbackModal
-          feedback={selectedFeedback}
-          isOpen={isModalOpen}
-          onClose={closeModal}
-        />
-      )}
+      {selectedFeedback && <FeedbackModal feedback={selectedFeedback} isOpen={Boolean(selectedFeedback)} onClose={() => setSelectedFeedback(null)} />}
     </div>
   );
 }
