@@ -129,7 +129,20 @@ export const InstructorAnalyticsDashboard = () => {
         description="Stay ahead of your schedule, students, and teaching activity from one focused workspace."
         icon={UsersRound}
         accent="amber"
-        action={<Link to="/teacher-dashboard/bookingManagement" className="dsp-overview__hero-action">Manage bookings<ArrowRight size={16} /></Link>}
+        visual={
+          <div className="dsp-page-hero__visual">
+            <span className="dsp-page-hero__visual-label">Teaching pulse</span>
+            <strong>{nextBooking ? `${nextBooking.studentId?.firstName || "Student"} · next lesson` : "Your schedule is ready"}</strong>
+            <span>{nextBooking?.slots?.[0] ? `${formatDate(nextBooking.slots[0].date)} · ${formatTime(nextBooking.slots[0].startTime)}` : "New bookings will appear here"}</span>
+            <div className="dsp-page-hero__visual-meta"><CalendarDays size={14} /> {analytics?.activeBookings ?? 0} upcoming</div>
+          </div>
+        }
+        action={
+          <div className="dsp-page-hero__actions">
+            <Link to="/teacher-dashboard/bookingManagement" className="dsp-overview__hero-action">Manage bookings<ArrowRight size={16} /></Link>
+            <Link to="/teacher-dashboard/my-students" className="dsp-overview__hero-action dsp-overview__hero-action--quiet">View students</Link>
+          </div>
+        }
       />
 
       <main className="dsp-overview-page__content">
@@ -182,7 +195,7 @@ export const InstructorAnalyticsDashboard = () => {
                 {recentBookings.slice(0, 5).map((booking) => {
                   const slot = booking.slots?.[0];
                   const studentName = `${booking.studentId?.firstName || "Student"} ${booking.studentId?.lastName || ""}`.trim();
-                  return slot ? <ActivityItem key={booking._id} title={studentName} detail={`${formatDate(slot.date)} · Switzerland ${formatTime(slot.startTime)}`} meta={slot.status || booking.status || "Booked"} tone={isUpcomingBooking(booking) ? "coral" : "green"} /> : null;
+                  return slot ? <ActivityItem key={booking._id} title={studentName} detail={`${formatDate(slot.date)} · Switzerland ${formatTime(slot.startTime)}`} meta={formatDate(slot.date)} status={slot.status || booking.status || "Booked"} avatar={booking.studentId?.profileImage} tone={isUpcomingBooking(booking) ? "coral" : "green"} /> : null;
                 })}
               </div>
             ) : (

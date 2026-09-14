@@ -106,7 +106,20 @@ export default function StudentOverview() {
         description="Keep your next lesson in sight, follow your progress, and stay ready for the road ahead."
         icon={BookOpen}
         accent="coral"
-        action={<Link to="/student-dashboard/search" className="dsp-overview__hero-action">Find an instructor<ArrowRight size={16} /></Link>}
+        visual={
+          <div className="dsp-page-hero__visual">
+            <span className="dsp-page-hero__visual-label">Next on your road</span>
+            <strong>{nextLesson ? nextLesson.instructorName || "Driving lesson" : "Your next lesson"}</strong>
+            <span>{nextLesson ? `${formatDate(nextLesson.date)} · ${formatTime(nextLesson.startTime)}` : "Choose an instructor to get started"}</span>
+            <div className="dsp-page-hero__visual-meta"><CalendarDays size={14} /> {stats?.currentBookings ?? 0} upcoming</div>
+          </div>
+        }
+        action={
+          <div className="dsp-page-hero__actions">
+            <Link to="/student-dashboard/search" className="dsp-overview__hero-action">Find an instructor<ArrowRight size={16} /></Link>
+            <Link to="/student-dashboard/book" className="dsp-overview__hero-action dsp-overview__hero-action--quiet">View lessons</Link>
+          </div>
+        }
       />
 
       <main className="dsp-overview-page__content">

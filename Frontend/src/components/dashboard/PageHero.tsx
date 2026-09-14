@@ -8,6 +8,7 @@ interface PageHeroProps {
   description?: string;
   icon?: LucideIcon;
   action?: React.ReactNode;
+  visual?: React.ReactNode;
   accent?: "coral" | "amber" | "navy";
 }
 
@@ -17,6 +18,7 @@ export default function PageHero({
   description,
   icon: Icon,
   action,
+  visual,
   accent = "coral",
 }: PageHeroProps) {
   return (
@@ -34,6 +36,7 @@ export default function PageHero({
             <Icon size={24} />
           </Box>
         )}
+        {visual}
         {action}
       </Box>
     </Box>

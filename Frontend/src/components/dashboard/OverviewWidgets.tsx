@@ -38,11 +38,11 @@ export function DashboardStatCard({
   );
 
   return onClick ? (
-    <button type="button" className="dsp-overview__stat dsp-overview__stat--interactive" onClick={onClick}>
+    <button type="button" className={`dsp-overview__stat dsp-overview__stat--${tone} dsp-overview__stat--interactive`} onClick={onClick}>
       {content}
     </button>
   ) : (
-    <div className="dsp-overview__stat">{content}</div>
+    <div className={`dsp-overview__stat dsp-overview__stat--${tone}`}>{content}</div>
   );
 }
 
@@ -60,7 +60,7 @@ export function QuickActionCard({
   tone?: WidgetTone;
 }) {
   return (
-    <Link to={to} className="dsp-overview__quick-action">
+    <Link to={to} className={`dsp-overview__quick-action dsp-overview__quick-action--${tone}`}>
       <span className={`dsp-overview__quick-icon ${toneClass(tone)}`} aria-hidden="true">
         <Icon size={18} />
       </span>
@@ -159,17 +159,33 @@ export function ActivityItem({
   detail,
   meta,
   tone = "navy",
+  avatar,
+  status,
 }: {
   title: string;
   detail: string;
   meta: string;
   tone?: WidgetTone;
+  avatar?: string;
+  status?: string;
 }) {
+  const initials = title
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="dsp-overview__activity-item">
-      <span className={`dsp-overview__activity-dot ${toneClass(tone)}`} aria-hidden="true" />
+      <span className={avatar ? "dsp-overview__activity-avatar" : `dsp-overview__activity-avatar dsp-overview__activity-avatar--${tone}`} aria-hidden={avatar ? undefined : true}>
+        {avatar ? <img src={avatar} alt="" /> : initials}
+      </span>
       <div><strong>{title}</strong><span>{detail}</span></div>
-      <time>{meta}</time>
+      <span className="dsp-overview__activity-meta">
+        {status && <StatusBadge tone={tone === "green" ? "success" : "info"}>{status}</StatusBadge>}
+        <time>{meta}</time>
+      </span>
     </div>
   );
 }
