@@ -10,7 +10,7 @@ const theme = createTheme({
       contrastText: "#FFFFFF",
     },
     secondary: {
-      main: designTokens.color.ink,
+      main: designTokens.color.navy,
       contrastText: "#FFFFFF",
     },
     background: {
@@ -59,8 +59,8 @@ const theme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: {
-          borderRadius: designTokens.radius.sm,
+      root: {
+        borderRadius: designTokens.radius.sm,
           boxShadow: "none",
           "&:hover": {
             boxShadow: "none",
@@ -89,7 +89,7 @@ const theme = createTheme({
             // height: "54px",
           borderRadius: designTokens.radius.sm,
             "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: designTokens.color.primary,
+            borderColor: designTokens.color.primary,
             },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
               borderColor: designTokens.color.primary,
@@ -165,9 +165,9 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           "&.Mui-selected": {
-            backgroundColor: "#E6F7FA",
+            backgroundColor: designTokens.color.primarySoft,
             "&:hover": {
-              backgroundColor: "#D4F2F6",
+              backgroundColor: "#f8d7cd",
             },
           },
         },

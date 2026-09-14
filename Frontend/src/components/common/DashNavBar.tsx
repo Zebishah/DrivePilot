@@ -163,12 +163,15 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
     <AppBar
       position="static"
       elevation={0}
+      className="dsp-dashboard-topbar"
       sx={{
-        borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
-        backgroundColor: "#FFFFFF",
+        borderBottom: "1px solid rgba(22, 27, 39, 0.08)",
+        backgroundColor: "rgba(255, 253, 250, 0.92)",
+        color: "#171923",
+        backdropFilter: "blur(12px)",
       }}
     >
-      <Toolbar>
+      <Toolbar sx={{ minHeight: { xs: 64, sm: 72 }, px: { xs: 1.5, sm: 3 } }}>
         <IconButton
           color="inherit"
           aria-label="open drawer"
@@ -187,12 +190,14 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
           {pageTitle}
         </Typography>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, sm: 1.25 } }}>
           <selectedLanguage.Flag
             title={selectedLanguage.label}
             style={{ width: 24, height: 16 }}
           />
-          <Typography>{selectedLanguage.label}</Typography>
+          <Typography sx={{ display: { xs: "none", md: "block" }, fontSize: "0.82rem", fontWeight: 600, color: "#526071" }}>
+            {selectedLanguage.label}
+          </Typography>
 
           <IconButton
             size="small"

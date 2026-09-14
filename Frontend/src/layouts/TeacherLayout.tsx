@@ -1,7 +1,7 @@
 "use client";
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Box, CssBaseline, Alert } from "@mui/material";
+import { Box, Alert } from "@mui/material";
 import {
   LayoutGrid,
   MessageSquare,
@@ -9,8 +9,7 @@ import {
   HelpCircle,
   LogOut,
 } from "lucide-react";
-import Sidebar, { type MenuItem } from "../components/common/SideBar";
-import Navbar from "../components/common/DashNavBar";
+import type { MenuItem } from "../components/common/SideBar";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -18,7 +17,7 @@ import { FaUserGraduate } from "react-icons/fa6";
 import { useQuery } from "@apollo/client";
 import { GET_ALL_STUDENTS } from "../graphql/Queries/StudentQueries";
 import { GET_TEACHER_PROFILE } from "../graphql/mutations/profile";
-import { ConversationType, MessageType } from "../types/chatTypes";
+import { ConversationType, MessageType, UserType } from "../types/chatTypes";
 import { getSocket, initSocket } from "../utils/socket";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -31,6 +30,7 @@ import { Student } from "../types/Student";
 import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import AssistantPanel from "../features/assistant/components/AssistantPanel";
+import DashboardShell from "../components/dashboard/DashboardShell";
 
 interface TeacherLayoutProps {
   children: React.ReactNode;
@@ -190,10 +190,15 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     socket.on("connect", handleSocketConnect);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    const handleReceiveMessage = (msg: any) => {
+    const handleReceiveMessage = (msg: Partial<MessageType> & {
+      sender?: UserType;
+      receiver?: UserType;
+    }) => {
       if (!msg?.conversationId || !msg?.sender || !msg?.receiver) return;
       const message: MessageType = {
         ...msg,
+        _id: msg._id || `${msg.conversationId}-${Date.now()}`,
+        content: msg.content || "",
         conversationId: msg.conversationId,
         sender: {
           ...msg.sender,
@@ -284,42 +289,27 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   ];
 
   return (
-    <>
-      <CssBaseline />
-      <Box sx={{ display: "flex", minHeight: "100vh" }}>
-        <Sidebar
-          drawerWidth={DRAWER_WIDTH}
-          mobileOpen={mobileOpen}
-          handleDrawerToggle={handleDrawerToggle}
-          menuItems={menuItems}
-          userName={user?.firstName}
-          onLogout={handleLogout}
-        />
-        <Box
-          component="main"
-          sx={{
-            width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-          }}
-        >
-          <Navbar
-            handleDrawerToggle={handleDrawerToggle}
-            menuItems={menuItems}
-          />
-          {user?.role === "Instructor" &&
-            user?.isProfileComplete &&
-            !isPaymentReady && (
-              <Box sx={{ px: 2, pt: 1 }}>
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  Stripe payment setup is not fully completed yet. You won&apos;t
-                  receive student payments until onboarding is finished. Go to
-                  <strong> Settings → Payment Management</strong> to complete it.
-                </Alert>
-              </Box>
-            )}
-          {children}
-          <AssistantPanel pageContext="instructor-dashboard" />
-        </Box>
-      </Box>
-    </>
+    <DashboardShell
+      drawerWidth={DRAWER_WIDTH}
+      mobileOpen={mobileOpen}
+      handleDrawerToggle={handleDrawerToggle}
+      menuItems={menuItems}
+      userName={user?.firstName}
+      roleLabel="Instructor"
+      onLogout={handleLogout}
+      topContent={
+        user?.role === "Instructor" && user?.isProfileComplete && !isPaymentReady ? (
+          <Box sx={{ px: { xs: 1.5, md: 3 }, pt: 1.5 }}>
+            <Alert severity="warning" sx={{ mb: 1.5 }}>
+              Stripe payment setup is not fully completed yet. You won&apos;t receive student payments until onboarding is finished. Go to
+              <strong> Settings → Payment Management</strong> to complete it.
+            </Alert>
+          </Box>
+        ) : null
+      }
+    >
+      {children}
+      <AssistantPanel pageContext="instructor-dashboard" />
+    </DashboardShell>
   );
 }

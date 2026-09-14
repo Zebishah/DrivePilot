@@ -38,6 +38,7 @@ interface SidebarProps {
   handleDrawerToggle: () => void;
   menuItems: MenuItem[];
   userName?: string;
+  roleLabel?: "Student" | "Instructor";
   onLogout?: () => void;
 }
 
@@ -49,6 +50,7 @@ export default function Sidebar({
   handleDrawerToggle,
   menuItems,
   userName = "John",
+  roleLabel = "Student",
   onLogout,
 }: SidebarProps) {
   const theme = useTheme();
@@ -87,12 +89,17 @@ export default function Sidebar({
   };
 
   const drawer = (
-    <Box sx={{ p: 3, bgcolor: "background.paper", minHeight: "100%" }}>
+    <Box className="dsp-sidebar__content" sx={{ p: 2.25, minHeight: "100%" }}>
       <Box
         sx={{
-          mb: 1,
+          mb: 1.5,
           display: "flex",
           justifyContent: "flex-start",
+          width: "fit-content",
+          px: 1,
+          py: 0.75,
+          borderRadius: 2.5,
+          backgroundColor: "#F7F4EF",
           cursor: "pointer",
         }}
         onClick={handleDrawerToggle}
@@ -103,18 +110,17 @@ export default function Sidebar({
         <img
           src="/Website-new-logo.png"
           alt="DSP Logo"
-          style={{ height: 72 }}
+          style={{ height: 58, width: "auto" }}
         />
       </Box>
 
-      <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: "0.12em" }}>
-        DSP Marketplace
-      </Typography>
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: "text.primary" }}>
-        Welcome, {userName}
-      </Typography>
+      <Box className="dsp-sidebar__identity">
+        <Typography className="dsp-sidebar__eyebrow">DSP Marketplace</Typography>
+        <Typography className="dsp-sidebar__greeting">Welcome, {userName}</Typography>
+        <Typography className="dsp-sidebar__role">{roleLabel} workspace</Typography>
+      </Box>
 
-      <List>
+      <List className="dsp-sidebar__nav">
         {menuItems.map((item, index) => {
           const isLogout = item.text.toLowerCase() === "logout";
           const isActive = router.pathname.startsWith(item.path);
@@ -136,30 +142,23 @@ export default function Sidebar({
                   whileTap={{ scale: 0.98 }}
                   onClick={handleLogoutClick}
                   sx={{
-                    borderRadius: 1,
+                    borderRadius: 2,
                     mb: 0.5,
-                    backgroundColor: isActive
-                      ? "rgba(0, 0, 0, 0.08)"
-                      : "transparent",
-                    "&:hover": {
-                      backgroundColor: isActive
-                        ? "rgba(0, 0, 0, 0.12)"
-                        : "rgba(0, 0, 0, 0.04)",
-                    },
+                    minHeight: 44,
+                    backgroundColor: isActive ? "rgba(242, 139, 109, 0.16)" : "transparent",
+                    borderLeft: isActive ? "3px solid #F28B6D" : "3px solid transparent",
+                    "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.06)" },
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
                     <Icon
                       size={20}
-                      color={isActive ? theme.palette.primary.main : undefined}
+                      color={isActive ? "#F28B6D" : "#AEB7C7"}
                     />
                   </ListItemIcon>
                   <ListItemText
                     primary={item.text}
-                    sx={{
-                      color: isActive ? theme.palette.primary.main : undefined,
-                      fontWeight: isActive ? 500 : 400,
-                    }}
+                    sx={{ color: isActive ? "#FFFFFF" : "#C7CEDA", fontWeight: isActive ? 600 : 500 }}
                   />
                 </ListItemButton>
               ) : (
@@ -179,16 +178,11 @@ export default function Sidebar({
                     sx={{
                       borderRadius: 2,
                       mb: 0.5,
-                      backgroundColor: isActive
-                        ? "primary.light"
-                        : "transparent",
+                      minHeight: 44,
+                      backgroundColor: isActive ? "rgba(242, 139, 109, 0.16)" : "transparent",
                       borderLeft: isActive ? "3px solid" : "3px solid transparent",
-                      borderColor: isActive ? "primary.main" : "transparent",
-                      "&:hover": {
-                        backgroundColor: isActive
-                          ? "primary.light"
-                          : "grey.50",
-                      },
+                      borderColor: isActive ? "#F28B6D" : "transparent",
+                      "&:hover": { backgroundColor: isActive ? "rgba(242, 139, 109, 0.22)" : "rgba(255, 255, 255, 0.06)" },
                       position: "relative",
                     }}
                     onClick={() => {
@@ -201,18 +195,14 @@ export default function Sidebar({
                     <ListItemIcon sx={{ minWidth: 40 }}>
                       <Icon
                         size={20}
-                        color={
-                          isActive ? theme.palette.primary.main : undefined
-                        }
+                        color={isActive ? "#F28B6D" : "#AEB7C7"}
                       />
                     </ListItemIcon>
                     <ListItemText
                       primary={item.text}
                       sx={{
-                        color: isActive
-                          ? theme.palette.primary.main
-                          : undefined,
-                        fontWeight: isActive ? 500 : 400,
+                        color: isActive ? "#FFFFFF" : "#C7CEDA",
+                        fontWeight: isActive ? 600 : 500,
                       }}
                     />
                     {((item.badge && item.badge > 0) ||
@@ -223,7 +213,7 @@ export default function Sidebar({
                           right: 10,
                           top: "50%",
                           transform: "translateY(-50%)",
-                          bgcolor: "red",
+                          bgcolor: "#F28B6D",
                           color: "white",
                           borderRadius: "50%",
                           minWidth: 18,
@@ -294,6 +284,9 @@ export default function Sidebar({
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
+              background: "#171923",
+              color: "#FFFFFF",
+              borderRight: "1px solid rgba(255, 255, 255, 0.08)",
             },
           }}
         >
@@ -307,7 +300,9 @@ export default function Sidebar({
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              borderRight: "1px solid rgba(0, 0, 0, 0.12)",
+              background: "#171923",
+              color: "#FFFFFF",
+              borderRight: "1px solid rgba(255, 255, 255, 0.08)",
             },
           }}
           open

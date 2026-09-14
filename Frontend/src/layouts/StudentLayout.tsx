@@ -1,9 +1,7 @@
 "use client";
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Box, CssBaseline } from "@mui/material";
-import Sidebar, { type MenuItem } from "../components/common/SideBar";
-import Navbar from "../components/common/DashNavBar";
+import type { MenuItem } from "../components/common/SideBar";
 import {
   LayoutGrid,
   Search,
@@ -20,7 +18,7 @@ import toast from "react-hot-toast";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_BOOKINGS } from "../graphql/Queries/StudentQueries";
 import { StudentBooking } from "../types/Bookings";
-import { ConversationType, MessageType } from "../types/chatTypes";
+import { ConversationType, MessageType, UserType } from "../types/chatTypes";
 import { getSocket, initSocket } from "../utils/socket";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -33,6 +31,7 @@ import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
 import { MdOutlineFeedback } from "react-icons/md";
 import AssistantPanel from "../features/assistant/components/AssistantPanel";
+import DashboardShell from "../components/dashboard/DashboardShell";
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -94,7 +93,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     }
     const uniqueInstructorMap = new Map<string, ConversationType>();
     data.getStudentBookings.forEach(
-      (booking: StudentBooking, index: number) => {
+      (booking: StudentBooking) => {
         const instructor = booking.instructorId;
         if (!instructor?._id) {
           return;
@@ -183,10 +182,15 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     socket.on("connect", handleSocketConnect);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    const handleReceiveMessage = (msg: any) => {
+    const handleReceiveMessage = (msg: Partial<MessageType> & {
+      sender?: UserType;
+      receiver?: UserType;
+    }) => {
       if (!msg?.conversationId || !msg?.sender || !msg?.receiver) return;
       const message: MessageType = {
         ...msg,
+        _id: msg._id || `${msg.conversationId}-${Date.now()}`,
+        content: msg.content || "",
         conversationId: msg.conversationId,
         sender: {
           ...msg.sender,
@@ -280,31 +284,17 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   ];
 
   return (
-    <>
-      <CssBaseline />
-      <Box sx={{ display: "flex", minHeight: "100vh" }}>
-        <Sidebar
-          drawerWidth={DRAWER_WIDTH}
-          mobileOpen={mobileOpen}
-          handleDrawerToggle={handleDrawerToggle}
-          menuItems={menuItems}
-          userName={user?.firstName}
-          onLogout={handleLogout}
-        />
-        <Box
-          component="main"
-          sx={{
-            width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-          }}
-        >
-          <Navbar
-            handleDrawerToggle={handleDrawerToggle}
-            menuItems={menuItems}
-          />
-          {children}
-          <AssistantPanel pageContext="student-dashboard" />
-        </Box>
-      </Box>
-    </>
+    <DashboardShell
+      drawerWidth={DRAWER_WIDTH}
+      mobileOpen={mobileOpen}
+      handleDrawerToggle={handleDrawerToggle}
+      menuItems={menuItems}
+      userName={user?.firstName}
+      roleLabel="Student"
+      onLogout={handleLogout}
+    >
+      {children}
+      <AssistantPanel pageContext="student-dashboard" />
+    </DashboardShell>
   );
 }
