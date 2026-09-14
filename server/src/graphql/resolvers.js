@@ -50,6 +50,9 @@ const { getPrivateDocumentUrl } = require("../services/documentUrlService");
 const { OTP_PATTERN } = require("../constants/auth");
 require("dotenv").config();
 
+const resolvePrivateProfileImage = (parent) =>
+  getPrivateDocumentUrl(parent?.profileImage);
+
 const createToken = (user) => {
   return jwt.sign(
     {
@@ -63,6 +66,27 @@ const createToken = (user) => {
 };
 
 const resolvers = {
+  Student: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  Instructor: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  InstructorWithDetails: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  Admin: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  InstructorProfile: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  StudentProfile: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  UserBase: {
+    profileImage: resolvePrivateProfileImage,
+  },
   Document: {
     documentUrl: (parent) => getPrivateDocumentUrl(parent?.documentUrl),
   },
