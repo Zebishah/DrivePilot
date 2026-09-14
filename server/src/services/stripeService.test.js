@@ -11,7 +11,19 @@ const {
   retrieveAccount,
   accountToStripeSnapshot,
   shouldCreateConnectedAccount,
+  resolveFrontendBaseUrl,
 } = require("./stripeService");
+
+test("uses HTTP for local Stripe redirects when localhost is configured with HTTPS", () => {
+  assert.equal(
+    resolveFrontendBaseUrl("https://localhost:5173", "local"),
+    "http://localhost:5173",
+  );
+  assert.equal(
+    resolveFrontendBaseUrl("https://localhost:5173", "production"),
+    "https://localhost:5173",
+  );
+});
 
 test("builds an Accounts v2 recipient Express configuration", () => {
   const params = buildV2ConnectedAccountParams("Instructor@Example.com");

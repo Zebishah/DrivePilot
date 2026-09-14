@@ -10,7 +10,10 @@ const PAYOUT_DELAY_MS = 3 * 24 * 60 * 60 * 1000;
 const { notifyBookingParties } = require("../../utils/SendOtpEmail");
 const StudentBooking = studentBookingModel;
 const teacherAvailabilityModel = require("../../models/teacherAvailability.model");
-const { requireAdmin } = require("../../utils/authorization");
+const {
+  requireAdmin,
+  requireInstructorOwnership,
+} = require("../../utils/authorization");
 const { invalidateAvailability } = require("../../services/cacheInvalidation");
 
 const AdminBookingResolvers = {
@@ -59,7 +62,10 @@ const AdminBookingResolvers = {
       }
     },
     getInstructorBookingsById: async (_, { instructorId }, { user }) => {
-      requireAdmin(user);
+      // This query is shared by the instructor booking-management screens and
+      // the student-progress screen. Instructors may only read their own
+      // bookings; admins retain access to any instructor's bookings.
+      requireInstructorOwnership(user, instructorId);
       try {
         const bookings = await StudentBooking.find({ instructorId })
           .populate({

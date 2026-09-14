@@ -276,12 +276,19 @@ const InstructorsInfo: React.FC = () => {
   // };
 
   const instructors = data?.getNearbyInstructors?.instructors || [];
+  const visibleInstructors = instructors.filter(
+    (instructor) =>
+      instructor.verificationStatus !== "rejected" &&
+      instructor.verificationStatus !== "pending",
+  );
+  const onlyPendingInstructors =
+    instructors.length > 0 && visibleInstructors.length === 0;
 
   // const hasMore = data?.getNearbyInstructors?.hasMore || false;
 
   const { mapCenter, markers } = getMapCenterAndMarkers(
     filters?.coordinates,
-    instructors
+    visibleInstructors,
   );
 
   const generateFilterChips = () => {
@@ -449,7 +456,7 @@ const InstructorsInfo: React.FC = () => {
 
       {!isInitialLoad &&
         !loading &&
-        data?.getNearbyInstructors?.instructors.length === 0 && (
+        visibleInstructors.length === 0 && (
           <Box
             display="flex"
             flexDirection="column"
@@ -460,10 +467,12 @@ const InstructorsInfo: React.FC = () => {
             p={3}
           >
             <Typography variant="h5" gutterBottom>
-              No instructors are available yet
+              No approved instructors are available yet
             </Typography>
             <Typography variant="body1" color="textSecondary" paragraph>
-              {filtersApplied
+              {onlyPendingInstructors
+                ? "The available instructor is still completing verification and payment setup. Please check back soon."
+                : filtersApplied
                 ? "No instructors match your current filters. Try resetting the filters to broaden your search."
                 : "Instructors appear here after completing their profile, verification, and payment setup."}
             </Typography>
@@ -479,17 +488,11 @@ const InstructorsInfo: React.FC = () => {
 
       {!isInitialLoad &&
         !loading &&
-        data?.getNearbyInstructors?.instructors.length !== 0 && (
+        visibleInstructors.length !== 0 && (
           <div className="flex flex-col md:flex-row p-4 font-poppins">
             {/* Instructor List */}
             <div className="w-full md:w-1/2 space-y-4 relative max-h-[900px] overflow-y-auto pr-2">
-              {instructors
-                .filter(
-                  (instructor) =>
-                    instructor.verificationStatus !== "rejected" &&
-                    instructor.verificationStatus !== "pending"
-                )
-                .map((instructor) => {
+              {visibleInstructors.map((instructor) => {
                   const paymentReady = instructor.isPaymentReady;
                   return (
                   <div
@@ -675,7 +678,7 @@ const InstructorsInfo: React.FC = () => {
             )} */}
             </div>
 
-            <div className="w-full md:w-1/2 mt-4 h-96 md:h-auto pl-4">
+            <div className="w-full md:w-1/2 mt-4 h-96 pl-4">
               <MapContainer
                 center={mapCenter}
                 zoom={10}

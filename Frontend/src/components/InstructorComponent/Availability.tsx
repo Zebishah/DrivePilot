@@ -493,6 +493,13 @@ const Availability: React.FC<AvailabilityProps> = ({
           >
             Select Available Days
           </Typography>
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            sx={{ fontFamily: "Poppins, sans-serif", mt: 0.5 }}
+          >
+            Select a date to view and choose its available one-hour time slots.
+          </Typography>
           <Grid container spacing={2} marginTop={2}>
             {groupedAvailability.length > 0 ? (
               groupedAvailability.map((dayData) => (

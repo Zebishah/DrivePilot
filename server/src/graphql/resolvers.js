@@ -75,6 +75,42 @@ const resolvers = {
   InstructorWithDetails: {
     profileImage: resolvePrivateProfileImage,
   },
+  PublicInstructor: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  UserBooking: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  StudentInfo: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  InstructorInfo: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  UserNew: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  ReviewUser: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  TransactionParty: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  UserAdmin: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  StudentAdmin: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  InstructorAdmin: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  StudentBookingSlot: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  StudentBooking: {
+    profileImage: resolvePrivateProfileImage,
+  },
   Admin: {
     profileImage: resolvePrivateProfileImage,
   },

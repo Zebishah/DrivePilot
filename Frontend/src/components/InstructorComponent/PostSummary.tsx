@@ -73,6 +73,14 @@ const ProfileSummary: React.FC = () => {
   const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
   const availability =
     data?.getInstructorPublicProfile?.availability || fallbackAvailability;
+  const locationLabel = [instructor?.address, instructor?.location]
+    .filter(
+      (value) =>
+        typeof value === "string" &&
+        value.trim().length > 0 &&
+        value.trim().toLowerCase() !== "undefined",
+    )
+    .join(", ") || "Location Not Available";
   console.log("instructor", instructor);
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
@@ -210,8 +218,7 @@ const ProfileSummary: React.FC = () => {
                 variant="subtitle1"
                 color="textSecondary"
               >
-                {`${instructor?.address} , ${instructor.location} ` ||
-                  "Location Not Available"}
+                {locationLabel}
               </Typography>
             </Box>
             <Box

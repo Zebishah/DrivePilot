@@ -16,10 +16,28 @@ const {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const FRONTEND_BASE =
-  process.env.Frontend_URL ||
-  process.env.FRONTEND_URL ||
-  "http://localhost:5173";
+/**
+ * Stripe redirects must use the same protocol as the running frontend.
+ * Vite's local server is HTTP by default, so an HTTPS localhost value causes
+ * ERR_SSL_PROTOCOL_ERROR in the browser after Checkout succeeds.
+ */
+function resolveFrontendBaseUrl(
+  configuredUrl =
+    process.env.Frontend_URL || process.env.FRONTEND_URL || "http://localhost:5173",
+  nodeEnv = process.env.NODE_ENV,
+) {
+  const baseUrl = String(configuredUrl).trim();
+  const isLocalhostHttps = /^https:\/\/localhost(?::\d+)?(?:\/|$)/i.test(baseUrl);
+  const isProduction = String(nodeEnv || "").toLowerCase() === "production";
+
+  if (isLocalhostHttps && !isProduction) {
+    return baseUrl.replace(/^https:/i, "http:");
+  }
+
+  return baseUrl;
+}
+
+const FRONTEND_BASE = resolveFrontendBaseUrl();
 
 function normalizeAccountVersion(accountVersion) {
   return accountVersion === "v2" ? "v2" : "v1";
@@ -797,6 +815,7 @@ async function retrievePaymentMethod(paymentMethodId) {
 
 module.exports = {
   stripe,
+  resolveFrontendBaseUrl,
   normalizeAccountVersion,
   buildV2ConnectedAccountParams,
   createConnectedAccount,

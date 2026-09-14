@@ -235,7 +235,9 @@ const instructorResolver = {
 
         availabilityDocs.forEach((doc) => {
           const teacherId = doc.teacherId.toString();
-          const slots = (doc.availableSlots || []).map((slot) => ({
+          const sourceSlots =
+            doc.availableSlots?.length > 0 ? doc.availableSlots : doc.slots || [];
+          const slots = sourceSlots.map((slot) => ({
             id: slot.id,
             date: slot.date,
             startTime: slot.startTime,
@@ -682,7 +684,12 @@ const instructorResolver = {
         // Build hourly slot chunks with accurate booking status
         const formattedAvailability = availability.map((slotDoc) => {
           // Each slotDoc = one day's availability
-          const daySlots = slotDoc.availableSlots || [];
+          // New records use availableSlots; keep legacy records readable when
+          // their slots were stored in the older slots field.
+          const daySlots =
+            slotDoc.availableSlots?.length > 0
+              ? slotDoc.availableSlots
+              : slotDoc.slots || [];
 
           const resultSlots = [];
 
