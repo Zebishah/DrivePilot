@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useQuery } from "@apollo/client";
 import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
 import { GET_TEACHER_PROFILE } from "../../graphql/mutations/profile";
+import { designTokens } from "../../themes/tokens";
 
 // Flag components
 import { US, FR, DE, IT } from "country-flag-icons/react/3x2";
@@ -59,6 +60,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
   const isStudent = user?.role === "Student";
   const isInstructor = user?.role === "Instructor";
   const isAdmin = user?.role === "Admin";
+  const isInstructorOverview = isInstructor && location.pathname === "/teacher-dashboard/overview";
 
   const { data: studentData, loading: studentLoading } = useQuery(
     GET_STUDENT_PROFILE,
@@ -133,6 +135,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
       <Box
         component="button"
         type="button"
+        className="dsp-topbar__avatar-button"
         aria-label="Open profile menu"
         aria-controls={profileAnchorEl ? "profile-menu" : undefined}
         aria-haspopup="true"
@@ -144,7 +147,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
           border: 0,
           borderRadius: "50%",
           cursor: "pointer",
-          background: "linear-gradient(135deg, #FF5A36, #F7B32B)",
+          background: designTokens.gradient.primary,
         }}
         onClick={handleAvatarClick}
       >
@@ -170,7 +173,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
 
         <Avatar
           src={profileImage || "/default-avatar.jpg"}
-          sx={{ width: 40, height: 40, zIndex: isImageLoading ? 0 : 2, backgroundColor: "#1C1F26" }}
+          sx={{ width: 40, height: 40, zIndex: isImageLoading ? 0 : 2, backgroundColor: designTokens.color.purpleSurface }}
           imgProps={{
             onLoad: () => setIsImageLoading(false),
             onError: () => {
@@ -186,7 +189,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
     <AppBar
       position="sticky"
       elevation={0}
-      className="dsp-dashboard-topbar"
+      className={`dsp-dashboard-topbar${isInstructorOverview ? " dsp-dashboard-topbar--instructor-overview" : ""}`}
       sx={{
         borderBottom: "1px solid rgba(231, 229, 228, 0.9)",
         backgroundColor: "rgba(255, 255, 255, 0.86)",

@@ -45,6 +45,8 @@ import { toast } from "react-hot-toast";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 interface AvailabilitySlot {
@@ -77,7 +79,7 @@ export function CustomDay(
       badgeContent={slotCount > 0 ? slotCount : undefined} // Only show badge if count > 0
       sx={{
         "& .MuiBadge-badge": {
-          backgroundColor: "#5ec2d2",
+          background: "linear-gradient(135deg, #7C3AED, #EC4899)",
           color: "white",
           right: 8,
           top: 8,
@@ -290,7 +292,7 @@ export const AvailabilityTab: React.FC = () => {
       });
       await refetch();
       toast.success("Slot deleted successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete slot");
     }
   };
@@ -371,9 +373,24 @@ export const AvailabilityTab: React.FC = () => {
     });
   }, [filteredSlots]);
 
-  console.log("displaySlots", displaySlots);
+  const scheduleSummary = useMemo(() => {
+    const days = new Set(displaySlots.map((slot) => String(slot.date).slice(0, 10))).size;
+    const minutes = displaySlots.reduce((total, slot) => {
+      const [startHour, startMinute] = String(slot.startTime || "00:00").split(":").map(Number);
+      const [endHour, endMinute] = String(slot.endTime || "00:00").split(":").map(Number);
+      const duration = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+      return total + (Number.isFinite(duration) && duration > 0 ? duration : 0);
+    }, 0);
+    return { days, hours: Math.round((minutes / 60) * 10) / 10 };
+  }, [displaySlots]);
+
   return (
-    <Box sx={{ p: 2 }}>
+    <Box className="dsp-availability-tab" sx={{ p: 2 }}>
+      <Box className="dsp-availability-summary" aria-label="Availability summary">
+        <div className="dsp-summary-card dsp-summary-card--blue"><span className="dsp-summary-card__icon"><EventAvailableIcon fontSize="small" /></span><span className="dsp-summary-card__label">Open slots</span><strong>{displaySlots.length}</strong><small>Future slots currently visible</small></div>
+        <div className="dsp-summary-card dsp-summary-card--violet"><span className="dsp-summary-card__icon"><CalendarMonthIcon fontSize="small" /></span><span className="dsp-summary-card__label">Available days</span><strong>{scheduleSummary.days}</strong><small>Days represented by your schedule</small></div>
+        <div className="dsp-summary-card dsp-summary-card--neutral"><span className="dsp-summary-card__icon"><AccessTimeIcon fontSize="small" /></span><span className="dsp-summary-card__label">Scheduled hours</span><strong>{scheduleSummary.hours}h</strong><small>Calculated from available slots</small></div>
+      </Box>
       <Grid container spacing={3}>
         {/* Calendar Section */}
         <Grid item xs={12} lg={9}>
@@ -401,7 +418,7 @@ export const AvailabilityTab: React.FC = () => {
                 <Alert severity="warning" sx={{ mb: 2 }}>
                   You need to complete Stripe onboarding and have payments
                   enabled before you can publish new availability. Go to
-                  <strong> Settings → Payment Management</strong> to finish
+                  <strong> Payment Management</strong> to finish
                   setup.
                 </Alert>
               )}
@@ -469,9 +486,9 @@ export const AvailabilityTab: React.FC = () => {
                         margin: "2px",
                       },
                       "& .MuiPickersDay-root.Mui-selected": {
-                        backgroundColor: "#5ec2d2",
+                        background: "linear-gradient(135deg, #7C3AED, #EC4899)",
                         color: "white",
-                        "&:hover": { backgroundColor: "#4ba1b0" },
+                        "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
                       },
                     }}
                   />
@@ -531,10 +548,10 @@ export const AvailabilityTab: React.FC = () => {
                   <IconButton
                     onClick={handleAddButtonClick}
                     sx={{
-                      bgcolor: "#5ec2d2",
+                      background: "linear-gradient(135deg, #7C3AED, #EC4899)",
                       color: "white",
                       "&:hover": {
-                        bgcolor: "#4ba1b0",
+                        background: "linear-gradient(135deg, #6D28D9, #DB2777)",
                         transform: "scale(1.05)",
                       },
                       transition: "all 0.2s ease-in-out",
@@ -547,7 +564,7 @@ export const AvailabilityTab: React.FC = () => {
               <Divider sx={{ mb: 2 }} />
               {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                  <CircularProgress size={32} sx={{ color: "#5ec2d2" }} />
+                  <CircularProgress size={32} sx={{ color: "#8B5CF6" }} />
                 </Box>
               ) : displaySlots && displaySlots.length > 0 ? (
                 displaySlots.map((slot: AvailabilitySlot) => (
@@ -564,7 +581,7 @@ export const AvailabilityTab: React.FC = () => {
                       transition: "all 0.2s ease-in-out",
                       "&:hover": {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                        borderColor: "#5ec2d2",
+                        borderColor: "#A855F7",
                       },
                       opacity: isDeletingSlot === slot.id ? 0.5 : 1,
                       pointerEvents:
@@ -783,15 +800,15 @@ export const AvailabilityTab: React.FC = () => {
               ) : null
             }
             sx={{
-              bgcolor: "#5ec2d2",
+              background: "linear-gradient(135deg, #7C3AED, #EC4899)",
               borderRadius: 2,
               py: 1.3,
               px: 4.6,
               textTransform: "none",
               boxShadow: "none",
               "&:hover": {
-                bgcolor: "#4ba1b0",
-                boxShadow: "0 2px 8px rgba(94, 194, 210, 0.25)",
+                background: "linear-gradient(135deg, #6D28D9, #DB2777)",
+                boxShadow: "0 2px 8px rgba(124, 58, 237, 0.25)",
               },
             }}
           >

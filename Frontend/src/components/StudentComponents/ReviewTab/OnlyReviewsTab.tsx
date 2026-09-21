@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { useAuth } from "../../../context/AuthContext";
 import { GET_STUDENT_FEEDBACKS_LIST } from "../../../graphql/Queries/LessonFeedback";
+import { DashboardPageHeader } from "../../../components/dashboard/OverviewWidgets";
+import { DashboardLoadingSkeleton } from "../../../components/dashboard/OverviewWidgets";
+import { MessageCircle, Star, ArrowUpRight } from "lucide-react";
 
 type StudentFeedbackItem = {
   _id: string;
@@ -32,86 +35,59 @@ const FeedBackAndRating: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading feedbacks...</p>
-        </div>
+      <div className="dsp-student-page dsp-student-feedback-page">
+        <div className="dsp-student-page__content"><DashboardLoadingSkeleton rows={3} /></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          Failed to load feedbacks. Please try again.
-        </div>
+      <div className="dsp-student-page dsp-student-feedback-page">
+        <div className="dsp-student-page__content"><div className="dsp-student-state dsp-student-state--error">Failed to load feedbacks. Please try again.</div></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Feedback from Instructors
-          </h2>
-          <button
-            type="button"
-            onClick={() => navigate("/student-dashboard/chat")}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
-          >
-            Send Message
-          </button>
+    <div className="dsp-student-page dsp-student-feedback-page">
+      <div className="dsp-student-page__content">
+        <DashboardPageHeader
+          eyebrow="Student workspace"
+          title="Feedback & rating"
+          description="Review the guidance your instructors have shared after completed lessons."
+          action={<button type="button" className="dsp-student-primary-button" onClick={() => navigate("/student-dashboard/chat")}><MessageCircle size={16} /> Message an instructor<ArrowUpRight size={15} /></button>}
+        />
+        <div className="dsp-student-summary-grid">
+          <div className="dsp-student-summary-card dsp-student-summary-card--violet"><span className="dsp-student-summary-card__icon"><Star size={18} /></span><span>Feedback received</span><strong>{feedbacks.length}</strong><small>Instructor notes available to review</small></div>
+          <div className="dsp-student-summary-card dsp-student-summary-card--blue"><span className="dsp-student-summary-card__icon"><MessageCircle size={18} /></span><span>Stay connected</span><strong>Open</strong><small>Message your instructor anytime</small></div>
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+        <section className="dsp-student-panel">
+          <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Instructor notes</span><h2>Feedback from instructors</h2></div></div>
+          <div className="dsp-student-table-wrap">
+            <table className="dsp-student-table">
+              <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">
-                  Lesson Number
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">
-                  Instructor
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">
-                  Areas of Improvement
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">
-                  Skills worked on
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">
-                  Action
-                </th>
+                <th>Lesson</th><th>Instructor</th><th>Date</th><th>Areas of improvement</th><th>Skills worked on</th><th>Action</th>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+              </thead>
+              <tbody>
               {feedbacks.map((feedback, idx) => (
-                <tr key={feedback._id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    Lesson {idx + 1}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {feedback.instructorName || "Instructor"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
+                <tr key={feedback._id}>
+                  <td><strong>Lesson {idx + 1}</strong></td>
+                  <td>{feedback.instructorName || "Instructor"}</td>
+                  <td>
                     {new Date(Number(feedback.createdAt)).toLocaleDateString(
                       "en-GB",
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 max-w-[240px] truncate">
+                  <td className="dsp-student-table__truncate">
                     {feedback.message?.replace(/<[^>]+>/g, "").slice(0, 80)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 max-w-[240px] truncate">
+                  <td className="dsp-student-table__truncate">
                     {feedback.feedbackTags?.join(", ")}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <button
                       type="button"
                       onClick={() =>
@@ -119,22 +95,21 @@ const FeedBackAndRating: React.FC = () => {
                           state: { feedback, lessonNumber: idx + 1 },
                         })
                       }
-                      className="inline-flex items-center px-4 py-1.5 text-sm text-white bg-[#4DD0E1] rounded-md hover:bg-[#3285af] transition-colors"
+                      className="dsp-student-secondary-button"
                     >
                       View
                     </button>
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {feedbacks.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            No feedback available yet.
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {feedbacks.length === 0 && (
+            <div className="dsp-student-empty-state"><Star size={24} /><strong>No feedback available yet</strong><span>Instructor feedback will appear here after a completed lesson.</span></div>
+          )}
+        </section>
       </div>
     </div>
   );

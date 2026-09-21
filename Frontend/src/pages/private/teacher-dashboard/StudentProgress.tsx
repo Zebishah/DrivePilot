@@ -11,6 +11,7 @@ import { NotFoundState } from "../../../components/InstructorComponent/StudentsT
 import { StudentInfoCard } from "../../../components/InstructorComponent/StudentsTracking/StudentInfoCard";
 import { useStudentDashboard } from "../../../hooks/UseStudentDashboard";
 import { formatDuration } from "../../../components/InstructorComponent/common/FormatDuration";
+import { DashboardPageHeader } from "../../../components/dashboard/OverviewWidgets";
 const StudentDashboard: React.FC = () => {
   const { studentId } = useParams<{ studentId: string }>();
   const {
@@ -39,13 +40,14 @@ const StudentDashboard: React.FC = () => {
     lessonStats,
   } = data.getStudentDashboardDetails;
   return (
-    <div className="min-h-screen bg-gray-50 py-2 px-8">
-      <BackButton variant="outline" label="Back" />
+    <div className="dsp-instructor-page dsp-student-progress-page">
+      <div className="dsp-instructor-page__content">
       <div className="mx-auto mt-4">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Student Progress</h1>
-        </div>
+        <DashboardPageHeader
+          title="Student Progress"
+          description="Review lesson activity, progress history, and booking context for this learner."
+          action={<BackButton variant="outline" label="Back" />}
+        />
 
         {/* Student Info Card */}
         <StudentInfoCard
@@ -68,6 +70,7 @@ const StudentDashboard: React.FC = () => {
         <div className="mt-6">
           <StudentBookingWInst filterStudentId={studentId} />
         </div>
+      </div>
       </div>
     </div>
   );

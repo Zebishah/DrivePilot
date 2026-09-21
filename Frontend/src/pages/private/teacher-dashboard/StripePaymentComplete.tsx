@@ -70,11 +70,12 @@ export default function StripePaymentComplete() {
       return;
     }
     verifyOnboarding();
-  }, [user, navigate]);
+  }, [user, navigate, verifyOnboarding]);
 
   if (status.loading) {
     return (
       <Box
+        className="dsp-instructor-page dsp-payment-flow-page"
         sx={{
           minHeight: "100vh",
           display: "flex",
@@ -105,7 +106,7 @@ export default function StripePaymentComplete() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={36} sx={{ color: "#5ec2d2" }} />
+              <CircularProgress size={36} sx={{ color: "#8B5CF6" }} />
             </Box>
             <Box textAlign="center">
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
@@ -122,13 +123,14 @@ export default function StripePaymentComplete() {
     );
   }
 
-  const goToSettings = () => navigate("/teacher-dashboard/settings");
+  const goToSettings = () => navigate("/teacher-dashboard/payment-management");
   const isVerified = status.onboardingStatus === "verified";
   const isRestricted = status.onboardingStatus === "restricted";
   const isSubmitted = status.onboardingStatus === "submitted";
 
   return (
     <Box
+      className="dsp-instructor-page dsp-payment-flow-page"
       sx={{
         minHeight: "100vh",
         display: "flex",
@@ -259,7 +261,7 @@ export default function StripePaymentComplete() {
                   }}
                 >
                   <PaymentsOutlinedIcon
-                    sx={{ fontSize: 42, color: "#5ec2d2" }}
+                    sx={{ fontSize: 42, color: "#8B5CF6" }}
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>

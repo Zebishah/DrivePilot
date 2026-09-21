@@ -18,7 +18,7 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH = 240;
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, token, logout } = useAuth();
@@ -34,8 +34,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [user, token]);
 
   // ✅ Use booking notifications hook
-  const { unseenBookingsCount, clearUnseenCount } =
-    useBookingNotifications(user?.id || "", user?.role || "");
+  const { unseenBookingsCount, clearUnseenCount } = useBookingNotifications(
+    user?.id || "",
+    user?.role || "",
+  );
 
   // ✅ Clear unseen count when visiting booking management page
   useEffect(() => {

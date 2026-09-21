@@ -18,25 +18,20 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Skeleton,
   FormHelperText,
   InputAdornment,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
-import {
-  GET_TEACHER_PROFILE,
-  UPDATE_STUDENT_PROFILE,
-} from "../../../graphql/mutations/profile";
+import { UPDATE_STUDENT_PROFILE } from "../../../graphql/mutations/profile";
 import { toast } from "react-hot-toast";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { startOfDay } from "date-fns";
 import { ApolloError } from "@apollo/client";
 import axios from "axios";
 import { LuMapPin } from "react-icons/lu";
-import _, { set } from "lodash";
+import _ from "lodash";
 import { EditIcon } from "lucide-react";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import { useAuth } from "../../../context/AuthContext";
@@ -94,7 +89,6 @@ export default function EditStudentProfile() {
   const { uploadFile } = useFileUpload();
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const today = startOfDay(new Date());
   const { user } = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
   // Update form data when profile data is loaded
@@ -298,8 +292,8 @@ export default function EditStudentProfile() {
     // During file upload processing
     if (isAvatarLoading) {
       return (
-        <Box
-          sx={{
+      <Box className="dsp-student-page dsp-student-profile-edit-page dsp-student-state-wrap"
+        sx={{
             width: 130,
             height: 130,
             borderRadius: "50%",
@@ -382,7 +376,7 @@ export default function EditStudentProfile() {
   };
   if (loading) {
     return (
-      <Box
+      <Box className="dsp-student-page dsp-student-profile-edit-page dsp-student-state-wrap"
         sx={{
           display: "flex",
           justifyContent: "center",
@@ -397,7 +391,7 @@ export default function EditStudentProfile() {
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box className="dsp-student-page dsp-student-profile-edit-page" sx={{ p: 3 }}>
         <Typography color="error">Error: {error.message}</Typography>
       </Box>
     );
@@ -412,14 +406,8 @@ export default function EditStudentProfile() {
 
     handleInputChange("phone", value); // Save only 9-digit number (e.g., 791234567)
   };
-  const maxAllowedDOB = new Date(
-    today.getFullYear() - 23,
-    today.getMonth(),
-    today.getDate()
-  ); // Must be at least 23
-
   return (
-    <Box
+    <Box className="dsp-student-page dsp-student-profile-edit-page"
       sx={{
         display: "flex",
         flexDirection: "column",

@@ -91,7 +91,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
   ];
 
   return (
-    <div className="lg:col-span-2">
+    <div className="dsp-student-progress__chart lg:col-span-2">
       <div className="bg-white rounded-lg shadow-sm p-6 h-full">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -129,7 +129,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
             height={350}
           />
         ) : (
-          <div className="flex items-center justify-center h-[350px] text-gray-500">
+          <div className="dsp-student-progress__empty flex items-center justify-center h-[350px] text-gray-500">
             <div className="text-center">
               <svg
                 className="mx-auto h-12 w-12 text-gray-400"

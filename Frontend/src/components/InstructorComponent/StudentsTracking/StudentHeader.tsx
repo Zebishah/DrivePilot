@@ -44,7 +44,7 @@ export const StudentHeader = ({ studentInfo, lessonStats, loading }) => {
               <button className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm transition-colors">
                 Message(pending)
               </button>
-              <button className="bg-teal-500 text-white px-4 py-2 rounded-md text-sm hover:bg-teal-600 transition-colors">
+              <button className="dsp-dashboard-button--primary text-white px-4 py-2 rounded-md text-sm transition-colors">
                 Feedback
               </button>
             </div>

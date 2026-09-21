@@ -335,14 +335,48 @@ export const PaymentTab: React.FC = () => {
   };
 
   const stateContent = renderStateContent();
+  const paymentSummary = [
+    {
+      icon: <LinkIcon />,
+      label: "Connection status",
+      value: status === "verified" ? "Connected" : status === "not_started" ? "Not connected" : "In progress",
+      detail: "Stripe Connect account",
+      tone: status === "verified" ? "success" : "warning",
+    },
+    {
+      icon: <PaymentsIcon />,
+      label: "Payments",
+      value: isActive ? "Enabled" : "Not enabled",
+      detail: "Student payments",
+      tone: isActive ? "success" : "neutral",
+    },
+    {
+      icon: <AccountBalanceWalletIcon />,
+      label: "Payout readiness",
+      value: stripeFinancialStatus?.payoutsBlocked ? "Blocked" : isActive ? "Ready" : "Pending",
+      detail: "Stripe payout status",
+      tone: stripeFinancialStatus?.payoutsBlocked ? "danger" : isActive ? "success" : "warning",
+    },
+  ];
 
   return (
     <Box
+      className="dsp-payment-tab"
       sx={{
         p: 2,
         width: "100%",
       }}
     >
+      <Box className="dsp-payment-summary" aria-label="Payment status summary">
+        {paymentSummary.map((item) => (
+          <Box className={`dsp-payment-summary__item dsp-summary-card dsp-summary-card--${item.tone}`} key={item.label}>
+            <span className="dsp-summary-card__icon">{item.icon}</span>
+            <span className="dsp-summary-card__label">{item.label}</span>
+            <strong>{item.value}</strong>
+            <small>{item.detail}</small>
+          </Box>
+        ))}
+      </Box>
       {sectionTab === "setup" && (
       <Card
         elevation={3}
@@ -509,7 +543,7 @@ export const PaymentTab: React.FC = () => {
                 <Card elevation={0} sx={{ flex: 1, minWidth: 170, borderRadius: 2.5, bgcolor: "rgba(0, 191, 165, 0.08)", border: "1px solid rgba(0, 191, 165, 0.35)" }}>
                   <CardContent sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                     <Box sx={{ width: 36, height: 36, borderRadius: "50%", bgcolor: "rgba(0, 191, 165, 0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <AttachMoneyIcon sx={{ color: "teal.main", fontSize: 20 }} />
+                      <AttachMoneyIcon sx={{ color: "#0EA5E9", fontSize: 20 }} />
                     </Box>
                     <Box>
                       <Typography color="text.secondary" variant="caption">Total received</Typography>

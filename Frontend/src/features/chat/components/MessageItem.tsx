@@ -107,7 +107,7 @@ const MessageItem: React.FC<Props> = ({ message, isOwnMessage }) => {
       >
         <div
           onClick={() => setShowFullTimestamp((prev) => !prev)}
-          className={`p-3 rounded-xl text-sm shadow-md whitespace-pre-line break-words cursor-pointer transition duration-200 ${
+          className={`dsp-message-bubble p-3 rounded-xl text-sm shadow-md whitespace-pre-line break-words cursor-pointer transition duration-200 ${
             isOwnMessage
               ? "bg-[#13173F] text-white rounded-br-none"
               : "bg-[#D9F6F1] text-gray-800 rounded-bl-none"

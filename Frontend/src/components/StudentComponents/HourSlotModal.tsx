@@ -95,6 +95,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
   console.log("originalSlot", originalSlot);
   return (
     <Dialog
+      className="dsp-booking-slot-dialog"
       open={open}
       onClose={handleClose}
       maxWidth="md"
@@ -124,7 +125,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <CalendarCheck2 size={24} style={{ color: "#5FC2D3" }} />
+          <CalendarCheck2 size={24} style={{ color: "#7C3AED" }} />
           <Typography
             variant="h5"
             sx={{
@@ -230,23 +231,24 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             return (
               <Grid item xs={12} sm={6} md={4} key={slot.id}>
                 <Card
+                  className="dsp-booking-slot-card"
                   onClick={() => !isDisabled && handleSlotClick(slot.id)}
                   sx={{
                     position: "relative", // ✅ for absolute tag positioning
                     borderRadius: "10px",
-                    backgroundColor:
+                    background:
                       slot.booked || isCompleted || isPassed
                         ? "#f5f5f5"
                         : isSelected
-                        ? "#5FC2D3"
-                        : "#5FC2D333",
+                        ? "linear-gradient(135deg, #7C3AED, #A855F7 48%, #EC4899)"
+                        : "#FAF5FF",
                     border: isSelected
-                      ? "2px solid #5FC2D3"
+                      ? "2px solid #A855F7"
                       : slot.booked || isCompleted || isPassed
                       ? "1px solid #e0e0e0"
-                      : "1px solid #cce4f7",
+                      : "1px solid #DDD6FE",
                     boxShadow: isSelected
-                      ? "0px 4px 12px rgba(95, 194, 211, 0.3)"
+                      ? "0px 8px 18px rgba(124, 58, 237, 0.22)"
                       : 1,
                     cursor: isDisabled ? "not-allowed" : "pointer",
                     opacity: isDisabled ? 0.6 : 1,
@@ -333,7 +335,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                             ? "#9ca3af"
                             : isSelected
                             ? "white"
-                            : "#25D422",
+                            : "#7C3AED",
                         }}
                       />
                       <Typography
@@ -449,7 +451,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             textTransform: "none",
             fontFamily: "Poppins, sans-serif",
             fontWeight: "500",
-            backgroundColor: "#5FC2D3",
+            background: "linear-gradient(135deg, #7C3AED, #A855F7 48%, #EC4899)",
             color: "black",
             minWidth: "120px",
             "&:hover": {

@@ -211,7 +211,7 @@ export const CompletePaymentPage: React.FC = () => {
 
   if (status === "no_params") {
     return (
-      <Box sx={{ p: 3, maxWidth: 560, mx: "auto" }}>
+      <Box className="dsp-student-payment-completion" sx={{ p: 3, maxWidth: 560, mx: "auto" }}>
         <BackButton to="/student-dashboard/book" />
         <Card sx={{ mt: 2 }}>
           <CardContent>
@@ -237,7 +237,7 @@ export const CompletePaymentPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3,  mx: "auto" }}>
+    <Box className="dsp-student-payment-completion" sx={{ p: 3, mx: "auto" }}>
       <BackButton to="/student-dashboard/book" />
       <Card sx={{ mt: 2 }}>
         <CardContent>

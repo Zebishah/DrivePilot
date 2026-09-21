@@ -40,6 +40,21 @@ test("provider failure returns a deterministic data-backed fallback", async () =
   assert.match(result.answer, /requires attention/);
 });
 
+test("project questions receive product context instead of an operational fallback", async () => {
+  const service = createAssistantService({ config, toolRegistry: registry() });
+  const result = await service.chat({ message: "whats this project about?", user: { id: "student-1", role: "Student" } });
+  assert.match(result.answer, /learning marketplace/i);
+  assert.match(result.answer, /verified instructors/i);
+  assert.deepEqual(result.toolNames, []);
+});
+
+test("common app questions also receive product context", async () => {
+  const service = createAssistantService({ config, toolRegistry: registry() });
+  const result = await service.chat({ message: "what does this website do?", user: { id: "instructor-1", role: "Instructor" } });
+  assert.match(result.answer, /learning marketplace/i);
+  assert.match(result.answer, /availability/i);
+});
+
 test("bounded history and tool inference are deterministic", () => {
   assert.equal(inferredTool("Do I have pending payouts?", "Instructor"), "getMyPayoutSummary");
   assert.equal(isMutationRequest("Please cancel my booking"), true);

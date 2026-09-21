@@ -14,10 +14,10 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({
   formatDuration,
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <section className="dsp-student-progress__profile bg-white rounded-lg shadow-sm p-6 mb-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-28 h-28 rounded-full overflow-hidden bg-gray-200">
+          <div className="dsp-student-progress__avatar w-28 h-28 rounded-full overflow-hidden bg-gray-200">
             {studentInfo.profileImage ? (
               <img
                 src={studentInfo.profileImage}
@@ -43,17 +43,17 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({
               </h2>
               <p className="text-gray-600 mt-2">{studentInfo.location}</p>
             </div>
-            <div className="flex space-x-3">
+            <div className="dsp-student-progress__actions flex space-x-3">
               <Link
                 to="/teacher-dashboard/chat"
                 state={{ studentId: studentInfo._id }}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                className="dsp-dashboard-button dsp-dashboard-button--secondary px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 Message
               </Link>
               <Link
                 to={"/teacher-dashboard/feedback"}
-                className="px-4 py-2 bg-teal-500 text-white rounded-lg font-medium hover:bg-teal-600 transition-colors"
+                className="dsp-dashboard-button dsp-dashboard-button--primary px-4 py-2 rounded-lg font-medium transition-colors"
               >
                 Feedback
               </Link>
@@ -75,6 +75,6 @@ export const StudentInfoCard: React.FC<StudentInfoCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };

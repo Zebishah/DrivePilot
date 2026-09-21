@@ -32,6 +32,45 @@ export interface MenuItem {
   icon: LucideIcon | IconType;
   path: string;
   badge?: number;
+  section?: string;
+}
+
+export interface SidebarSection {
+  label: string;
+  items: MenuItem[];
+}
+
+function defaultSections(
+  roleLabel: "Student" | "Instructor" | "Admin",
+  menuItems: MenuItem[],
+): SidebarSection[] {
+  const items = menuItems.filter(
+    (item) => item.text.toLowerCase() !== "logout",
+  );
+  const sectionLabels = Array.from(
+    new Set(
+      items
+        .map((item) => item.section)
+        .filter((section): section is string => Boolean(section)),
+    ),
+  );
+  if (sectionLabels.length > 0) {
+    return sectionLabels.map((label) => ({
+      label,
+      items: items.filter((item) => item.section === label),
+    }));
+  }
+  if (roleLabel === "Instructor")
+    return [
+      { label: "Workspace", items: items.slice(0, 4) },
+      { label: "Manage", items: items.slice(4) },
+    ];
+  if (roleLabel === "Student")
+    return [
+      { label: "Workspace", items: items.slice(0, 5) },
+      { label: "Account", items: items.slice(5) },
+    ];
+  return [{ label: "Workspace", items }];
 }
 
 interface SidebarProps {
@@ -39,9 +78,11 @@ interface SidebarProps {
   mobileOpen: boolean;
   handleDrawerToggle: () => void;
   menuItems: MenuItem[];
+  sections?: SidebarSection[];
   userName?: string;
   userAvatar?: string;
   roleLabel?: "Student" | "Instructor" | "Admin";
+  overviewMode?: boolean;
   onLogout?: () => void;
 }
 
@@ -52,9 +93,11 @@ export default function Sidebar({
   mobileOpen,
   handleDrawerToggle,
   menuItems,
+  sections,
   userName = "John",
   userAvatar,
   roleLabel = "Student",
+  overviewMode = false,
   onLogout,
 }: SidebarProps) {
   const theme = useTheme();
@@ -63,7 +106,6 @@ export default function Sidebar({
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const dispatch = useDispatch();
   const { unreadMessages } = useSelector((state: RootState) => state.chat);
-  const isInstructor = roleLabel === "Instructor";
 
   const listItemVariants = {
     hidden: { opacity: 0, x: -20 },
@@ -99,171 +141,147 @@ export default function Sidebar({
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const groupLabels: Record<number, string> = roleLabel === "Student"
-    ? { 0: "Workspace", 5: "Account" }
-    : roleLabel === "Instructor"
-      ? { 0: "Workspace", 4: "Manage" }
-      : { 0: "Workspace" };
+  const sidebarSections = sections ?? defaultSections(roleLabel, menuItems);
+  const logoutItem = menuItems.find(
+    (item) => item.text.toLowerCase() === "logout",
+  );
 
   const drawer = (
-    <Box className={`dsp-sidebar__content dsp-sidebar__content--${roleLabel.toLowerCase()}`} sx={{ p: 2.25, minHeight: "100%" }}>
+    <Box
+      className={`dsp-sidebar__content dsp-sidebar__content--${roleLabel.toLowerCase()}${overviewMode ? " dsp-sidebar__content--overview" : ""}`}
+      sx={{ p: 2.25, minHeight: "100%" }}
+    >
       <Box
         className="dsp-sidebar__brand"
-        onClick={handleDrawerToggle}
+        onClick={isMobile ? handleDrawerToggle : undefined}
         component={motion.div}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close navigation"
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") handleDrawerToggle();
-        }}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        role={isMobile ? "button" : undefined}
+        tabIndex={isMobile ? 0 : undefined}
+        aria-label={isMobile ? "Close navigation" : undefined}
+        onKeyDown={
+          isMobile
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ")
+                  handleDrawerToggle();
+              }
+            : undefined
+        }
       >
         <img
           src="/Website-new-logo.png"
           alt="DSP Logo"
-          style={{ height: 58, width: "auto" }}
+          style={{ height: 42, width: "auto" }}
         />
       </Box>
 
       <Box className="dsp-sidebar__identity">
         <Box className="dsp-sidebar__profile">
-          <Avatar src={userAvatar || undefined} alt="" className="dsp-sidebar__avatar">
+          <Avatar
+            src={userAvatar || undefined}
+            alt=""
+            className="dsp-sidebar__avatar"
+          >
             {initials}
           </Avatar>
           <Box sx={{ minWidth: 0 }}>
-            <Typography className="dsp-sidebar__greeting">{userName}</Typography>
-            <span className="dsp-sidebar__role-badge">{roleLabel}</span>
+            <Typography className="dsp-sidebar__greeting">
+              {userName}
+            </Typography>
+            <span className="dsp-sidebar__role-badge">
+              <span className="dsp-sidebar__status-dot" aria-hidden="true" />
+              {roleLabel}
+            </span>
           </Box>
         </Box>
-        <Typography className="dsp-sidebar__eyebrow">DSP Marketplace</Typography>
-        <Typography className="dsp-sidebar__role">Your {roleLabel.toLowerCase()} workspace</Typography>
+        <Typography className="dsp-sidebar__eyebrow">
+          {roleLabel} workspace
+        </Typography>
       </Box>
 
-      <List className="dsp-sidebar__nav">
-        {menuItems.map((item, index) => {
-          const isLogout = item.text.toLowerCase() === "logout";
-          const isActive = router.pathname.startsWith(item.path);
-          const Icon = item.icon;
-          const hasBadge = (item.badge && item.badge > 0) ||
-            (item.text === "Messages" && unreadMessages > 0);
-
-          return (
-            <Fragment key={item.text}>
-              {groupLabels[index] && (
-                <Typography component="li" className="dsp-sidebar__group-label">
-                  {groupLabels[index]}
-                </Typography>
-              )}
-              <MotionListItem
-                disablePadding
-                custom={index}
-                initial="hidden"
-                animate="visible"
-                variants={listItemVariants}
-              >
-              {isLogout ? (
-                <ListItemButton
-                  component={motion.div}
-                  whileHover={{ x: 5 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleLogoutClick}
-                  sx={{
-                    borderRadius: 2,
-                    mb: 0.5,
-                    minHeight: 44,
-                    background: isActive && isInstructor ? "linear-gradient(90deg, rgba(124,58,237,.2), rgba(59,130,246,.12))" : isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
-                    borderLeft: isActive ? `3px solid ${isInstructor ? "#8B5CF6" : "#FF5A36"}` : "3px solid transparent",
-                    "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.06)" },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <Icon
-                      size={20}
-                      color={isActive ? "#FF8A70" : "#AEB4C0"}
-                    />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.text}
-                    sx={{ color: isActive ? "#FFFFFF" : "#C7CEDA", fontWeight: isActive ? 600 : 500 }}
-                  />
-                </ListItemButton>
-              ) : (
-                <Link
-                  to={item.path}
-                  style={{
-                    textDecoration: "none",
-                    width: "100%",
-                    color: "inherit",
-                  }}
-                >
-                  <ListItemButton
-                    component={motion.div}
-                    aria-current={isActive ? "page" : undefined}
-                    whileHover={{ x: 5 }}
-                    whileTap={{ scale: 0.98 }}
-                    sx={{
-                      borderRadius: 2,
-                      mb: 0.5,
-                      minHeight: 44,
-                      background: isActive && isInstructor ? "linear-gradient(90deg, rgba(124,58,237,.2), rgba(59,130,246,.12))" : isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
-                      borderLeft: isActive ? "3px solid" : "3px solid transparent",
-                      borderColor: isActive ? (isInstructor ? "#8B5CF6" : "#FF5A36") : "transparent",
-                      "&:hover": { background: isActive && isInstructor ? "linear-gradient(90deg, rgba(124,58,237,.28), rgba(59,130,246,.17))" : isActive ? "rgba(255, 90, 54, 0.22)" : "rgba(255, 255, 255, 0.06)" },
-                      position: "relative",
-                    }}
-                    onClick={() => {
-                      if (item.text === "Messages") {
-                        dispatch(clearUnreadMessages());
-                        localStorage.setItem("unreadMessages", "0");
-                      }
-                    }}
+      <Box className="dsp-sidebar__nav-scroll">
+        <List className="dsp-sidebar__nav">
+          {sidebarSections.map((section, sectionIndex) => (
+            <Fragment key={section.label}>
+              <Typography component="li" className="dsp-sidebar__group-label">
+                {section.label}
+              </Typography>
+              {section.items.map((item, itemIndex) => {
+                const isActive = router.pathname.startsWith(item.path);
+                const Icon = item.icon;
+                const hasBadge =
+                  (item.badge && item.badge > 0) ||
+                  (item.text === "Messages" && unreadMessages > 0);
+                const animationIndex = sectionIndex * 10 + itemIndex;
+                return (
+                  <MotionListItem
+                    disablePadding
+                    custom={animationIndex}
+                    initial="hidden"
+                    animate="visible"
+                    variants={listItemVariants}
+                    key={item.text}
                   >
-                    <ListItemIcon sx={{ minWidth: 40 }}>
-                      <Icon
-                        size={20}
-                        color={isActive ? (isInstructor ? "#C4B5FD" : "#FF8A70") : "#AEB4C0"}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={item.text}
-                      sx={{
-                        color: isActive ? "#FFFFFF" : "#C7CEDA",
-                        fontWeight: isActive ? 600 : 500,
+                    <Link
+                      to={item.path}
+                      className="dsp-sidebar__link"
+                      onClick={() => {
+                        if (item.text === "Messages") {
+                          dispatch(clearUnreadMessages());
+                          localStorage.setItem("unreadMessages", "0");
+                        }
+                        if (isMobile && mobileOpen) handleDrawerToggle();
                       }}
-                    />
-                    {hasBadge && (
-                      <Box
+                    >
+                      <ListItemButton
+                        component={motion.div}
+                        aria-current={isActive ? "page" : undefined}
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="dsp-sidebar__item"
                         sx={{
-                          position: "absolute",
-                          right: 10,
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          bgcolor: "#FF5A36",
-                          color: "white",
-                          borderRadius: "50%",
-                          minWidth: 18,
-                          height: 18,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "0.7rem",
-                          fontWeight: "bold",
-                          px: 0.5,
+                          borderRadius: 2,
+                          mb: 0.5,
+                          minHeight: 44,
+                          position: "relative",
                         }}
                       >
-                        {item.badge ? item.badge : unreadMessages}
-                      </Box>
-                      )}
-                  </ListItemButton>
-                </Link>
-              )}
-              </MotionListItem>
+                        <ListItemIcon sx={{ minWidth: 34 }}>
+                          <Icon size={19} />
+                        </ListItemIcon>
+                        <ListItemText primary={item.text} />
+                        {hasBadge && (
+                          <Box className="dsp-sidebar__badge">
+                            {item.badge || unreadMessages}
+                          </Box>
+                        )}
+                      </ListItemButton>
+                    </Link>
+                  </MotionListItem>
+                );
+              })}
             </Fragment>
-          );
-        })}
-      </List>
+          ))}
+        </List>
+      </Box>
+
+      {logoutItem && (
+        <List className="dsp-sidebar__logout">
+          <MotionListItem disablePadding>
+            <ListItemButton
+              className="dsp-sidebar__logout-button"
+              onClick={handleLogoutClick}
+              aria-label="Log out"
+            >
+              <ListItemIcon sx={{ minWidth: 34 }}>
+                <logoutItem.icon size={19} />
+              </ListItemIcon>
+              <ListItemText primary={logoutItem.text} />
+            </ListItemButton>
+          </MotionListItem>
+        </List>
+      )}
 
       <Dialog
         open={logoutDialogOpen}
@@ -297,11 +315,13 @@ export default function Sidebar({
   return (
     <Box
       component="nav"
+      aria-label={`${roleLabel} navigation`}
       sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
     >
       {isMobile ? (
         <Drawer
           variant="temporary"
+          className={`dsp-sidebar-drawer${overviewMode ? " dsp-overview-drawer" : ""}`}
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
@@ -312,9 +332,9 @@ export default function Sidebar({
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              background: "#111216",
-              color: "#FFFFFF",
-              borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+              background: "#FFFFFF",
+              color: "#111827",
+              borderRight: "1px solid #E2E8F0",
             },
           }}
         >
@@ -323,14 +343,15 @@ export default function Sidebar({
       ) : (
         <Drawer
           variant="permanent"
+          className={`dsp-sidebar-drawer${overviewMode ? " dsp-overview-drawer" : ""}`}
           sx={{
             display: { xs: "none", sm: "block" },
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: drawerWidth,
-              background: "#111216",
-              color: "#FFFFFF",
-              borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+              background: "#FFFFFF",
+              color: "#111827",
+              borderRight: "1px solid #E2E8F0",
             },
           }}
           open

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type React from "react";
-import { User } from "lucide-react";
+import { BookOpen, User, UsersRound } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { SortOrder, Student, StudentFilter } from "../../../types/Student";
 import { GET_ALL_STUDENTS } from "../../../graphql/Queries/StudentQueries";
@@ -21,8 +21,8 @@ const StudentsProgressDashboard: React.FC = () => {
     notifyOnNetworkStatusChange: true,
   });
 
-  const students = data?.getAllStudents || [];
-  const filteredStudents = useMemo(() => students, [students]);
+  const filteredStudents = data?.getAllStudents || [];
+  const totalLessons = filteredStudents.reduce((total: number, student: Student) => total + (student.lessonStats?.totalLessons ?? 0), 0);
 
   if (loading && !data) return <DashboardLoadingSkeleton rows={6} />;
 
@@ -34,6 +34,12 @@ const StudentsProgressDashboard: React.FC = () => {
           description="Keep track of your learners, lesson records, and progress in one place."
           action={<FilterComponent onFilterChange={setFilter} currentFilter={filter} />}
         />
+
+        <div className="dsp-students-summary" aria-label="Student summary">
+          <div className="dsp-students-summary__item dsp-summary-card dsp-summary-card--violet"><span className="dsp-summary-card__icon"><UsersRound size={19} /></span><span className="dsp-summary-card__label">Students in your record</span><strong>{filteredStudents.length}</strong><small>Current student relationships</small></div>
+          <div className="dsp-students-summary__item dsp-summary-card dsp-summary-card--blue"><span className="dsp-summary-card__icon"><BookOpen size={19} /></span><span className="dsp-summary-card__label">Lessons completed</span><strong>{totalLessons}</strong><small>Across the students shown</small></div>
+          <div className="dsp-students-summary__item dsp-summary-card dsp-summary-card--neutral"><span className="dsp-summary-card__icon"><User size={19} /></span><span className="dsp-summary-card__label">View</span><strong>Student CRM</strong><small>Open a profile for detailed progress</small></div>
+        </div>
 
         {error ? (
           <DashboardCard className="dsp-page-error">

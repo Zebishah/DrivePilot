@@ -63,7 +63,7 @@ export const TotalLessonsCard: React.FC<TotalLessonsCardProps> = ({
         <h3 className="text-lg font-semibold text-gray-900">
           Completed Lessons
         </h3>
-        <button className="px-3 py-1 opacity-0 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors">
+        <button className="dsp-dashboard-button--primary px-3 py-1 opacity-0 text-white text-sm rounded-lg transition-colors">
           Edit Hours
         </button>
       </div>

@@ -29,6 +29,7 @@ import {
   BadgePercent,
   Disc,
   Percent,
+  Search,
   Star,
   TicketPercent,
   X,
@@ -61,7 +62,19 @@ const getInitialCoordinates = () => {
   return null;
 };
 
-const InstructorsInfo: React.FC = () => {
+const formatSearchDate = (date: string) => {
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime())
+    ? date
+    : parsed.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+};
+
+const getNextAvailableSlot = (instructor: any) =>
+  (instructor.availability || [])
+    .flatMap((day: any) => day.availableSlots || [])
+    .find((slot: any) => !slot.booked && slot.status !== "booked");
+
+const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = false }) => {
   const [filters, setFilters] = useState<FiltersState>({
     coordinates: getInitialCoordinates(), // Start with null, will be set by useEffect
     areaRadius: 50, // ✅ set area radius explicitly here
@@ -356,11 +369,12 @@ const InstructorsInfo: React.FC = () => {
       areaRadius: 50,
       coordinates: null,
     };
-
-    setFilters((prev: any) => ({
-      ...prev,
+    const nextFilters = {
+      ...filters,
       [key]: resetFilterMap[key],
-    }));
+      ...(key === "coordinates" ? { addressFilterApplied: false } : {}),
+    };
+    handleApplyFilters(nextFilters);
   };
   const filterChips = generateFilterChips();
 
@@ -383,15 +397,18 @@ const InstructorsInfo: React.FC = () => {
   }, [data?.getNearbyInstructors?.instructors, filtersApplied]);
 
   return (
-    <div className="w-[90%] mx-auto overflow-x-hidden">
-      <h1 className="text-3xl font-harabara font-bold mb-4 text-center">
-        Nearby Instructors
-      </h1>
-      <div className="flex gap-4 items-center">
+    <div className={`dsp-instructor-results ${studentMode ? "dsp-instructor-results--student" : ""}`}>
+      <div className="dsp-instructor-results__toolbar">
+        <div className="dsp-instructor-results__toolbar-copy">
+          <span className="dsp-instructor-results__eyebrow">Browse instructors</span>
+          <strong>{isInitialLoad || loading ? "Loading instructors…" : `${visibleInstructors.length} ${visibleInstructors.length === 1 ? "instructor" : "instructors"} found`}</strong>
+        </div>
+        <div className="dsp-instructor-results__toolbar-actions">
         <Button
           variant="contained"
           onClick={handleClick}
           startIcon={<FaSlidersH />}
+          className="dsp-instructor-results__filter-button"
           sx={{
             fontFamily: "Poppins, sans-serif",
             backgroundColor: "#5FC2D3",
@@ -416,6 +433,7 @@ const InstructorsInfo: React.FC = () => {
           variant="contained"
           onClick={handleResetFilters}
           startIcon={<X size={20} />}
+          className="dsp-instructor-results__reset-button"
           sx={{
             fontFamily: "Poppins, sans-serif",
             backgroundColor: "#5FC2D3",
@@ -435,6 +453,7 @@ const InstructorsInfo: React.FC = () => {
         >
           Reset Filters
         </Button>
+        </div>
       </div>
       <FilterPopover
         key={JSON.stringify(filters)}
@@ -448,8 +467,18 @@ const InstructorsInfo: React.FC = () => {
         instructors={instructors} // Current filtered results
         allInstructors={allInstructorsForDates} // All instructors for dates
       />
+      {filterChips.length > 0 && (
+        <div className="dsp-instructor-results__chips" aria-label="Active filters">
+          {filterChips.map((chip) => (
+            <button type="button" key={chip.key} onClick={() => handleDeleteFilter(chip.key)}>
+              {chip.label}
+              <X size={13} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      )}
       {(isInitialLoad || loading) && (
-        <div className="m-12">
+        <div className="dsp-instructor-results__loading">
           <InstructorsListSkeleton />{" "}
         </div>
       )}
@@ -457,17 +486,10 @@ const InstructorsInfo: React.FC = () => {
       {!isInitialLoad &&
         !loading &&
         visibleInstructors.length === 0 && (
-          <Box
-            display="flex"
-            flexDirection="column"
-            justifyContent="center"
-            alignItems="center"
-            minHeight="60vh"
-            textAlign="center"
-            p={3}
-          >
+          <Box className="dsp-instructor-results__empty">
+            <Search size={28} aria-hidden="true" />
             <Typography variant="h5" gutterBottom>
-              No approved instructors are available yet
+              No instructors found
             </Typography>
             <Typography variant="body1" color="textSecondary" paragraph>
               {onlyPendingInstructors
@@ -478,10 +500,10 @@ const InstructorsInfo: React.FC = () => {
             </Typography>
             <Button
               variant="contained"
-              style={{ backgroundColor: "#5FC2D3", color: "black" }}
+              className="dsp-instructor-results__empty-action"
               onClick={handleResetFilters}
             >
-              Show All Instructors
+              Reset filters
             </Button>
           </Box>
         )}
@@ -489,179 +511,71 @@ const InstructorsInfo: React.FC = () => {
       {!isInitialLoad &&
         !loading &&
         visibleInstructors.length !== 0 && (
-          <div className="flex flex-col md:flex-row p-4 font-poppins">
+          <div className="dsp-instructor-results__workspace">
             {/* Instructor List */}
-            <div className="w-full md:w-1/2 space-y-4 relative max-h-[900px] overflow-y-auto pr-2">
+            <div className="dsp-instructor-results__list">
               {visibleInstructors.map((instructor) => {
                   const paymentReady = instructor.isPaymentReady;
+                  const nextSlot = getNextAvailableSlot(instructor);
+                  const reviewsCount = Number(instructor.reviewsCount || 0);
+                  const rating = Number(instructor.rating || 0);
+                  const originalRate = Number(instructor.details?.rate || 0);
+                  const discount = Number(instructor.details?.lessonDiscount || 0);
+                  const finalRate = discount > 0 ? originalRate * (1 - discount / 100) : originalRate;
                   return (
-                  <div
+                  <article
                     key={instructor._id}
-                    className="pl-4 drop-shadow-md mt-4 bg-white pt-2 rounded-lg flex flex-col md:flex-row items-center md:items-start text-left relative "
+                    className="dsp-instructor-result-card"
                   >
-                    {/* Instructor card content */}
-                    <div className="flex flex-col items-center md:items-start md:w-1/3 mb-2">
+                    <div className="dsp-instructor-result-card__top">
                       <img
                         src={
                           instructor.profileImage ||
                           "/images/Portrait_Placeholder.png"
                         }
-                        alt="Instructor"
-                        className="w-24 h-24 rounded-full mb-4 object-cover"
+                        alt={`${instructor.firstName} ${instructor.lastName}`}
+                        className="dsp-instructor-result-card__photo"
                       />
-                      <h2 className="text-lg font-bold mb-1">
-                        {instructor.firstName} {instructor.lastName}
-                      </h2>
-                      <Tooltip
-                        title={instructor.address || ""}
-                        arrow
-                        placement="top"
-                      >
-                        <p className="text-gray-500 mb-2 cursor-pointer">
-                          {instructor.address && instructor.address.length > 30
-                            ? instructor.address.slice(0, 30) + "..."
-                            : instructor.address}
-                        </p>
-                      </Tooltip>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 0.5,
-                          mt: 1,
-                          flexDirection: "column",
-                        }}
-                      >
-                        <Box>
-                          {[...Array(5)].map((_, index) => {
-                            const starNumber = index + 1;
-                            const rating = instructor.totalReviews;
-
-                            // Determine fill percentage for this star
-                            let fillPercentage = 0;
-                            if (rating >= starNumber) {
-                              fillPercentage = 100; // Full star
-                            } else if (rating > starNumber - 1) {
-                              fillPercentage =
-                                (rating - (starNumber - 1)) * 100; // Partial star
-                            }
-
-                            return (
-                              <Box
-                                key={index}
-                                sx={{
-                                  position: "relative",
-                                  display: "inline-block",
-                                }}
-                              >
-                                {/* Background star (unfilled) */}
-                                <Star size={20} fill="none" stroke="#ccc" />
-                                {/* Foreground star (filled portion) */}
-                                <Box
-                                  sx={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: `${fillPercentage}%`,
-                                    overflow: "hidden",
-                                  }}
-                                >
-                                  <Star
-                                    size={20}
-                                    fill="#FFD700"
-                                    stroke="#FFD700"
-                                  />
-                                </Box>
-                              </Box>
-                            );
-                          })}
-                        </Box>
-                        <Box sx={{ ml: 0.5 }}>
-                          ({instructor.reviewsCount || 0} review
-                          {instructor.reviewsCount &&
-                          instructor.reviewsCount > 1
-                            ? "s"
-                            : ""}
-                          )
-                        </Box>
-                      </Box>
-                    </div>
-
-                    {/* Right side details */}
-                    <div className="w-full p-6">
-                      <div className="text-left">
-                        <p className="flex items-center gap-2 mb-2">
-                          <FaBook />{" "}
-                          {`${instructor.details?.degree} Years` || "N/A"}
-                        </p>
-                        <p className="flex items-center gap-2 mb-2">
-                          <FaCar /> {instructor.details?.car || "N/A"}
-                        </p>
-                        <p className="flex items-center gap-2 mb-2">
-                          <FaCogs /> {instructor.details?.type || "N/A"}
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <FaMoneyBillWave />
-                          {instructor.details?.rate
-                            ? (() => {
-                                return (
-                                  <>
-                                    <span
-                                      className={`${instructor.details.lessonDiscount > 0 ? "line-through" : ""} text-gray-800`}
-                                    >
-                                      CHF {instructor.details.rate}/hr
-                                    </span>
-                                    {instructor.details.lessonDiscount > 0 ? (
-                                      <span className="ml-2 text-green-600 font-semibold">
-                                        CHF{" "}
-                                        {(
-                                          instructor.details.rate *
-                                          (1 -
-                                            instructor.details.lessonDiscount /
-                                              100)
-                                        ).toFixed(2)}
-                                      </span>
-                                    ) : null}
-                                  </>
-                                );
-                              })()
-                            : "N/A"}
-                        </p>
-                        {instructor.details.lessonDiscount > 0 && (
-                          <p className="flex items-center gap-2 mt-2">
-                            <BadgePercent size={18} />
-                            {instructor.details?.lessonDiscount || "N/A"}%
-                          </p>
-                        )}
+                      <div className="dsp-instructor-result-card__identity">
+                        <h2>{instructor.firstName} {instructor.lastName}</h2>
+                        <Tooltip title={instructor.address || instructor.location || ""} arrow placement="top">
+                          <span className="dsp-instructor-result-card__location">{instructor.address || instructor.location || "Location not available"}</span>
+                        </Tooltip>
+                        <div className="dsp-instructor-result-card__rating">
+                          {reviewsCount > 0 ? (
+                            <><span className="dsp-instructor-result-card__stars" aria-label={`${rating} out of 5 stars`}>★★★★★</span><strong>{rating ? rating.toFixed(1) : "—"}</strong><span>({reviewsCount} {reviewsCount === 1 ? "review" : "reviews"})</span></>
+                          ) : <span>No reviews yet</span>}
+                        </div>
                       </div>
-                      <Tooltip
-                        title={
-                          paymentReady
-                            ? ""
-                            : "This instructor is not ready for paid bookings yet."
-                        }
-                      >
-                        <span>
-                          <Button
-                            variant="contained"
-                            className="w-full"
-                            style={{
-                              backgroundColor: paymentReady
-                                ? "#5FC2D3"
-                                : "#e0e0e0",
-                              borderRadius: "10px",
-                              marginTop: "2rem",
-                              textTransform: "none",
-                              color: paymentReady ? "black" : "#888",
-                            }}
-                            disabled={!paymentReady}
-                            onClick={() => handleViewDetails(instructor._id)}
-                          >
-                            {paymentReady ? "Book Now" : "Not Available Yet"}
-                          </Button>
-                        </span>
-                      </Tooltip>
                     </div>
-                  </div>
+
+                    <div className="dsp-instructor-result-card__body">
+                      <div className="dsp-instructor-result-card__facts">
+                        <span><FaBook /> {instructor.details?.degree ? `${instructor.details.degree} years` : "Experience not listed"}</span>
+                        <span><FaCar /> {instructor.details?.car || "Vehicle not listed"}</span>
+                        <span><FaCogs /> {instructor.details?.type || "Transmission not listed"}</span>
+                      </div>
+                      {nextSlot && <span className="dsp-instructor-result-card__next-slot">Next available: {formatSearchDate(nextSlot.date)} · {nextSlot.startTime}</span>}
+                      <div className="dsp-instructor-result-card__price-row">
+                        <div className="dsp-instructor-result-card__price">
+                          {discount > 0 && <span className="dsp-instructor-result-card__original-price">CHF {originalRate.toFixed(2)}/hr</span>}
+                          <strong>{finalRate ? `CHF ${finalRate.toFixed(2)}` : "Price not listed"}</strong>
+                          {finalRate && <small>/ hr</small>}
+                        </div>
+                        {discount > 0 && <span className="dsp-instructor-result-card__discount">-{discount}%</span>}
+                      </div>
+                      <div className="dsp-instructor-result-card__actions">
+                        <Button variant="outlined" onClick={() => handleViewDetails(instructor._id)} className="dsp-instructor-result-card__secondary-action">View profile</Button>
+                        <Tooltip title={paymentReady ? "" : "This instructor is not ready for paid bookings yet."} arrow>
+                          <span>
+                            <Button variant="contained" disabled={!paymentReady} onClick={() => handleViewDetails(instructor._id)} className="dsp-instructor-result-card__primary-action">
+                              {paymentReady ? "Book lesson" : "Not available yet"}
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </article>
                 );
               })}
 
@@ -678,18 +592,22 @@ const InstructorsInfo: React.FC = () => {
             )} */}
             </div>
 
-            <div className="w-full md:w-1/2 mt-4 h-96 pl-4">
+            <aside className="dsp-instructor-results__map-panel">
+              <div className="dsp-instructor-results__map-heading">
+                <div><span>Nearby instructors</span><strong>Map view</strong></div>
+                <span>{markers.length} {markers.length === 1 ? "location" : "locations"}</span>
+              </div>
               <MapContainer
                 center={mapCenter}
                 zoom={10}
-                className="h-full w-full rounded-lg"
+                className="dsp-instructor-results__map"
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 {markers.map((marker) => (
                   <Marker key={marker.id} position={marker.position} />
                 ))}
               </MapContainer>
-            </div>
+            </aside>
           </div>
         )}
     </div>

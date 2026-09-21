@@ -6,7 +6,6 @@ import {
   Box,
   Modal,
   IconButton,
-  Stack,
   Fade,
   Button,
   Chip,
@@ -47,6 +46,14 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [hoveredDoc, setHoveredDoc] = useState<number | null>(null);
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
+
+  const statusCounts = documents.reduce(
+    (counts, document) => {
+      counts[document.status] += 1;
+      return counts;
+    },
+    { accepted: 0, pending: 0, rejected: 0 } as Record<Document["status"], number>,
+  );
 
   // Add this new state in DocumentsTab component
   const [preSelectedDocType, setPreSelectedDocType] = useState<string | null>(
@@ -165,7 +172,26 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
 
   return (
     <>
-      <Box sx={{ p: 3 }}>
+      <Box className="dsp-documents-tab" sx={{ p: 3 }}>
+        <Box className="dsp-documents-summary">
+          <Box className="dsp-documents-summary__intro">
+            <span className="dsp-documents-summary__eyebrow">Verification progress</span>
+            <Typography variant="h6">Keep your instructor profile ready</Typography>
+            <Typography variant="body2">
+              Approved documents can be reviewed by the marketplace team before you publish availability.
+            </Typography>
+          </Box>
+          <Box className="dsp-documents-summary__progress" aria-label={`${statusCounts.accepted} of ${documents.length} documents approved`}>
+            <strong>{documents.length ? Math.round((statusCounts.accepted / documents.length) * 100) : 0}%</strong>
+            <span>profile documentation complete</span>
+            <div className="dsp-documents-summary__track"><span style={{ width: `${documents.length ? (statusCounts.accepted / documents.length) * 100 : 0}%` }} /></div>
+          </Box>
+          <Box className="dsp-documents-summary__stats">
+            <span><strong>{statusCounts.accepted}</strong> Approved</span>
+            <span><strong>{statusCounts.pending}</strong> Pending</span>
+            <span><strong>{statusCounts.rejected}</strong> Needs attention</span>
+          </Box>
+        </Box>
         {/* Header with Add More Documents Button */}
         <Box
           sx={{
@@ -225,10 +251,10 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                 borderRadius: 2,
                 textTransform: "none",
                 boxShadow: 3,
-                background: "#5CC2D2",
+                background: "var(--dsp-primary-gradient)",
                 "&:hover": {
                   boxShadow: 6,
-                  background: "#4BA1B0",
+                  background: "var(--dsp-primary-gradient-soft)",
                 },
               }}
             >
@@ -266,64 +292,6 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                 onMouseEnter={() => setHoveredDoc(index)}
                 onMouseLeave={() => setHoveredDoc(null)}
               >
-                {/* Overlay for pending and rejected documents */}
-                {(doc.status === "pending" || doc.status === "rejected") && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: "rgba(0, 0, 0, 0.4)",
-                      zIndex: 1,
-                      pointerEvents: "none",
-                    }}
-                  />
-                )}
-
-                {doc.status === "rejected" && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      zIndex: 3,
-                      backgroundColor: "rgba(255, 255, 255, 0.15)",
-                      backdropFilter: "blur(10px)",
-                      borderRadius: 2,
-                      p: 1.5,
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                    }}
-                  >
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent opening the view modal
-                        handleRejectedDocumentUpload(doc.documentType);
-                      }}
-                      sx={{
-                        textTransform: "none",
-                        fontSize: "0.75rem",
-                        px: 2,
-                        py: 0.5,
-                        backgroundColor: "rgba(255, 255, 255, 0.9)",
-                        borderColor: "rgba(255, 255, 255, 0.3)",
-                        "&:hover": {
-                          backgroundColor: "rgba(255, 255, 255, 1)",
-                          borderColor: "rgba(255, 255, 255, 0.5)",
-                        },
-                      }}
-                    >
-                      Re-upload
-                    </Button>
-                  </Box>
-                )}
-
                 {/* Status Badge */}
                 <Box
                   sx={{
@@ -359,7 +327,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                       top: 12,
                       right: 12,
                       zIndex: 2,
-                      backgroundColor: "rgba(0,0,0,0.7)",
+                      backgroundColor: "rgba(124, 58, 237, 0.92)",
                       borderRadius: "50%",
                       width: 40,
                       height: 40,
@@ -427,6 +395,20 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                 >
                   {doc.documentType}
                 </Typography>
+                {doc.status === "rejected" && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleRejectedDocumentUpload(doc.documentType);
+                    }}
+                    sx={{ mt: 1, textTransform: "none" }}
+                  >
+                    Replace document
+                  </Button>
+                )}
               </Paper>
             </Grid>
           ))}

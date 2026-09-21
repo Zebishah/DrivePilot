@@ -52,13 +52,14 @@ const theme = createTheme({
           },
         },
         containedPrimary: {
-          background: `linear-gradient(135deg, ${designTokens.color.primary}, ${designTokens.color.primaryHover})`,
-          "&:hover": { background: designTokens.color.primaryHover },
+          background: designTokens.gradient.primary,
+          boxShadow: "0 8px 22px rgba(168, 85, 247, 0.22)",
+          "&:hover": { background: designTokens.gradient.softer, boxShadow: "0 10px 26px rgba(168, 85, 247, 0.28)" },
         },
         outlinedPrimary: {
           borderColor: designTokens.color.primary,
           color: designTokens.color.primaryHover,
-          "&:hover": { borderColor: designTokens.color.primaryHover, backgroundColor: designTokens.color.primarySoft },
+          "&:hover": { borderColor: designTokens.color.primaryHover, backgroundColor: designTokens.color.purpleSurface },
         },
       },
     },
@@ -136,7 +137,7 @@ const theme = createTheme({
     },
     MuiTabs: {
       styleOverrides: {
-        indicator: { height: 3, borderRadius: 99, backgroundColor: designTokens.color.primary },
+        indicator: { height: 3, borderRadius: 99, backgroundImage: designTokens.gradient.primary },
       },
     },
     MuiTab: {

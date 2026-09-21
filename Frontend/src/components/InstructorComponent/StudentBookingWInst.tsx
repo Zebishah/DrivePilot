@@ -2,8 +2,12 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
   Calendar,
+  CalendarCheck2,
+  CalendarX2,
   Clock,
   DollarSign,
+  History,
+  AlertCircle,
   User,
   X,
   Loader2,
@@ -176,15 +180,29 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   message,
   isLoading = false,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isLoading) onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isLoading, onClose]);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={!isLoading ? onClose : undefined}
-        />
+  return createPortal(
+    <div className="dsp-instructor-modal dsp-instructor-modal--confirmation" role="dialog" aria-modal="true" aria-labelledby="booking-confirmation-title">
+      <div
+        className="dsp-instructor-modal__backdrop"
+        onClick={!isLoading ? onClose : undefined}
+      />
+      <div className="dsp-instructor-modal__viewport">
 
         <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
           <div className="bg-white px-6 pt-6 pb-4">
@@ -193,7 +211,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 <AlertTriangle className="h-6 w-6 text-yellow-600" />
               </div>
               <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
-                <h3 className="text-lg font-semibold leading-6 text-gray-900">
+                <h3 id="booking-confirmation-title" className="text-lg font-semibold leading-6 text-gray-900">
                   {title}
                 </h3>
                 <div className="mt-2">
@@ -207,7 +225,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               type="button"
               disabled={isLoading}
               onClick={onConfirm}
-              className="inline-flex w-full justify-center rounded-lg bg-[#5FC2D3] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3c8e9c] disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto transition-colors duration-150"
+              className="dsp-dashboard-button--primary inline-flex w-full justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto transition-colors duration-150"
             >
               {isLoading ? (
                 <>
@@ -229,7 +247,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>,
+    document.body,
   );
 };
 
@@ -441,36 +460,52 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
   onClose,
   booking,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !booking) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
-        />
+  return createPortal(
+    <div className="dsp-instructor-modal dsp-instructor-modal--booking" role="dialog" aria-modal="true" aria-labelledby="booking-details-title">
+      <div className="dsp-instructor-modal__backdrop" onClick={onClose} />
+      <div className="dsp-instructor-modal__viewport">
 
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
-          <div className="bg-white px-6 pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
+        <div className="dsp-booking-detail-modal inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
+          <div className="dsp-booking-detail-modal__header bg-white px-6 pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="dsp-booking-detail-modal__eyebrow">Lesson record</span>
+                <h3 id="booking-details-title" className="text-xl font-semibold text-gray-900">
                 Booking Details
               </h3>
+              </div>
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Close booking details"
                 className="text-gray-400 hover:text-gray-500 transition-colors duration-150 p-1 rounded-full hover:bg-gray-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-6">
-              <div>
+            <div className="dsp-booking-detail-modal__body space-y-6">
+              <div className="dsp-booking-detail-modal__section">
                 <h4 className="font-medium text-gray-900 mb-3">
                   Student Information
                 </h4>
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="dsp-booking-detail-modal__section-card bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center space-x-3 mb-2">
                     {booking.studentId.profileImage ? (
                       <img
@@ -496,11 +531,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
 
-              <div>
+              <div className="dsp-booking-detail-modal__section">
                 <h4 className="font-medium text-gray-900 mb-3">
                   Instructor Information
                 </h4>
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="dsp-booking-detail-modal__section-card bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center space-x-3 mb-2">
                     {booking.instructorId.profileImage ? (
                       <img
@@ -526,11 +561,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
 
-              <div>
+              <div className="dsp-booking-detail-modal__section">
                 <h4 className="font-medium text-gray-900 mb-3">Lesson Slots</h4>
                 <div className="space-y-2">
                   {booking.slots.map((slot) => (
-                    <div key={slot._id} className="bg-gray-50 rounded-lg p-3">
+                    <div key={slot._id} className="dsp-booking-detail-modal__section-card bg-gray-50 rounded-lg p-3">
                       {(() => {
                         const normalized = String(slot.status || "").toLowerCase();
                         const displayStatus =
@@ -602,11 +637,11 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
 
-              <div>
+              <div className="dsp-booking-detail-modal__section">
                 <h4 className="font-medium text-gray-900 mb-3">
                   Payment Information
                 </h4>
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="dsp-booking-detail-modal__section-card bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-2">
                     <DollarSign className="h-4 w-4 text-gray-400" />
                     <span className="font-medium">
@@ -626,7 +661,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
             </div>
           </div>
 
-          <div className="bg-gray-50 px-6 py-4">
+          <div className="dsp-booking-detail-modal__footer bg-gray-50 px-6 py-4">
             <button
               onClick={onClose}
               className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
@@ -636,7 +671,8 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>,
+    document.body,
   );
 };
 
@@ -931,7 +967,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="dsp-instructor-page dsp-booking-management__state flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -939,8 +975,8 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">Error loading bookings: {error.message}</p>
+      <div className="dsp-instructor-page dsp-booking-management__state bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">We couldn’t load your bookings. Try again shortly.</p>
       </div>
     );
   }
@@ -954,6 +990,12 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
       </div>
 
       <div className=" pt-4">
+        <div className="dsp-booking-summary" aria-label="Booking summary">
+          <div className="dsp-summary-card dsp-summary-card--violet"><span className="dsp-summary-card__icon"><CalendarCheck2 size={19} /></span><span className="dsp-summary-card__label">Upcoming</span><strong>{counts.upcoming}</strong><small>Confirmed lessons ahead</small></div>
+          <div className="dsp-summary-card dsp-summary-card--amber"><span className="dsp-summary-card__icon"><AlertCircle size={19} /></span><span className="dsp-summary-card__label">Needs attention</span><strong>{counts.abandoned + counts.missed}</strong><small>Abandoned or missed lessons</small></div>
+          <div className="dsp-summary-card dsp-summary-card--blue"><span className="dsp-summary-card__icon"><History size={19} /></span><span className="dsp-summary-card__label">History</span><strong>{counts.history}</strong><small>Completed booking records</small></div>
+          <div className="dsp-summary-card dsp-summary-card--rose"><span className="dsp-summary-card__icon"><CalendarX2 size={19} /></span><span className="dsp-summary-card__label">Cancelled</span><strong>{counts.cancelled}</strong><small>Cancelled lesson slots</small></div>
+        </div>
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <Tabs
             value={
@@ -991,10 +1033,10 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 fontWeight: 600,
               },
               "& .Mui-selected": {
-                color: "#5fc2d3 !important",
+                color: "#7C3AED !important",
               },
               "& .MuiTabs-indicator": {
-                backgroundColor: "#5fc2d3",
+                background: "linear-gradient(90deg, #7C3AED, #EC4899)",
               },
             }}
           >
@@ -1203,7 +1245,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                       setSelectedBooking(booking);
                       setShowDetailsModal(true);
                     }}
-                    className="bg-[#5FC2D3] hover:bg-[#3c8e9c] text-white px-4 py-2.5 text-xs font-semibold rounded-full transition-colors duration-150"
+                    className="dsp-dashboard-button--primary text-white px-4 py-2.5 text-xs font-semibold rounded-full transition-colors duration-150"
                   >
                     View Details
                   </button>
@@ -1290,10 +1332,10 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             sx={{
               "& .MuiPaginationItem-root": {
                 "&.Mui-selected": {
-                  bgcolor: "#5fc2d3",
+                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
                   color: "white",
                   "&:hover": {
-                    bgcolor: "#4bb1c2",
+                    background: "linear-gradient(135deg, #6D28D9, #DB2777)",
                   },
                 },
               },

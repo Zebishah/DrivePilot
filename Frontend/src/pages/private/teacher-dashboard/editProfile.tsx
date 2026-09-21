@@ -18,7 +18,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Skeleton,
   IconButton,
   FormHelperText,
   InputAdornment,
@@ -33,11 +32,9 @@ import { toast } from "react-hot-toast";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { startOfDay } from "date-fns";
-import { ApolloError } from "@apollo/client";
 import axios from "axios";
 import { LuMapPin } from "react-icons/lu";
-import _, { set } from "lodash";
+import _ from "lodash";
 import { DeleteIcon, EditIcon } from "lucide-react";
 import { useFileUpload } from "../../../hooks/useUploadURL";
 import { useAuth } from "../../../context/AuthContext";
@@ -98,11 +95,9 @@ export default function EditProfile() {
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const lastRequestTime = useRef(0);
-  // Get today's date at the start of the day for maximum date validation
   const { uploadFile } = useFileUpload();
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const today = startOfDay(new Date());
   const { user } = useAuth();
   const [newProfileImageFile, setNewProfileImageFile] = useState<File | null>(
     null
@@ -900,8 +895,8 @@ export default function EditProfile() {
               <Button
                 variant="contained"
                 sx={{
-                  bgcolor: "#5ec2d2",
-                  "&:hover": { bgcolor: "#4ba1b0" },
+                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                  "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
                   paddingX: 4,
                   borderRadius: "8px",
                   py: 1,

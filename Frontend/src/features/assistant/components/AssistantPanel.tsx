@@ -26,7 +26,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
   const [error, setError] = useState<string | null>(null);
   const [responseMode, setResponseMode] = useState<string | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>([
-    { role: "assistant", content: "Ask me about your authorized DSP Marketplace information." },
+    { role: "assistant", content: "Ask me about DSP Marketplace or your authorized dashboard information." },
   ]);
 
   const roleSuggestions = useMemo(() => (role ? suggestions[role] : []), [role]);
@@ -44,7 +44,11 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
       const response = await fetch(`${backendBaseUrl()}/api/v1/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
-        body: JSON.stringify({ message: content, history: nextMessages.slice(-8, -1), pageContext }),
+        body: JSON.stringify({
+          message: content,
+          history: nextMessages.slice(-8, -1),
+          pageContext: `${pageContext} ${typeof window !== "undefined" ? window.location.pathname : ""}`.trim().slice(0, 80),
+        }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || "The assistant is temporarily unavailable.");
@@ -58,7 +62,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
   };
 
   const clearConversation = () => {
-    setMessages([{ role: "assistant", content: "Ask me about your authorized DSP Marketplace information." }]);
+    setMessages([{ role: "assistant", content: "Ask me about DSP Marketplace or your authorized dashboard information." }]);
     setError(null);
     setResponseMode(null);
   };
@@ -70,7 +74,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
 
   return (
     <>
-      <IconButton aria-label="Open DSP assistant" onClick={() => setOpen(true)} sx={{ position: "fixed", right: 24, bottom: 24, zIndex: 1200, bgcolor: "primary.main", color: "white", boxShadow: 4, "&:hover": { bgcolor: "primary.dark" } }}>
+      <IconButton className="dsp-assistant-launcher" aria-label="Open DSP assistant" onClick={() => setOpen(true)} sx={{ position: "fixed", right: 24, bottom: 24, zIndex: 1200, bgcolor: "primary.main", color: "white", boxShadow: 4, "&:hover": { bgcolor: "primary.dark" } }}>
         <Bot size={22} />
       </IconButton>
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
@@ -84,7 +88,7 @@ export default function AssistantPanel({ pageContext }: { pageContext: string })
             <Stack spacing={1.5}>
               {messages.map((message, index) => <Paper key={`${message.role}-${index}`} elevation={0} aria-label={`${message.role === "user" ? "You" : "DSP Assistant"} message`} sx={{ p: 1.5, alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "88%", bgcolor: message.role === "user" ? "primary.main" : "grey.100", color: message.role === "user" ? "white" : "text.primary", borderRadius: 2 }}><Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{message.content}</Typography></Paper>)}
               {sending && <Stack direction="row" spacing={1} alignItems="center"><Loader2 size={16} className="assistant-spin" aria-hidden="true" /><Typography variant="body2" color="text.secondary">Checking your authorized data…</Typography></Stack>}
-              {responseMode === "fallback" && <Typography variant="caption" color="text.secondary">Based on your latest verified DSP data.</Typography>}
+              {responseMode === "fallback" && <Typography variant="caption" color="text.secondary">Based on verified DSP data and DSP Marketplace context.</Typography>}
               {error && <Stack spacing={0.5}><Typography variant="body2" color="error">{error}</Typography><Button size="small" onClick={retryLastMessage} disabled={sending} sx={{ alignSelf: "flex-start" }}>Retry</Button></Stack>}
             </Stack>
           </Box>

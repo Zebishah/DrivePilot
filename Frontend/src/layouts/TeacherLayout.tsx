@@ -3,9 +3,16 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { Box, Alert } from "@mui/material";
 import {
-  LayoutGrid,
+  CalendarCheck,
+  CalendarDays,
+  CreditCard,
+  FileText,
+  LayoutDashboard,
   MessageSquare,
+  MessageSquareText,
+  ReceiptText,
   Settings,
+  Star,
   HelpCircle,
   LogOut,
 } from "lucide-react";
@@ -36,7 +43,7 @@ interface TeacherLayoutProps {
   children: React.ReactNode;
 }
 
-const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH = 240;
 
 export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const { user, token, logout } = useAuth();
@@ -248,42 +255,73 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
 
   // ✅ Menu items defined AFTER hook call to get latest count
   const menuItems: MenuItem[] = [
-    { text: "Overview", icon: LayoutGrid, path: "/teacher-dashboard/overview" },
+    { text: "Overview", icon: LayoutDashboard, path: "/teacher-dashboard/overview", section: "Workspace" },
     {
       text: "Profile Setting",
       icon: Settings,
       path: "/teacher-dashboard/settings",
+      section: "Workspace",
     },
     {
-      text: "Help & Support",
-      icon: HelpCircle,
-      path: "/teacher-dashboard/help-support",
+      text: "Documents",
+      icon: FileText,
+      path: "/teacher-dashboard/documents",
+      section: "Workspace",
     },
     {
-      text: "Feedback",
-      icon: MessageSquare,
-      path: "/teacher-dashboard/feedback",
+      text: "Availability & Calendar",
+      icon: CalendarDays,
+      path: "/teacher-dashboard/availability",
+      section: "Workspace",
     },
     {
       text: "My Students",
       icon: FaUserGraduate,
       path: "/teacher-dashboard/my-students",
+      section: "Manage",
     },
     {
       text: "Booking Management",
-      icon: LayoutGrid,
+      icon: CalendarCheck,
       path: "/teacher-dashboard/bookingManagement",
       badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined,
+      section: "Manage",
     },
     {
       text: "Messages",
       icon: MessageSquare,
       path: "/teacher-dashboard/chat",
+      section: "Manage",
+    },
+    {
+      text: "Payment Management",
+      icon: CreditCard,
+      path: "/teacher-dashboard/payment-management",
+      section: "Manage",
     },
     {
       text: "Transaction History",
-      icon: LayoutGrid,
+      icon: ReceiptText,
       path: "/teacher-dashboard/transaction-history",
+      section: "Manage",
+    },
+    {
+      text: "Reviews & Ratings",
+      icon: Star,
+      path: "/teacher-dashboard/reviews",
+      section: "Reputation",
+    },
+    {
+      text: "Help & Support",
+      icon: HelpCircle,
+      path: "/teacher-dashboard/help-support",
+      section: "Support",
+    },
+    {
+      text: "Feedback",
+      icon: MessageSquareText,
+      path: "/teacher-dashboard/feedback",
+      section: "Support",
     },
     { text: "Logout", icon: LogOut, path: "/logout" },
   ];
@@ -303,7 +341,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
           <Box sx={{ px: { xs: 1.5, md: 3 }, pt: 1.5 }}>
             <Alert severity="warning" sx={{ mb: 1.5 }}>
               Stripe payment setup is not fully completed yet. You won&apos;t receive student payments until onboarding is finished. Go to
-              <strong> Settings → Payment Management</strong> to complete it.
+              <strong> Payment Management</strong> to complete it.
             </Alert>
           </Box>
         ) : null

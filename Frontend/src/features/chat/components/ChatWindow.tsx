@@ -81,15 +81,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   }, []);
 
   // Emit typing event to conversation room
-  const emitTyping = useCallback(
-    debounce((conversationId: string | undefined) => {
+  const emitTyping = useMemo(
+    () => debounce((conversationId: string | undefined) => {
       if (conversationId) {
         const socket = getSocket();
         socket?.emit("typing", { conversationId, from: userId });
       }
     }, 200),
-    [userId]
+    [userId],
   );
+
+  useEffect(() => () => emitTyping.cancel(), [emitTyping]);
 
   // Load initial messages
   const [loadMessages] = useLazyQuery(GET_MESSAGES, {
@@ -373,8 +375,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white shadow-md rounded-2xl overflow-hidden ml-4 mt-3">
-      <div className="flex items-center gap-3 px-5 py-4 border-b bg-[#f9fafb]">
+    <div className="dsp-chat-window flex flex-col h-full bg-white shadow-md rounded-2xl overflow-hidden ml-4 mt-3">
+      <div className="dsp-chat-window__header flex items-center gap-3 px-5 py-4 border-b bg-[#f9fafb]">
         <Avatar
           src={getParticipantAvatar(otherParticipant)}
           size={48}
@@ -390,7 +392,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#f1f5f9]">
+      <div className="dsp-chat-window__messages flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#f1f5f9]">
         {messagesLoading ? (
           <div className="flex justify-center py-10">
             <Spin size="large" />
@@ -408,10 +410,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
         )}
         <div ref={messageEndRef} />
       </div>
-      <div className="flex items-center gap-3 px-4 py-4 border-t bg-white relative">
+      <div className="dsp-chat-window__composer flex items-center gap-3 px-4 py-4 border-t bg-white relative">
         <div className="relative flex-1">
           <input
-            className="w-full bg-gray-100 border border-gray-300 text-sm px-5 py-2 rounded-full pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="dsp-chat-window__input w-full bg-gray-100 border border-gray-300 text-sm px-5 py-2 rounded-full pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="Type a message..."
             value={newMessage}
             onChange={(e) => {
@@ -436,11 +438,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
           </div>
         </div>
         <button
+          type="button"
           onClick={handleSendMessage}
           disabled={!newMessage.trim() || sending}
+          aria-label={sending ? "Sending message" : "Send message"}
+          aria-busy={sending}
           className="bg-defaultColor p-3 rounded-full text-white hover:bg-blue-600 transition disabled:opacity-50"
         >
-          <IoSend className="text-lg" />
+          {sending ? <Spin size="small" /> : <IoSend className="text-lg" />}
         </button>
       </div>
     </div>

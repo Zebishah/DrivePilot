@@ -20,12 +20,12 @@ export default function StripePaymentRefresh() {
         window.location.href = url;
         return;
       }
-      toast.error("Could not get a new link. Please try from Settings → Payment.");
-      navigate("/teacher-dashboard/settings");
+      toast.error("Could not get a new link. Please try from Payment Management.");
+      navigate("/teacher-dashboard/payment-management");
     },
     onError: (err) => {
       toast.error(err.message || "Failed to continue setup");
-      navigate("/teacher-dashboard/settings");
+      navigate("/teacher-dashboard/payment-management");
     },
   });
 
@@ -44,6 +44,7 @@ export default function StripePaymentRefresh() {
 
   return (
     <Box
+      className="dsp-instructor-page dsp-payment-flow-page"
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -73,9 +74,9 @@ export default function StripePaymentRefresh() {
           <Button
             variant="text"
             sx={{ mt: 2 }}
-            onClick={() => navigate("/teacher-dashboard/settings")}
+            onClick={() => navigate("/teacher-dashboard/payment-management")}
           >
-            Back to Settings
+            Back to Payment Management
           </Button>
         </>
       )}

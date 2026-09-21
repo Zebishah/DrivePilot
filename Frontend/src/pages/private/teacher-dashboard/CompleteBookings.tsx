@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type React from "react";
 import { useQuery } from "@apollo/client";
-import { CalendarCheck2, MessageSquare } from "lucide-react";
+import { CalendarCheck2, ClipboardCheck, Clock3, MessageSquare } from "lucide-react";
 import { GET_COMPLETED_STUDENT_BOOKINGS } from "../../../graphql/mutations/studentBooking";
 import { StudentBooking } from "../../../types/Bookings";
 import { Link } from "react-router-dom";
@@ -34,11 +34,19 @@ const StudentFeedback: React.FC = () => {
   }
 
   const completedBookings: StudentBooking[] = data?.getCompletedStudentBookings || [];
+  const feedbackRows = completedBookings.flatMap((booking) => booking.slots);
+  const pendingFeedback = feedbackRows.filter((slot) => slot.feedBackStatus === "pending").length;
+  const submittedFeedback = feedbackRows.filter((slot) => slot.feedBackStatus === "completed").length;
 
   return (
     <div className="dsp-instructor-page dsp-feedback-page">
       <div className="dsp-instructor-page__content">
         <DashboardPageHeader title="Feedback" description="Review completed lessons and keep your student notes up to date." />
+        <div className="dsp-feedback-summary" aria-label="Feedback summary">
+          <div className="dsp-feedback-summary__card dsp-summary-card dsp-summary-card--amber"><span className="dsp-summary-card__icon"><Clock3 size={19} /></span><span className="dsp-summary-card__label">Lessons awaiting feedback</span><strong>{pendingFeedback}</strong><small>Completed lessons ready for your notes</small></div>
+          <div className="dsp-feedback-summary__card dsp-summary-card dsp-summary-card--violet"><span className="dsp-summary-card__icon"><ClipboardCheck size={19} /></span><span className="dsp-summary-card__label">Feedback submitted</span><strong>{submittedFeedback}</strong><small>Responses recorded from this workspace</small></div>
+          <div className="dsp-feedback-summary__card dsp-summary-card dsp-summary-card--neutral"><span className="dsp-summary-card__icon"><MessageSquare size={19} /></span><span className="dsp-summary-card__label">Student responses</span><strong>Coming soon</strong><small>Student response views are not available yet</small></div>
+        </div>
         <DashboardCard className="dsp-feedback-page__section">
           <div className="dsp-list-heading">
             <div><span className="dsp-list-heading__eyebrow">Completed lessons</span><h2>Give feedback</h2></div>

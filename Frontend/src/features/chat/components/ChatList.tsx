@@ -132,7 +132,7 @@ const ChatList: React.FC<ChatListProps> = ({
   }
 
   return (
-    <div className="w-full h-full bg-white flex flex-col overflow-hidden">
+    <div className="dsp-chat-list w-full h-full bg-white flex flex-col overflow-hidden">
       <div className="p-4">
         <Input
           placeholder="Search contact..."
@@ -163,7 +163,7 @@ const ChatList: React.FC<ChatListProps> = ({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      <div className="dsp-chat-list__scroll flex-1 overflow-y-auto px-2 pb-4">
         {activeTab === "chats" ? (
           filteredConversations.length === 0 ? (
             <div className="text-center text-gray-500 py-10 text-sm">
@@ -219,8 +219,8 @@ const ChatList: React.FC<ChatListProps> = ({
                       <div
                         key={conv._id}
                         onClick={() => handleSelect(conv)}
-                        className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-all duration-200 
-                        ${isSelected ? "bg-blue-100" : "hover:bg-gray-100"}`}
+                        className={`dsp-chat-list__row flex items-center gap-4 px-4 py-3 cursor-pointer transition-all duration-200
+                        ${isSelected ? "dsp-chat-list__row--selected" : "hover:bg-gray-100"}`}
                       >
                         <Avatar
                           src={

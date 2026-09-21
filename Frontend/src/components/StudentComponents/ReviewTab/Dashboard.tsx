@@ -1,25 +1,15 @@
-import React, { useState } from "react";
-import {
-  CreateReviewInput,
-  StudentBookingSlot,
-  UpdateReviewInput,
-} from "../../../types/ReviewTypes";
+import React from "react";
+import { StudentBookingSlot } from "../../../types/ReviewTypes";
 import { useAuth } from "../../../context/AuthContext";
 import { useBookingSlots } from "../../../hooks/ReviewSystem";
 import { useStudentHoursProgress } from "../../../hooks/UseStudentHourProgress";
-import {
-  useCreateReview,
-  useDeleteReview,
-  useInstructorReviews,
-  useReviewByLessonSlot,
-  useUpdateReview,
-} from "../../../hooks/UseReview";
+import { useDeleteReview, useInstructorReviews } from "../../../hooks/UseReview";
 import { useNavigate } from "react-router-dom";
-import ProgressChart from "./ProgressChart";
 import StudentHoursProgressCard from "./StudentHourPercentage";
 import BookingSlotsTable from "./BookingSlotTable";
-import { is } from "date-fns/locale";
 import { NetworkStatus } from "@apollo/client";
+import { BarChart3, BookOpenCheck, CalendarClock, Clock3 } from "lucide-react";
+import { DashboardPageHeader, DashboardLoadingSkeleton } from "../../../components/dashboard/OverviewWidgets";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -36,13 +26,12 @@ const Dashboard: React.FC = () => {
     useStudentHoursProgress(studentId);
 
   const {
-    reviews,
     loading: reviewsLoading,
     refetch: refetchReviews,
     networkStatus,
   } = useInstructorReviews(studentId);
 
-  const { deleteReview, loading: deleteLoading } = useDeleteReview();
+  const { deleteReview } = useDeleteReview();
   const isRefetching = networkStatus === NetworkStatus.refetch;
   const handleAddReview = (
     slot: StudentBookingSlot,
@@ -104,58 +93,40 @@ const Dashboard: React.FC = () => {
 
   if (slotsLoading || progressLoading || reviewsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="dsp-student-page dsp-student-progress-page">
+        <div className="dsp-student-page__content"><DashboardLoadingSkeleton rows={4} /></div>
       </div>
     );
   }
-  console.log("hoursProgress:", hoursProgress);
+
+  const completedHours = Number(hoursProgress?.completedHours || 0);
+  const remainingHours = Number(hoursProgress?.remainingHours || 0);
+  const totalRequiredHours = Number(hoursProgress?.totalRequiredHours || completedHours + remainingHours);
+  const progressPercent = totalRequiredHours > 0 ? Math.min(100, Math.round((completedHours / totalRequiredHours) * 100)) : 0;
+  const daysSinceLastLesson = hoursProgress?.lastLessonDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(hoursProgress.lastLessonDate).setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)))
+    : null;
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-8xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">
-          Learning Dashboard
-        </h1>
-
-        {/* Top Section - Chart and Progress */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* <div>
-            {hoursProgress && (
-              <ProgressChart
-                completedHours={hoursProgress.completedHours}
-                remainingHours={hoursProgress.remainingHours}
-                totalRequiredHours={hoursProgress.totalRequiredHours}
-                studentInfo={hoursProgress.studentInfo}
-              />
-            )}
-          </div> */}
-          <div>
-            {hoursProgress && (
-              <StudentHoursProgressCard
-                hoursProgress={hoursProgress}
-                bookingSlots={bookingSlots}
-              />
-            )}
-          </div>
+    <div className="dsp-student-page dsp-student-progress-page">
+      <div className="dsp-student-page__content">
+        <DashboardPageHeader eyebrow="Student workspace" title="Progress tracking" description="See the lesson hours and completed sessions recorded for your learning journey." />
+        <div className="dsp-student-summary-grid dsp-student-summary-grid--four">
+          <div className="dsp-student-summary-card dsp-student-summary-card--violet"><span className="dsp-student-summary-card__icon"><BookOpenCheck size={18} /></span><span>Completed hours</span><strong>{completedHours}</strong><small>Recorded lesson time</small></div>
+          <div className="dsp-student-summary-card dsp-student-summary-card--blue"><span className="dsp-student-summary-card__icon"><Clock3 size={18} /></span><span>Hours remaining</span><strong>{remainingHours}</strong><small>Based on your current record</small></div>
+          <div className="dsp-student-summary-card dsp-student-summary-card--green"><span className="dsp-student-summary-card__icon"><BarChart3 size={18} /></span><span>Progress</span><strong>{progressPercent}%</strong><small>Completed of recorded target</small></div>
+          <div className="dsp-student-summary-card dsp-student-summary-card--amber"><span className="dsp-student-summary-card__icon"><CalendarClock size={18} /></span><span>Days since last lesson</span><strong>{daysSinceLastLesson ?? "—"}</strong><small>{daysSinceLastLesson === null ? "No completed lesson recorded" : "From your latest completed lesson"}</small></div>
         </div>
-
-        {/* Booking Slots Table */}
-        <div className="mb-8">
-          <BookingSlotsTable
-            bookingSlots={bookingSlots}
-            onAddReview={handleAddReview}
-            onEditReview={handleEditReview}
-            onDeleteReview={handleDeleteReview}
-            onShowReview={handleShowReview}
-            refetchSlots={refetchSlots}
-            refetchReviews={refetchReviews}
-            isRefetching={isRefetching}
-            isFeedbackRating={false}
-          />
+        <div className="dsp-student-progress-grid">
+          <section className="dsp-student-panel dsp-student-progress-card">
+            <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Learning record</span><h2>Your current progress</h2></div></div>
+            {hoursProgress ? <StudentHoursProgressCard hoursProgress={hoursProgress} bookingSlots={bookingSlots} /> : <div className="dsp-student-empty-state"><BarChart3 size={24} /><strong>No progress data yet</strong><span>Progress will appear after your first recorded lesson.</span></div>}
+          </section>
         </div>
+        <section className="dsp-student-panel dsp-student-progress-bookings">
+          <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Lesson history</span><h2>Review your completed sessions</h2></div></div>
+          <BookingSlotsTable bookingSlots={bookingSlots} onAddReview={handleAddReview} onEditReview={handleEditReview} onDeleteReview={handleDeleteReview} onShowReview={handleShowReview} refetchSlots={refetchSlots} refetchReviews={refetchReviews} isRefetching={isRefetching} isFeedbackRating={false} />
+        </section>
       </div>
     </div>
   );

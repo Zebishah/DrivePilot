@@ -163,7 +163,7 @@ export default function StudentPaymentHistoryPage() {
 
   if (loading && !effectiveData) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
+      <Box className="dsp-student-page dsp-student-state-wrap" display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
         <CircularProgress />
       </Box>
     );
@@ -171,20 +171,16 @@ export default function StudentPaymentHistoryPage() {
 
   if (error) {
     return (
-      <Box p={3}>
+      <Box className="dsp-student-page dsp-student-payment-page" p={3}>
         <Alert severity="error">{error.message}</Alert>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-        Payment History
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Your payments and refunds for lessons.
-      </Typography>
+    <Box className="dsp-student-page dsp-student-payment-page" sx={{ p: 3 }}>
+      <div className="dsp-student-page__content">
+      <div className="dsp-student-page-heading"><span className="dsp-student-page-heading__eyebrow">Student workspace</span><Typography component="h1">Payment history</Typography><Typography component="p">Review your lesson payments, refunds, and receipts in one place.</Typography></div>
 
       {stats && (
         <Stack
@@ -193,7 +189,7 @@ export default function StudentPaymentHistoryPage() {
           sx={{ mb: 3 }}
           flexWrap="wrap"
         >
-          <Card
+          <Card className="dsp-student-metric-card dsp-student-metric-card--green"
             elevation={0}
             sx={{
               flex: 1,
@@ -220,11 +216,12 @@ export default function StudentPaymentHistoryPage() {
               <Box>
                 <Typography color="text.secondary" variant="body2">Total spent</Typography>
                 <Typography variant="h6">{formatCHF(stats.totalSpent)}</Typography>
+                <Typography className="dsp-student-metric-helper">Across recorded lesson payments</Typography>
               </Box>
             </CardContent>
           </Card>
 
-          <Card
+          <Card className="dsp-student-metric-card dsp-student-metric-card--blue"
             elevation={0}
             sx={{
               flex: 1,
@@ -251,11 +248,12 @@ export default function StudentPaymentHistoryPage() {
               <Box>
                 <Typography color="text.secondary" variant="body2">Total refunded</Typography>
                 <Typography variant="h6">{formatCHF(stats.totalRefunded)}</Typography>
+                <Typography className="dsp-student-metric-helper">Returned to your account</Typography>
               </Box>
             </CardContent>
           </Card>
 
-          <Card
+          <Card className="dsp-student-metric-card dsp-student-metric-card--green"
             elevation={0}
             sx={{
               flex: 1,
@@ -282,11 +280,12 @@ export default function StudentPaymentHistoryPage() {
               <Box>
                 <Typography color="text.secondary" variant="body2">Payments</Typography>
                 <Typography variant="h6">{stats.paymentCount}</Typography>
+                <Typography className="dsp-student-metric-helper">Completed payment activity</Typography>
               </Box>
             </CardContent>
           </Card>
 
-          <Card
+          <Card className="dsp-student-metric-card dsp-student-metric-card--rose"
             elevation={0}
             sx={{
               flex: 1,
@@ -313,6 +312,7 @@ export default function StudentPaymentHistoryPage() {
               <Box>
                 <Typography color="text.secondary" variant="body2">Refunds</Typography>
                 <Typography variant="h6">{stats.refundCount}</Typography>
+                <Typography className="dsp-student-metric-helper">Refund activity recorded</Typography>
               </Box>
             </CardContent>
           </Card>
@@ -534,6 +534,7 @@ export default function StudentPaymentHistoryPage() {
           )}
         </Box>
       </Modal>
+      </div>
     </Box>
   );
 }

@@ -609,7 +609,7 @@ const BookingDetails: React.FC = () => {
   // User returned from Stripe with checkout=cancelled; redirect loses location.state so show retry message
   if (paymentCancelledReturn && !instructorId) {
     return (
-      <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+      <Box className="dsp-student-booking-details" sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
         <BackButton variant="outline" showIcon={true} />
         <Card sx={{ mb: 3, mt: 2, p: 3 }}>
           <Alert severity="info" sx={{ mb: 2 }}>
@@ -631,7 +631,7 @@ const BookingDetails: React.FC = () => {
   }
 
   return (
-    <Box sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+    <Box className="dsp-student-booking-details" sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
       <BackButton variant="outline" showIcon={true} />
       <Card sx={{ mb: 3, mt: 2 }}>
         <Box

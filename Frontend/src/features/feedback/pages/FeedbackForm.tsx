@@ -67,7 +67,7 @@ const FeedbackForm: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="dsp-instructor-page dsp-feedback-form-page py-8 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-center h-64">
@@ -80,7 +80,7 @@ const FeedbackForm: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-50  px-4">
+    <div className="dsp-instructor-page dsp-feedback-form-page px-4">
       <BackButton variant="outline" label="Back" />
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6">

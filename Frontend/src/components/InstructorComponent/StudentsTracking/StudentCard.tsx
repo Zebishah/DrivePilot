@@ -30,9 +30,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({
       ? student.homeAddress.split(",").slice(-2).join(", ")
       : "Location not provided";
   };
-  const remainingMinutes = lessonStats.remainingLessonDurationInMinutes;
-  const totalMinutes = lessonStats.totalLessonDurationInMinutes;
-
   return (
     <div className="dsp-student-card bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
@@ -79,7 +76,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
         </div>
         <div className=" bg-gray-200 rounded-full h-2">
           <div
-            className="bg-[#5FC2D3] h-2 rounded-full transition-all duration-300"
+            className="dsp-student-card__progress h-2 rounded-full transition-all duration-300"
             style={{
               width: `${student.lessonHoursLeft || 0}%`,
             }}

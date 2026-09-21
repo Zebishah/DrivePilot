@@ -6,12 +6,8 @@ import {
   CardContent,
   Grid,
   Button,
-  Divider,
   Skeleton,
-  Pagination,
   Stack,
-  Tabs,
-  Tab,
   Alert,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -84,9 +80,6 @@ const BookLesson: React.FC = () => {
   const [loadingCheckoutBookingId, setLoadingCheckoutBookingId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const [page, setPage] = useState(1);
-  const [tabValue, setTabValue] = useState(0);
-  const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
     // Fetch data when component mounts
@@ -166,17 +159,6 @@ const BookLesson: React.FC = () => {
     });
   };
 
-  const handlePageChange = (
-    event: React.ChangeEvent<unknown>,
-    value: number
-  ) => {
-    setPage(value);
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-    setPage(1); // Reset to first page when changing tabs
-  };
   const bookings = data?.getStudentBookings || [];
   const myRefundRequests = refundData?.getMyRefundRequests ?? [];
   const refundRequestStateMap: Record<string, "pending" | "processing" | "approved" | "rejected"> =
@@ -191,22 +173,11 @@ const BookLesson: React.FC = () => {
       },
       {},
     );
-  const filterBookingsByStatus = (bookings: Booking[], status: string) => {
-    if (status === "all") return bookings;
-    return bookings.filter(
-      (booking) => booking.status.toLowerCase() === status
-    );
-  };
-
   // Calculate pagination
-  const currentBookings = filterBookingsByStatus(
-    bookings,
-    tabValue === 0 ? "all" : tabValue === 1 ? "confirmed" : "cancelled"
-  ).slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   if (loading) {
     return (
-      <Box sx={{ p: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+      <Box className="dsp-student-page dsp-student-bookings-page" sx={{ p: 3, bgcolor: "transparent", minHeight: "100vh" }}>
         <Card sx={{ mb: 3 }}>
           <CardContent>
             {/* Header Skeleton */}
@@ -289,7 +260,7 @@ const BookLesson: React.FC = () => {
   }
   if (error) {
     return (
-      <Box
+      <Box className="dsp-student-page dsp-student-bookings-page dsp-student-state-wrap"
         sx={{
           p: 3,
           display: "flex",
@@ -395,12 +366,13 @@ const BookLesson: React.FC = () => {
   };
 
   return (
-    <Box sx={{ px: 3, py: 1, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+    <Box className="dsp-student-page dsp-student-bookings-page" sx={{ px: 3, py: 1, bgcolor: "transparent", minHeight: "100vh" }}>
       <BackButton
         to="/student-dashboard/search"
         variant="outline"
         label="Back"
       />
+      <div className="dsp-student-bookings-page__heading"><span>Student workspace</span><h1>Booked lessons</h1><p>Manage your upcoming lessons, payment status, and lesson history.</p></div>
       {/* Abandoned checkouts: resume payment for the same booking (no re-search, slot stays reserved). */}
       {abandonedByBooking.length > 0 && (
         <Card sx={{ mb: 3, mt: 2, borderLeft: "4px solid #9e9e9e" }}>

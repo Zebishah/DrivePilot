@@ -10,7 +10,8 @@ import {
   clearUnreadMessages,
 } from "../../../../store/slices/chatSlice";
 import { useAuth } from "../../../../context/AuthContext";
-import { UserType } from "../../../../types/chatTypes";
+import { ConversationType, UserType } from "../../../../types/chatTypes";
+import { DashboardPageHeader } from "../../../../components/dashboard/OverviewWidgets";
 
 const InstructorChatPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -90,8 +91,10 @@ const InstructorChatPage: React.FC = () => {
 
   return (
     <div className="dsp-instructor-page dsp-messages-page">
-      <div className="flex h-full gap-5">
-        <div className="w-[520px] h-full flex-shrink-0 flex flex-col overflow-hidden shadow-md bg-white border-r">
+      <div className="dsp-instructor-page__content">
+        <DashboardPageHeader title="Messages" description="Stay connected with students and keep lesson conversations in one focused workspace." />
+        <div className="dsp-messages-page__workspace">
+        <div className="dsp-messages-page__list">
           {conversations.length > 0 ? (
             <ChatList
               conversations={conversations}
@@ -112,7 +115,7 @@ const InstructorChatPage: React.FC = () => {
             </div>
           )}
         </div>
-        <div className="flex-1 max-w-[calc(100%-340px)] h-full rounded-xl shadow-md bg-white overflow-hidden">
+        <div className="dsp-messages-page__conversation">
           {selectedAsConversation ? (
             <ChatWindow
               key={selectedAsConversation._id}
@@ -123,6 +126,7 @@ const InstructorChatPage: React.FC = () => {
               Select a conversation to start chatting
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

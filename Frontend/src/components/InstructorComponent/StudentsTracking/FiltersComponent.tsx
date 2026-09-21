@@ -38,7 +38,7 @@ export const FilterComponent: React.FC<FilterComponentProps> = ({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#5FC2D3] rounded-lg hover:bg-[#448c99] focus:outline-none focus:ring-2 focus:ring-[#5FC2D3] focus:ring-offset-2"
+        className="dsp-dashboard-button--primary flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-offset-2"
       >
         <Filter className="w-4 h-4" />
         Filters
@@ -84,7 +84,7 @@ export const FilterComponent: React.FC<FilterComponentProps> = ({
                       value={option.value}
                       checked={selectedSort === option.value}
                       onChange={(e) => handleSortChange(e.target.value)}
-                      className="w-4 h-4 text-[#5FC2D3] border-gray-300 focus:ring-[#5FC2D3]"
+                      className="w-4 h-4 text-violet-600 border-gray-300 focus:ring-violet-500"
                     />
                     <span className="text-sm text-gray-700">
                       {option.label}

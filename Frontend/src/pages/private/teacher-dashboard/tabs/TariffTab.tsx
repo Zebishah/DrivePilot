@@ -4,8 +4,6 @@ import {
   Typography,
   TextField,
   Button,
-  Select,
-  MenuItem,
   InputLabel,
   FormControl,
   Grid,
@@ -25,9 +23,8 @@ import {
   GET_TEACHER_TARIFF,
   UPDATE_TEACHER_TARIFF,
 } from "../../../../graphql/mutations/tariff";
-import { startOfDay } from "date-fns";
 import toast from "react-hot-toast";
-import { DollarSign, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 // Update your BulkLessonPackage interface
 interface BulkLessonPackage {
@@ -46,6 +43,41 @@ interface TariffData {
   FinalPricePerLesson: number;
   bulkPackages: BulkLessonPackage[];
   isDefault: boolean;
+}
+
+type RawBulkLessonPackage = Omit<BulkLessonPackage, "PackageEndDate"> & {
+  PackageEndDate?: unknown;
+};
+
+function normalizePackageEndDate(value: unknown): Date | null {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "number" || (typeof value === "string" && /^\d+$/.test(value))) {
+    const numericValue = Number(value);
+    const timestamp = numericValue < 1_000_000_000_000
+      ? numericValue * 1000
+      : numericValue;
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value === "string") {
+    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    const date = dateOnlyMatch
+      ? new Date(
+          Number(dateOnlyMatch[1]),
+          Number(dateOnlyMatch[2]) - 1,
+          Number(dateOnlyMatch[3]),
+        )
+      : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  return null;
 }
 
 export const TariffTab: React.FC = () => {
@@ -70,9 +102,6 @@ export const TariffTab: React.FC = () => {
     isDefault: false,
     bulkPackages: [],
   });
-  // Get today's date at the start of the day for minimum date validation
-  const today = startOfDay(new Date());
-
   // Update your useEffect for data loading
   useEffect(() => {
     if (data?.teacherTariff) {
@@ -90,7 +119,7 @@ export const TariffTab: React.FC = () => {
         FinalPricePerLesson: FinalPricePerLesson || 0,
         isDefault: isDefault || false,
         bulkPackages:
-          bulkPackages?.map((pkg: any) => {
+          bulkPackages?.map((pkg: RawBulkLessonPackage) => {
             const finalPrice = pkg.finalPackagePrice;
             const studentSave = pkg.studentSave;
             return {
@@ -98,9 +127,7 @@ export const TariffTab: React.FC = () => {
               lessons: pkg.lessons,
               packageDiscount: pkg.packageDiscount,
 
-              PackageEndDate: pkg.PackageEndDate
-                ? new Date(parseInt(pkg.PackageEndDate)) // ✅ Ensure it's a number first
-                : null,
+              PackageEndDate: normalizePackageEndDate(pkg.PackageEndDate),
               cost: pkg.cost,
               finalPackagePrice: parseFloat(finalPrice.toFixed(5)),
               studentSave: parseFloat(studentSave.toFixed(5)),
@@ -131,6 +158,8 @@ export const TariffTab: React.FC = () => {
         bulkPackages: updatedPackages,
       }));
     }
+  // Package values are recalculated only when the lesson price changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tariffData.FinalPricePerLesson]);
 
   if (loading)
@@ -168,26 +197,11 @@ export const TariffTab: React.FC = () => {
     }));
   };
 
-  interface PackageDiscountDateChangeEvent {
-    field: "PackageEndDate";
-    newValue: Date | null;
-  }
-
-  const handlePackageDiscountDateChange = (
-    field: PackageDiscountDateChangeEvent["field"],
-    newValue: Date | null
-  ) => {
-    setTariffData((prev) => ({
-      ...prev,
-      [field]: newValue,
-    }));
-  };
-
   // Handle changes to bulk lesson packages - Now completely dynamic
   const handleBulkPackageChange = (
     index: number,
     field: keyof BulkLessonPackage,
-    value: any
+    value: string | number | Date | null
   ) => {
     const updatedPackages = [...tariffData.bulkPackages];
     updatedPackages[index] = {
@@ -198,10 +212,10 @@ export const TariffTab: React.FC = () => {
     // Recalculate prices based on lessons and discount changes
     if (field === "lessons" || field === "packageDiscount") {
       const lessons =
-        field === "lessons" ? value : updatedPackages[index].lessons;
+        field === "lessons" ? Number(value) : updatedPackages[index].lessons;
       const discount =
         field === "packageDiscount"
-          ? value
+          ? Number(value)
           : updatedPackages[index].packageDiscount;
 
       const totalPrice = tariffData.lessonFee * lessons;
@@ -217,24 +231,6 @@ export const TariffTab: React.FC = () => {
     }
 
     setTariffData((prev) => ({ ...prev, bulkPackages: updatedPackages }));
-  };
-
-  const recalculateBulkPackage = (
-    pkg: BulkLessonPackage
-  ): BulkLessonPackage => {
-    const lessons = parseFloat(String(pkg.lessons)) || 0;
-    const discount = parseFloat(String(pkg.packageDiscount)) || 0;
-
-    const totalPrice = tariffData.FinalPricePerLesson * lessons;
-    const discountAmount = (totalPrice * discount) / 100;
-    const finalPrice = totalPrice - discountAmount;
-
-    return {
-      ...pkg,
-      cost: parseFloat(totalPrice.toFixed(2)),
-      finalPackagePrice: parseFloat(finalPrice.toFixed(2)),
-      studentSave: parseFloat(discountAmount.toFixed(2)),
-    };
   };
 
   const addBulkPackage = () => {
@@ -264,7 +260,7 @@ export const TariffTab: React.FC = () => {
   };
 
   // Handle changes to package discount
-  const handleDiscountChange = (field: keyof TariffData, value: any) => {
+  const handleDiscountChange = (field: keyof TariffData, value: number) => {
     // Prevent negative values for package discount
     if (field === "lessonDiscount" && typeof value === "number") {
       // Ensure discount is between 1-100%
@@ -365,7 +361,18 @@ export const TariffTab: React.FC = () => {
     return parseFloat(discounted.toFixed(2));
   };
   return (
-    <Box sx={{ p: 2 }}>
+    <Box className="dsp-tariff-editor" sx={{ p: 2 }}>
+      <Box className="dsp-tariff-hero">
+        <Box>
+          <span>Pricing workspace</span>
+          <Typography variant="h6">Build a clear offer for every learner</Typography>
+          <Typography variant="body2">Your final prices update automatically as you adjust discounts and lesson packages.</Typography>
+        </Box>
+        <Box className="dsp-tariff-hero__stats">
+          <div><small>Final lesson price</small><strong>CHF {tariffData.FinalPricePerLesson || "—"}</strong></div>
+          <div><small>Package offers</small><strong>{tariffData.bulkPackages.length}</strong></div>
+        </Box>
+      </Box>
       {/* Lesson Fee Section */}
       <Box sx={{ mb: 2 }}>
         <SectionHeader
@@ -433,12 +440,12 @@ export const TariffTab: React.FC = () => {
             min={MIN_DISCOUNT}
             max={MAX_DISCOUNT}
             sx={{
-              color: "#5ec2d2",
+              color: "#8B5CF6",
               "& .MuiSlider-thumb": {
                 height: 24,
                 width: 24,
                 backgroundColor: "#fff",
-                border: "2px solid #5ec2d2",
+                border: "2px solid #A855F7",
                 "&:focus, &:hover, &.Mui-active": {
                   boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
                 },
@@ -513,8 +520,8 @@ export const TariffTab: React.FC = () => {
               variant="contained"
               onClick={addBulkPackage}
               sx={{
-                bgcolor: "#5ec2d2",
-                "&:hover": { bgcolor: "#4ba1b0" },
+                background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+                "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
                 textTransform: "none",
                 borderRadius: 2,
                 px: 2,
@@ -532,6 +539,7 @@ export const TariffTab: React.FC = () => {
           tariffData.bulkPackages.map((pkg, index) => (
             <Box
               key={index}
+              className="dsp-tariff-package"
               sx={{ mb: 3, p: 2, border: "1px solid #e0e0e0", borderRadius: 2 }}
             >
               <Grid container spacing={2} alignItems="center">
@@ -655,12 +663,12 @@ export const TariffTab: React.FC = () => {
                           min={MIN_DISCOUNT}
                           max={MAX_DISCOUNT}
                           sx={{
-                            color: "#5ec2d2",
+                            color: "#8B5CF6",
                             "& .MuiSlider-thumb": {
                               height: 24,
                               width: 24,
                               backgroundColor: "#fff",
-                              border: "2px solid #5ec2d2",
+                              border: "2px solid #A855F7",
                               "&:focus, &:hover, &.Mui-active": {
                                 boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
                               },
@@ -752,10 +760,9 @@ export const TariffTab: React.FC = () => {
                             <Grid item xs={6}>
                               <DatePicker
                                 label="End Date"
-                                value={
-                                  tariffData.bulkPackages[index]
-                                    ?.PackageEndDate || null
-                                }
+                                value={normalizePackageEndDate(
+                                  tariffData.bulkPackages[index]?.PackageEndDate,
+                                )}
                                 onChange={(newValue) =>
                                   handleBulkPackageChange(
                                     index,
@@ -863,8 +870,8 @@ export const TariffTab: React.FC = () => {
           onClick={handleSaveChanges}
           disabled={isLoading}
           sx={{
-            bgcolor: "#5ec2d2",
-            "&:hover": { bgcolor: "#4ba1b0" },
+            background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+            "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
             textTransform: "none",
             px: 6,
             py: 1,

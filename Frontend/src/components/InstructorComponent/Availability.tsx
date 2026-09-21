@@ -300,6 +300,7 @@ const Availability: React.FC<AvailabilityProps> = ({
   if (loading || queryLoading) {
     return (
       <Card
+        className="dsp-booking-availability__empty"
         sx={{
           marginTop: 2,
           height: { xs: "auto", md: 600 },
@@ -337,6 +338,8 @@ const Availability: React.FC<AvailabilityProps> = ({
   if (!loading && groupedAvailability.length === 0) {
     return (
       <Card
+        id="dsp-availability-section"
+        className="dsp-booking-availability__empty"
         sx={{
           marginTop: 2,
           height: { xs: "auto", md: 600 },
@@ -364,8 +367,9 @@ const Availability: React.FC<AvailabilityProps> = ({
   }
 
   return (
-    <div>
+    <div id="dsp-availability-section" className="dsp-booking-availability">
       <Card
+        className="dsp-booking-availability__surface"
         sx={{
           marginTop: 2,
           height: { xs: "auto", md: 600 },
@@ -434,6 +438,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                     textField: {
                       size: "small",
                       placeholder: "Select date",
+                      className: "dsp-booking-availability__date-picker",
                     },
                     day: {
                       sx: (ownerState: any) => {
@@ -505,6 +510,7 @@ const Availability: React.FC<AvailabilityProps> = ({
               groupedAvailability.map((dayData) => (
                 <Grid item xs={12} sm={6} md={3} key={dayData.id}>
                   <Card
+                    className="dsp-booking-availability__day"
                     onClick={() => handleDayCardClick(dayData)}
                     sx={{
                       borderRadius: "10px",
@@ -531,7 +537,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                       >
                         <CalendarCheck2
                           size={18}
-                          style={{ color: "#25D422" }}
+                          style={{ color: "#7C3AED" }}
                         />
                         <Typography
                           variant="body1"
@@ -552,7 +558,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                           gap: 1,
                         }}
                       >
-                        <FaRegCheckCircle style={{ color: "#25D422" }} />
+                        <FaRegCheckCircle style={{ color: "#7C3AED" }} />
                         <Typography
                           variant="body2"
                           sx={{

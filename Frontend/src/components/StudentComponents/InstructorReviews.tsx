@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@apollo/client";
 import { gql } from "@apollo/client";
-import { Star, User } from "lucide-react";
+import { BarChart3, MessageCircle, Star, User } from "lucide-react";
 import { LoadingSpinner } from "../InstructorComponent/StudentsTracking/StudentHeader";
 import { StarRating } from "./ReviewTab/RatingComponent";
 
@@ -89,7 +89,7 @@ interface InstructorReviewsProps {
 // Individual Review Card Component
 const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
   const formatDate = (date: string | number) => {
-    const parsedDate = new Date(Number(date));
+    const parsedDate = /^\d+$/.test(String(date)) ? new Date(Number(date)) : new Date(date);
     return parsedDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -103,33 +103,18 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
     return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase();
   };
 
-  const getStatusBadgeClasses = (status: string): string => {
-    switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <div className="flex items-start gap-4">
-        {/* Profile Image/Avatar */}
-        <div className="flex-shrink-0">
+    <article className="dsp-review-card">
+      <div className="dsp-review-card__avatar">
           {review.studentId?.profileImage ? (
             <img
               src={review.studentId.profileImage}
               alt={`${review.studentId.firstName} ${review.studentId.lastName}`}
-              className="w-12 h-12 rounded-full object-cover border-2 border-gray-100"
+              className="dsp-review-card__image"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-100">
-              <span className="text-gray-600 font-medium text-sm">
+            <div className="dsp-review-card__fallback">
+              <span>
                 {getInitials(
                   review.studentId?.firstName,
                   review.studentId?.lastName
@@ -138,41 +123,23 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
             </div>
           )}
         </div>
-
-        {/* Review Content */}
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-2">
+        <div className="dsp-review-card__content">
+          <div className="dsp-review-card__header">
             <div>
-              <h4 className="text-lg font-semibold text-gray-900">
+              <h4>
                 {review.studentId?.firstName} {review.studentId?.lastName}
               </h4>
-              <StarRating rating={review.reviewRating} count={1} />
+              <div className="dsp-review-card__rating"><StarRating rating={review.reviewRating} count={1} /></div>
             </div>
-            <span className="text-sm text-gray-500">
+            <time>
               {formatDate(review.createdAt)}
-            </span>
+            </time>
           </div>
-
-          {/* Review Description */}
-          <p className="text-gray-700 leading-relaxed">
+          <p>
             {review.reviewDescription}
           </p>
-
-          {/* Review Status Badge */}
-          {/* {review.reviewStatus && (
-            <div className="mt-3">
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClasses(review.reviewStatus)}`}
-              >
-                {review.reviewStatus.charAt(0).toUpperCase() +
-                  review.reviewStatus.slice(1)}
-              </span>
-            </div>
-          )} */}
         </div>
-      </div>
-    </div>
+    </article>
   );
 };
 
@@ -192,6 +159,10 @@ const InstructorReviews: React.FC<InstructorReviewsProps> = ({
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [averageRating, setAverageRating] = useState<number>(0);
+  const ratingDistribution = [5, 4, 3, 2, 1].map((rating) => ({
+    rating,
+    count: reviews.filter((review) => Math.round(review.reviewRating) === rating).length,
+  }));
 
   useEffect(() => {
     if (data?.getInstructorReviews) {
@@ -243,55 +214,18 @@ const InstructorReviews: React.FC<InstructorReviewsProps> = ({
   }
 
   return (
-    <div className="mx-auto py-6  bg-white shadow-md rounded-md">
-      {/* Reviews Header */}
-      <div className="mb-8 border-b border-b-1 ">
-        <div className="flex  justify-between mb-4 ">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 px-6">
-              Reviews
-            </h2>
-            {reviews.length > 0 && (
-              <div className="flex items-center px-6 justify-center ">
-                <StarRating rating={averageRating} hideScore={true} />
-                <span className="text-gray-600 mt-2 ml-1 ">
-                  ({reviews.length}{" "}
-                  {reviews.length === 1 ? "review" : "reviews"})
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+    <section className="dsp-reviews-panel">
+      <div className="dsp-reviews-panel__summary">
+        <div className="dsp-reviews-panel__score"><span>Average rating</span><strong>{reviews.length ? averageRating.toFixed(1) : "—"}</strong><div><StarRating rating={averageRating} hideScore={true} /></div><small>{reviews.length} {reviews.length === 1 ? "review" : "reviews"}</small></div>
+        <div className="dsp-reviews-panel__distribution"><div className="dsp-reviews-panel__distribution-title"><span>Rating distribution</span><BarChart3 size={18} aria-hidden="true" /></div>{ratingDistribution.map((item) => <div className="dsp-rating-row" key={item.rating}><span>{item.rating}<Star size={12} fill="currentColor" /></span><div><i style={{ width: `${reviews.length ? (item.count / reviews.length) * 100 : 0}%` }} /></div><strong>{item.count}</strong></div>)}</div>
+        <div className="dsp-reviews-panel__note"><MessageCircle size={20} /><span>Student voices</span><strong>{reviews.length ? "Keep the conversation going" : "Your first review will appear here"}</strong></div>
       </div>
-
-      {/* Reviews List */}
-      <div className="space-y-4 px-6">
+      <div className="dsp-reviews-panel__list">
         {reviews.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Reviews Yet
-            </h3>
-            <p className="text-gray-600">
-              This instructor hasn't received any reviews yet.
-            </p>
-          </div>
-        ) : (
-          reviews.map((review: Review) => (
-            <ReviewCard key={review._id} review={review} />
-          ))
-        )}
+          <div className="dsp-review-empty"><span><User size={22} /></span><h3>No reviews yet</h3><p>Student ratings and written feedback will appear here after completed lessons.</p></div>
+        ) : reviews.map((review) => <ReviewCard key={review._id} review={review} />)}
       </div>
-
-      {/* Load More Button (if needed for pagination) */}
-      {reviews.length > 0 && (
-        <div className="mt-8 text-center">
-          <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            Load More Reviews
-          </button>
-        </div>
-      )}
-    </div>
+    </section>
   );
 };
 

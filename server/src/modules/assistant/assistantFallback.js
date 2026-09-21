@@ -8,6 +8,22 @@ function money(minor, currency = "CHF") {
   return Number.isSafeInteger(minor) ? `${currency} ${(minor / 100).toFixed(2)}` : null;
 }
 
+function isProjectQuestion(message) {
+  const text = String(message || "").toLowerCase();
+  return /\b(?:what(?:'s|s| is)|tell me about|explain)\b.{0,50}\b(?:this\s+)?(?:app|project|website|platform|marketplace|system|dsp)\b|\bwhat does (?:this|the)\s+(?:app|website|platform|project)\s+do\b|\bwhat can i do (?:here|on this website|on this platform)\b|\bhow does (?:this|dsp marketplace|the website) work\b/.test(text);
+}
+
+function projectContextAnswer(role) {
+  const dashboardFocus = role === "Student"
+    ? "Your student dashboard also lets you manage bookings, payments, progress, feedback, and messages."
+    : role === "Instructor"
+      ? "Your instructor dashboard also lets you manage availability, students, bookings, payments, feedback, and documents."
+      : role === "Admin"
+        ? "The admin workspace provides read-only operational visibility across bookings, refunds, payouts, and financial review items."
+        : "The dashboard provides role-specific tools for managing the learning marketplace.";
+  return `DSP Marketplace is a learning marketplace where students can discover verified instructors, compare profiles and availability, book lessons, and complete payments. ${dashboardFocus} I can answer read-only questions using the information authorized for your account, but changes must be made through the normal dashboard workflows.`;
+}
+
 function deterministicAnswer(toolName, result, role) {
   if (toolName === "getMyUpcomingLessons" || toolName === "getMyTeachingSchedule") {
     const lessons = Array.isArray(result) ? result : [];
@@ -39,12 +55,13 @@ function deterministicAnswer(toolName, result, role) {
   return "I could not find enough verified application data to answer that.";
 }
 
-function fallbackForMessage(message) {
+function fallbackForMessage(message, role) {
   const text = String(message || "").toLowerCase();
+  if (isProjectQuestion(message)) return projectContextAnswer(role);
   if (text.includes("refund") && text.includes("action")) return "Refund status is available through the normal refund workflow; I cannot approve or issue a refund here.";
   if (text.includes("cancel") || text.includes("reschedul") || text.includes("payout")) return "I can explain the current status, but changes must be made through the normal application workflow.";
   if (text.includes("system prompt") || text.includes("database") || text.includes("ignore previous")) return "I can help with your authorized DSP Marketplace information, but I cannot reveal internal instructions or access the database directly.";
   return "I can answer questions about your authorized lessons, payments, refunds, payouts, and operational summaries.";
 }
 
-module.exports = { deterministicAnswer, fallbackForMessage };
+module.exports = { deterministicAnswer, fallbackForMessage, isProjectQuestion, projectContextAnswer };

@@ -15,7 +15,7 @@ import Availability from "./Availability";
 import Summary from "./Summary";
 
 import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
 import toast from "react-hot-toast";
 import BulkLessonPackages from "./BulkPackageCard";
 import { useAuth } from "../../context/AuthContext";
@@ -81,6 +81,14 @@ const ProfileSummary: React.FC = () => {
         value.trim().toLowerCase() !== "undefined",
     )
     .join(", ") || "Location Not Available";
+  const firstAvailableSlot = availability
+    .flatMap((day: any) => day.availableSlots || [])
+    .find((slot: any) => !slot.booked && slot.status !== "booked");
+  const originalLessonFee = Number(tariff?.lessonFee || 0);
+  const lessonDiscount = Number(tariff?.lessonDiscount || 0);
+  const finalLessonFee = lessonDiscount > 0
+    ? originalLessonFee * (1 - lessonDiscount / 100)
+    : originalLessonFee;
   console.log("instructor", instructor);
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
@@ -161,7 +169,7 @@ const ProfileSummary: React.FC = () => {
     }
   };
   return (
-    <Box sx={{ width: "100%" }}>
+      <Box className="dsp-instructor-profile-summary" sx={{ width: "100%" }}>
       <BackButton variant="outline" label="Back" />
       <Box
         sx={{
@@ -177,7 +185,7 @@ const ProfileSummary: React.FC = () => {
           },
         }}
       >
-        <Card
+        <Card className="dsp-instructor-profile-summary__hero"
           sx={{ display: "flex", flexDirection: { xs: "column", md: "row" } }}
         >
           <Avatar
@@ -193,6 +201,7 @@ const ProfileSummary: React.FC = () => {
             }}
           />
           <Box
+            className="dsp-instructor-profile-summary__details"
             sx={{
               flex: 1,
               mt: -3,
@@ -347,25 +356,38 @@ const ProfileSummary: React.FC = () => {
               </Box>
             </Box>
           </Box>
-          {/* <Button
-            variant="contained"
-            disabled={loading}
-            onClick={handleBookNow}
-            sx={{
-              margin: 2,
-              marginTop: { xs: 2, md: 8 },
-              alignSelf: "center",
-              backgroundColor: "#55AFBD",
-              width: { xs: "12rem", sm: "14rem" },
-              height: "3rem",
-              textTransform: "none",
-              fontFamily: "Poppins, sans-serif",
-              color: "black",
-              opacity: loading ? 0.5 : 1,
-            }}
-          >
-            {loading ? "Loading..." : "Book Now"}
-          </Button> */}
+          <Box className="dsp-instructor-profile-summary__booking-card">
+            <span className="dsp-instructor-profile-summary__booking-kicker"><ShieldCheck size={14} /> Ready to learn?</span>
+            <Typography variant="h6">Book a lesson</Typography>
+            <div className="dsp-instructor-profile-summary__booking-price">
+              {lessonDiscount > 0 && <del>CHF {originalLessonFee.toFixed(2)}</del>}
+              <strong>{finalLessonFee ? `CHF ${finalLessonFee.toFixed(2)}` : "Price not listed"}</strong>
+              {finalLessonFee > 0 && <span>/ hour</span>}
+            </div>
+            {firstAvailableSlot ? (
+              <div className="dsp-instructor-profile-summary__next-slot">
+                <CalendarDays size={16} />
+                <span><small>Next available</small>{new Date(firstAvailableSlot.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {firstAvailableSlot.startTime}</span>
+              </div>
+            ) : (
+              <div className="dsp-instructor-profile-summary__next-slot is-muted"><CalendarDays size={16} /><span>No upcoming availability</span></div>
+            )}
+            <Button
+              variant="contained"
+              fullWidth
+              disabled={loading}
+              onClick={() => {
+                if (selectedAvailability.length > 0) {
+                  handleBookNow();
+                  return;
+                }
+                document.getElementById("dsp-availability-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              {selectedAvailability.length > 0 ? "Book selected lesson" : "Choose a time"}
+            </Button>
+            <small className="dsp-instructor-profile-summary__booking-hint"><MapPin size={13} /> {locationLabel}</small>
+          </Box>
         </Card>
         {tariff?.bulkPackages.length > 0 && (
           <Card sx={{ marginTop: "0.5rem", padding: "0.5rem" }}>
@@ -376,7 +398,7 @@ const ProfileSummary: React.FC = () => {
           </Card>
         )}
 
-        <Tabs
+        <Tabs className="dsp-instructor-profile-summary__tabs"
           sx={{
             marginTop: "1rem",
             "& .MuiTabs-indicator": {

@@ -18,7 +18,7 @@ export const FAQListHeader: React.FC = () => (
 );
 
 export const EmptyFAQState: React.FC = () => (
-  <Paper sx={{ minHeight: 400 }}>
+  <Paper className="dsp-faq-empty" sx={{ minHeight: 400 }}>
     <Box
       sx={{
         display: "flex",
@@ -40,7 +40,7 @@ export const EmptyFAQState: React.FC = () => (
 );
 
 export const FAQListSkeleton: React.FC = () => (
-  <Paper sx={{ minHeight: 400 }}>
+  <Paper className="dsp-faq-skeleton" sx={{ minHeight: 400 }}>
     <Box
       display="flex"
       justifyContent="center"
@@ -52,8 +52,8 @@ export const FAQListSkeleton: React.FC = () => (
   </Paper>
 );
 
-export const FAQListError: React.FC<{ error: any }> = ({ error }) => (
-  <Paper sx={{ minHeight: 400, p: 2 }}>
+export const FAQListError: React.FC<{ error: { message?: string } }> = ({ error }) => (
+  <Paper className="dsp-faq-error" sx={{ minHeight: 400, p: 2 }}>
     <Alert severity="error" sx={{ borderRadius: 2 }}>
       Error loading FAQs: {error.message}
     </Alert>

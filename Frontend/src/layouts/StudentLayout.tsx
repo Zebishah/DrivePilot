@@ -5,12 +5,14 @@ import type { MenuItem } from "../components/common/SideBar";
 import {
   LayoutGrid,
   Search,
-  BookOpen,
-  MessageSquare,
+  BookOpenCheck,
+  MessageCircle,
   Settings,
   HelpCircle,
   LogOut,
   CreditCard,
+  BarChart3,
+  Star,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -29,7 +31,6 @@ import {
 import { RootState } from "../store";
 import dayjs from "dayjs";
 import { useBookingNotifications } from "../utils/useBookingNotification";
-import { MdOutlineFeedback } from "react-icons/md";
 import AssistantPanel from "../features/assistant/components/AssistantPanel";
 import DashboardShell from "../components/dashboard/DashboardShell";
 
@@ -37,7 +38,7 @@ interface StudentLayoutProps {
   children: React.ReactNode;
 }
 
-const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH = 240;
 
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const { user, token, logout } = useAuth();
@@ -238,49 +239,57 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     };
   }, [conversations, dispatch, user, location.pathname]);
   const menuItems: MenuItem[] = [
-    { text: "Overview", icon: LayoutGrid, path: "/student-dashboard/overview" },
+    { text: "Overview", icon: LayoutGrid, path: "/student-dashboard/overview", section: "Workspace" },
     {
       text: "Search Instructors",
       icon: Search,
       path: "/student-dashboard/search",
+      section: "Workspace",
     },
     {
       text: "Booked Lessons",
-      icon: BookOpen,
+      icon: BookOpenCheck,
       path: "/student-dashboard/book",
       badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined,
+      section: "Workspace",
     },
     {
       text: "Profile Setting",
       icon: Settings,
       path: "/student-dashboard/settings",
+      section: "Workspace",
     },
     {
       text: "Payment history",
       icon: CreditCard,
       path: "/student-dashboard/payment-history",
+      section: "Workspace",
     },
     {
       text: "Help & Support",
       icon: HelpCircle,
       path: "/student-dashboard/help-support",
+      section: "Account",
     },
     {
       text: "Progress Tracking",
-      icon: MessageSquare,
+      icon: BarChart3,
       path: "/student-dashboard/reviews",
+      section: "Account",
     },
     {
       text: "Feedback & Rating",
-      icon: MdOutlineFeedback,
+      icon: Star,
       path: "/student-dashboard/Feedback",
+      section: "Account",
     },
     {
       text: "Messages",
-      icon: MessageSquare,
+      icon: MessageCircle,
       path: "/student-dashboard/chat",
+      section: "Account",
     },
-    { text: "Logout", icon: LogOut, path: "/logout" },
+    { text: "Logout", icon: LogOut, path: "/logout", section: "Account" },
   ];
 
   return (
