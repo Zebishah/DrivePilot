@@ -500,7 +500,7 @@ export default function EditProfile() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
+    <Box className="dsp-instructor-page dsp-edit-profile-page" sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
       <BackButton variant="outline" label="Back" />
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 3 }}>

@@ -4,9 +4,53 @@ import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import StatusBadge from "./StatusBadge";
 
-type WidgetTone = "coral" | "amber" | "green" | "navy";
+type WidgetTone = "coral" | "amber" | "green" | "navy" | "purple" | "blue" | "pink" | "lime";
 
 const toneClass = (tone: WidgetTone) => `dsp-overview__tone dsp-overview__tone--${tone}`;
+
+export function DashboardPageHeader({
+  eyebrow = "Instructor workspace",
+  title,
+  description,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <header className="dsp-dashboard-page-header">
+      <div>
+        <span className="dsp-dashboard-page-header__eyebrow">{eyebrow}</span>
+        <h1>{title}</h1>
+        {description && <p>{description}</p>}
+      </div>
+      {action && <div className="dsp-dashboard-page-header__action">{action}</div>}
+    </header>
+  );
+}
+
+export function DashboardCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <section className={`dsp-dashboard-card ${className}`.trim()}>{children}</section>;
+}
+
+export function DashboardLoadingSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="dsp-dashboard-loading" role="status" aria-live="polite" aria-label="Loading page">
+      <span className="dsp-dashboard-loading__hero" />
+      <div className="dsp-dashboard-loading__rows">
+        {Array.from({ length: rows }, (_, index) => <span key={index} />)}
+      </div>
+    </div>
+  );
+}
 
 export function DashboardStatCard({
   label,
@@ -161,6 +205,7 @@ export function ActivityItem({
   tone = "navy",
   avatar,
   status,
+  statusTone,
 }: {
   title: string;
   detail: string;
@@ -168,6 +213,7 @@ export function ActivityItem({
   tone?: WidgetTone;
   avatar?: string;
   status?: string;
+  statusTone?: "success" | "warning" | "danger" | "info" | "neutral";
 }) {
   const initials = title
     .split(" ")
@@ -183,7 +229,7 @@ export function ActivityItem({
       </span>
       <div><strong>{title}</strong><span>{detail}</span></div>
       <span className="dsp-overview__activity-meta">
-        {status && <StatusBadge tone={tone === "green" ? "success" : "info"}>{status}</StatusBadge>}
+        {status && <StatusBadge tone={statusTone || (tone === "green" ? "success" : "info")}>{status}</StatusBadge>}
         <time>{meta}</time>
       </span>
     </div>

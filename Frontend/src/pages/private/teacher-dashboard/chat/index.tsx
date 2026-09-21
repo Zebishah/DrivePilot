@@ -89,7 +89,7 @@ const InstructorChatPage: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-80px)] p-4 bg-gray-50">
+    <div className="dsp-instructor-page dsp-messages-page">
       <div className="flex h-full gap-5">
         <div className="w-[520px] h-full flex-shrink-0 flex flex-col overflow-hidden shadow-md bg-white border-r">
           {conversations.length > 0 ? (

@@ -1,7 +1,6 @@
 import { MapPin, MoveRight } from "lucide-react";
 import { LessonStats, Student } from "../../../types/Student";
 import { Link } from "react-router-dom";
-import { formatDuration } from "../common/FormatDuration";
 
 interface StudentCardProps {
   student: Student;
@@ -12,7 +11,6 @@ interface StudentCardProps {
 export const StudentCard: React.FC<StudentCardProps> = ({
   student,
   totalBookings,
-  lessonStats,
 }) => {
   const getAvatarSrc = () => {
     if (student.profileImage) {
@@ -35,10 +33,8 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   const remainingMinutes = lessonStats.remainingLessonDurationInMinutes;
   const totalMinutes = lessonStats.totalLessonDurationInMinutes;
 
-  const progressPercentage =
-    totalMinutes > 0 ? (remainingMinutes / totalMinutes) * 100 : 0;
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div className="dsp-student-card bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100">

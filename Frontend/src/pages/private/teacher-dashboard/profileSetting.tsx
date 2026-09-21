@@ -11,7 +11,7 @@ import {
   Tab,
   CircularProgress,
 } from "@mui/material";
-import { Star, Edit, EditIcon } from "lucide-react";
+import { Star, Edit } from "lucide-react";
 import { NetworkStatus, useQuery } from "@apollo/client";
 import { GET_TEACHER_PROFILE } from "../../../graphql/mutations/profile";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
@@ -21,14 +21,13 @@ import { AvailabilityTab } from "./tabs/AvailabilityTab";
 import { RatingsTab } from "./tabs/RatingsTab";
 import { PaymentTab } from "./tabs/PaymentTab";
 import { LuMapPin } from "react-icons/lu";
-import { create } from "lodash";
 type TabValue = "documents" | "tariff" | "availability" | "ratings" | "payment";
 
 export default function ProfileSetting() {
   const [tabValue, setTabValue] = React.useState<TabValue>("documents");
   const navigate = useNavigate();
   const location = useLocation();
-  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  const [isAvatarLoading] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
   const { loading, error, data, refetch, networkStatus } = useQuery(
     GET_TEACHER_PROFILE,
@@ -206,7 +205,7 @@ export default function ProfileSetting() {
     );
   };
   return (
-    <Box sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
+    <Box className="dsp-instructor-page dsp-profile-page" sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
       {/* Profile and Personal Information Section */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* My Profile Card */}

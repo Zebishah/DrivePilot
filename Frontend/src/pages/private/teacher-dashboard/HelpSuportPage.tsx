@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Container, Typography, Paper, Tabs, Tab, Box } from "@mui/material";
+import { Paper, Tabs, Tab, Box } from "@mui/material";
 import {
   QuestionAnswer as QuestionAnswerIcon,
   ContactMail as ContactIcon,
@@ -9,12 +9,13 @@ import { ContactFormData } from "../../../types/Faq";
 import { TabPanel } from "../../../components/InstructorComponent/Help&Support/TabPanel";
 import { FAQList } from "../../../components/InstructorComponent/Help&Support/FaqList";
 import { ContactSection } from "../../../components/InstructorComponent/Help&Support/ContactSection";
+import { DashboardPageHeader } from "../../../components/dashboard/OverviewWidgets";
 
 const FAQPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const faqData = useFAQs(5);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -24,24 +25,9 @@ const FAQPage: React.FC = () => {
   };
 
   return (
-    <Container
-      sx={{
-        py: 4,
-        px: 20,
-        minHeight: "90vh",
-        position: "relative",
-        width: "95% !important",
-        maxWidth: "100% !important",
-      }}
-    >
-      <Typography
-        variant="h4"
-        component="h1"
-        textAlign="center"
-        sx={{ fontWeight: "bold", mb: 4, color: "#333" }}
-      >
-        Help & Support
-      </Typography>
+    <div className="dsp-instructor-page dsp-help-page">
+      <div className="dsp-instructor-page__content">
+        <DashboardPageHeader title="Help & support" description="Find answers quickly or send the team a message when you need a hand." />
 
       <Paper sx={{ mb: 2, backgroundColor: "#f8f9fa", width: "100%" }}>
         <Box sx={{ borderBottom: 1, borderColor: "divider", width: "100%" }}>
@@ -85,7 +71,8 @@ const FAQPage: React.FC = () => {
       <TabPanel value={tabValue} index={1}>
         <ContactSection onSubmit={handleContactSubmit} />
       </TabPanel>
-    </Container>
+      </div>
+    </div>
   );
 };
 

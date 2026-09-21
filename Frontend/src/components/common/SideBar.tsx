@@ -63,6 +63,7 @@ export default function Sidebar({
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const dispatch = useDispatch();
   const { unreadMessages } = useSelector((state: RootState) => state.chat);
+  const isInstructor = roleLabel === "Instructor";
 
   const listItemVariants = {
     hidden: { opacity: 0, x: -20 },
@@ -105,7 +106,7 @@ export default function Sidebar({
       : { 0: "Workspace" };
 
   const drawer = (
-    <Box className="dsp-sidebar__content" sx={{ p: 2.25, minHeight: "100%" }}>
+    <Box className={`dsp-sidebar__content dsp-sidebar__content--${roleLabel.toLowerCase()}`} sx={{ p: 2.25, minHeight: "100%" }}>
       <Box
         className="dsp-sidebar__brand"
         onClick={handleDrawerToggle}
@@ -172,8 +173,8 @@ export default function Sidebar({
                     borderRadius: 2,
                     mb: 0.5,
                     minHeight: 44,
-                    backgroundColor: isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
-                    borderLeft: isActive ? "3px solid #FF5A36" : "3px solid transparent",
+                    background: isActive && isInstructor ? "linear-gradient(90deg, rgba(124,58,237,.2), rgba(59,130,246,.12))" : isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
+                    borderLeft: isActive ? `3px solid ${isInstructor ? "#8B5CF6" : "#FF5A36"}` : "3px solid transparent",
                     "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.06)" },
                   }}
                 >
@@ -206,10 +207,10 @@ export default function Sidebar({
                       borderRadius: 2,
                       mb: 0.5,
                       minHeight: 44,
-                      backgroundColor: isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
+                      background: isActive && isInstructor ? "linear-gradient(90deg, rgba(124,58,237,.2), rgba(59,130,246,.12))" : isActive ? "rgba(255, 90, 54, 0.15)" : "transparent",
                       borderLeft: isActive ? "3px solid" : "3px solid transparent",
-                      borderColor: isActive ? "#FF5A36" : "transparent",
-                      "&:hover": { backgroundColor: isActive ? "rgba(255, 90, 54, 0.22)" : "rgba(255, 255, 255, 0.06)" },
+                      borderColor: isActive ? (isInstructor ? "#8B5CF6" : "#FF5A36") : "transparent",
+                      "&:hover": { background: isActive && isInstructor ? "linear-gradient(90deg, rgba(124,58,237,.28), rgba(59,130,246,.17))" : isActive ? "rgba(255, 90, 54, 0.22)" : "rgba(255, 255, 255, 0.06)" },
                       position: "relative",
                     }}
                     onClick={() => {
@@ -222,7 +223,7 @@ export default function Sidebar({
                     <ListItemIcon sx={{ minWidth: 40 }}>
                       <Icon
                         size={20}
-                        color={isActive ? "#FF8A70" : "#AEB4C0"}
+                        color={isActive ? (isInstructor ? "#C4B5FD" : "#FF8A70") : "#AEB4C0"}
                       />
                     </ListItemIcon>
                     <ListItemText

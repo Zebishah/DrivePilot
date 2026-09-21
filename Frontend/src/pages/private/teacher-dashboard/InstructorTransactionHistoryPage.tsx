@@ -140,7 +140,7 @@ export default function InstructorTransactionHistoryPage() {
     Boolean(previousTransactionsData || previousCountData);
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
+    <Box className="dsp-instructor-page dsp-transactions-page" sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
       <Card elevation={3} sx={{ borderRadius: 3, p: { xs: 2, sm: 3 } }}>
         <CardContent sx={{ p: 0 }}>
           <Stack

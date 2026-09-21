@@ -45,7 +45,7 @@ export default function DashboardShell({
         />
         <Box
           component="main"
-          className="dsp-dashboard-main"
+          className={`dsp-dashboard-main dsp-dashboard-main--${roleLabel.toLowerCase()}`}
           sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, minWidth: 0 }}
         >
           <Navbar handleDrawerToggle={handleDrawerToggle} menuItems={menuItems} />

@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { SortOrder, Student, StudentFilter } from "../../../types/Student";
+import type React from "react";
+import { User } from "lucide-react";
 import { useQuery } from "@apollo/client";
+import { SortOrder, Student, StudentFilter } from "../../../types/Student";
 import { GET_ALL_STUDENTS } from "../../../graphql/Queries/StudentQueries";
 import { StudentCard } from "../../../components/InstructorComponent/StudentsTracking/StudentCard";
-import { User } from "lucide-react";
 import LoadingCard from "../../../components/InstructorComponent/StudentsTracking/LoadingCard";
 import { FilterComponent } from "../../../components/InstructorComponent/StudentsTracking/FiltersComponent";
+import { DashboardCard, DashboardPageHeader, DashboardLoadingSkeleton } from "../../../components/dashboard/OverviewWidgets";
 
 const StudentsProgressDashboard: React.FC = () => {
   const [filter, setFilter] = useState<StudentFilter>({
@@ -14,107 +16,65 @@ const StudentsProgressDashboard: React.FC = () => {
 
   const { data, loading, error, refetch } = useQuery(GET_ALL_STUDENTS, {
     variables: { filter },
-    fetchPolicy: "cache-and-network", // gets cached data fast, then refetches in background
+    fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     notifyOnNetworkStatusChange: true,
   });
 
   const students = data?.getAllStudents || [];
+  const filteredStudents = useMemo(() => students, [students]);
 
-  const handleFilterChange = (newFilter: StudentFilter) => {
-    setFilter(newFilter);
-  };
+  if (loading && !data) return <DashboardLoadingSkeleton rows={6} />;
 
-  const filteredStudents = useMemo(() => {
-    return students; // Since filtering is done on the backend
-  }, [students]);
-
-  if (error) {
-    const errorMessage =
-      typeof error === "object" && error !== null && "message" in error
-        ? (error as { message: string }).message
-        : "An unknown error occurred";
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">
-            Error loading students
-          </div>
-          <p className="text-gray-600 mb-4">{errorMessage}</p>
-          <button
-            onClick={() => refetch()}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
   return (
-    <div className=" bg-gray-50">
-      <div className=" mx-auto py-6 px-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            All Students Progress
-          </h1>
-          <FilterComponent
-            onFilterChange={handleFilterChange}
-            currentFilter={filter}
-          />
-        </div>
+    <div className="dsp-instructor-page dsp-students-page">
+      <div className="dsp-instructor-page__content">
+        <DashboardPageHeader
+          title="My students"
+          description="Keep track of your learners, lesson records, and progress in one place."
+          action={<FilterComponent onFilterChange={setFilter} currentFilter={filter} />}
+        />
 
-        {/* Students Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 9 }).map((_, index) => (
-              <LoadingCard key={index} />
-            ))}
-          </div>
+        {error ? (
+          <DashboardCard className="dsp-page-error">
+            <div className="dsp-page-error__icon"><User size={22} /></div>
+            <h2>We couldn’t load your students</h2>
+            <p>Try again to refresh the latest student records.</p>
+            <button type="button" className="dsp-dashboard-button dsp-dashboard-button--primary" onClick={() => refetch()}>Try again</button>
+          </DashboardCard>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredStudents.map((student: Student) =>
-                student?.lessonStats ? (
+          <DashboardCard className="dsp-students-page__card">
+            <div className="dsp-list-heading">
+              <div>
+                <span className="dsp-list-heading__eyebrow">Student CRM</span>
+                <h2>{filteredStudents.length} active student{filteredStudents.length === 1 ? "" : "s"}</h2>
+              </div>
+              <span className="dsp-list-heading__meta">Sorted by recent activity</span>
+            </div>
+
+            {loading ? (
+              <div className="dsp-students-page__grid" aria-label="Loading students">
+                {Array.from({ length: 6 }, (_, index) => <LoadingCard key={index} />)}
+              </div>
+            ) : filteredStudents.length ? (
+              <div className="dsp-students-page__grid">
+                {filteredStudents.map((student: Student) => student?.lessonStats ? (
                   <StudentCard
                     key={student._id}
                     student={student}
-                    totalBookings={student?.lessonStats?.totalLessons ?? 0}
-                    lessonStats={
-                      student?.lessonStats ?? {
-                        totalLessons: 0,
-                        totalLessonDurationInMinutes: 0,
-                        remainingLessonDurationInMinutes: 0,
-                      }
-                    }
+                    totalBookings={student.lessonStats.totalLessons ?? 0}
+                    lessonStats={student.lessonStats}
                   />
-                ) : null
-              )}
-            </div>
-
-            {filteredStudents.length === 0 && (
-              <div className="text-center py-12">
-                <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No students found
-                </h3>
-                <p className="text-gray-500">
-                  Try adjusting your filters to see more results.
-                </p>
+                ) : null)}
+              </div>
+            ) : (
+              <div className="dsp-page-empty">
+                <User size={28} aria-hidden="true" />
+                <h3>No students found</h3>
+                <p>Students will appear here after they book a lesson with you.</p>
               </div>
             )}
-          </>
-        )}
-
-        {/* Results Count */}
-        {!loading && filteredStudents.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-600">
-              Showing {filteredStudents.length} student
-              {filteredStudents.length !== 1 ? "s" : ""}
-            </p>
-          </div>
+          </DashboardCard>
         )}
       </div>
     </div>
