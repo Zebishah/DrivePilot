@@ -54,16 +54,16 @@ const FeedBackAndRating: React.FC = () => {
       <div className="dsp-student-page__content">
         <DashboardPageHeader
           eyebrow="Student workspace"
-          title="Feedback & rating"
+          title="Instructor feedback"
           description="Review the guidance your instructors have shared after completed lessons."
           action={<button type="button" className="dsp-student-primary-button" onClick={() => navigate("/student-dashboard/chat")}><MessageCircle size={16} /> Message an instructor<ArrowUpRight size={15} /></button>}
         />
         <div className="dsp-student-summary-grid">
-          <div className="dsp-student-summary-card dsp-student-summary-card--violet"><span className="dsp-student-summary-card__icon"><Star size={18} /></span><span>Feedback received</span><strong>{feedbacks.length}</strong><small>Instructor notes available to review</small></div>
+          <div className="dsp-student-summary-card dsp-student-summary-card--violet"><span className="dsp-student-summary-card__icon"><Star size={18} /></span><span>Instructor feedback</span><strong>{feedbacks.length}</strong><small>Notes shared after completed lessons</small></div>
           <div className="dsp-student-summary-card dsp-student-summary-card--blue"><span className="dsp-student-summary-card__icon"><MessageCircle size={18} /></span><span>Stay connected</span><strong>Open</strong><small>Message your instructor anytime</small></div>
         </div>
         <section className="dsp-student-panel">
-          <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Instructor notes</span><h2>Feedback from instructors</h2></div></div>
+          <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Instructor feedback</span><h2>Feedback from instructors</h2></div></div>
           <div className="dsp-student-table-wrap">
             <table className="dsp-student-table">
               <thead>
@@ -107,7 +107,7 @@ const FeedBackAndRating: React.FC = () => {
           </div>
 
           {feedbacks.length === 0 && (
-            <div className="dsp-student-empty-state"><Star size={24} /><strong>No feedback available yet</strong><span>Instructor feedback will appear here after a completed lesson.</span></div>
+            <div className="dsp-student-empty-state"><Star size={24} /><strong>No instructor feedback available yet</strong><span>Feedback from your instructors will appear here after a completed lesson.</span></div>
           )}
         </section>
       </div>

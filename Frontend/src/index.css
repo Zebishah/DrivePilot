@@ -4146,3 +4146,99 @@ button.dsp-overview__stat {
 .dsp-instructor-overview--radical .dsp-overview__next-empty p {
   color: rgba(255, 255, 255, .78) !important;
 }
+
+.dsp-student-review-page .dsp-student-page__content { max-width: 980px; }
+.dsp-student-review-page__header { display: flex; justify-content: space-between; gap: 1rem; margin: 1.4rem 0 1rem; }
+.dsp-student-review-page__header h1 { margin: .25rem 0 0; color: #172033; font-size: clamp(1.65rem, 3vw, 2.3rem); font-weight: 700; letter-spacing: -.04em; }
+.dsp-student-review-page__header p { margin: .45rem 0 0; color: #64748B; font-size: .86rem; }
+.dsp-student-review-context { display: flex; align-items: center; justify-content: space-between; gap: 1.2rem; margin-bottom: 1rem; padding: 1rem 1.15rem; border: 1px solid #E2E8F0; border-radius: 16px; background: #fff; box-shadow: 0 10px 26px rgba(15, 23, 42, .045); }
+.dsp-student-review-context__person, .dsp-student-review-context__details, .dsp-student-review-context__details > div { display: flex; align-items: center; }
+.dsp-student-review-context__person { min-width: 0; gap: .75rem; }
+.dsp-student-review-context__person > div { display: grid; gap: .12rem; }
+.dsp-student-review-context__person strong { color: #172033; font-size: .88rem; }
+.dsp-student-review-context__person > div > span:last-child { color: #94A3B8; font-size: .68rem; }
+.dsp-student-review-context__eyebrow, .dsp-student-review-card__eyebrow { color: #7C3AED; font-size: .61rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.dsp-student-review-context__avatar { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; overflow: hidden; border-radius: 50%; color: #7C3AED; background: #F3E8FF; font-size: .8rem; font-weight: 750; }
+.dsp-student-review-context__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dsp-student-review-context__details { flex-wrap: wrap; justify-content: flex-end; gap: 1rem; color: #64748B; font-size: .74rem; }
+.dsp-student-review-context__details > div { gap: .45rem; }
+.dsp-student-review-context__details svg { color: #7C3AED; }
+.dsp-student-review-context__details span:not(.dsp-student-review-context__status) { display: grid; gap: .14rem; }
+.dsp-student-review-context__details small { color: #94A3B8; font-size: .61rem; }
+.dsp-student-review-context__details strong { color: #172033; font-size: .74rem; font-weight: 650; }
+.dsp-student-review-context__status { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .55rem; border-radius: 999px; color: #15803D; background: #DCFCE7; font-size: .67rem; font-weight: 700; }
+.dsp-student-review-card { overflow: hidden; border: 1px solid #E2E8F0; border-radius: 18px; background: #fff; box-shadow: 0 14px 32px rgba(15, 23, 42, .055); }
+.dsp-student-review-rating, .dsp-student-review-text { padding: 1.35rem 1.45rem; }
+.dsp-student-review-rating { background: linear-gradient(135deg, #FCFAFF, #fff 70%); border-bottom: 1px solid #EEF2F7; }
+.dsp-student-review-rating h2, .dsp-student-review-text h2 { margin: .35rem 0 .2rem; color: #172033; font-size: 1rem; font-weight: 680; }
+.dsp-student-review-rating p, .dsp-student-review-text p { margin: 0; color: #64748B; font-size: .75rem; }
+.dsp-student-review-stars { display: flex; gap: .35rem; margin-top: 1rem; }
+.dsp-student-review-star { position: relative; display: inline-flex; padding: .34rem; cursor: pointer; color: #CBD5E1; border-radius: 9px; transition: color .16s ease, background-color .16s ease, transform .16s ease; }
+.dsp-student-review-star:hover, .dsp-student-review-star.is-selected { color: #F59E0B; background: #FFF7ED; transform: translateY(-1px); }
+.dsp-student-review-star:focus-within { outline: 2px solid #A855F7; outline-offset: 2px; }
+.dsp-student-review-star input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.dsp-student-review-rating__label { display: block; margin-top: .55rem; color: #7C3AED; font-size: .75rem; }
+.dsp-student-review-text__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.dsp-student-review-text textarea { display: block; width: 100%; min-height: 150px; margin-top: 1rem; resize: vertical; box-sizing: border-box; border: 1px solid #CBD5E1; border-radius: 12px; padding: .85rem 1rem; color: #172033; background: #fff; font: inherit; font-size: .8rem; line-height: 1.55; }
+.dsp-student-review-text textarea:focus { border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139, 92, 246, .13) !important; }
+.dsp-student-review-ai { display: inline-flex; align-items: center; gap: .35rem; flex: 0 0 auto; padding: .5rem .65rem; border: 1px solid #E9D5FF; border-radius: 9px; color: #8B5CF6; background: #FAF5FF; font: inherit; font-size: .68rem; font-weight: 650; }
+.dsp-student-review-ai:disabled { cursor: not-allowed; opacity: .6; }
+.dsp-student-review-form-error { margin: 0 1.45rem; padding: .65rem .75rem; border-radius: 9px; color: #B91C1C; background: #FEF2F2; font-size: .74rem; }
+.dsp-student-review-card__footer { display: flex; justify-content: flex-end; gap: .65rem; padding: 1rem 1.45rem; border-top: 1px solid #EEF2F7; background: #FCFDFE; }
+.dsp-student-review-error { display: grid; max-width: 580px; margin: 3.5rem auto 0; justify-items: center; gap: .65rem; padding: 3rem 1.5rem; border: 1px solid #E2E8F0; border-radius: 18px; background: #fff; text-align: center; }
+.dsp-student-review-error > span { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 15px; color: #7C3AED; background: #F3E8FF; }
+.dsp-student-review-error h1 { margin: 0; color: #172033; font-size: 1.1rem; }
+.dsp-student-review-error p { margin: 0 0 .5rem; color: #64748B; font-size: .78rem; }
+.dsp-review-action-disabled { color: #94A3B8; font-size: .72rem; font-weight: 600; }
+.dsp-student-submitted-reviews { margin-top: 1rem; }
+.dsp-student-review-list { display: grid; gap: .75rem; padding: 0 1.35rem 1.35rem; }
+.dsp-student-review-list__item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem 1rem; padding: .9rem 1rem; border: 1px solid #EEF2F7; border-radius: 12px; background: #FCFDFE; }
+.dsp-student-review-list__item > div:first-child { display: grid; gap: .18rem; }
+.dsp-student-review-list__item strong { color: #172033; font-size: .78rem; }
+.dsp-student-review-list__item span { color: #94A3B8; font-size: .66rem; }
+.dsp-student-review-list__item p { grid-column: 1 / -1; margin: .4rem 0 0; color: #64748B; font-size: .74rem; line-height: 1.5; }
+.dsp-student-review-list__rating { color: #CBD5E1; letter-spacing: .1em; }
+.dsp-student-review-list__rating .is-filled { color: #F59E0B; }
+
+.dsp-learning-timeline__empty-icon { color: #7C3AED; }
+.dsp-learning-timeline__events { position: relative; }
+.dsp-learning-timeline__events::before { position: absolute; top: 1.2rem; bottom: 1.2rem; left: 1.05rem; width: 2px; content: ""; background: #E2E8F0; }
+.dsp-learning-timeline__event { position: relative; display: flex; gap: .9rem; padding: .9rem 0; }
+.dsp-learning-timeline__event:first-child { padding-top: .25rem; }
+.dsp-learning-timeline__event:last-child { padding-bottom: .25rem; }
+.dsp-learning-timeline__node { z-index: 1; display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 4px solid #fff; border-radius: 11px; color: #7C3AED; background: #F3E8FF; box-shadow: 0 0 0 1px #E9D5FF; }
+.dsp-learning-timeline__event-body { min-width: 0; flex: 1; padding: .1rem 0 .95rem; border-bottom: 1px solid #EEF2F7; }
+.dsp-learning-timeline__event:last-child .dsp-learning-timeline__event-body { border-bottom: 0; }
+.dsp-learning-timeline__event-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.dsp-learning-timeline__event-heading h2 { margin: .18rem 0 0; color: #172033; font-size: .88rem; font-weight: 680; }
+.dsp-learning-timeline__event-heading time { flex: 0 0 auto; color: #94A3B8; font-size: .67rem; }
+.dsp-learning-timeline__event-label { color: #7C3AED; font-size: .59rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.dsp-learning-timeline__meta { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .5rem; color: #64748B; font-size: .68rem; }
+.dsp-learning-timeline__meta span { padding: .25rem .45rem; border-radius: 999px; background: #F8FAFC; }
+.dsp-learning-timeline__event-body p { margin: .55rem 0 0; color: #64748B; font-size: .72rem; }
+.dsp-learning-timeline__event.is-cyan .dsp-learning-timeline__node { color: #0891B2; background: #ECFEFF; box-shadow: 0 0 0 1px #A5F3FC; }
+.dsp-learning-timeline__event.is-cyan .dsp-learning-timeline__event-label { color: #0891B2; }
+.dsp-learning-timeline__event.is-green .dsp-learning-timeline__node { color: #15803D; background: #F0FDF4; box-shadow: 0 0 0 1px #BBF7D0; }
+.dsp-learning-timeline__event.is-green .dsp-learning-timeline__event-label { color: #15803D; }
+.dsp-learning-timeline__event.is-amber .dsp-learning-timeline__node { color: #B45309; background: #FFFBEB; box-shadow: 0 0 0 1px #FDE68A; }
+.dsp-learning-timeline__event.is-amber .dsp-learning-timeline__event-label { color: #B45309; }
+.dsp-learning-timeline__event.is-coral .dsp-learning-timeline__node { color: #E11D48; background: #FFF1F2; box-shadow: 0 0 0 1px #FECDD3; }
+.dsp-learning-timeline__event.is-coral .dsp-learning-timeline__event-label { color: #E11D48; }
+.dsp-learning-timeline__event.is-pink .dsp-learning-timeline__node { color: #DB2777; background: #FDF2F8; box-shadow: 0 0 0 1px #FBCFE8; }
+.dsp-learning-timeline__event.is-pink .dsp-learning-timeline__event-label { color: #DB2777; }
+
+@media (max-width: 700px) {
+  .dsp-student-review-context { align-items: flex-start; flex-direction: column; }
+  .dsp-student-review-context__details { justify-content: flex-start; }
+  .dsp-student-review-text__heading, .dsp-learning-timeline__event-heading { flex-direction: column; gap: .45rem; }
+  .dsp-student-review-ai { align-self: flex-start; }
+  .dsp-learning-timeline__event-heading time { font-size: .63rem; }
+}
+
+@media (max-width: 460px) {
+  .dsp-student-review-rating, .dsp-student-review-text { padding: 1.1rem; }
+  .dsp-student-review-card__footer { padding: .9rem 1.1rem; }
+  .dsp-student-review-card__footer button { flex: 1; }
+  .dsp-student-review-context__details { display: grid; gap: .65rem; }
+  .dsp-student-review-list { padding-right: .85rem; padding-left: .85rem; }
+}

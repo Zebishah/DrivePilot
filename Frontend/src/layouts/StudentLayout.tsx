@@ -279,13 +279,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       section: "Account",
     },
     {
-      text: "Progress Tracking",
+      text: "Reviews & Ratings",
       icon: BarChart3,
       path: "/student-dashboard/reviews",
       section: "Account",
     },
     {
-      text: "Feedback & Rating",
+      text: "Instructor feedback",
       icon: Star,
       path: "/student-dashboard/Feedback",
       section: "Account",

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Eye, Plus, Edit, Trash2, ExternalLink, RefreshCw } from "lucide-react";
+import { Eye, Star, ExternalLink, RefreshCw } from "lucide-react";
 import { StudentBookingSlot } from "../../../types/ReviewTypes";
 import { useNavigate } from "react-router-dom";
 
@@ -20,15 +20,12 @@ interface BookingSlotsTableProps {
 const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
   bookingSlots,
   onAddReview,
-  onEditReview,
-  onDeleteReview,
   onShowReview,
   refetchSlots,
   refetchReviews,
   isRefetching,
   isFeedbackRating,
 }) => {
-  console.log("bookingSlots", bookingSlots);
   const navigate = useNavigate();
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -97,14 +94,7 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
   const getActionButtons = (slot: StudentBookingSlot) => {
     if (!slot.isCompleted) {
       return (
-        <button
-          onClick={() => onAddReview(slot, isFeedbackRating || false)}
-          disabled={true}
-          className="inline-flex items-center px-3 py-2 text-sm text-white bg-[#999999] rounded-md transition-colors"
-        >
-          <Plus size={16} className="mr-1" />
-          Add Feedback
-        </button>
+        <span className="dsp-review-action-disabled">Review unavailable</span>
       );
     }
 
@@ -116,7 +106,7 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
             className="inline-flex items-center px-3 py-2 text-sm text-[#4DD0E1] bg-blue-50 rounded-md hover:bg-[#81d5ff5e] transition-colors"
           >
             <Eye size={16} className="mr-1" />
-            Show Feedback
+            View review
           </button>
           {/* <button
             onClick={() => onEditReview(slot)}
@@ -141,8 +131,8 @@ const BookingSlotsTable: React.FC<BookingSlotsTableProps> = ({
         onClick={() => onAddReview(slot, isFeedbackRating || false)}
         className="inline-flex items-center px-3 py-2 text-sm text-white bg-[#4DD0E1] rounded-md hover:bg-[#38b5c5] transition-colors"
       >
-        <Plus size={16} className="mr-1" />
-        Add Feedback
+        <Star size={16} className="mr-1" />
+        Write review
       </button>
     );
   };

@@ -16,6 +16,7 @@ const preferenceForNotification = {
   refund_issued: "paymentUpdates",
   feedback_received: "feedbackNotifications",
   review_received: "reviews",
+  review_submitted: "reviews",
   document_status: "documentStatus",
   message_received: "messages",
 };

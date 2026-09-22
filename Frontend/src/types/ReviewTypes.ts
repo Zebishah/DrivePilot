@@ -9,6 +9,7 @@ export interface StudentBookingSlot {
   lessonNumber: string;
   lessonId: string;
   instructorName: string;
+  profileImage?: string;
   instructorId: string;
   studentId: string;
   dateOfBooking: string;

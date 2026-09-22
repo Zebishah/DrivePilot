@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Star, Edit, Trash2, ArrowLeft, CheckCircle, X } from "lucide-react";
+import { Edit, Trash2, ArrowLeft, CheckCircle, X } from "lucide-react";
 import { StudentBookingSlot } from "../../../types/ReviewTypes";
 import {
   useDeleteReview,
   useReviewByLessonSlot,
 } from "../../../hooks/UseReview";
-import { BackButton } from "../../InstructorComponent/common/BackButton";
+import DashboardBackLink from "../../../components/dashboard/DashboardBackLink";
 import { StarRating } from "./RatingComponent";
 
 const ReviewDisplayPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { slot, showSuccessMessage, isFeedbackRating } = location.state as {
-    slot: StudentBookingSlot;
+  const { slot, showSuccessMessage, isFeedbackRating } = (location.state || {}) as {
+    slot?: StudentBookingSlot;
     showSuccessMessage?: boolean;
     isFeedbackRating: boolean;
   };
@@ -177,15 +177,10 @@ const ReviewDisplayPage: React.FC = () => {
     });
   };
 
-  console.log("slot", slot);
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <BackButton
-        variant="outline"
-        showIcon={true}
-        to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`}
-      />
+    <div className="dsp-student-page dsp-student-review-page">
+      <div className="dsp-student-page__content">
+      <DashboardBackLink to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`} label="Back to reviews" />
       <div className=" mx-auto mt-4">
         {/* Success Message */}
         {successVisible && (
@@ -193,7 +188,7 @@ const ReviewDisplayPage: React.FC = () => {
             <div className="flex items-center">
               <CheckCircle className="text-green-500 mr-2" size={20} />
               <span className="text-green-800">
-                Feedback submitted successfully!
+                Review submitted successfully!
               </span>
             </div>
           </div>
@@ -206,7 +201,7 @@ const ReviewDisplayPage: React.FC = () => {
             <div className="p-6 ">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Your Feedback
+                  Your review
                 </h2>
               </div>
             </div>
@@ -215,7 +210,7 @@ const ReviewDisplayPage: React.FC = () => {
                 to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium bg-[#4DD0E1] text-white rounded-md hover:bg-[#3285af] transition-colors"
               >
-                Give Feedback
+                Edit review
                 <Edit size={12} className="ml-2" />
               </Link>
             </div>
@@ -319,21 +314,21 @@ const ReviewDisplayPage: React.FC = () => {
                 onClick={handleBack}
                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
               >
-                Back to Dashboard
+                Back to reviews
               </button>
               <div className="space-x-4">
                 <button
                   onClick={handleEdit}
                   className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
                 >
-                  Edit Review
+                  Edit review
                 </button>
                 <button
                   onClick={handleDeleteClick}
                   disabled={deleteLoading}
                   className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
                 >
-                  {deleteLoading ? "Deleting..." : "Delete Review"}
+                  {deleteLoading ? "Deleting..." : "Delete review"}
                 </button>
               </div>
             </div>
@@ -347,7 +342,7 @@ const ReviewDisplayPage: React.FC = () => {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                Delete Review
+                Delete review
               </h3>
               <button
                 onClick={handleDeleteCancel}
@@ -380,6 +375,7 @@ const ReviewDisplayPage: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

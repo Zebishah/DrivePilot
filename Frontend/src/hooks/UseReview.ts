@@ -9,10 +9,8 @@ import {
   UPDATE_REVIEW,
 } from "../graphql/Queries/ReviewQueries";
 import { Review } from "../types/ReviewTypes";
-import useAuth from "./useAuth";
 
 export const useInstructorReviews = (instructorId: string) => {
-  const { user } = useAuth();
   const { data, loading, error, refetch, networkStatus } = useQuery(
     GET_INSTRUCTOR_REVIEWS,
     {
@@ -22,7 +20,6 @@ export const useInstructorReviews = (instructorId: string) => {
       errorPolicy: "all",
     }
   );
-  const studentId = user?._id || "";
   return {
     reviews: (data?.getInstructorReviews as Review[]) || [],
     loading,
@@ -67,10 +64,7 @@ export const useReviewByLessonSlot = (lessonId: string, slotId: string) => {
 
 export const useCreateReview = () => {
   const [createReview, { loading, error }] = useMutation(CREATE_REVIEW, {
-    refetchQueries: [
-      { query: GET_ALL_STUDENT_BOOKING_SLOTS },
-      { query: GET_INSTRUCTOR_REVIEWS },
-    ],
+    refetchQueries: [{ query: GET_ALL_STUDENT_BOOKING_SLOTS }],
   });
 
   return { createReview, loading, error };
@@ -78,10 +72,7 @@ export const useCreateReview = () => {
 
 export const useUpdateReview = () => {
   const [updateReview, { loading, error }] = useMutation(UPDATE_REVIEW, {
-    refetchQueries: [
-      { query: GET_ALL_STUDENT_BOOKING_SLOTS },
-      { query: GET_INSTRUCTOR_REVIEWS },
-    ],
+    refetchQueries: [{ query: GET_ALL_STUDENT_BOOKING_SLOTS }],
   });
 
   return { updateReview, loading, error };
@@ -89,10 +80,7 @@ export const useUpdateReview = () => {
 
 export const useDeleteReview = () => {
   const [deleteReview, { loading, error }] = useMutation(DELETE_REVIEW, {
-    refetchQueries: [
-      { query: GET_ALL_STUDENT_BOOKING_SLOTS },
-      { query: GET_INSTRUCTOR_REVIEWS },
-    ],
+    refetchQueries: [{ query: GET_ALL_STUDENT_BOOKING_SLOTS }],
   });
 
   return { deleteReview, loading, error };

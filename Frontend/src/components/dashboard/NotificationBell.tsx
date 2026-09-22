@@ -98,6 +98,8 @@ export default function NotificationBell() {
       navigate(user?.role === "Instructor" || user?.role === "Admin" ? `${basePath}/bookingManagement` : `${basePath}/lesson/${notification.entityId}`);
     } else if (notification.type.includes("message")) {
       navigate(`${basePath}/chat`);
+    } else if (notification.type.includes("review") || notification.type.includes("feedback")) {
+      navigate(`${basePath}/reviews`);
     }
   };
 

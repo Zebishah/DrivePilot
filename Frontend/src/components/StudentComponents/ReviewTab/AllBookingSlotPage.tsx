@@ -151,7 +151,7 @@ const AllBookingSlotsPage: React.FC<AllBookingSlotsPageProps> = () => {
           className="inline-flex items-center px-3 py-2 text-sm text-white bg-[#999999] rounded-md transition-colors"
         >
           <Plus size={16} className="mr-1" />
-          Add Review
+          Write review
         </button>
       );
     }
@@ -164,7 +164,7 @@ const AllBookingSlotsPage: React.FC<AllBookingSlotsPageProps> = () => {
             className="inline-flex items-center px-3 py-2 text-sm text-[#4DD0E1] bg-blue-50 rounded-md hover:bg-[#81d5ff5e] transition-colors"
           >
             <Eye size={16} className="mr-1" />
-            Show Review
+            View review
           </button>
         </div>
       );
@@ -176,7 +176,7 @@ const AllBookingSlotsPage: React.FC<AllBookingSlotsPageProps> = () => {
         className="inline-flex items-center px-3 py-2 text-sm text-white bg-[#4DD0E1] rounded-md hover:bg-[#38b5c5] transition-colors"
       >
         <Plus size={16} className="mr-1" />
-        Add Review
+        Write review
       </button>
     );
   };

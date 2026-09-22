@@ -16,6 +16,7 @@ const preferenceForEvent = {
   lesson_completion_reminder: "lessonReminders",
   feedback_received: "feedbackNotifications",
   review_received: "reviews",
+  review_submitted: "reviews",
   document_status: "documentStatus",
 };
 
@@ -34,6 +35,7 @@ const copy = {
   lesson_completion_reminder: ["Lesson follow-up", "Your completed lesson is ready for review."],
   feedback_received: ["Feedback received", "New instructor feedback is available."],
   review_received: ["New review", "A student submitted a review."],
+  review_submitted: ["New review received", "A student submitted a review for a completed lesson."],
   document_status: ["Document status updated", "Your document status has changed."],
 };
 

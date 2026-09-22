@@ -61,6 +61,7 @@ const iconByType = {
   refund_issued: CreditCard,
   feedback_received: Star,
   review_received: Star,
+  review_submitted: Star,
   document_status: FileText,
   message_received: MessageCircle,
 };
@@ -80,6 +81,7 @@ const toneByType: Record<string, string> = {
   refund_issued: "is-purple",
   feedback_received: "is-amber",
   review_received: "is-amber",
+  review_submitted: "is-amber",
   document_status: "is-blue",
   message_received: "is-purple",
 };

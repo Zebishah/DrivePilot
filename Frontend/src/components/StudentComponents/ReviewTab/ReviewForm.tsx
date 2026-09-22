@@ -1,344 +1,194 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Star, ArrowLeft, Sparkles } from "lucide-react";
-import {
-  CreateReviewInput,
-  UpdateReviewInput,
-  StudentBookingSlot,
-} from "../../../types/ReviewTypes";
-import {
-  useCreateReview,
-  useUpdateReview,
-  useReviewByLessonSlot,
-} from "../../../hooks/UseReview";
-import { BackButton } from "../../InstructorComponent/common/BackButton";
+import React, { useEffect, useState } from "react";
+import { CalendarDays, CheckCircle2, Sparkles, Star, UserRound } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { StudentBookingSlot } from "../../../types/ReviewTypes";
+import { useCreateReview, useReviewByLessonSlot, useUpdateReview } from "../../../hooks/UseReview";
+import DashboardBackLink from "../../../components/dashboard/DashboardBackLink";
+import { DashboardLoadingSkeleton } from "../../../components/dashboard/OverviewWidgets";
+
+const ratingLabels: Record<number, string> = {
+  1: "Poor",
+  2: "Fair",
+  3: "Good",
+  4: "Very good",
+  5: "Excellent",
+};
+
+const formatDate = (value?: string) => {
+  if (!value) return "Date unavailable";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+};
 
 const ReviewFormPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { slot, isEdit, isFeedbackRating } = location.state as {
-    slot: StudentBookingSlot;
-    isEdit: boolean;
-    isFeedbackRating: boolean;
-  };
-
+  const state = location.state as { slot?: StudentBookingSlot; isEdit?: boolean } | undefined;
+  const slot = state?.slot;
+  const isEdit = Boolean(state?.isEdit);
   const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [aiMessage] = useState("Review drafting assistance is not available yet.");
 
   const { createReview, loading: createLoading } = useCreateReview();
   const { updateReview, loading: updateLoading } = useUpdateReview();
-  const {
-    review: existingReview,
-    loading: reviewLoading,
-    refetch: refetchExistingReview,
-  } = useReviewByLessonSlot(slot?.lessonId || "", slot?.slotId || "");
-
-  useEffect(() => {
-    if (isEdit && slot) {
-      refetchExistingReview();
-    }
-  }, [isEdit, slot, refetchExistingReview]);
+  const { review: existingReview, loading: reviewLoading } = useReviewByLessonSlot(slot?.lessonId || "", slot?.slotId || "");
 
   useEffect(() => {
     if (isEdit && existingReview) {
-      setRating(existingReview.reviewRating || 0);
+      setRating(Math.round(existingReview.reviewRating || 0));
       setReviewText(existingReview.reviewDescription || "");
     }
-  }, [isEdit, existingReview]);
+  }, [existingReview, isEdit]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  if (!slot) {
+    return (
+      <div className="dsp-student-page dsp-student-review-page">
+        <div className="dsp-student-page__content">
+          <DashboardBackLink to="/student-dashboard/reviews" label="Back to reviews" />
+          <section className="dsp-student-review-error" role="alert">
+            <span><UserRound size={22} aria-hidden="true" /></span>
+            <h1>We couldn’t load this lesson</h1>
+            <p>Return to your completed lessons and choose an eligible lesson to review.</p>
+            <DashboardBackLink to="/student-dashboard/reviews" label="Back to completed lessons" />
+          </section>
+        </div>
+      </div>
+    );
+  }
 
-    if (rating === 0) {
-      alert("Please select a rating");
+  const instructorName = slot.instructorName || "Instructor";
+  const initials = instructorName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const isBusy = isSubmitting || createLoading || updateLoading;
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (rating < 1 || rating > 5) {
+      setValidationError("Choose a rating from 1 to 5 stars.");
       return;
     }
-
     if (!reviewText.trim()) {
-      alert("Please write a review");
+      setValidationError("Write a short review before submitting.");
+      return;
+    }
+    if (!slot.isCompleted) {
+      setValidationError("Reviews are available after a lesson is completed.");
+      return;
+    }
+    if (isEdit && !existingReview) {
+      setValidationError("This review is no longer available. Return to your reviews and try again.");
       return;
     }
 
-    if (!slot) {
-      alert("Slot information is missing");
-      return;
-    }
-
+    setValidationError(null);
     setIsSubmitting(true);
-
     try {
       const reviewData = {
         reviewRating: rating,
         reviewDescription: reviewText.trim(),
-        ...(isEdit
-          ? {}
-          : {
-              lessonId: slot.lessonId,
-              slotId: slot.slotId,
-              studentId: slot.studentId,
-              instructorId: slot.instructorId,
-            }),
+        ...(isEdit ? {} : {
+          lessonId: slot.lessonId,
+          slotId: slot.slotId,
+          studentId: slot.studentId,
+          instructorId: slot.instructorId,
+        }),
       };
 
       if (isEdit && existingReview) {
-        await updateReview({
-          variables: {
-            reviewId: existingReview._id,
-            input: reviewData as UpdateReviewInput,
-          },
-        });
+        await updateReview({ variables: { reviewId: existingReview._id, input: reviewData } });
       } else {
-        await createReview({
-          variables: {
-            input: reviewData as CreateReviewInput,
-          },
-        });
+        await createReview({ variables: { input: reviewData } });
       }
 
-      // Navigate to review display page to show the submitted review
-      navigate("/student-dashboard/review-display", {
-        state: {
-          slot,
-          showSuccessMessage: true,
-        },
-      });
+      toast.success(isEdit ? "Review updated" : "Review submitted");
+      navigate("/student-dashboard/reviews");
     } catch (error) {
       console.error("Error submitting review:", error);
-      alert("Failed to submit review. Please try again.");
+      setValidationError("We couldn’t submit your review. Your text is still here—please try again.");
+      toast.error("Review could not be submitted");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate(-1); // Go back to previous page
-  };
-
-  const generateWithAI = () => {
-    const aiSuggestions = [
-      "Great lesson! The instructor was very knowledgeable and patient. I learned a lot and feel more confident about my skills.",
-      "Excellent teaching style and clear explanations. The instructor made complex topics easy to understand.",
-      "Very professional and well-organized lesson. The instructor provided valuable feedback and tips.",
-      "Amazing experience! The instructor was encouraging and helped me overcome my challenges.",
-      "Outstanding lesson with practical examples. The instructor's expertise really showed.",
-    ];
-
-    const randomSuggestion =
-      aiSuggestions[Math.floor(Math.random() * aiSuggestions.length)];
-    setReviewText(randomSuggestion);
-  };
-
-  if (!slot) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">No slot information available</p>
-          <button
-            onClick={() =>
-              navigate(
-                `${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`
-              )
-            }
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
+  if (reviewLoading && isEdit) {
+    return <div className="dsp-student-page dsp-student-review-page"><div className="dsp-student-page__content"><DashboardLoadingSkeleton rows={3} /></div></div>;
   }
-  const handleStarClick = (star, event) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const starWidth = rect.width;
-    const isLeftHalf = clickX < starWidth / 2;
 
-    const newRating = isLeftHalf ? star - 0.5 : star;
-    setRating(newRating);
-  };
-
-  const handleStarHover = (star, event) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const hoverX = event.clientX - rect.left;
-    const starWidth = rect.width;
-    const isLeftHalf = hoverX < starWidth / 2;
-
-    const newHover = isLeftHalf ? star - 0.5 : star;
-    setHoveredRating(newHover);
-  };
-
-  const getStarFillClass = (star) => {
-    const currentRating = hoveredRating || rating;
-
-    if (star <= currentRating) {
-      return "text-yellow-400 fill-yellow-400"; // Full star
-    } else if (star - 0.5 === currentRating) {
-      return "text-yellow-400"; // Half star (outline only)
-    } else {
-      return "text-gray-300"; // Empty star
-    }
-  };
-
-  const renderStar = (star) => {
-    const currentRating = hoveredRating || rating;
-    const isHalfFilled = star - 0.5 === currentRating;
-
-    return (
-      <div key={star} className="relative">
-        <button
-          type="button"
-          onClick={(e) => handleStarClick(star, e)}
-          onMouseMove={(e) => handleStarHover(star, e)}
-          onMouseLeave={() => setHoveredRating(0)}
-          className="transition-colors duration-200 relative"
-        >
-          {/* Base star (outline) */}
-          <Star size={32} className={getStarFillClass(star)} />
-
-          {/* Half star overlay for partial fills */}
-          {isHalfFilled && (
-            <div
-              className="absolute inset-0 overflow-hidden"
-              style={{ width: "50%" }}
-            >
-              <Star size={32} className="text-yellow-400 fill-yellow-400" />
-            </div>
-          )}
-        </button>
-      </div>
-    );
-  };
-
-  const getRatingText = () => {
-    if (rating === 0) return "";
-    if (rating % 1 === 0) {
-      return `You rated ${rating} out of 5 stars`;
-    } else {
-      return `You rated ${rating} out of 5 stars`;
-    }
-  };
-  console.log("isFeedbackRating", isFeedbackRating);
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <BackButton
-        variant="outline"
-        showIcon={true}
-        to={`${isFeedbackRating ? "/student-dashboard/Feedback" : "/student-dashboard/reviews"}`}
-      />
-      <div className=" mx-auto mt-3">
-        <div className="bg-white rounded-lg shadow-xl">
-          {/* Header */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {isEdit ? "Edit Feedback" : "Give Feedback"}
-              </h2>
-              <button
-                onClick={handleCancel}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <ArrowLeft size={24} />
-              </button>
-            </div>
+    <div className="dsp-student-page dsp-student-review-page">
+      <div className="dsp-student-page__content">
+        <DashboardBackLink to="/student-dashboard/reviews" label="Back to completed lessons" />
+        <header className="dsp-student-review-page__header">
+          <div>
+            <span className="dsp-student-page-heading__eyebrow">Instructor review</span>
+            <h1>{isEdit ? "Edit your review" : "Review your instructor"}</h1>
+            <p>Share your experience from this completed lesson.</p>
           </div>
+        </header>
 
-          {/* Instructor Info */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                {slot.profileImage ? (
-                  <img
-                    src={slot.profileImage}
-                    alt={slot.profileImage}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-white font-bold text-lg">
-                    {slot.instructorName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </span>
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {slot.instructorName}
-                </h3>
-                <p className="text-gray-600">Instructor</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Review Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Star Rating */}
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Give Star Rating
-              </h3>
-              <div className="flex justify-center space-x-2">
-                {[1, 2, 3, 4, 5].map((star) => renderStar(star))}
-              </div>
-              {rating > 0 && (
-                <p className="text-sm text-gray-600 mt-2">{getRatingText()}</p>
-              )}
-            </div>
-            {/* Review Text */}
+        <section className="dsp-student-review-context" aria-label="Instructor and lesson context">
+          <div className="dsp-student-review-context__person">
+            <span className="dsp-student-review-context__avatar">
+              {slot.profileImage ? <img src={slot.profileImage} alt="" /> : initials || <UserRound size={22} aria-hidden="true" />}
+            </span>
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-lg font-semibold text-gray-900">
-                  Give Feedback
-                </label>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={generateWithAI}
-                    className="inline-flex items-center px-3 py-1 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <Sparkles size={16} className="mr-1" />
-                    Generate Using AI
-                  </button>
-                </div>
-              </div>
-              <textarea
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                placeholder="Write Here"
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                required
-              />
+              <span className="dsp-student-review-context__eyebrow">Instructor</span>
+              <strong>{instructorName}</strong>
+              <span>Lesson with your instructor</span>
             </div>
+          </div>
+          <div className="dsp-student-review-context__details">
+            <div><CalendarDays size={17} aria-hidden="true" /><span><small>Lesson date</small><strong>{formatDate(slot.slotDetails?.date || slot.dateOfBooking)}</strong></span></div>
+            <div><span><small>Time</small><strong>{slot.slotDetails?.startTime || "—"} – {slot.slotDetails?.endTime || "—"}</strong></span></div>
+            <span className="dsp-student-review-context__status"><CheckCircle2 size={15} aria-hidden="true" /> Completed</span>
+          </div>
+        </section>
 
-            {/* Submit Button */}
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={
-                  isSubmitting ||
-                  createLoading ||
-                  updateLoading ||
-                  reviewLoading ||
-                  rating === 0
-                }
-                className="px-8 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
-              >
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </button>
+        <form className="dsp-student-review-card" onSubmit={handleSubmit}>
+          <section className="dsp-student-review-rating" aria-labelledby="rating-heading">
+            <span className="dsp-student-review-card__eyebrow">Your rating</span>
+            <h2 id="rating-heading">How was your lesson?</h2>
+            <p>Choose a rating based on your experience with this instructor.</p>
+            <div className="dsp-student-review-stars" role="radiogroup" aria-label="Lesson rating">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <label key={value} className={`dsp-student-review-star ${value <= rating ? "is-selected" : ""}`}>
+                  <input type="radio" name="lesson-rating" value={value} checked={rating === value} onChange={() => { setRating(value); setValidationError(null); }} aria-label={`${value} star${value === 1 ? "" : "s"}`} />
+                  <Star size={34} fill={value <= rating ? "currentColor" : "none"} aria-hidden="true" />
+                </label>
+              ))}
             </div>
-          </form>
-        </div>
+            <strong className="dsp-student-review-rating__label" aria-live="polite">{rating ? ratingLabels[rating] : "Select a rating"}</strong>
+          </section>
+
+          <section className="dsp-student-review-text" aria-labelledby="review-heading">
+            <div className="dsp-student-review-text__heading">
+              <div>
+                <span className="dsp-student-review-card__eyebrow">Your review</span>
+                <h2 id="review-heading">Tell other students what stood out</h2>
+                <p>Share what you liked about the lesson and your experience with the instructor.</p>
+              </div>
+              <button type="button" className="dsp-student-review-ai" disabled title={aiMessage}><Sparkles size={15} aria-hidden="true" /> Help me draft</button>
+            </div>
+            <textarea
+              value={reviewText}
+              onChange={(event) => { setReviewText(event.target.value); setValidationError(null); }}
+              placeholder="Share what you liked about the lesson and your experience with the instructor..."
+              aria-invalid={Boolean(validationError)}
+              aria-describedby={validationError ? "review-form-error" : undefined}
+              rows={7}
+            />
+          </section>
+
+          {validationError && <p className="dsp-student-review-form-error" id="review-form-error" role="alert">{validationError}</p>}
+          <footer className="dsp-student-review-card__footer">
+            <button type="button" className="dsp-student-secondary-button" onClick={() => navigate("/student-dashboard/reviews")} disabled={isBusy}>Cancel</button>
+            <button type="submit" className="dsp-student-primary-button" disabled={isBusy}>{isBusy ? "Submitting review..." : "Submit review"}</button>
+          </footer>
+        </form>
       </div>
     </div>
   );

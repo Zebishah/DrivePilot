@@ -9,12 +9,11 @@ const {
   identityId,
 } = require("../../utils/authorization");
 const { invalidateInstructorPublic } = require("../../services/cacheInvalidation");
+const { recordBookingEvent } = require("../../services/bookingEventService");
 const reviewResolver = {
   Query: {
     getAllStudentBookingSlots: async (_, __, { user }) => {
       requireRole(user, "Student");
-
-      const now = new Date();
 
       // Find all bookings for the instructor with booked slots
       const allBookings = await StudentBooking.find({
@@ -24,11 +23,6 @@ const reviewResolver = {
       })
         .populate("instructorId", "_id firstName lastName profileImage")
         .populate("studentId", "_id firstName lastName");
-
-      // Get all reviews for this instructor
-      const reviews = await Review.find({
-        instructorId: user?.id,
-      });
 
       const allSlots = [];
       let lessonCounter = 1;
@@ -237,6 +231,16 @@ const reviewResolver = {
       requireRole(context.user, "Student");
 
       const input = args.input;
+      const rating = Number(input.reviewRating);
+      const description = typeof input.reviewDescription === "string"
+        ? input.reviewDescription.trim()
+        : "";
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        throw new Error("Review rating must be between 1 and 5");
+      }
+      if (!description) {
+        throw new Error("Review text cannot be empty");
+      }
       if (identityId(context.user) !== String(input.studentId)) {
         throw new Error("Unauthorized: You can only review your own lessons");
       }
@@ -266,13 +270,18 @@ const reviewResolver = {
       }
 
       // Check if the slot exists and is booked
-      const slotIndex = lesson.slots.findIndex((s) => s.id === input.slotId);
+      const slotIndex = lesson.slots.findIndex(
+        (s) => String(s._id || s.id) === String(input.slotId),
+      );
       if (slotIndex === -1 || !lesson.slots[slotIndex].booked) {
         throw new Error("Slot not found or not booked");
       }
 
       // ✅ Time check
       const slot = lesson.slots[slotIndex];
+      if (slot.status !== "completed") {
+        throw new Error("Reviews are available only after the lesson is marked completed");
+      }
       const slotEndDateTime = new Date(`${slot.date}T${slot.endTime}:00`);
       if (slotEndDateTime > new Date()) {
         throw new Error("Cannot review a lesson that is not yet completed");
@@ -281,14 +290,31 @@ const reviewResolver = {
       // ✅ Create review
       const newReview = new Review({
         ...input,
+        reviewRating: rating,
+        reviewDescription: description,
         reviewStatus: "completed",
       });
-      await newReview.save();
+      try {
+        await newReview.save();
+      } catch (error) {
+        if (error?.code === 11000) {
+          throw new Error("Review already exists for this lesson and slot");
+        }
+        throw error;
+      }
 
       // ✅ Mark slot as reviewed
       lesson.slots[slotIndex].review = true;
       await lesson.save();
       await invalidateInstructorPublic(input.instructorId);
+      await recordBookingEvent({
+        booking: lesson,
+        eventType: "review_submitted",
+        actorId: context.user.id,
+        actorRole: "Student",
+        slotId: input.slotId,
+        metadata: { rating: input.reviewRating },
+      });
 
       // ✅ Populate review
       const populatedReview = await Review.findById(newReview._id)
@@ -310,6 +336,21 @@ const reviewResolver = {
       // Check if the user is the owner of the review
       if (review.studentId.toString() !== identityId(user)) {
         throw new Error("Unauthorized: You can only update your own reviews");
+      }
+
+      if (input.reviewRating !== undefined && (input.reviewRating < 1 || input.reviewRating > 5)) {
+        throw new Error("Review rating must be between 1 and 5");
+      }
+      if (input.reviewDescription !== undefined && !input.reviewDescription.trim()) {
+        throw new Error("Review text cannot be empty");
+      }
+
+      const booking = await StudentBooking.findById(review.lessonId);
+      const slot = booking?.slots?.find(
+        (item) => String(item._id || item.id) === String(review.slotId),
+      );
+      if (!booking || !slot || slot.status !== "completed") {
+        throw new Error("Reviews can only be updated for completed lessons");
       }
 
       // Update the review
