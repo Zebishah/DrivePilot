@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect } from "react";
-import { useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { Button, Box, Typography, Tooltip } from "@mui/material";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
@@ -33,6 +33,8 @@ import {
   Star,
   TicketPercent,
   X,
+  Heart,
+  GitCompareArrows,
 } from "lucide-react";
 
 import InstructorsListSkeleton from "../loaders/InstructorsListSkeleton";
@@ -40,6 +42,11 @@ import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
 import axios from "axios";
 import { Discount } from "@mui/icons-material";
 import { isAfter, isBefore, parseISO } from "date-fns";
+import { GET_FAVORITE_INSTRUCTORS } from "../../graphql/Queries/productCapabilities";
+import { gql } from "@apollo/client";
+
+const SAVE_INSTRUCTOR = gql`mutation SaveInstructor($instructorId: ID!) { saveInstructor(instructorId: $instructorId) { id } }`;
+const UNSAVE_INSTRUCTOR = gql`mutation UnsaveInstructor($instructorId: ID!) { unsaveInstructor(instructorId: $instructorId) }`;
 
 type FiltersState = {
   coordinates: null | number[];
@@ -96,6 +103,12 @@ const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = fa
     useQuery(GET_STUDENT_PROFILE);
   const [anchorEl, setAnchorEl] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const { data: favoritesData } = useQuery(GET_FAVORITE_INSTRUCTORS, { skip: !studentMode });
+  const [saveInstructor, { loading: savingInstructor }] = useMutation(SAVE_INSTRUCTOR, { refetchQueries: [GET_FAVORITE_INSTRUCTORS] });
+  const [unsaveInstructor, { loading: unsavingInstructor }] = useMutation(UNSAVE_INSTRUCTOR, { refetchQueries: [GET_FAVORITE_INSTRUCTORS] });
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const favoriteIds = new Set((favoritesData?.favoriteInstructors || []).map((favorite: { instructor: { id: string } }) => favorite.instructor.id));
+  const toggleCompare = (id: string) => setCompareIds((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length < 3 ? [...current, id] : current);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -294,6 +307,7 @@ const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = fa
       instructor.verificationStatus !== "rejected" &&
       instructor.verificationStatus !== "pending",
   );
+  const comparedInstructors = visibleInstructors.filter((instructor) => compareIds.includes(instructor._id));
   const onlyPendingInstructors =
     instructors.length > 0 && visibleInstructors.length === 0;
 
@@ -566,6 +580,8 @@ const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = fa
                       </div>
                       <div className="dsp-instructor-result-card__actions">
                         <Button variant="outlined" onClick={() => handleViewDetails(instructor._id)} className="dsp-instructor-result-card__secondary-action">View profile</Button>
+                        {studentMode && <Button variant="text" disabled={savingInstructor || unsavingInstructor} onClick={() => favoriteIds.has(instructor._id) ? unsaveInstructor({ variables: { instructorId: instructor._id } }) : saveInstructor({ variables: { instructorId: instructor._id } })} aria-label={`${favoriteIds.has(instructor._id) ? "Remove" : "Save"} ${instructor.firstName} ${instructor.lastName}`}><Heart size={16} fill={favoriteIds.has(instructor._id) ? "currentColor" : "none"} /> {favoriteIds.has(instructor._id) ? "Saved" : "Save"}</Button>}
+                        {studentMode && <Button variant="text" onClick={() => toggleCompare(instructor._id)} aria-pressed={compareIds.includes(instructor._id)}><GitCompareArrows size={16} /> {compareIds.includes(instructor._id) ? "Compared" : "Compare"}</Button>}
                         <Tooltip title={paymentReady ? "" : "This instructor is not ready for paid bookings yet."} arrow>
                           <span>
                             <Button variant="contained" disabled={!paymentReady} onClick={() => handleViewDetails(instructor._id)} className="dsp-instructor-result-card__primary-action">
@@ -610,6 +626,7 @@ const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = fa
             </aside>
           </div>
         )}
+      {studentMode && compareIds.length > 1 && <Box className="dsp-instructor-compare-bar" role="region" aria-label="Instructor comparison"><span><strong>{compareIds.length}</strong> instructors selected</span><Box className="dsp-instructor-compare-bar__items">{comparedInstructors.map((instructor) => <span key={instructor._id}>{instructor.firstName} {instructor.lastName}</span>)}</Box><Button size="small" onClick={() => setCompareIds([])}>Clear</Button></Box>}
     </div>
   );
 };

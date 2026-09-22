@@ -118,10 +118,7 @@ const Dashboard: React.FC = () => {
           <div className="dsp-student-summary-card dsp-student-summary-card--amber"><span className="dsp-student-summary-card__icon"><CalendarClock size={18} /></span><span>Days since last lesson</span><strong>{daysSinceLastLesson ?? "—"}</strong><small>{daysSinceLastLesson === null ? "No completed lesson recorded" : "From your latest completed lesson"}</small></div>
         </div>
         <div className="dsp-student-progress-grid">
-          <section className="dsp-student-panel dsp-student-progress-card">
-            <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Learning record</span><h2>Your current progress</h2></div></div>
-            {hoursProgress ? <StudentHoursProgressCard hoursProgress={hoursProgress} bookingSlots={bookingSlots} /> : <div className="dsp-student-empty-state"><BarChart3 size={24} /><strong>No progress data yet</strong><span>Progress will appear after your first recorded lesson.</span></div>}
-          </section>
+          {hoursProgress ? <StudentHoursProgressCard hoursProgress={hoursProgress} bookingSlots={bookingSlots} /> : <div className="dsp-student-panel dsp-student-empty-state"><BarChart3 size={24} /><strong>No progress data yet</strong><span>Progress will appear after your first recorded lesson.</span></div>}
         </div>
         <section className="dsp-student-panel dsp-student-progress-bookings">
           <div className="dsp-student-panel__header"><div><span className="dsp-student-panel__eyebrow">Lesson history</span><h2>Review your completed sessions</h2></div></div>

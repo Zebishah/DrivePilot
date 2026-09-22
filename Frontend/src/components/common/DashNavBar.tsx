@@ -17,6 +17,7 @@ import { useQuery } from "@apollo/client";
 import { GET_STUDENT_PROFILE } from "../../graphql/mutations/studentProfile";
 import { GET_TEACHER_PROFILE } from "../../graphql/mutations/profile";
 import { designTokens } from "../../themes/tokens";
+import NotificationBell from "../dashboard/NotificationBell";
 
 // Flag components
 import { US, FR, DE, IT } from "country-flag-icons/react/3x2";
@@ -260,6 +261,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
             ))}
           </Menu>
 
+          <NotificationBell />
           {renderAvatar()}
           <Menu
             id="profile-menu"

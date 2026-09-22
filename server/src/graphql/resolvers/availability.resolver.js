@@ -45,6 +45,14 @@ const resolvers = {
               status: slot.status,
               booked: slot.booked,
             })),
+          slots: (availability.slots || []).map((slot) => ({
+            id: slot.id,
+            date: slot.date,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: slot.status,
+            booked: slot.booked,
+          })),
         }));
           },
         });

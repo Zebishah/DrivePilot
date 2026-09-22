@@ -7,6 +7,7 @@ const Conversation = require("../../models/Conversation");
 const Message = require("../../models/Message");
 const StudentBooking = require("../../models/studentBooking.model");
 const { User } = require("../../models/User");
+const { createNotification } = require("../../services/notificationService");
 const {
   identityId,
   requireAuthenticatedUser,
@@ -143,6 +144,19 @@ const chatResolvers = {
             name: `${populatedMessage.receiver.firstName} ${populatedMessage.receiver.lastName}`,
           },
         };
+
+        const senderName = `${populatedMessage.sender.firstName || ""} ${populatedMessage.sender.lastName || ""}`.trim() || "A contact";
+        await createNotification({
+          recipientUserId: receiverId,
+          type: "message_received",
+          title: "New message",
+          body: `${senderName} sent you a new message.`,
+          entityType: "message",
+          entityId: message._id,
+          dedupeKey: `message:${message._id}`,
+          metadata: { conversationId },
+          preferenceKey: "messages",
+        });
 
         console.log("[Chat] Message sent");
 

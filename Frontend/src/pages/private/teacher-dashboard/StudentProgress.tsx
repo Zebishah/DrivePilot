@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
+import DashboardBackLink from "../../../components/dashboard/DashboardBackLink";
 
 import { ProgressChart } from "../../../components/InstructorComponent/StudentsTracking/ProgressChart";
 
@@ -46,7 +46,7 @@ const StudentDashboard: React.FC = () => {
         <DashboardPageHeader
           title="Student Progress"
           description="Review lesson activity, progress history, and booking context for this learner."
-          action={<BackButton variant="outline" label="Back" />}
+          action={<DashboardBackLink label="Back to students" />}
         />
 
         {/* Student Info Card */}

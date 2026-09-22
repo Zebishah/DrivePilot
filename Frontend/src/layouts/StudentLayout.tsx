@@ -13,6 +13,9 @@ import {
   CreditCard,
   BarChart3,
   Star,
+  Heart,
+  Bell,
+  History,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -246,6 +249,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       path: "/student-dashboard/search",
       section: "Workspace",
     },
+    { text: "Saved Instructors", icon: Heart, path: "/student-dashboard/saved-instructors", section: "Workspace" },
     {
       text: "Booked Lessons",
       icon: BookOpenCheck,
@@ -253,12 +257,15 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined,
       section: "Workspace",
     },
+    { text: "Learning Timeline", icon: History, path: "/student-dashboard/learning-timeline", section: "Workspace" },
     {
       text: "Profile Setting",
       icon: Settings,
       path: "/student-dashboard/settings",
       section: "Workspace",
     },
+    { text: "Notifications", icon: Bell, path: "/student-dashboard/notifications", section: "Account" },
+    { text: "Notification settings", icon: Settings, path: "/student-dashboard/notification-settings", section: "Account" },
     {
       text: "Payment history",
       icon: CreditCard,

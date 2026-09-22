@@ -1,0 +1,13 @@
+import { useQuery } from "@apollo/client";
+import { Alert, Avatar, Box, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { useParams } from "react-router-dom";
+import { GET_INSTRUCTOR_STUDENT_DETAIL } from "../../../graphql/Queries/productCapabilities";
+
+export default function InstructorStudentDetailPage() {
+  const { studentId } = useParams<{ studentId: string }>();
+  const { data, loading, error } = useQuery(GET_INSTRUCTOR_STUDENT_DETAIL, { variables: { studentId }, skip: !studentId });
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>;
+  if (error || !data?.getInstructorStudentDetail) return <Box sx={{ p: 4 }}><Alert severity="error">Student details could not be loaded.</Alert></Box>;
+  const detail = data.getInstructorStudentDetail; const student = detail.student;
+  return <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1100, mx: "auto" }}><Typography sx={{ color: "secondary.main", fontWeight: 800, letterSpacing: 1, fontSize: 12 }}>RELATIONSHIP WORKSPACE</Typography><Typography variant="h4" sx={{ fontWeight: 800, mb: 3 }}>Student details</Typography><Paper sx={{ p: 3, borderRadius: 3, mb: 2 }}><Stack direction="row" spacing={2} alignItems="center"><Avatar src={student.profileImage}>{student.firstName?.[0]}</Avatar><Box><Typography variant="h6" fontWeight={800}>{student.firstName} {student.lastName}</Typography><Typography color="text.secondary">{student.email}</Typography></Box></Stack><Stack direction={{ xs: "column", sm: "row" }} spacing={4} sx={{ mt: 3 }}><Box><Typography variant="h5" fontWeight={800}>{detail.totalLessons}</Typography><Typography color="text.secondary">Lessons</Typography></Box><Box><Typography variant="h5" fontWeight={800}>{detail.completedLessons}</Typography><Typography color="text.secondary">Completed</Typography></Box><Box><Typography variant="h5" fontWeight={800}>{detail.upcomingLessons}</Typography><Typography color="text.secondary">Upcoming</Typography></Box></Stack></Paper><Paper sx={{ p: 3, borderRadius: 3 }}><Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Lesson history</Typography>{detail.historyBookings.map((booking: { _id: string; slots: { date: string; startTime: string; endTime: string; status: string }[] }) => booking.slots.map((slot) => <Box key={`${booking._id}-${slot.date}-${slot.startTime}`} sx={{ py: 1.5, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", gap: 2 }}><Typography>{slot.date} · {slot.startTime} – {slot.endTime}</Typography><Typography color="text.secondary">{slot.status}</Typography></Box>))}</Paper></Box>;
+}

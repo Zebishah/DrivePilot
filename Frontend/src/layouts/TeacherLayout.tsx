@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CreditCard,
+  Tag,
   FileText,
   LayoutDashboard,
   MessageSquare,
@@ -15,6 +16,7 @@ import {
   Star,
   HelpCircle,
   LogOut,
+  Bell,
 } from "lucide-react";
 import type { MenuItem } from "../components/common/SideBar";
 import { useAuth } from "../context/AuthContext";
@@ -293,6 +295,8 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       path: "/teacher-dashboard/chat",
       section: "Manage",
     },
+    { text: "Notifications", icon: Bell, path: "/teacher-dashboard/notifications", section: "Support" },
+    { text: "Notification settings", icon: Settings, path: "/teacher-dashboard/notification-settings", section: "Support" },
     {
       text: "Payment Management",
       icon: CreditCard,
@@ -304,6 +308,12 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       icon: ReceiptText,
       path: "/teacher-dashboard/transaction-history",
       section: "Manage",
+    },
+    {
+      text: "Tariff Management",
+      icon: Tag,
+      path: "/teacher-dashboard/tariff-management",
+      section: "Business",
     },
     {
       text: "Reviews & Ratings",

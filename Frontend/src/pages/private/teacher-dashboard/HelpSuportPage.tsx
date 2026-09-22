@@ -61,7 +61,7 @@ const FAQPage: React.FC = () => {
           })}
         </section>
 
-      <Paper className="dsp-support-tabs" sx={{ mb: 2, width: "100%" }}>
+      <Paper className="dsp-support-tabs" sx={{ width: "100%" }}>
         <Box sx={{ borderBottom: 1, borderColor: "divider", width: "100%" }}>
           <Tabs
             value={tabValue}
@@ -80,7 +80,7 @@ const FAQPage: React.FC = () => {
         </Box>
       </Paper>
 
-      <TabPanel value={tabValue} index={0}>
+      <TabPanel value={tabValue} index={0} className="dsp-support-tab-panel">
         <FAQList
           {...faqData}
           error={faqData.error ? faqData.error.message : undefined}
@@ -90,7 +90,7 @@ const FAQPage: React.FC = () => {
         />
       </TabPanel>
 
-      <TabPanel value={tabValue} index={1}>
+      <TabPanel value={tabValue} index={1} className="dsp-support-tab-panel">
         <ContactSection onSubmit={handleContactSubmit} />
       </TabPanel>
       </div>

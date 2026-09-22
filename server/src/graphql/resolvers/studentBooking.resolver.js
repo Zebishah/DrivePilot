@@ -44,6 +44,12 @@ const { createTransaction } = require("../../services/transactionService");
 const { invalidateAvailability } = require("../../services/cacheInvalidation");
 const { isInstructorPaymentReady } = require("../utils/instructorPaymentReady");
 const { buildDirectCardSlotSplits } = require("../../utils/directCardBookingPricing");
+const { recordBookingEvent } = require("../../services/bookingEventService");
+const {
+  assertBookingTransition,
+  assertSlotTransition,
+  deriveBookingStatus,
+} = require("../../domain/bookingStateMachine");
 const {
   toMinorUnits,
   fromMinorUnits,
@@ -130,6 +136,14 @@ const studentBookingResolver = {
     cancellationDate: (parent) => toIsoString(parent.cancellationDate),
     completionMarkedAt: (parent) => toIsoString(parent.completionMarkedAt),
     refundedAt: (parent) => toIsoString(parent.refundedAt),
+    rescheduleRequestedAt: (parent) => toIsoString(parent.rescheduleRequest?.requestedAt),
+    rescheduleRespondedAt: (parent) => toIsoString(parent.rescheduleRequest?.respondedAt),
+    rescheduleStatus: (parent) => parent.rescheduleRequest?.status || "none",
+    rescheduleRequestedBy: (parent) => parent.rescheduleRequest?.requestedBy || null,
+    rescheduleResponseReason: (parent) => parent.rescheduleRequest?.responseReason || null,
+    rescheduleNewDate: (parent) => parent.rescheduleRequest?.newDate || null,
+    rescheduleNewStartTime: (parent) => parent.rescheduleRequest?.newStartTime || null,
+    rescheduleNewEndTime: (parent) => parent.rescheduleRequest?.newEndTime || null,
   },
   Query: {
     // getStudentBookings: async (_, __, { user }) => {
@@ -801,6 +815,7 @@ const studentBookingResolver = {
           );
 
         const bookingData = JSON.parse(JSON.stringify(savedBooking));
+        await recordBookingEvent({ booking: savedBooking, eventType: "booking_created", actorId: user.id, actorRole: user.role });
         // 5. Send email notifications to all parties
 
         try {
@@ -1486,6 +1501,7 @@ const studentBookingResolver = {
         );
       try {
         const bookingData = JSON.parse(JSON.stringify(savedBooking));
+        await recordBookingEvent({ booking: savedBooking, eventType: "booking_created", actorId: user.id, actorRole: user.role });
         await notifyBookingParties(bookingData, "booking_created");
       } catch (emailError) {
         console.error(
@@ -2119,6 +2135,7 @@ const studentBookingResolver = {
           "_id firstName lastName email phone profileImage homeAddress",
         );
       const bookingData = JSON.parse(JSON.stringify(savedBooking));
+      await recordBookingEvent({ booking: savedBooking, eventType: "booking_created", actorId: user.id, actorRole: user.role });
       try {
         await notifyBookingParties(bookingData, "booking_created");
       } catch (emailError) {
@@ -2190,6 +2207,10 @@ const studentBookingResolver = {
         const oldStatus = booking.slots[slotIndex].status;
         const oldLower = String(oldStatus || "").toLowerCase();
         const newLower = String(status || "").toLowerCase();
+        if (oldLower === newLower) return booking;
+        if (user.role !== "Admin") {
+          assertSlotTransition(oldLower, newLower);
+        }
         const slotPaymentStatus = String(
           booking.slots[slotIndex].paymentStatus || "",
         ).toLowerCase();
@@ -2272,29 +2293,13 @@ const studentBookingResolver = {
           }
         }
 
-        // Update booking-level status based on all slots
-        const statusCounts = booking.slots.reduce((acc, slot) => {
-          acc[slot.status] = (acc[slot.status] || 0) + 1;
-          return acc;
-        }, {});
-
-        const totalSlots = booking.slots.length;
-
-        // Determine overall booking status
-        if (statusCounts.cancelled === totalSlots) {
-          booking.status = "cancelled";
-          booking.cancellationDate = new Date();
-        } else if (statusCounts.completed === totalSlots) {
-          booking.status = "completed";
-        } else if (statusCounts.refund === totalSlots) {
-          booking.status = "refund";
-        } else if (statusCounts.cancelled > 0) {
-          booking.status = "semi_cancelled";
-        } else if (statusCounts.completed > 0 && statusCounts.booked > 0) {
-          booking.status = "confirmed"; // Some completed, some pending
-        } else {
-          booking.status = "confirmed";
+        // Keep the aggregate booking state derived from the slot states in one place.
+        const nextBookingStatus = deriveBookingStatus(booking.slots);
+        if (user.role !== "Admin") {
+          assertBookingTransition(booking.status, nextBookingStatus);
         }
+        booking.status = nextBookingStatus;
+        if (nextBookingStatus === "cancelled") booking.cancellationDate = new Date();
 
         booking.updatedAt = new Date();
         await booking.save();
@@ -2365,6 +2370,8 @@ const studentBookingResolver = {
 
         // Send email notifications if status changed
         if (oldStatus !== status) {
+          const eventType = status === "cancelled" ? "booking_cancelled" : status === "completed" ? "lesson_completed" : status === "missed" ? "lesson_no_show" : "booking_status_updated";
+          await recordBookingEvent({ booking, eventType, actorId: user.id, actorRole: user.role, slotId, fromState: oldStatus, toState: status });
           try {
             let emailType = "booking_status_updated";
             if (status === "cancelled") {
@@ -2420,11 +2427,21 @@ const studentBookingResolver = {
       requireAssignedInstructorOrAdmin(user, booking);
 
       const oldStatus = booking.status;
+      if (user.role !== "Admin") {
+        try {
+          assertBookingTransition(oldStatus, status);
+        } catch (error) {
+          throw new UserInputError(error.message);
+        }
+      }
+      if (oldStatus === status) return booking;
       booking.status = status;
       await booking.save();
 
       // Send email notifications if status actually changed
       if (oldStatus !== status) {
+        const eventType = status === "confirmed" ? "booking_confirmed" : status === "completed" ? "lesson_completed" : status === "cancelled" ? "booking_cancelled" : "booking_status_updated";
+        await recordBookingEvent({ booking, eventType, actorId: user.id, actorRole: user.role, fromState: oldStatus, toState: status });
         try {
           await notifyBookingParties(booking, "booking_status_updated");
           console.log("Booking status update emails sent successfully");
@@ -2459,9 +2476,7 @@ const studentBookingResolver = {
         const slot = booking.slots.id(slotId);
         if (!slot) throw new UserInputError("Slot not found");
 
-        if (slot.status === "cancelled") {
-          throw new UserInputError("Slot is already cancelled");
-        }
+        if (slot.status === "cancelled") return booking;
         if (
           slot.status === "completed" ||
           slot.status === "missed" ||
@@ -2484,6 +2499,7 @@ const studentBookingResolver = {
         }
 
         // 3. Mark the slot as cancelled in the booking
+        const previousSlotStatus = slot.status;
         slot.status = "cancelled";
         slot.booked = false;
         slot.cancellationDate = new Date();
@@ -2562,6 +2578,7 @@ const studentBookingResolver = {
           process.env.ADMIN_EMAIL,
           { session },
         );
+        await recordBookingEvent({ booking, eventType: "booking_cancelled", actorId: user.id, actorRole: actor === "student" ? "Student" : actor === "instructor" ? "Instructor" : "Admin", slotId, fromState: previousSlotStatus, toState: "cancelled", session });
 
         await session.commitTransaction();
         await invalidateAvailability(booking.instructorId._id);
@@ -2828,6 +2845,7 @@ const studentBookingResolver = {
           process.env.ADMIN_EMAIL,
           { session },
         );
+        await recordBookingEvent({ booking, eventType: "reschedule_accepted", actorId: user.id, actorRole: isAdmin ? "Admin" : "Student", slotId, metadata: { newDate, newStartTime, newEndTime, previousDate: previousSlotSnapshot.date, previousStartTime: previousSlotSnapshot.startTime, previousEndTime: previousSlotSnapshot.endTime }, session });
 
         await session.commitTransaction();
         await invalidateAvailability(teacherId);
@@ -2839,6 +2857,76 @@ const studentBookingResolver = {
       } finally {
         session.endSession();
       }
+    },
+    requestReschedule: async (_, { input }, { user }) => {
+      requireRole(user, "Student");
+      const { bookingId, slotId, newDate, newStartTime, newEndTime } = input;
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        const booking = await StudentBooking.findById(bookingId).populate("studentId", "_id").populate("instructorId", "_id").session(session);
+        if (!booking) throw new UserInputError("Booking not found.");
+        requireStudentOwnerOrAdmin(user, booking);
+        const slot = booking.slots.id(slotId);
+        if (!slot) throw new UserInputError("Slot not found.");
+        if (["completed", "missed", "cancelled", "refund"].includes(String(slot.status))) throw new UserInputError("This lesson cannot be rescheduled.");
+        if (slot.rescheduleRequest?.status === "pending") return booking;
+        if (slot.date === newDate && slot.startTime === newStartTime && slot.endTime === newEndTime) throw new UserInputError("Choose a different time.");
+        const conflictingBooking = await StudentBooking.findOne({ _id: { $ne: booking._id }, studentId: booking.studentId._id, status: { $nin: ["cancelled", "refund"] }, slots: { $elemMatch: { date: newDate, booked: true, status: { $nin: ["cancelled", "refund"] }, startTime: { $lt: newEndTime }, endTime: { $gt: newStartTime } } } }).session(session);
+        if (conflictingBooking) throw new UserInputError("You already have another booking at this time.");
+        const start = getSlotStartTimestampUtc(newDate, newStartTime);
+        if (!Number.isFinite(start) || start <= Date.now()) throw new UserInputError("The requested time must be in the future.");
+        const targetDay = await teacherAvailabilityModel.findOne({ teacherId: booking.instructorId._id, date: new Date(newDate), availableSlots: { $elemMatch: { date: newDate, startTime: newStartTime, endTime: newEndTime, booked: false } } }).session(session);
+        if (!targetDay) throw new UserInputError("The requested slot is no longer available.");
+        slot.rescheduleRequest = { status: "pending", requestedBy: "student", requestedAt: new Date(), newDate, newStartTime, newEndTime };
+        await booking.save({ session });
+        await recordBookingEvent({ booking, eventType: "reschedule_requested", actorId: user.id, actorRole: "Student", slotId, metadata: { newDate, newStartTime, newEndTime }, session });
+        await session.commitTransaction();
+        return StudentBooking.findById(booking._id).populate("studentId").populate("instructorId");
+      } catch (error) { await session.abortTransaction(); throw error; } finally { session.endSession(); }
+    },
+    respondToReschedule: async (_, { bookingId, slotId, accept, reason }, { user }) => {
+      requireRole(user, "Instructor", "Admin");
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        const booking = await StudentBooking.findById(bookingId).populate("studentId", "_id firstName lastName email").populate("instructorId", "_id firstName lastName email").session(session);
+        if (!booking) throw new UserInputError("Booking not found.");
+        requireAssignedInstructorOrAdmin(user, booking);
+        const slot = booking.slots.id(slotId);
+        const request = slot?.rescheduleRequest;
+        if (!slot || !request) throw new UserInputError("There is no reschedule request.");
+        if (request.status !== "pending") { await session.commitTransaction(); return booking; }
+        if (!accept) {
+          request.status = "rejected"; request.respondedAt = new Date(); request.responseReason = reason || undefined;
+          await booking.save({ session });
+          await recordBookingEvent({ booking, eventType: "reschedule_rejected", actorId: user.id, actorRole: user.role, slotId, metadata: { reason: reason || null }, session });
+        } else {
+          const targetDay = await teacherAvailabilityModel.findOneAndUpdate({ teacherId: booking.instructorId._id, date: new Date(request.newDate), availableSlots: { $elemMatch: { date: request.newDate, startTime: request.newStartTime, endTime: request.newEndTime, booked: false } } }, { $set: { "availableSlots.$.booked": true, "availableSlots.$.status": "booked" } }, { new: true, session });
+          if (!targetDay) throw new UserInputError("The requested slot is no longer available.");
+          const oldDay = await teacherAvailabilityModel.findOne({ teacherId: booking.instructorId._id, date: new Date(slot.date) }).session(session);
+          if (oldDay) {
+            oldDay.slots = (oldDay.slots || []).filter((entry) => String(entry.id) !== String(slotId));
+            const released = (oldDay.availableSlots || []).find((entry) => entry.date === slot.date && entry.startTime === slot.startTime && entry.endTime === slot.endTime);
+            if (released) { released.booked = false; released.status = "available"; }
+            oldDay.status = oldDay.availableSlots.some((entry) => !entry.booked) ? "available" : "booked";
+            await oldDay.save({ session });
+          }
+          const bookedEntry = (targetDay.slots || []).find((entry) => String(entry.id) === String(slotId));
+          if (bookedEntry) { bookedEntry.date = request.newDate; bookedEntry.startTime = request.newStartTime; bookedEntry.endTime = request.newEndTime; bookedEntry.booked = true; bookedEntry.status = "booked"; }
+          else targetDay.slots.push({ id: String(slotId), bookingId: String(booking._id), date: request.newDate, startTime: request.newStartTime, endTime: request.newEndTime, booked: true, status: "booked" });
+          targetDay.status = targetDay.availableSlots.some((entry) => !entry.booked) ? "available" : "booked";
+          await targetDay.save({ session });
+          const previousDate = slot.date;
+          slot.date = request.newDate; slot.startTime = request.newStartTime; slot.endTime = request.newEndTime;
+          request.status = "accepted"; request.respondedAt = new Date(); request.responseReason = reason || undefined;
+          await booking.save({ session });
+          await recordBookingEvent({ booking, eventType: "reschedule_accepted", actorId: user.id, actorRole: user.role, slotId, metadata: { previousDate, newDate: slot.date, newStartTime: slot.startTime, newEndTime: slot.endTime }, session });
+        }
+        await session.commitTransaction();
+        await invalidateAvailability(booking.instructorId._id);
+        return StudentBooking.findById(booking._id).populate("studentId").populate("instructorId");
+      } catch (error) { await session.abortTransaction(); throw error; } finally { session.endSession(); }
     },
   },
 };

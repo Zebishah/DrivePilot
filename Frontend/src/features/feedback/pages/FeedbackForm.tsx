@@ -1,24 +1,46 @@
 import React, { useState } from "react";
+import { CalendarDays, CheckCircle2, Clock3, Edit3, Trash2, UserRound } from "lucide-react";
+import { useParams } from "react-router-dom";
 
 import { useFeedback } from "../../../hooks/UseFeedBack";
 import { SkillsDropdown } from "../components/SkillsDropdown";
 import { FormInput } from "../components/FormInput";
-
 import { ActionButtons } from "../components/ActionButtons";
 import { DeleteModal } from "../components/DeleteModal";
-import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
 import { RichTextEditor } from "../components/RichTextEditor";
+import DashboardBackLink from "../../../components/dashboard/DashboardBackLink";
+import { DashboardLoadingSkeleton } from "../../../components/dashboard/OverviewWidgets";
+
+const formatLessonDate = (date?: string) => {
+  if (!date) return "Date unavailable";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+};
+
+const formatStatus = (status?: string) => {
+  if (!status) return "Status unavailable";
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
 
 const FeedbackForm: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { lessonId } = useParams<{ lessonId: string }>();
 
   const {
     viewMode,
     formData,
     setFormData,
+    validationErrors,
+    clearValidationError,
     isLoading,
+    isStudentLoading,
     isSubmitting,
     isDeleting,
+    booking,
+    bookingLoading,
+    bookingError,
+    refetchBooking,
     handleCreate,
     handleUpdate,
     handleDelete,
@@ -28,10 +50,14 @@ const FeedbackForm: React.FC = () => {
   } = useFeedback();
 
   const isReadOnly = viewMode === "view";
+  const student = booking?.studentId;
+  const currentSlot = booking?.slots?.find((slot: { _id: string }) => slot._id === lessonId) || booking?.slots?.[0];
+  const studentName = [student?.firstName, student?.lastName].filter(Boolean).join(" ");
+  const hasBookingContext = Boolean(booking && (student || currentSlot));
 
   const handleSkillToggle = (skillValue: string) => {
     if (isReadOnly) return;
-
+    clearValidationError("skills");
     setFormData((prev) => ({
       ...prev,
       skills: prev.skills.includes(skillValue)
@@ -40,135 +66,141 @@ const FeedbackForm: React.FC = () => {
     }));
   };
 
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHoursChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly) return;
-    setFormData((prev) => ({ ...prev, hoursRemaining: e.target.value }));
+    clearValidationError("hoursRemaining");
+    setFormData((prev) => ({ ...prev, hoursRemaining: event.target.value }));
   };
 
   const handlePointsChange = (value: string) => {
     if (isReadOnly) return;
+    clearValidationError("pointsToWorkOn");
     setFormData((prev) => ({ ...prev, pointsToWorkOn: value }));
   };
 
-  const generateUsingAI = () => {
-    if (isReadOnly) return;
-
-    const aiGeneratedText = `
-      <p><strong>Focus Areas for Next Lesson:</strong></p>
-      <ul>
-        <li>Strengthen foundation in core concepts</li>
-        <li>Practice more hands-on exercises</li>
-        <li>Work on understanding complex scenarios</li>
-      </ul>
-      <p>Additional recommendations include reviewing previous materials and preparing questions for clarification.</p>
-    `;
-    handlePointsChange(aiGeneratedText);
-  };
-
-  if (isLoading) {
+  if (isLoading || isStudentLoading || bookingLoading) {
     return (
-      <div className="dsp-instructor-page dsp-feedback-form-page py-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
-            </div>
-          </div>
+      <div className="dsp-instructor-page dsp-feedback-form-page">
+        <div className="dsp-feedback-form-page__content">
+          <DashboardLoadingSkeleton rows={4} />
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="dsp-instructor-page dsp-feedback-form-page px-4">
-      <BackButton variant="outline" label="Back" />
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">
-              {viewMode === "create"
-                ? "Give Feedback"
-                : viewMode === "edit"
-                  ? "Edit Feedback"
-                  : "View Feedback"}
-            </h1>
+  if (bookingError || !hasBookingContext) {
+    return (
+      <div className="dsp-instructor-page dsp-feedback-form-page">
+        <div className="dsp-feedback-form-page__content">
+          <DashboardBackLink to="/teacher-dashboard/feedback" label="Back to feedback" />
+          <section className="dsp-feedback-error" role="alert">
+            <span className="dsp-feedback-error__icon"><UserRound size={22} aria-hidden="true" /></span>
+            <h1>We couldn’t load this lesson</h1>
+            <p>Refresh the lesson context and try again, or return to the feedback queue.</p>
+            <div className="dsp-feedback-error__actions">
+              <button type="button" className="dsp-dashboard-button dsp-dashboard-button--primary" onClick={() => void refetchBooking()}>Try again</button>
+              <DashboardBackLink to="/teacher-dashboard/feedback" label="Back to feedback" />
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
-            {viewMode === "view" && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleEdit}
-                  className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors duration-200"
-                  title="Edit Feedback"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors duration-200"
-                  title="Delete Feedback"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-            )}
+  const title = viewMode === "create" ? "Give feedback" : viewMode === "edit" ? "Edit feedback" : "Feedback details";
+  const description = viewMode === "view"
+    ? "Review the lesson guidance recorded for this student."
+    : "Record what was covered and what the student should focus on next.";
+
+  return (
+    <div className="dsp-instructor-page dsp-feedback-form-page">
+      <div className="dsp-feedback-form-page__content">
+        <DashboardBackLink to="/teacher-dashboard/feedback" label="Back to feedback" />
+
+        <header className="dsp-feedback-form-page__header">
+          <div>
+            <span className="dsp-dashboard-page-header__eyebrow">Lesson feedback</span>
+            <h1>{title}</h1>
+            <p>{description}</p>
+          </div>
+          {viewMode === "view" && (
+            <div className="dsp-feedback-form-page__header-actions">
+              <button type="button" className="dsp-feedback-icon-button" onClick={handleEdit} aria-label="Edit feedback" title="Edit feedback"><Edit3 size={17} /></button>
+              <button type="button" className="dsp-feedback-icon-button dsp-feedback-icon-button--danger" onClick={() => setShowDeleteModal(true)} aria-label="Delete feedback" title="Delete feedback"><Trash2 size={17} /></button>
+            </div>
+          )}
+        </header>
+
+        <section className="dsp-feedback-context" aria-label="Lesson context">
+          <div className="dsp-feedback-context__student">
+            <span className="dsp-feedback-context__avatar">
+              {student?.profileImage ? <img src={student.profileImage} alt="" /> : <UserRound size={21} aria-hidden="true" />}
+            </span>
+            <div>
+              <span className="dsp-feedback-context__eyebrow">Student</span>
+              <strong>{studentName || "Student name unavailable"}</strong>
+              <span>{student?.email || "Student contact unavailable"}</span>
+            </div>
+          </div>
+          <div className="dsp-feedback-context__details">
+            <div><CalendarDays size={17} aria-hidden="true" /><span><small>Lesson date</small><strong>{formatLessonDate(currentSlot?.date)}</strong></span></div>
+            <div><Clock3 size={17} aria-hidden="true" /><span><small>Time</small><strong>{currentSlot?.startTime || "Time unavailable"}{currentSlot?.endTime ? ` – ${currentSlot.endTime}` : ""}</strong></span></div>
+            <div><CheckCircle2 size={17} aria-hidden="true" /><span><small>Lesson status</small><strong>{formatStatus(currentSlot?.status || booking?.status)}</strong></span></div>
+          </div>
+        </section>
+
+        <section className="dsp-feedback-form-card">
+          <div className="dsp-feedback-form-card__header">
+            <div>
+              <span className="dsp-feedback-form-card__eyebrow">Feedback details</span>
+              <h2>Lesson progress</h2>
+              <p>Capture the skills practiced and the next useful step for the student.</p>
+            </div>
           </div>
 
-          {/* Form Components */}
-          <SkillsDropdown
-            selectedSkills={formData.skills}
-            onSkillToggle={handleSkillToggle}
-            disabled={isReadOnly}
-          />
+          <div className="dsp-feedback-form-card__body">
+            <div className="dsp-feedback-form__fields">
+              <SkillsDropdown
+                selectedSkills={formData.skills}
+                onSkillToggle={handleSkillToggle}
+                disabled={isReadOnly}
+                label="Skills worked on"
+                error={validationErrors.skills}
+              />
+              <FormInput
+                label="Remaining learning hours"
+                value={formData.hoursRemaining}
+                onChange={handleHoursChange}
+                disabled={isReadOnly}
+                type="number"
+                min={0}
+                step={0.5}
+                placeholder="0"
+                helperText="Update the estimated hours still required for this student."
+                error={validationErrors.hoursRemaining}
+              />
+            </div>
 
-          <FormInput
-            label="Number of hours remaining"
-            value={formData.hoursRemaining}
-            onChange={handleHoursChange}
-            disabled={isReadOnly}
-          />
+            <RichTextEditor
+              value={formData.pointsToWorkOn}
+              onChange={handlePointsChange}
+              disabled={isReadOnly}
+              label="Focus for the next lesson"
+              placeholder="Write clear guidance for the student's next lesson..."
+              error={validationErrors.pointsToWorkOn}
+              showAIGenerate={!isReadOnly}
+            />
 
-          <RichTextEditor
-            value={formData.pointsToWorkOn}
-            onChange={handlePointsChange}
-            disabled={isReadOnly}
-            showAIGenerate={!isReadOnly}
-            onAIGenerate={generateUsingAI}
-          />
-
-          <ActionButtons
-            viewMode={viewMode}
-            isSubmitting={isSubmitting}
-            onSubmit={handleCreate}
-            onUpdate={handleUpdate}
-            onCancel={handleCancel}
-            onCancelEdit={handleCancelEdit}
-          />
-        </div>
+            <ActionButtons
+              viewMode={viewMode}
+              isSubmitting={isSubmitting}
+              onSubmit={handleCreate}
+              onUpdate={handleUpdate}
+              onCancel={handleCancel}
+              onCancelEdit={handleCancelEdit}
+            />
+          </div>
+        </section>
       </div>
 
       <DeleteModal

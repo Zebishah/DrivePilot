@@ -57,7 +57,15 @@ const StudentFeedback: React.FC = () => {
           ) : (
             <div className="dsp-table-wrap">
               <table className="dsp-data-table">
-                <thead><tr><th>Student</th><th>Lesson</th><th>Amount</th><th>Date & time</th><th>Status</th><th className="dsp-data-table__actions">Action</th></tr></thead>
+                <colgroup>
+                  <col className="dsp-feedback-table__student" />
+                  <col className="dsp-feedback-table__lesson" />
+                  <col className="dsp-feedback-table__amount" />
+                  <col className="dsp-feedback-table__date" />
+                  <col className="dsp-feedback-table__status" />
+                  <col className="dsp-feedback-table__action" />
+                </colgroup>
+                <thead><tr><th>Student</th><th>Lesson</th><th className="dsp-data-table__amount-header">Amount</th><th>Date & time</th><th>Status</th><th className="dsp-data-table__actions">Action</th></tr></thead>
                 <tbody>
                   {completedBookings.flatMap((booking) => booking.slots.map((slot, index) => (
                     <tr key={`${slot._id}-${index}`}>

@@ -1,5 +1,6 @@
 import React from "react";
 import ReactQuill from "react-quill";
+import { Mic, Sparkles } from "lucide-react";
 import "react-quill/dist/quill.snow.css";
 
 interface RichTextEditorProps {
@@ -10,6 +11,8 @@ interface RichTextEditorProps {
   label?: string;
   showAIGenerate?: boolean;
   onAIGenerate?: () => void;
+  error?: string;
+  helperText?: string;
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -20,6 +23,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   label = "Points to work on for the next lesson",
   showAIGenerate = false,
   onAIGenerate,
+  error,
+  helperText = "Give the student clear, actionable guidance for what to practice next.",
 }) => {
   const quillModules = {
     toolbar: [
@@ -31,55 +36,50 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   return (
-    <div className="mb-6">
-      <div className="flex justify-between items-center mb-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {label}
-        </label>
+    <div className="dsp-feedback-editor-field">
+      <div className="dsp-feedback-editor-field__heading">
+        <div>
+          <label className="dsp-feedback-field__label">{label}</label>
+          <p className="dsp-feedback-field__helper">{helperText}</p>
+        </div>
         {showAIGenerate && !disabled && (
-          <div className="flex space-x-2">
+          <div className="dsp-feedback-editor-tools" aria-label="Feedback assistance">
             <button
               type="button"
               onClick={onAIGenerate}
-              disabled={true}
-              className="px-4 py-2 bg-gray-300 text-blue-700 rounded-lg  transition-colors duration-200 text-sm font-medium"
+              disabled={!onAIGenerate}
+              className="dsp-feedback-tool-button dsp-feedback-tool-button--ai"
+              title={!onAIGenerate ? "AI suggestions are not available yet" : undefined}
             >
-              Generate Using AI
+              <Sparkles size={15} aria-hidden="true" />
+              Generate suggestion
             </button>
             <button
               type="button"
-              className="p-2 bg-gray-100 text-gray-600 rounded-lg  transition-colors duration-200"
+              className="dsp-feedback-tool-button dsp-feedback-tool-button--voice"
+              disabled
+              aria-label="Dictate feedback (not available yet)"
+              title="Voice input is not available yet"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
+              <Mic size={15} aria-hidden="true" />
+              <span>Dictate</span>
             </button>
           </div>
         )}
       </div>
 
-      <div className="border border-gray-300 rounded-lg">
+      <div className={`dsp-feedback-editor ${error ? "is-invalid" : ""}`}>
         <ReactQuill
           theme="snow"
           value={value}
           onChange={onChange}
           modules={quillModules}
           placeholder={placeholder}
-          className="bg-white"
-          style={{ minHeight: "200px" }}
+          className="dsp-feedback-editor__quill"
           readOnly={disabled}
         />
       </div>
+      {error && <p className="dsp-feedback-field__error" role="alert">{error}</p>}
     </div>
   );
 };

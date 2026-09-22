@@ -56,6 +56,7 @@ interface AvailabilitySlot {
   endTime: string;
   status: string;
   booked?: boolean; // Optional, depending on your schema
+  slots?: AvailabilitySlot[];
 }
 
 // Custom day component to show slots count
@@ -326,7 +327,7 @@ export const AvailabilityTab: React.FC = () => {
 
     // Flatten all availableSlots from each teacherAvailability record
     const allSlots = filteredSlots.flatMap((record) =>
-      record.availableSlots.map((slot) => ({
+      [...record.availableSlots, ...(record.slots || [])].map((slot) => ({
         ...slot,
         date: record.date, // attach parent date
         teacherStatus: record.status, // optional if needed
@@ -381,13 +382,13 @@ export const AvailabilityTab: React.FC = () => {
       const duration = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
       return total + (Number.isFinite(duration) && duration > 0 ? duration : 0);
     }, 0);
-    return { days, hours: Math.round((minutes / 60) * 10) / 10 };
+    return { days, hours: Math.round((minutes / 60) * 10) / 10, open: displaySlots.filter((slot) => !slot.booked).length, booked: displaySlots.filter((slot) => slot.booked).length };
   }, [displaySlots]);
 
   return (
     <Box className="dsp-availability-tab" sx={{ p: 2 }}>
       <Box className="dsp-availability-summary" aria-label="Availability summary">
-        <div className="dsp-summary-card dsp-summary-card--blue"><span className="dsp-summary-card__icon"><EventAvailableIcon fontSize="small" /></span><span className="dsp-summary-card__label">Open slots</span><strong>{displaySlots.length}</strong><small>Future slots currently visible</small></div>
+        <div className="dsp-summary-card dsp-summary-card--blue"><span className="dsp-summary-card__icon"><EventAvailableIcon fontSize="small" /></span><span className="dsp-summary-card__label">Open slots</span><strong>{scheduleSummary.open}</strong><small>{scheduleSummary.booked} booked lessons also shown</small></div>
         <div className="dsp-summary-card dsp-summary-card--violet"><span className="dsp-summary-card__icon"><CalendarMonthIcon fontSize="small" /></span><span className="dsp-summary-card__label">Available days</span><strong>{scheduleSummary.days}</strong><small>Days represented by your schedule</small></div>
         <div className="dsp-summary-card dsp-summary-card--neutral"><span className="dsp-summary-card__icon"><AccessTimeIcon fontSize="small" /></span><span className="dsp-summary-card__label">Scheduled hours</span><strong>{scheduleSummary.hours}h</strong><small>Calculated from available slots</small></div>
       </Box>
@@ -607,6 +608,7 @@ export const AvailabilityTab: React.FC = () => {
                           }
                         })()}
                       </Typography>
+                      <Typography variant="caption" sx={{ color: slot.booked ? "#7C3AED" : "#16a34a", fontWeight: 700 }}>{slot.booked ? "Booked lesson" : "Open availability"}</Typography>
                       <Box
                         sx={{ display: "flex", alignItems: "center", gap: 1 }}
                       >
@@ -618,7 +620,7 @@ export const AvailabilityTab: React.FC = () => {
                         </Typography>
                       </Box>
                     </Box>
-                    {isDeletingSlot === slot.id ? (
+                    {slot.booked ? null : isDeletingSlot === slot.id ? (
                       <CircularProgress size={20} sx={{ color: "#ef4444" }} />
                     ) : (
                       <IconButton

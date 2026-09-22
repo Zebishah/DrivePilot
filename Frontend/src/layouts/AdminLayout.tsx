@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Box, CssBaseline } from "@mui/material";
 import Sidebar, { type MenuItem } from "../components/common/SideBar";
 import Navbar from "../components/common/DashNavBar";
-import { LayoutGrid, HelpCircle, LogOut, UserRoundCog } from "lucide-react";
+import { Bell, LayoutGrid, HelpCircle, LogOut, UserRoundCog } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -83,6 +83,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       text: "Refund requests",
       icon: LayoutGrid,
       path: "/admin-dashboard/refund-requests",
+    },
+    {
+      text: "Notifications",
+      icon: Bell,
+      path: "/admin-dashboard/notifications",
     },
     ...(user?.adminLevel === "super"
       ? [

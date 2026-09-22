@@ -2,6 +2,8 @@ const crypto = require("crypto");
 const StudentBooking = require("../models/studentBooking.model");
 const JOB_CONFIG = require("../config/jobConfig");
 const { enqueueEmailEvent } = require("../services/outboxService");
+const { recordBookingEvent } = require("../services/bookingEventService");
+const { getSlotEndTimestampUtc } = require("../utils/slotTimezone");
 
 const FRONTEND_BASE = (
   process.env.FRONTEND_URL ||
@@ -14,10 +16,8 @@ const MAX_REMINDERS_PER_RUN =
   parseInt(process.env.LESSON_REMINDER_BATCH_SIZE || "5", 10) || 5;
 
 function buildSlotEndDate(slot) {
-  const [hours, minutes] = slot.endTime.split(":").map(Number);
-  const d = new Date(slot.date);
-  d.setHours(hours, minutes, 0, 0);
-  return d;
+  const timestamp = getSlotEndTimestampUtc(slot.date, slot.endTime);
+  return Number.isFinite(timestamp) ? new Date(timestamp) : null;
 }
 
 async function runLessonEndReminderJob(context = {}) {
@@ -60,7 +60,7 @@ async function runLessonEndReminderJob(context = {}) {
         )
           continue;
         const slotEnd = buildSlotEndDate(slot);
-        if (slotEnd > now) continue;
+        if (!slotEnd || slotEnd > now) continue;
 
         eligibleSlots.push({
           booking,
@@ -103,7 +103,7 @@ async function runLessonEndReminderJob(context = {}) {
         }
 
         const slotEnd = buildSlotEndDate(slot);
-        if (slotEnd > now) {
+        if (!slotEnd || slotEnd > now) {
           continue;
         }
 
@@ -152,6 +152,14 @@ async function runLessonEndReminderJob(context = {}) {
               slots: [{ date: slot.date, startTime: slot.startTime, endTime: slot.endTime }],
               actionUrl: dashboardUrl,
             },
+          });
+
+          await recordBookingEvent({
+            booking,
+            eventType: "lesson_completion_reminder",
+            actorRole: "System",
+            slotId: slot._id,
+            metadata: { body: "This lesson has ended and is ready for completion." },
           });
 
           await StudentBooking.updateOne(

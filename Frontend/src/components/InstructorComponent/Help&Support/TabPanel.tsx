@@ -5,12 +5,14 @@ interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+  className?: string;
 }
 
 export const TabPanel: React.FC<TabPanelProps> = ({
   children,
   value,
   index,
+  className,
   ...other
 }) => (
   <div
@@ -18,6 +20,7 @@ export const TabPanel: React.FC<TabPanelProps> = ({
     hidden={value !== index}
     id={`simple-tabpanel-${index}`}
     aria-labelledby={`simple-tab-${index}`}
+    className={className}
     {...other}
   >
     {value === index && <Box>{children}</Box>}

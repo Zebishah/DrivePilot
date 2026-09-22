@@ -24,7 +24,7 @@ import {
   UPDATE_TEACHER_TARIFF,
 } from "../../../../graphql/mutations/tariff";
 import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react";
+import { BadgePercent, CreditCard, Loader2, Package, Sparkles } from "lucide-react";
 
 // Update your BulkLessonPackage interface
 interface BulkLessonPackage {
@@ -292,6 +292,7 @@ export const TariffTab: React.FC = () => {
       toast.error(
         `Lesson fee must be between CHF ${MIN_LESSON_FEE} and CHF ${MAX_LESSON_FEE}`
       );
+      setIsLoading(false);
       return;
     }
 
@@ -373,8 +374,14 @@ export const TariffTab: React.FC = () => {
           <div><small>Package offers</small><strong>{tariffData.bulkPackages.length}</strong></div>
         </Box>
       </Box>
+      <Box className="dsp-tariff-summary-grid" aria-label="Pricing overview">
+        <div className="dsp-tariff-summary-card is-violet"><span className="dsp-tariff-summary-card__icon"><CreditCard size={18} /></span><small>Base lesson price</small><strong>CHF {tariffData.lessonFee || "—"}</strong><em>Standard lesson rate</em></div>
+        <div className="dsp-tariff-summary-card is-pink"><span className="dsp-tariff-summary-card__icon"><BadgePercent size={18} /></span><small>Discount</small><strong>{tariffData.lessonDiscount}%</strong><em>Applied to lesson price</em></div>
+        <div className="dsp-tariff-summary-card is-blue"><span className="dsp-tariff-summary-card__icon"><Sparkles size={18} /></span><small>Student price</small><strong>CHF {tariffData.FinalPricePerLesson || "—"}</strong><em>Final price per lesson</em></div>
+        <div className="dsp-tariff-summary-card is-green"><span className="dsp-tariff-summary-card__icon"><Package size={18} /></span><small>Package offers</small><strong>{tariffData.bulkPackages.length}</strong><em>Available bundles</em></div>
+      </Box>
       {/* Lesson Fee Section */}
-      <Box sx={{ mb: 2 }}>
+      <Box className="dsp-tariff-section dsp-tariff-section--base" sx={{ mb: 2 }}>
         <SectionHeader
           title="Price per lesson (CHF)"
           tooltip="Base price per individual lesson (e.g., CHF 90)"
@@ -503,7 +510,7 @@ export const TariffTab: React.FC = () => {
       </Box>
 
       {/* Bulk Lesson Package Section */}
-      <Box sx={{ mb: 2 }}>
+      <Box className="dsp-tariff-section dsp-tariff-section--packages" sx={{ mb: 2 }}>
         <Box
           sx={{
             display: "flex",
@@ -844,7 +851,7 @@ export const TariffTab: React.FC = () => {
       {/* Package Discounts Section */}
 
       {/* Note and Save Button */}
-      <Box
+      <Box className="dsp-tariff-save"
         sx={{
           display: "flex",
           flexDirection: "column",

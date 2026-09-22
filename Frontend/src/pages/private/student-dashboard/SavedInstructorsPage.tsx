@@ -1,0 +1,14 @@
+import { useMutation, useQuery } from "@apollo/client";
+import { Alert, Avatar, Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { Heart, MapPin, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { GET_FAVORITE_INSTRUCTORS, UNSAVE_INSTRUCTOR } from "../../../graphql/Queries/productCapabilities";
+
+export default function SavedInstructorsPage() {
+  const { data, loading, error } = useQuery(GET_FAVORITE_INSTRUCTORS);
+  const [unsave] = useMutation(UNSAVE_INSTRUCTOR, { refetchQueries: [GET_FAVORITE_INSTRUCTORS] });
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>;
+  if (error) return <Box sx={{ p: 4 }}><Alert severity="error">Saved instructors could not be loaded.</Alert></Box>;
+  const favorites = data?.favoriteInstructors || [];
+  return <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1150, mx: "auto" }}><Typography sx={{ color: "secondary.main", fontWeight: 800, letterSpacing: 1, fontSize: 12 }}>YOUR SHORTLIST</Typography><Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>Saved instructors</Typography><Typography color="text.secondary" sx={{ mb: 3 }}>Keep the instructors you are considering close at hand.</Typography>{favorites.length === 0 ? <Paper sx={{ p: 5, textAlign: "center", borderRadius: 3 }}><Heart size={30} /><Typography variant="h6" sx={{ mt: 1 }}>No saved instructors yet</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>Save instructors from the marketplace to compare them later.</Typography><Button component={Link} to="/student-dashboard/search" variant="contained">Find an instructor</Button></Paper> : <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2 }}>{favorites.map((favorite: { id: string; instructor: { id: string; firstName: string; lastName: string; profileImage?: string; location?: string; description?: string } }) => { const instructor = favorite.instructor; return <Paper key={favorite.id} sx={{ p: 2.5, borderRadius: 3 }}><Stack direction="row" spacing={2} alignItems="center"><Avatar src={instructor.profileImage}>{instructor.firstName?.[0]}</Avatar><Box sx={{ flex: 1 }}><Typography fontWeight={800}>{instructor.firstName} {instructor.lastName}</Typography><Stack direction="row" spacing={0.5} alignItems="center"><MapPin size={14} /><Typography variant="body2" color="text.secondary">{instructor.location || "Location not provided"}</Typography></Stack></Box><Button aria-label={`Remove ${instructor.firstName} ${instructor.lastName}`} onClick={() => unsave({ variables: { instructorId: instructor.id } })} color="inherit"><Trash2 size={17} /></Button></Stack><Typography variant="body2" color="text.secondary" sx={{ my: 2 }}>{instructor.description || "Instructor profile"}</Typography><Button component={Link} to={`/student-dashboard/search/instructors/${instructor.id}`} variant="outlined">View profile</Button></Paper>; })}</Box>}</Box>;
+}

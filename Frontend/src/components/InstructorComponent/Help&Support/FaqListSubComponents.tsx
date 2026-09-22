@@ -24,7 +24,6 @@ export const EmptyFAQState: React.FC = () => (
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        mt: 10,
       }}
       textAlign="center"
       py={8}

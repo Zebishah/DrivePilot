@@ -7,6 +7,10 @@ interface FormInputProps {
   placeholder?: string;
   disabled?: boolean;
   type?: string;
+  min?: number;
+  step?: number;
+  helperText?: string;
+  error?: string;
 }
 
 export const FormInput: React.FC<FormInputProps> = ({
@@ -16,22 +20,28 @@ export const FormInput: React.FC<FormInputProps> = ({
   placeholder = "Type Here",
   disabled = false,
   type = "text",
+  min,
+  step,
+  helperText,
+  error,
 }) => {
   return (
-    <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-      </label>
+    <div className="dsp-feedback-field">
+      <label className="dsp-feedback-field__label">{label}</label>
+      {helperText && <p className="dsp-feedback-field__helper">{helperText}</p>}
       <input
         type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5FC2D3] focus:border-[#5FC2D3] ${
-          disabled ? "bg-gray-50 cursor-not-allowed" : ""
-        }`}
+        min={min}
+        step={step}
+        inputMode={type === "number" ? "decimal" : undefined}
+        aria-invalid={Boolean(error)}
+        className={`dsp-feedback-input ${error ? "is-invalid" : ""} ${disabled ? "is-disabled" : ""}`}
       />
+      {error && <p className="dsp-feedback-field__error" role="alert">{error}</p>}
     </div>
   );
 };

@@ -65,6 +65,14 @@ const studentBookingTypeDefs = gql`
     paymentReminder2SentAt: String
     paymentReminder3SentAt: String
     chargedAt: String
+    rescheduleStatus: String
+    rescheduleRequestedBy: String
+    rescheduleRequestedAt: String
+    rescheduleRespondedAt: String
+    rescheduleResponseReason: String
+    rescheduleNewDate: String
+    rescheduleNewStartTime: String
+    rescheduleNewEndTime: String
   }
 
   type PaymentMethod {
@@ -283,6 +291,8 @@ const studentBookingTypeDefs = gql`
     updateBookingStatus(bookingId: ID!, status: BookingStatus!): StudentBooking!
     cancelBookingSlot(bookingId: ID!, slotId: ID!): StudentBooking!
     rescheduleBookingSlot(input: RescheduleBookingSlotInput!): StudentBooking!
+    requestReschedule(input: RescheduleBookingSlotInput!): StudentBooking!
+    respondToReschedule(bookingId: ID!, slotId: ID!, accept: Boolean!, reason: String): StudentBooking!
     markBookingsAsViewed: Boolean!
     updateSlotStatus(input: UpdateSlotStatusInput!): StudentBooking!
   }

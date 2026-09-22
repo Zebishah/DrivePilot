@@ -1,70 +1,110 @@
 import React from "react";
+import { BookOpenCheck, CalendarClock, Clock3, Sparkles } from "lucide-react";
 
 import {
   StudentBookingSlot,
   StudentHoursProgress,
 } from "../../../types/ReviewTypes";
-import { Tooltip } from "@mui/material";
 
 interface StudentHoursProgressCardProps {
   hoursProgress: StudentHoursProgress;
   bookingSlots: StudentBookingSlot[];
 }
 
-const CircularProgress: React.FC<{
-  value: number;
-  max?: number;
-  color: string;
-  label: string;
-  sublabel: string;
-  displayValue?: number;
-  tooltip: string;
-}> = ({ value, color, label, sublabel, displayValue, tooltip }) => {
-  const percentage = value;
-  const circumference = 2 * Math.PI * 60;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+function daysSinceLastCompletedLesson(slots: StudentBookingSlot[]) {
+  const completedDates = (slots || [])
+    .filter((slot) => slot.isCompleted && slot.slotDetails?.date)
+    .map((slot) => slot.slotDetails.date)
+    .sort()
+    .reverse();
+
+  const lastLessonDate = completedDates[0];
+  if (!lastLessonDate) return null;
+
+  const [year, month, day] = lastLessonDate.split("-").map(Number);
+  const lastLessonMidnight = new Date(year, month - 1, day);
+  const today = new Date();
+  const todayMidnight = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const diffDays = Math.max(
+    0,
+    Math.floor(
+      (todayMidnight.getTime() - lastLessonMidnight.getTime()) /
+        (1000 * 60 * 60 * 24),
+    ),
+  );
+
+  return { daysSinceLastLesson: diffDays };
+}
+
+function formatHours(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+const ProgressRing: React.FC<{
+  progress: number;
+  completedHours: number;
+  totalHours: number;
+}> = ({ progress, completedHours, totalHours }) => {
+  const size = 176;
+  const strokeWidth = 13;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <Tooltip title={tooltip} arrow placement="top">
-      <div className="flex flex-col items-center cursor-help">
-        <div className="relative w-36 h-w-36 mb-4">
-          <svg
-            className="w-36 h-w-36 transform -rotate-90"
-            viewBox="0 0 140 140"
+    <div
+      className="dsp-student-learning-card__ring"
+      role="img"
+      aria-label={`${progress}% of tracked lesson hours completed`}
+    >
+      <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <defs>
+          <linearGradient
+            id="dsp-student-progress-gradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
           >
-            <circle
-              cx="70"
-              cy="70"
-              r="60"
-              stroke="#e5e7eb"
-              strokeWidth="12"
-              fill="none"
-            />
-            <circle
-              cx="70"
-              cy="70"
-              r="60"
-              stroke={color}
-              strokeWidth="12"
-              fill="none"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              className="transition-all duration-300"
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl font-bold text-gray-800">
-              {displayValue || value}
-            </span>
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="text-base font-medium text-gray-800">{label}</div>
-          <div className="text-sm text-gray-500">{sublabel}</div>
-        </div>
+            <stop offset="0%" stopColor="#7C3AED" />
+            <stop offset="55%" stopColor="#A855F7" />
+            <stop offset="100%" stopColor="#EC4899" />
+          </linearGradient>
+        </defs>
+        <circle
+          className="dsp-student-learning-card__ring-track"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          className="dsp-student-learning-card__ring-value"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#dsp-student-progress-gradient)"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          strokeWidth={strokeWidth}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <div className="dsp-student-learning-card__ring-label">
+        <strong>{progress}%</strong>
+        <span>
+          {formatHours(completedHours)} of {formatHours(totalHours)} hrs
+        </span>
+        <small>completed</small>
       </div>
-    </Tooltip>
+    </div>
   );
 };
 
@@ -72,102 +112,69 @@ const StudentHoursProgressCard: React.FC<StudentHoursProgressCardProps> = ({
   hoursProgress,
   bookingSlots,
 }) => {
-  const { completedHours, remainingHours, totalRequiredHours } = hoursProgress;
-
-  // Time since last completed lesson: use only slots that are completed (backend isCompleted = status completed OR slot end passed)
-  function daysSinceLastCompletedLesson(slots: StudentBookingSlot[]) {
-    if (!slots || slots.length === 0) return null;
-
-    const completedSlots = slots.filter((s) => s.isCompleted);
-    if (completedSlots.length === 0) return null;
-
-    const pastDates = completedSlots
-      .map((s) => s.slotDetails?.date)
-      .filter((date): date is string => !!date)
-      .sort()
-      .reverse();
-
-    const lastLessonDateStr = pastDates[0];
-    const [year, month, day] = lastLessonDateStr.split("-").map(Number);
-    const lastLessonDate = new Date(year, month - 1, day);
-    const lastLessonMidnight = new Date(
-      lastLessonDate.getFullYear(),
-      lastLessonDate.getMonth(),
-      lastLessonDate.getDate(),
-    );
-
-    const today = new Date();
-    const todayMidnight = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-    );
-    const diffTime = todayMidnight.getTime() - lastLessonMidnight.getTime();
-    let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) diffDays = 0;
-
-    return {
-      lastLessonDate: lastLessonDateStr,
-      daysSinceLastLesson: diffDays,
-    };
-  }
+  const completedHours = Math.max(0, Number(hoursProgress.completedHours) || 0);
+  const remainingHours = Math.max(0, Number(hoursProgress.remainingHours) || 0);
+  const totalTrackedHours = completedHours + remainingHours;
+  const progress = totalTrackedHours > 0
+    ? Math.min(100, Math.round((completedHours / totalTrackedHours) * 100))
+    : 0;
+  const lastLesson = daysSinceLastCompletedLesson(bookingSlots);
+  const status = remainingHours === 0 && totalTrackedHours > 0
+    ? "You've completed the current learning target."
+    : completedHours > 0
+      ? "You're making steady progress."
+      : "Your learning journey is just getting started.";
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mx-auto h-[100%]">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="text-lg font-semibold text-gray-800">Lesson Progress</h3>
-        <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+    <article className="dsp-student-learning-card">
+      <header className="dsp-student-learning-card__header">
+        <div>
+          <span className="dsp-student-panel__eyebrow">Learning record</span>
+          <h2>Your current progress</h2>
+          <p>Track completed hours, remaining hours, and your recent learning activity.</p>
         </div>
+        <span className="dsp-student-learning-card__header-icon" aria-hidden="true">
+          <Sparkles size={18} />
+        </span>
+      </header>
+
+      <div className="dsp-student-learning-card__body">
+        <section className="dsp-student-learning-card__overview" aria-label="Overall lesson progress">
+          <div className="dsp-student-learning-card__overview-copy">
+            <span className="dsp-student-learning-card__label">Overall progress</span>
+            <h3>
+              {formatHours(completedHours)} of {formatHours(totalTrackedHours)} hours completed
+            </h3>
+            <p>{status}</p>
+          </div>
+          <ProgressRing
+            progress={progress}
+            completedHours={completedHours}
+            totalHours={totalTrackedHours}
+          />
+        </section>
+
+        <section className="dsp-student-learning-card__metrics" aria-label="Lesson progress details">
+          <div className="dsp-student-learning-card__metric dsp-student-learning-card__metric--green">
+            <span className="dsp-student-learning-card__metric-icon" aria-hidden="true"><BookOpenCheck size={17} /></span>
+            <div><span>Completed hours</span><strong>{formatHours(completedHours)} hrs</strong><small>Recorded lesson time</small></div>
+          </div>
+          <div className="dsp-student-learning-card__metric dsp-student-learning-card__metric--violet">
+            <span className="dsp-student-learning-card__metric-icon" aria-hidden="true"><Clock3 size={17} /></span>
+            <div><span>Remaining hours</span><strong>{formatHours(remainingHours)} hrs</strong><small>Based on your current record</small></div>
+          </div>
+          <div className="dsp-student-learning-card__metric dsp-student-learning-card__metric--amber">
+            <span className="dsp-student-learning-card__metric-icon" aria-hidden="true"><CalendarClock size={17} /></span>
+            <div><span>Time since last lesson</span><strong>{lastLesson ? `${lastLesson.daysSinceLastLesson} days` : "—"}</strong><small>{lastLesson ? "From your latest completed lesson" : "No completed lesson recorded"}</small></div>
+          </div>
+        </section>
       </div>
 
-      <div className="flex flex-col items-center">
-        {/* Completed Hours */}
-        <div className="flex justify-center">
-          <CircularProgress
-            value={completedHours}
-            max={totalRequiredHours}
-            color="#ef4444"
-            label="Completed"
-            sublabel="Hours"
-            tooltip="This is how many lessons you've already completed with an instructor. On average in Switzerland, students take around 30 lessons to be ready — but don’t stress! Everyone learns at their own pace 😉"
-          />
-        </div>
-
-        {/* Remaining & Time Since Last Lesson */}
-        <div className="flex justify-center items-center space-x-32">
-          <CircularProgress
-            value={
-              ((daysSinceLastCompletedLesson(bookingSlots)
-                ?.daysSinceLastLesson ?? 0) /
-                30) *
-              100
-            }
-            max={100}
-            color="#f59e0b"
-            label="Time Since Last"
-            sublabel="Lesson (Days)"
-            displayValue={
-              daysSinceLastCompletedLesson(bookingSlots)?.daysSinceLastLesson ??
-              0
-            }
-            tooltip="Time elapsed since your Last driving lesson on the platform."
-          />
-
-          <CircularProgress
-            value={remainingHours}
-            max={totalRequiredHours}
-            color="#06b6d4"
-            label="Remaining"
-            sublabel="Hours"
-            tooltip="Estimated number of hours remaining before you are ready to take the driving exam. This is based on the opinion of your most recent instructor."
-          />
-        </div>
+      <div className="dsp-student-learning-card__note">
+        <span aria-hidden="true"><BookOpenCheck size={15} /></span>
+        <span>Progress updates appear as your completed lessons are recorded.</span>
       </div>
-    </div>
+    </article>
   );
 };
 

@@ -64,6 +64,16 @@ const studentBookingSchema = new mongoose.Schema(
           ],
           default: "available",
         },
+        rescheduleRequest: {
+          status: { type: String, enum: ["none", "pending", "accepted", "rejected"], default: "none" },
+          requestedBy: { type: String, enum: ["student", "instructor", "admin"] },
+          requestedAt: { type: Date },
+          respondedAt: { type: Date },
+          responseReason: { type: String, maxlength: 500 },
+          newDate: { type: String },
+          newStartTime: { type: String },
+          newEndTime: { type: String },
+        },
         // --- Payment (per-slot for instant pay; T-48 will use later) ---
         paymentStatus: {
           type: String,

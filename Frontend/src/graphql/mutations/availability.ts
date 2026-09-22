@@ -15,6 +15,7 @@ export const GET_TEACHER_AVAILABILITY = gql`
         status
         booked
       }
+      slots { id date startTime endTime status booked }
     }
   }
 `;

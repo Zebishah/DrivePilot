@@ -26,6 +26,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import PrintIcon from "@mui/icons-material/Print";
 import { useQuery, useLazyQuery } from "@apollo/client";
 import toast from "react-hot-toast";
 import { formatCHF } from "../../../utils/money";
@@ -526,6 +527,13 @@ export default function InstructorTransactionHistoryPage() {
                 <div><span>Description</span><strong>{viewTransaction.description || "—"}</strong></div>
               </Box>
               <Box className="dsp-transaction-detail-modal__footer">
+                <Button
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
+                  onClick={() => window.print()}
+                >
+                  Print / save PDF
+                </Button>
                 <Button
                   variant="text"
                   startIcon={<ContentCopyIcon />}

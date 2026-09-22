@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 import { skillOptions } from "../../../types/LessonFeedback";
 
 interface SkillsDropdownProps {
@@ -6,6 +7,8 @@ interface SkillsDropdownProps {
   onSkillToggle: (skill: string) => void;
   disabled?: boolean;
   label?: string;
+  helperText?: string;
+  error?: string;
 }
 
 export const SkillsDropdown: React.FC<SkillsDropdownProps> = ({
@@ -13,6 +16,8 @@ export const SkillsDropdown: React.FC<SkillsDropdownProps> = ({
   onSkillToggle,
   disabled = false,
   label = "Skills Worked on During the lesson",
+  helperText = "Select the areas practiced during this lesson.",
+  error,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -31,62 +36,51 @@ export const SkillsDropdown: React.FC<SkillsDropdownProps> = ({
   };
 
   return (
-    <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-      </label>
+    <div className="dsp-feedback-field">
+      <label className="dsp-feedback-field__label">{label}</label>
+      <p className="dsp-feedback-field__helper">{helperText}</p>
       <div className="relative">
         <button
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          className={`w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5FC2D3] focus:border-[#5FC2D3] flex justify-between items-center ${
-            disabled ? "bg-gray-50 cursor-not-allowed" : "cursor-pointer"
-          }`}
+          aria-invalid={Boolean(error)}
+          className={`dsp-feedback-select ${error ? "is-invalid" : ""} ${disabled ? "is-disabled" : ""}`}
         >
-          <span
-            className={
-              selectedSkills.length === 0 ? "text-gray-500" : "text-gray-900"
-            }
-          >
-            {getSelectedSkillsDisplay()}
+          <span className={selectedSkills.length === 0 ? "is-placeholder" : ""}>
+            {selectedSkills.length > 0 ? (
+              <span className="dsp-feedback-select__chips">
+                {selectedSkills.map((skillValue) => {
+                  const skill = skillOptions.find((option) => option.value === skillValue);
+                  return <span className="dsp-feedback-chip" key={skillValue}>{skill?.label || skillValue}</span>;
+                })}
+              </span>
+            ) : getSelectedSkillsDisplay()}
           </span>
-          {!disabled && (
-            <svg
-              className={`w-5 h-5 transform transition-transform ${isOpen ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          )}
+          {!disabled && <ChevronDown size={18} className={isOpen ? "is-open" : ""} aria-hidden="true" />}
         </button>
 
         {isOpen && !disabled && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="dsp-feedback-select__menu">
             {skillOptions.map((skill) => (
               <label
                 key={skill.value}
-                className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                className="dsp-feedback-select__option"
               >
                 <input
                   type="checkbox"
                   checked={selectedSkills.includes(skill.value)}
                   onChange={() => onSkillToggle(skill.value)}
-                  className="w-4 h-4 text-[#4f9fad] border-gray-300 rounded focus:ring-[#5FC2D3]"
+                  className="sr-only"
                 />
-                <span className="ml-3 text-gray-700">{skill.label}</span>
+                <span>{skill.label}</span>
+                {selectedSkills.includes(skill.value) && <Check size={16} aria-hidden="true" />}
               </label>
             ))}
           </div>
         )}
       </div>
+      {error && <p className="dsp-feedback-field__error" role="alert">{error}</p>}
     </div>
   );
 };

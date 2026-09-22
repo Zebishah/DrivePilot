@@ -18,6 +18,7 @@ import {
   Card,
   CardContent,
   Stack,
+  IconButton,
   Modal,
   Tabs,
   Tab,
@@ -25,16 +26,16 @@ import {
   LinearProgress,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PaymentIcon from "@mui/icons-material/Payment";
 import ReplayIcon from "@mui/icons-material/Replay";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import FingerprintIcon from "@mui/icons-material/Fingerprint";
-import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import SendIcon from "@mui/icons-material/Send";
 import InfoIcon from "@mui/icons-material/Info";
+import PrintIcon from "@mui/icons-material/Print";
 import LessonIcon from "@mui/icons-material/School";
 import { useQuery } from "@apollo/client";
 import {
@@ -80,26 +81,6 @@ function lessonLabel(t: Transaction): string {
   return "Lesson payment";
 }
 
-function DetailRow({
-  icon,
-  label,
-  value,
-  valueColor,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
-  return (
-    <Stack direction="row" alignItems="center" spacing={1.5}>
-      <Box sx={{ width: 28, display: "flex", justifyContent: "center" }}>{icon}</Box>
-      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 120 }}>{label}</Typography>
-      <Typography variant="body2" fontWeight={500} sx={{ color: valueColor }}>{value}</Typography>
-    </Stack>
-  );
-}
-
 interface Transaction {
   id: string;
   type: string;
@@ -113,6 +94,29 @@ interface Transaction {
    lessonSummary?: string | null;
   occurredAt?: string | null;
   createdAt: string;
+}
+
+function statusIcon(status: StatusLabel) {
+  if (status === "Completed") return <CheckCircleIcon fontSize="small" />;
+  if (status === "Refund") return <ReplayIcon fontSize="small" />;
+  return <InfoIcon fontSize="small" />;
+}
+
+function PaymentDetail({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className="dsp-payment-detail-modal__detail">
+      <span>{label}</span>
+      <strong className={emphasis ? "is-emphasis" : undefined}>{value}</strong>
+    </div>
+  );
 }
 
 export default function StudentPaymentHistoryPage() {
@@ -445,91 +449,94 @@ export default function StudentPaymentHistoryPage() {
         />
       </Stack>
 
-      <Modal open={!!viewTransaction} onClose={() => setViewTransaction(null)}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "95%", sm: 520 },
-            maxHeight: "90vh",
-            overflow: "auto",
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            borderRadius: 3,
-            p: 3,
-          }}
-        >
+      <Modal
+        className="dsp-payment-detail-modal-root"
+        open={!!viewTransaction}
+        onClose={() => setViewTransaction(null)}
+        aria-labelledby="student-payment-detail-title"
+      >
+        <Box className="dsp-payment-detail-modal">
           {viewTransaction && (
             <>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Payment Details
-                </Typography>
-                <Chip
-                  size="small"
-                  label={statusLabel(viewTransaction)}
-                  color={
-                    statusLabel(viewTransaction) === "Refund"
-                      ? "info"
-                      : statusLabel(viewTransaction) === "Rejected"
-                        ? "error"
-                        : statusLabel(viewTransaction) === "Completed"
-                          ? "success"
-                          : "warning"
-                  }
-                  variant="filled"
-                  sx={{ fontWeight: 600 }}
-                />
-              </Stack>
-
-              <Stack spacing={2}>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={1.5}
-                  sx={{ py: 1.5, px: 2, bgcolor: "action.hover", borderRadius: 2 }}
-                >
-                  <CreditCardIcon sx={{ color: "primary.main", fontSize: 28 }} />
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Payment method</Typography>
-                    <Typography variant="body2" fontWeight={500}>Credit card · ****</Typography>
-                  </Box>
-                </Stack>
-
-                <Stack spacing={1.5}>
-                  <DetailRow icon={<LessonIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Lesson" value={lessonLabel(viewTransaction)} />
-                  <DetailRow icon={<AccountBalanceIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Funding Source" value="Card" />
-                  <DetailRow icon={<SendIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Sent to" value="Driving School Platform (DSP)" />
-                  <DetailRow
-                    icon={<AttachMoneyIcon sx={{ fontSize: 20, color: "text.secondary" }} />}
-                    label="Amount"
-                    value={`${viewTransaction.direction === "credit" ? "+" : "-"} ${formatCHF(viewTransaction.amount)}`}
-                    valueColor={viewTransaction.direction === "credit" ? "success.main" : undefined}
+              <Box className="dsp-payment-detail-modal__header">
+                <Box>
+                  <span className="dsp-payment-detail-modal__eyebrow">Financial receipt</span>
+                  <Typography id="student-payment-detail-title" component="h2">Payment details</Typography>
+                  <p>Review payment breakdown and lesson receipt.</p>
+                </Box>
+                <Box className="dsp-payment-detail-modal__header-actions">
+                  <Chip
+                    className={"dsp-payment-detail-modal__status dsp-payment-detail-modal__status--" + statusLabel(viewTransaction).toLowerCase()}
+                    icon={statusIcon(statusLabel(viewTransaction))}
+                    label={statusLabel(viewTransaction)}
+                    size="small"
                   />
-                  <DetailRow icon={<ReceiptLongIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Fee" value="CHF 0.00" />
-                  <DetailRow icon={<AttachMoneyIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Total Amount" value={formatCHF(viewTransaction.amount)} />
-                  <DetailRow icon={<FingerprintIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Ref Number" value={viewTransaction.id.slice(-9)} />
-                  <DetailRow icon={<CalendarTodayIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Date" value={formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt)} />
-                  <DetailRow icon={<InfoIcon sx={{ fontSize: 20, color: "text.secondary" }} />} label="Status" value={statusLabel(viewTransaction)} />
-                </Stack>
+                  <IconButton
+                    aria-label="Close payment details"
+                    onClick={() => setViewTransaction(null)}
+                    className="dsp-payment-detail-modal__close"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
+              </Box>
 
-                {viewTransaction.description && (
-                  <Box sx={{ mt: 1, p: 1.5, bgcolor: "grey.50", borderRadius: 2 }}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>Description</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>{viewTransaction.description}</Typography>
+              <Box className="dsp-payment-detail-modal__body">
+                <section className="dsp-payment-detail-modal__summary" aria-label="Payment summary">
+                  <Box className="dsp-payment-detail-modal__summary-amount">
+                    <span>Total charged</span>
+                    <strong>{formatCHF(viewTransaction.amount)}</strong>
+                    <small>{viewTransaction.direction === "credit" ? "Credit recorded" : "Payment recorded"}</small>
                   </Box>
-                )}
+                  <Box className="dsp-payment-detail-modal__summary-grid">
+                    <div><CreditCardIcon /><span>Payment method<strong>Credit card · ****</strong></span></div>
+                    <div><CalendarTodayIcon /><span>Date<strong>{formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt)}</strong></span></div>
+                    <div><LessonIcon /><span>Lesson / session<strong>{lessonLabel(viewTransaction)}</strong></span></div>
+                  </Box>
+                </section>
 
+                <section className="dsp-payment-detail-modal__section" aria-labelledby="payment-information-title">
+                  <div className="dsp-payment-detail-modal__section-heading">
+                    <span>Receipt information</span>
+                    <Typography id="payment-information-title" component="h3">Payment information</Typography>
+                  </div>
+                  <div className="dsp-payment-detail-modal__details-grid">
+                    <PaymentDetail label="Lesson" value={lessonLabel(viewTransaction)} />
+                    <PaymentDetail label="Funding source" value="Card" />
+                    <PaymentDetail label="Sent to" value="Driving School Platform (DSP)" />
+                    <PaymentDetail label="Amount" value={(viewTransaction.direction === "credit" ? "+" : "-") + " " + formatCHF(viewTransaction.amount)} emphasis={viewTransaction.direction === "credit"} />
+                    <PaymentDetail label="Fee" value="CHF 0.00" />
+                    <PaymentDetail label="Total amount" value={formatCHF(viewTransaction.amount)} emphasis />
+                    <PaymentDetail label="Reference number" value={viewTransaction.id.slice(-9)} />
+                    <PaymentDetail label="Date" value={formatTransactionDate(viewTransaction.occurredAt ?? viewTransaction.createdAt)} />
+                    <PaymentDetail label="Status" value={statusLabel(viewTransaction)} />
+                  </div>
+                </section>
+
+                <section className="dsp-payment-detail-modal__description" aria-labelledby="payment-description-title">
+                  <span>Description</span>
+                  <Typography id="payment-description-title" component="h3">Payment note</Typography>
+                  <p>{viewTransaction.description || "No additional description available."}</p>
+                </section>
+              </Box>
+
+              <Box className="dsp-payment-detail-modal__footer">
+                <Button
+                  variant="outlined"
+                  onClick={() => window.print()}
+                  startIcon={<PrintIcon />}
+                  sx={{ mr: "auto", borderRadius: 2, textTransform: "none" }}
+                >
+                  Print / save PDF
+                </Button>
                 <Button
                   variant="contained"
                   onClick={() => setViewTransaction(null)}
-                  sx={{ mt: 2, alignSelf: "flex-start", borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+                  startIcon={<CloseIcon />}
                 >
                   Close
                 </Button>
-              </Stack>
+              </Box>
             </>
           )}
         </Box>

@@ -23,21 +23,23 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   );
 
   return (
-    <div className="flex space-x-4 pt-4">
+    <div className="dsp-feedback-form__footer">
       {viewMode === "create" && (
         <>
           <button
+            type="button"
             onClick={onSubmit}
             disabled={isSubmitting}
-            className="bg-[#5FC2D3] hover:bg-[#65a8b4] disabled:bg-[#6ce9ff77] text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200 flex items-center space-x-2"
+            className="dsp-dashboard-button dsp-dashboard-button--primary"
           >
             {isSubmitting && <LoadingSpinner />}
-            <span>{isSubmitting ? "Submitting..." : "Submit"}</span>
+            <span>{isSubmitting ? "Saving feedback..." : "Save feedback"}</span>
           </button>
           <button
+            type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors duration-200"
+            className="dsp-dashboard-button dsp-dashboard-button--secondary"
           >
             Cancel
           </button>
@@ -47,17 +49,19 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       {viewMode === "edit" && (
         <>
           <button
+            type="button"
             onClick={onUpdate}
             disabled={isSubmitting}
-            className="bg-[#5FC2D3] hover:bg-[#65a8b4] disabled:bg-[#6ce9ff77] text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200 flex items-center space-x-2"
+            className="dsp-dashboard-button dsp-dashboard-button--primary"
           >
             {isSubmitting && <LoadingSpinner />}
-            <span>{isSubmitting ? "Updating..." : "Save Changes"}</span>
+            <span>{isSubmitting ? "Saving feedback..." : "Save feedback"}</span>
           </button>
           <button
+            type="button"
             onClick={onCancelEdit}
             disabled={isSubmitting}
-            className="bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors duration-200"
+            className="dsp-dashboard-button dsp-dashboard-button--secondary"
           >
             Cancel
           </button>
@@ -66,8 +70,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
       {viewMode === "view" && (
         <button
+          type="button"
           onClick={onCancel}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors duration-200"
+          className="dsp-dashboard-button dsp-dashboard-button--secondary"
         >
           Back to Dashboard
         </button>

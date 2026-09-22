@@ -55,7 +55,8 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           </div>
         </div>
         <Link
-          to={`/teacher-dashboard/studentProgress/${student._id}`}
+          to={`/teacher-dashboard/my-students/${student._id}`}
+          aria-label={`Open ${student.firstName} ${student.lastName} details`}
           className="p-2 bg-gray-200 rounded-full border-1 border-gray-400"
         >
           <MoveRight />

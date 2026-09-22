@@ -44,7 +44,7 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PopupState, { bindTrigger, bindMenu } from "material-ui-popup-state";
-import { BackButton } from "../../../components/InstructorComponent/common/BackButton";
+import DashboardBackLink from "../../../components/dashboard/DashboardBackLink";
 // Define the interfaces for the data
 interface ProfileData {
   firstName: string;
@@ -272,6 +272,7 @@ export default function EditProfile() {
     }
   };
   const handleSaveChanges = async () => {
+    setIsAvatarLoading(true);
     try {
       let finalImageUrl = formData.profileImage;
 
@@ -496,7 +497,7 @@ export default function EditProfile() {
 
   return (
     <Box className="dsp-instructor-page dsp-edit-profile-page" sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
-      <BackButton variant="outline" label="Back" />
+      <DashboardBackLink label="Back to profile" />
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 3 }}>
         {/* My Profile Card */}
@@ -902,8 +903,9 @@ export default function EditProfile() {
                   py: 1,
                 }}
                 onClick={handleSaveChanges}
+                disabled={isAvatarLoading}
               >
-                Save Changes
+                {isAvatarLoading ? <><CircularProgress size={18} sx={{ mr: 1, color: "inherit" }} />Saving…</> : "Save Changes"}
               </Button>
             </Box>
           </CardContent>
