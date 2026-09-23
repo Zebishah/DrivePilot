@@ -12,10 +12,11 @@ import {
   InputLabel,
   InputAdornment,
   IconButton,
+  Link as MuiLink,
 } from "@mui/material";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { RESET_PASSWORD } from "../../../graphql/mutations/auth";
 import { useMutation } from "@apollo/client";
 import toast from "react-hot-toast";
@@ -41,7 +42,7 @@ type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 const ResetPassword: React.FC = () => {
   const nav = useNavigate();
   const { token } = useParams<{ token: string }>();
-  const [resetPassword, { loading, error }] = useMutation(RESET_PASSWORD);
+  const [resetPassword, { loading }] = useMutation(RESET_PASSWORD);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const {
@@ -91,8 +92,8 @@ const ResetPassword: React.FC = () => {
       } else {
         toast.error("Failed to reset password. Please try again.");
       }
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred. Please try again.");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "An error occurred. Please try again.");
     }
   };
 
@@ -110,17 +111,6 @@ const ResetPassword: React.FC = () => {
         }}
       >
         <Box
-          component="img"
-          alt="Cricles"
-          src="/auth/decorative-circles.png"
-          sx={{
-            position: "absolute",
-            top: 1,
-            right: 1,
-          }}
-        ></Box>
-
-        <Box
           sx={{
             mb: 4,
             display: "flex",
@@ -136,14 +126,14 @@ const ResetPassword: React.FC = () => {
             component="h1"
             sx={{ mt: 4, fontWeight: "bold" }}
           >
-            Reset Password
+            Create a new password
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mt: 1, whiteSpace: "nowrap" }}
           >
-            Enter your new password below to reset your account access.
+            Use a new password to keep your DSP account secure.
           </Typography>
         </Box>
 
@@ -268,9 +258,14 @@ const ResetPassword: React.FC = () => {
             {loading ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
-              "Change Password"
+              "Reset password"
             )}
           </Button>
+          <Box sx={{ textAlign: "center", mt: 1 }}>
+            <MuiLink component={Link} to="/auth/signin" variant="body2">
+              Back to sign in
+            </MuiLink>
+          </Box>
         </Box>
       </Box>
     </AuthLayout>

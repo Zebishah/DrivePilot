@@ -18,12 +18,13 @@ import { setContext } from "@apollo/client/link/context";
 import CryptoJS from "crypto-js";
 import type { AuthPayload, TempAuthPayload } from "../types/auth";
 import { clearAllOnboardingDrafts } from "../utils/onboardingDraft";
+import DSPBrandLoader from "../components/loaders/DSPBrandLoader";
 
 // Constants
 const COOKIE_TOKEN_KEY = "token_dsp";
 const COOKIE_USER_KEY = "user_dsp";
 const COOKIE_EXPIRES = 1; // days
-const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword"];
+const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword", "LoginDemo"];
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 const ENCRYPTION_KEY =
   import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secure";
@@ -41,6 +42,7 @@ const CURRENT_USER_QUERY = gql`
       isUserAuthenticated
       authProvider
       adminLevel
+      isDemo
       createdAt
       updatedAt
     }
@@ -261,11 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [client]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen loading-spinner">
-        <div className="w-16 h-16 border-4 rounded-full border-t-transparent border-blue-600 animate-spin"></div>
-      </div>
-    );
+    return <DSPBrandLoader message="Preparing your workspace..." />;
   }
 
   return (

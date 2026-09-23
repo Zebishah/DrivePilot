@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Eye, EyeOff } from "lucide-react";
+import BrandLogo from "../../../components/BrandLogo";
 
 // Validation schema
 const signInSchema = z.object({
@@ -36,6 +37,7 @@ export default function SignIn() {
 
   const onSubmit = async (data: SignInFormData) => {
     try {
+      void data;
       // TODO: Implement GraphQL mutation
     } catch (error) {
       console.error("Sign in error:", error);
@@ -107,13 +109,7 @@ export default function SignIn() {
             zIndex: 1,
           }}
         >
-          {/* Logo */}
-          <Box
-            component="img"
-            src="/Website-new-logo.png"
-            alt="DSP Logo"
-            sx={{ height: 40, mb: 4, display: "block", mx: "auto" }}
-          />
+          <BrandLogo size="md" />
 
           <Typography variant="h4" component="h1" gutterBottom align="left">
             Welcome!

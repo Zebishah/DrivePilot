@@ -21,7 +21,6 @@ import {
   CardContent,
   Button,
   Avatar,
-  Modal,
   IconButton,
   FormControl,
   InputLabel,
@@ -53,6 +52,8 @@ import {
 } from "../../../graphql/Queries/transactionQueries";
 import { format } from "date-fns";
 import { formatCHF } from "../../../utils/money";
+import { AdminButton, AdminPage, AdminPageHeader } from "../../../components/admin/AdminPrimitives";
+import { AdminModal } from "../../../components/admin/AdminModal";
 
 function formatTransactionDate(value: string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -192,10 +193,8 @@ export default function AdminTransactionsPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-        Payment Management
-      </Typography>
+    <AdminPage className="dsp-admin-payments">
+      <AdminPageHeader title="Payment management" description="Monitor payments, commissions, payouts, refunds and transaction activity." />
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
         <Tab label="Payments and Transactions" />
@@ -570,24 +569,7 @@ export default function AdminTransactionsPage() {
         <CommissionManagementTab />
       )}
 
-      <Modal open={!!viewTransaction} onClose={() => setViewTransaction(null)}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "95%", sm: 720 },
-            maxWidth: "95vw",
-            maxHeight: "90vh",
-            overflow: "auto",
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            borderRadius: 3,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
+      <AdminModal open={!!viewTransaction} onClose={() => setViewTransaction(null)} title="Transaction details" subtitle="Payment activity and transaction metadata" size="lg" footer={<AdminButton variant="secondary" onClick={() => setViewTransaction(null)}>Close</AdminButton>}>
           {viewTransaction && (() => {
             const isPlatform = viewTransaction.role === "platform";
             const party = isPlatform
@@ -694,35 +676,14 @@ export default function AdminTransactionsPage() {
                       )}
                     </Stack>
 
-                    <Button
-                      variant="contained"
-                      onClick={() => setViewTransaction(null)}
-                      sx={{ mt: 3, alignSelf: "flex-start", borderRadius: 2, textTransform: "none", fontWeight: 600 }}
-                    >
-                      Close
-                    </Button>
                   </Box>
                 </Stack>
               </>
             );
           })()}
-        </Box>
-      </Modal>
+      </AdminModal>
 
-      <Modal open={!!profileParty} onClose={() => setProfileParty(null)}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 320,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 3,
-            borderRadius: 2,
-          }}
-        >
+      <AdminModal open={!!profileParty} onClose={() => setProfileParty(null)} title="Profile" subtitle="Transaction party" size="sm" footer={<AdminButton variant="secondary" onClick={() => setProfileParty(null)}>Close</AdminButton>}>
           {profileParty && (
             <>
               <Typography variant="subtitle1" gutterBottom>My Profile</Typography>
@@ -735,12 +696,10 @@ export default function AdminTransactionsPage() {
                   <Typography variant="body2" color="text.secondary">{profileParty.location}</Typography>
                 )}
               </Stack>
-              <Button variant="outlined" onClick={() => setProfileParty(null)} sx={{ mt: 2 }} fullWidth>Close</Button>
             </>
           )}
-        </Box>
-      </Modal>
-    </Box>
+      </AdminModal>
+    </AdminPage>
   );
 }
 

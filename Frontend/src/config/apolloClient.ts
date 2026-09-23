@@ -31,6 +31,7 @@ const getToken = (): string | null => {
 // 🛡 Public operations (no auth) — must match GraphQL operationName exactly
 const PUBLIC_OPERATIONS = [
   "SignIn",
+  "LoginDemo",
   "SignUp",
   "ForgotPassword",
   "ResetPassword",

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
@@ -5,7 +6,6 @@ import {
   Clock,
   DollarSign,
   User,
-  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -14,6 +14,8 @@ import {
 import { GET_ALL_STUDENT_BOOKINGS } from "../../graphql/Queries/AdminBookingShowcase";
 import { UPDATE_BOOKING_STATUS } from "../../graphql/mutations/AdminBookingsShowcase";
 import ConfirmationModal from "./ConfirmationModal";
+import { AdminModal } from "../admin/AdminModal";
+import { AdminButton } from "../admin/AdminPrimitives";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -106,7 +108,8 @@ export type AdminLessonDisplayStatus =
   | "Cancelled"
   | "Refunded"
   | "Missed"
-  | "No Status Set Yet";
+  | "Booked"
+  | "Pending";
 
 /** Derived only from slot data + time (matches instructor-side truth; never shows raw "booked"). */
 export function getAdminLessonDisplayStatus(
@@ -119,7 +122,7 @@ export function getAdminLessonDisplayStatus(
   if (raw === "completed") return "Completed";
   const slotEnd = getSlotEndDateForAdmin(slot);
   if (slotEnd.getTime() > Date.now()) return "Upcoming";
-  return "No Status Set Yet";
+  return slot.booked ? "Booked" : "Pending";
 }
 
 export function adminSlotEligibleForRefund(
@@ -131,7 +134,7 @@ function getCancelledByLabel(cancelledBy?: string) {
   if (cancelledBy === "student") return "Student";
   if (cancelledBy === "instructor") return "Instructor";
   if (cancelledBy === "admin") return "Admin";
-  return "Unknown";
+  return "Not provided";
 }
 
 interface BookingsTableProps {
@@ -166,27 +169,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
-          <div className="bg-white px-6 pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Booking Details
-              </h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-500 transition-colors duration-150 p-1 rounded-full hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
+    <AdminModal open={isOpen} onClose={onClose} title="Booking details" subtitle="Booking lifecycle and payment summary" size="lg" footer={<AdminButton variant="secondary" onClick={onClose}>Close</AdminButton>}>
             <div className="space-y-6">
               {/* Student Info */}
               <div>
@@ -256,6 +239,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 <div className="space-y-2">
                   {booking.slots.map((slot) => {
                     const displayStatus = getAdminLessonDisplayStatus(slot);
+                    const cancellationRelevant = displayStatus === "Cancelled" || displayStatus === "Refunded";
                     return (
                     <div key={slot._id} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center justify-between">
@@ -294,7 +278,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                                 ? "bg-violet-100 text-violet-800"
                               : displayStatus === "Missed"
                                 ? "bg-orange-100 text-orange-800"
-                                : displayStatus === "No Status Set Yet"
+                                : displayStatus === "Pending"
                                   ? "bg-amber-100 text-amber-800"
                                 : displayStatus === "Completed"
                                   ? "bg-green-100 text-green-800"
@@ -304,14 +288,12 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                           {displayStatus}
                         </span>
                       </div>
-                      <div className="mt-2 text-xs text-gray-600">
-                        Cancelled by: {getCancelledByLabel(slot.cancelledBy)}
+                      {cancellationRelevant && <div className="mt-2 text-xs text-gray-600">
+                        {displayStatus === "Refunded" ? "Refunded" : "Cancelled"} by: {getCancelledByLabel(slot.cancelledBy)}
                         {" • "}
-                        Cancelled at:{" "}
-                        {formatCancellationDateTime(
-                          slot.cancellationDate || slot.refundedAt,
-                        )}
-                      </div>
+                        {displayStatus === "Refunded" ? "Refunded at" : "Cancelled at"}:{" "}
+                        {formatCancellationDateTime(slot.cancellationDate || slot.refundedAt)}
+                      </div>}
                     </div>
                   )})}
                 </div>
@@ -340,19 +322,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4">
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AdminModal>
   );
 };
 
@@ -515,6 +485,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
       if (aGroup !== bGroup) return aGroup - bGroup;
       return bTime - aTime;
     });
+  const hasCancellation = rows.some(({ derivedStatus }) => derivedStatus === "Cancelled" || derivedStatus === "Refunded");
   const formatCancellationDateTime = (value: string | number | undefined) => {
     if (value === undefined || value === null || value === "")
       return "-";
@@ -539,10 +510,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
+      className={`dsp-admin-bookings bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
     >
       <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-medium text-gray-900">All Student</h2>
+        <h2 className="text-lg font-medium text-gray-900">All bookings</h2>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600">Filter:</span>
           <select
@@ -558,7 +529,6 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             <option value="cancelled">Cancelled</option>
             <option value="refunded">Refunded</option>
             <option value="missed">Missed</option>
-            <option value="no_status_set_yet">No Status Set Yet</option>
           </select>
 
           <span className="text-sm text-gray-600">Sort:</span>
@@ -587,12 +557,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Lesson Date
               </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Cancellation Date/Time
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                Cancelled By
-              </th>
+              {hasCancellation && <>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Cancellation date/time</th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Cancelled by</th>
+              </>}
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                 Instructor
               </th>
@@ -658,18 +626,10 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {formatCancellationDateTime(
-                        slot.cancellationDate || slot.refundedAt,
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {getCancelledByLabel(slot.cancelledBy)}
-                    </div>
-                  </td>
+                  {hasCancellation && <>
+                    <td className="px-6 py-4"><div className="text-sm text-gray-900">{derivedStatus === "Cancelled" || derivedStatus === "Refunded" ? formatCancellationDateTime(slot.cancellationDate || slot.refundedAt) : "—"}</div></td>
+                    <td className="px-6 py-4"><div className="text-sm text-gray-900">{derivedStatus === "Cancelled" || derivedStatus === "Refunded" ? getCancelledByLabel(slot.cancelledBy) : "—"}</div></td>
+                  </>}
 
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
@@ -688,7 +648,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
                               ? "bg-violet-100 text-violet-800"
                             : derivedStatus === "Missed"
                               ? "bg-orange-100 text-orange-800"
-                            : derivedStatus === "No Status Set Yet"
+                            : derivedStatus === "Pending"
                               ? "bg-amber-100 text-amber-800"
                             : derivedStatus === "Completed"
                               ? "bg-green-100 text-green-800"

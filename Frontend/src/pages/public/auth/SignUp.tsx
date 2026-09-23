@@ -20,13 +20,11 @@ import {
 import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AuthLayout from "../../../layouts/AuthLayout";
-import Logo from "../../../components/Logo";
 import { useMutation, useQuery } from "@apollo/client";
 import {
   GET_SIGNUP_TOKEN_DETAILS,
   SIGN_UP_MUTATION,
   UPDATE_SIGNUP_LINK_STATUS,
-  VERIFY_OTP,
 } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
@@ -80,10 +78,9 @@ const SignUp: React.FC = () => {
   const [signUp, { loading }] = useMutation(SIGN_UP_MUTATION);
   const {
     data,
-    loading: fetching,
-    error: tokenError,
   } = useQuery(GET_SIGNUP_TOKEN_DETAILS, {
-    variables: { token },
+    skip: !token,
+    variables: { token: token || "" },
   });
 
   const {
@@ -111,7 +108,7 @@ const SignUp: React.FC = () => {
       setValue("email", data.getSignupTokenDetails.email);
       setLinkID(data.getSignupTokenDetails.id);
     }
-  }, [token, fetching]);
+  }, [data, setValue, token]);
 
   const onSubmit = async (data: SignUpFormValues) => {
     try {
@@ -172,26 +169,17 @@ const SignUp: React.FC = () => {
             width: "100%",
           }}
         >
-          <Logo />
           <Typography
             variant="h4"
             component="h1"
             sx={{ mb: 3, fontWeight: "bold" }}
           >
-            Welcome!
+            Create your account
+          </Typography>
+          <Typography className="dsp-auth-intro" variant="body2">
+            Start your learning or teaching journey with DSP.
           </Typography>
         </Box>
-        <Box
-          component="img"
-          alt="Circles"
-          src="/auth/decorative-circles.png"
-          sx={{
-            position: "absolute",
-            top: 1,
-            right: 1,
-          }}
-        />
-
         <Box
           component="form"
           noValidate
@@ -373,7 +361,7 @@ const SignUp: React.FC = () => {
             type="submit"
             fullWidth
             variant="contained"
-            disabled={isSubmitting}
+            disabled={isSubmitting || loading}
             sx={{
               mt: 1,
               mb: 1,
@@ -387,52 +375,24 @@ const SignUp: React.FC = () => {
             {isSubmitting ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
-              "Next"
+              "Create account"
             )}
           </Button>
 
-          <Box sx={{ mt: 1, mb: 2, textAlign: "center" }}>
+          <Box className="dsp-auth-divider" sx={{ mt: 1, mb: 2, textAlign: "center" }}>
             <Typography variant="body2" color="text.secondary">
-              Or Sign in using
+              or continue with
             </Typography>
           </Box>
 
-          <Box
-            sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 3 }}
-          >
-            <IconButton
-              sx={{
-                p: 0,
-                width: 54,
-                height: 54,
-                borderRadius: 0,
-              }}
-              href={`${backendAuth}auth/facebook`}
-            >
-              <img
-                src="/auth/facebook_logo.png"
-                alt="Facebook"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </IconButton>
-            <IconButton
-              sx={{
-                border: "1px solid",
-                borderColor: "divider",
-                borderRadius: "50%",
-                p: 1.2,
-                width: 54,
-                height: 54,
-              }}
-              href={`${backendAuth}auth/google`}
-            >
-              <img
-                src="/auth/google_logo.png"
-                alt="Google"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </IconButton>
+          <Box className="dsp-auth-social">
+            <a href={`${backendAuth}auth/google`}><img src="/auth/google_logo.png" alt="" />Continue with Google</a>
+            <a href={`${backendAuth}auth/facebook`}><img src="/auth/facebook_logo.png" alt="" />Continue with Facebook</a>
           </Box>
+
+          <Typography className="dsp-auth-account-link" variant="body2">
+            Already have an account? <Link to="/auth/signin">Sign in</Link>
+          </Typography>
         </Box>
       </Box>
     </AuthLayout>

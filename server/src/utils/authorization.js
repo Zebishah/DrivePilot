@@ -29,6 +29,16 @@ function requireAdmin(user) {
   return requireRole(user, "Admin");
 }
 
+function requireLiveWorkspace(user) {
+  const authenticatedUser = requireAuthenticatedUser(user);
+  if (authenticatedUser.isDemo) {
+    throw new ForbiddenError(
+      "Demo mode: this action is disabled in the recruiter preview.",
+    );
+  }
+  return authenticatedUser;
+}
+
 function requireSuperAdmin(user) {
   const admin = requireAdmin(user);
   if (admin.adminLevel !== "super") {
@@ -141,6 +151,7 @@ module.exports = {
   requireAuthenticatedUser,
   requireRole,
   requireAdmin,
+  requireLiveWorkspace,
   requireSuperAdmin,
   requireSelfServiceRole,
   requireStudentOwnership,

@@ -44,11 +44,16 @@ const {
   requireRole,
   requireSelfServiceRole,
   requireInstructorOwnership,
+  requireLiveWorkspace,
 } = require("../utils/authorization");
 const path = require("path");
 const { getPrivateDocumentUrl } = require("../services/documentUrlService");
 const { OTP_PATTERN } = require("../constants/auth");
+const { logger } = require("../utils/logger");
+const { getConfiguredDemoEmail, getDemoRoleConfig } = require("../services/demoAccess");
 require("dotenv").config();
+
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 
 const resolvePrivateProfileImage = (parent) =>
   getPrivateDocumentUrl(parent?.profileImage);
@@ -59,6 +64,7 @@ const createToken = (user) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      isDemo: Boolean(user.isDemo),
     },
     process.env.JWT_SECRET,
     { expiresIn: "1d" },
@@ -67,6 +73,9 @@ const createToken = (user) => {
 
 const resolvers = {
   Student: {
+    profileImage: resolvePrivateProfileImage,
+  },
+  StudentWithLessonStats: {
     profileImage: resolvePrivateProfileImage,
   },
   Instructor: {
@@ -535,6 +544,7 @@ instead.`);
     },
     updateInstructorVerificationStatus: async (_, { id, status }, { user }) => {
       requireAdmin(user);
+      requireLiveWorkspace(user);
       if (!["pending", "verified", "rejected"].includes(status)) {
         throw new Error("Invalid verification status");
       }
@@ -557,6 +567,7 @@ instead.`);
       return updatedInstructor;
     },
     updateInstructorDocuments: async (_, { input }, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) {
         throw new AuthenticationError("Not authenticated");
       }
@@ -724,6 +735,7 @@ instead.`);
       }
     },
     updateDocumentStatus: async (_, { documentId, status }, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) {
         throw new AuthenticationError("Not authenticated");
       }
@@ -839,6 +851,7 @@ instead.`);
       context,
     ) => {
       requireAdmin(context.user);
+      requireLiveWorkspace(context.user);
       try {
         // Find the student and update the specific document status
         const updatedStudent = await Student.findOneAndUpdate(
@@ -865,26 +878,23 @@ instead.`);
     },
     verifyUser: async (_, { input }) => {
       try {
-        const { email, otp, type } = input;
+        const email = String(input?.email || "").trim().toLowerCase();
+        const { otp, type } = input;
 
         if (typeof otp !== "string" || !OTP_PATTERN.test(otp)) {
           throw new UserInputError("OTP must be exactly 6 digits.");
         }
 
-        const otpEntry = await Otp.findOne({
+        const otpEntry = await Otp.findOneAndUpdate({
           email,
           otp,
           type,
           status: "unused",
-        });
+          expiresAt: { $gt: new Date() },
+        }, { $set: { status: "used" } }, { new: true });
 
         if (!otpEntry) {
           throw new UserInputError("Invalid or expired OTP.");
-        }
-
-        if (otpEntry.expiresAt < new Date()) {
-          await Otp.findByIdAndUpdate(otpEntry._id, { status: "expired" });
-          throw new UserInputError("OTP has expired.");
         }
 
         const user = await User.findOne({ email });
@@ -919,7 +929,7 @@ instead.`);
           user: userObj,
         };
       } catch (error) {
-        console.error("❌ Error in verifyUser:", error);
+        logger.error("otp_verification_failed", { code: error?.code || "OTP_VERIFICATION_FAILED", error });
         if (error instanceof UserInputError) {
           throw error;
         }
@@ -928,7 +938,17 @@ instead.`);
     },
     resendOtp: async (_, { input }) => {
       try {
-        const { email, type } = input;
+        const email = String(input?.email || "").trim().toLowerCase();
+        const { type } = input;
+        const recentOtp = await Otp.findOne({
+          email,
+          type,
+          status: "unused",
+          createdAt: { $gte: new Date(Date.now() - OTP_RESEND_COOLDOWN_MS) },
+        }).select("_id").lean();
+        if (recentOtp) {
+          throw new UserInputError("Please wait before requesting another code.");
+        }
 
         await Otp.deleteMany({ email, type });
 
@@ -947,10 +967,11 @@ instead.`);
 
         return {
           success: true,
-          message: `OTP for ${type} has been resent to ${email}`,
+          message: "A new verification code has been sent.",
           email,
         };
       } catch (error) {
+        if (error instanceof UserInputError) throw error;
         throw new UserInputError(
           "Failed to resend OTP. Please try again later.",
         );
@@ -1008,6 +1029,11 @@ instead.`);
 
         // If verified, send two-factor authentication OTP
         if (user?.role !== "Admin") {
+          await Otp.deleteMany({
+            email: user.email,
+            type: "two_factor_auth",
+            status: "unused",
+          });
           const otp = generateOTP();
           await Otp.create({
             email: user.email,
@@ -1026,11 +1052,52 @@ instead.`);
           token,
         };
       } catch (error) {
-        console.error("SignIn Error:", error);
+        logger.error("sign_in_failed", { code: error?.code || "SIGN_IN_FAILED", error });
         if (error instanceof UserInputError) {
           throw error;
         }
         throw new Error("Failed to sign in. Please try again.");
+      }
+    },
+
+    loginDemo: async (_, { role }) => {
+      const roleConfig = getDemoRoleConfig(role);
+      const email = getConfiguredDemoEmail(role);
+      if (!roleConfig || !email) {
+        throw new UserInputError("This demo workspace is not configured.");
+      }
+
+      try {
+        const user = await User.findOne({
+          email,
+          role: roleConfig.role,
+          isDemo: true,
+        });
+        if (!user) {
+          throw new UserInputError("This demo workspace is not configured.");
+        }
+
+        const userObj = user.toObject();
+        delete userObj.password;
+        userObj.id = user._id.toString();
+
+        logger.info("demo_login_succeeded", {
+          role: roleConfig.role,
+          userId: userObj.id,
+        });
+
+        return {
+          success: true,
+          token: createToken(user),
+          user: userObj,
+        };
+      } catch (error) {
+        logger.error("demo_login_failed", {
+          role: roleConfig?.role || "unknown",
+          code: error?.code || "DEMO_LOGIN_FAILED",
+        });
+        if (error instanceof UserInputError) throw error;
+        throw new UserInputError("This demo workspace is temporarily unavailable.");
       }
     },
 
@@ -1268,6 +1335,8 @@ instead.`);
     },
     deleteStudents: async (_, { studentIds }, { user }) => {
       try {
+        requireAdmin(user);
+        requireLiveWorkspace(user);
         if (!user || user.role !== "Admin") {
           throw new Error("Unauthorized access");
         }
@@ -1290,6 +1359,8 @@ instead.`);
     },
     deleteInstructors: async (_, { instructorIds }, { user }) => {
       try {
+        requireAdmin(user);
+        requireLiveWorkspace(user);
         if (!user || user.role !== "Admin") {
           throw new Error("Unauthorized access");
         }
@@ -1398,6 +1469,7 @@ instead.`);
     },
 
     changePassword: async (_, { currentPassword, newPassword }, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) {
         throw new AuthenticationError("Not authenticated");
       }
@@ -1444,6 +1516,7 @@ instead.`);
     },
 
     createStripeAccount: async (_, __, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) throw new AuthenticationError("Not authenticated");
       if (user.role !== "Instructor") {
         throw new ForbiddenError(
@@ -1528,6 +1601,7 @@ instead.`);
     },
 
     setInstructorPayoutToManual: async (_, { instructorId }, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) throw new AuthenticationError("Not authenticated");
       if (user.role !== "Admin") {
         throw new ForbiddenError(
@@ -1561,6 +1635,7 @@ instead.`);
     },
 
     verifyStripeOnboarding: async (_, __, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) throw new AuthenticationError("Not authenticated");
       if (user.role !== "Instructor") {
         throw new ForbiddenError(
@@ -1613,6 +1688,7 @@ instead.`);
     },
 
     regenerateStripeLink: async (_, __, { user }) => {
+      requireLiveWorkspace(user);
       if (!user) throw new AuthenticationError("Not authenticated");
       if (user.role !== "Instructor") {
         throw new ForbiddenError("Only instructors can regenerate Stripe link");
@@ -1658,6 +1734,7 @@ instead.`);
       { instructorId, input },
       { user },
     ) => {
+      requireLiveWorkspace(user);
       if (!user) throw new AuthenticationError("Not authenticated");
       if (user.role !== "Admin") {
         throw new ForbiddenError(

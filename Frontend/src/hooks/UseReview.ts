@@ -49,6 +49,7 @@ export const useReviewByLessonSlot = (lessonId: string, slotId: string) => {
     GET_REVIEW_BY_LESSON_SLOT,
     {
       variables: { lessonId, slotId },
+      skip: !lessonId || !slotId,
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
     }

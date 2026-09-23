@@ -81,7 +81,10 @@ function validateEnvironment({ env = process.env } = {}) {
     throw new Error("EMAIL_PROVIDER must be elasticemail");
   }
   if (emailEnabled && (runApi || runWorker)) {
-    required.push("ELASTIC_EMAIL_API_KEY", "EMAIL_FROM");
+    required.push("ELASTIC_EMAIL_API_KEY");
+    if (!isPresent(env.EMAIL_FROM_ADDRESS) && !isPresent(env.EMAIL_FROM)) {
+      required.push("EMAIL_FROM_ADDRESS");
+    }
     const emailMode = String(env.EMAIL_MODE || "test").trim().toLowerCase();
     if (!["test", "production"].includes(emailMode)) {
       throw new Error("EMAIL_MODE must be test or production");

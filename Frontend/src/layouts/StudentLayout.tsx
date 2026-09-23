@@ -262,39 +262,39 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       text: "Profile Setting",
       icon: Settings,
       path: "/student-dashboard/settings",
-      section: "Workspace",
+      section: "Account",
     },
-    { text: "Notifications", icon: Bell, path: "/student-dashboard/notifications", section: "Account" },
-    { text: "Notification settings", icon: Settings, path: "/student-dashboard/notification-settings", section: "Account" },
     {
-      text: "Payment history",
+      text: "Payment History",
       icon: CreditCard,
       path: "/student-dashboard/payment-history",
-      section: "Workspace",
+      section: "Account",
+    },
+    { text: "Notifications", icon: Bell, path: "/student-dashboard/notifications", section: "Account" },
+    { text: "Notification Settings", icon: Settings, path: "/student-dashboard/notification-settings", section: "Account" },
+    {
+      text: "Reviews & Ratings",
+      icon: BarChart3,
+      path: "/student-dashboard/reviews",
+      section: "Reputation",
+    },
+    {
+      text: "Feedback from Instructors",
+      icon: Star,
+      path: "/student-dashboard/Feedback",
+      section: "Reputation",
     },
     {
       text: "Help & Support",
       icon: HelpCircle,
       path: "/student-dashboard/help-support",
-      section: "Account",
-    },
-    {
-      text: "Reviews & Ratings",
-      icon: BarChart3,
-      path: "/student-dashboard/reviews",
-      section: "Account",
-    },
-    {
-      text: "Instructor feedback",
-      icon: Star,
-      path: "/student-dashboard/Feedback",
-      section: "Account",
+      section: "Support",
     },
     {
       text: "Messages",
       icon: MessageCircle,
       path: "/student-dashboard/chat",
-      section: "Account",
+      section: "Workspace",
     },
     { text: "Logout", icon: LogOut, path: "/logout", section: "Account" },
   ];
@@ -307,6 +307,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       menuItems={menuItems}
       userName={user?.firstName}
       userAvatar={user?.profileImage}
+      userIsDemo={Boolean(user?.isDemo)}
       roleLabel="Student"
       onLogout={handleLogout}
     >

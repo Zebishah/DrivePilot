@@ -1,12 +1,9 @@
 import React, { useState } from "react";
 import {
-  X,
-  Star,
   MapPin,
   Phone,
   Mail,
   Calendar,
-  User,
   FileText,
   BookOpen,
   Clock,
@@ -19,6 +16,7 @@ import { format } from "date-fns";
 import { StudentDetail } from "../../types/Student";
 import { gql, useMutation } from "@apollo/client";
 import toast from "react-hot-toast";
+import { AdminModal } from "../admin/AdminModal";
 
 interface StudentDetailModalProps {
   student: StudentDetail | null;
@@ -84,11 +82,11 @@ const DocumentStatusDropdown: React.FC<DocumentStatusDropdownProps> = ({
   const [updateDocumentStatus, { loading }] = useMutation(
     UPDATE_DOCUMENT_STATUS_STUDENT,
     {
-      onCompleted: (data) => {
+      onCompleted: () => {
         toast.success("Document status updated successfully");
         onStatusUpdate?.(document.documentType, currentStatus);
       },
-      onError: (error) => {
+      onError: () => {
         toast.error("Error updating document status");
         // Reset to previous status on error
         setCurrentStatus(document.status);
@@ -206,39 +204,9 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black bg-opacity-60"
-        onClick={onClose}
-      />
-
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden relative">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">
-              {document.documentType}
-            </h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleDownload}
-                className="flex items-center justify-center w-8 h-8 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                title="Download Document"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-        </div>
-
+    <AdminModal open={isOpen} onClose={onClose} title={document.documentType} subtitle="Student document preview" size="lg" footer={document.documentUrl ? <button type="button" className="dsp-admin-button dsp-admin-button--secondary" onClick={handleDownload}><Download size={16} aria-hidden="true" /> Download</button> : undefined}>
         {/* Document Content */}
-        <div className="p-6">
+        <div className="p-1">
           {document.documentUrl ? (
             <div className="w-full h-96 border border-gray-200 rounded-lg overflow-hidden">
               {/* For PDF documents */}
@@ -290,8 +258,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AdminModal>
   );
 };
 
@@ -331,28 +298,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-black bg-opacity-50"
-          onClick={onClose}
-        />
-
-        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Student Details
-              </h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6">
+      <AdminModal open={isOpen} onClose={onClose} title="Student details" subtitle={`${fullName} · ${student.location || "Location not provided"}`} size="lg">
+          <div className="p-1">
             {/* Header Section */}
             <div className="flex items-start space-x-6 mb-6">
               <img
@@ -565,8 +512,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 )}
             </div>
           </div>
-        </div>
-      </div>
+      </AdminModal>
 
       {/* Document Viewer Modal */}
       <DocumentViewerModal

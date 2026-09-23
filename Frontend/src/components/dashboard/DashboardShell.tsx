@@ -10,9 +10,11 @@ interface DashboardShellProps {
   mobileOpen: boolean;
   handleDrawerToggle: () => void;
   menuItems: MenuItem[];
+  sections?: import("../common/SideBar").SidebarSection[];
   userName?: string;
   userAvatar?: string;
-  roleLabel: "Student" | "Instructor";
+  userIsDemo?: boolean;
+  roleLabel: "Student" | "Instructor" | "Admin";
   onLogout?: () => void;
   topContent?: React.ReactNode;
 }
@@ -24,8 +26,10 @@ export default function DashboardShell({
   mobileOpen,
   handleDrawerToggle,
   menuItems,
+  sections,
   userName,
   userAvatar,
+  userIsDemo,
   roleLabel,
   onLogout,
   topContent,
@@ -42,8 +46,10 @@ export default function DashboardShell({
           mobileOpen={mobileOpen}
           handleDrawerToggle={handleDrawerToggle}
           menuItems={menuItems}
+          sections={sections}
           userName={userName}
           userAvatar={userAvatar}
+          userIsDemo={userIsDemo}
           roleLabel={roleLabel}
           overviewMode={isInstructorOverview}
           onLogout={onLogout}

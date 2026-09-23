@@ -25,6 +25,8 @@ const router = createBrowserRouter([
       { path: "", element: lazyPage(() => import("../pages/public/Home")) },
       { path: "about", element: lazyPage(() => import("../pages/public/AboutUs")) },
       { path: "contact", element: lazyPage(() => import("../pages/public/Contact")) },
+      { path: "terms", element: lazyPage(() => import("../pages/public/LegalPage")) },
+      { path: "privacy", element: lazyPage(() => import("../pages/public/LegalPage")) },
       { path: "professional", element: lazyPage(() => import("../components/ProfessionalInstructor/Allinstructor")) },
     ],
   },
@@ -132,6 +134,7 @@ const router = createBrowserRouter([
     element: lazyPage(() => import("./AdminRoutes")),
     children: [
       { path: "overview", element: lazyPage(() => import("../pages/private/admin-dashboard/adminOverview").then((module) => ({ default: module.AnalyticsDashboard }))) },
+      { path: "analytics", element: lazyPage(() => import("../pages/private/admin-dashboard/AnalyticsReports")) },
       { path: "bookingManagement", element: lazyPage(() => import("../components/AdminComponents/StudentBookingTable")) },
       { path: "admin-access", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminAccess")) },
       { path: "documentsManagement", element: lazyPage(() => import("../components/AdminComponents/InstructorDocumentsTable")) },
@@ -139,6 +142,8 @@ const router = createBrowserRouter([
       { path: "StudentManagement", element: lazyPage(() => import("../pages/private/admin-dashboard/StudentManagement").then((module) => ({ default: module.StudentManagement }))) },
       { path: "transactions", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminTransactionsPage")) },
       { path: "refund-requests", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminRefundRequestsPage")) },
+      { path: "reviews", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminReviewsPage")) },
+      { path: "student-feedback", element: lazyPage(() => import("../pages/private/admin-dashboard/AdminStudentFeedbackPage")) },
       { path: "notifications", element: lazyPage(() => import("../pages/private/shared/NotificationCenterPage")) },
       {
         path: "document-details/:instructorId/:documentType",

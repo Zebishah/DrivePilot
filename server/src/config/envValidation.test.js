@@ -124,3 +124,18 @@ test("Elastic Email production configuration is validated without Resend credent
     /EMAIL_PROVIDER must be elasticemail/,
   );
 });
+
+test("Elastic Email accepts the split sender configuration", () => {
+  assert.doesNotThrow(() => validateEnvironment({
+    env: productionBase({
+      RUN_API: "false",
+      RUN_WORKER: "true",
+      EMAIL_ENABLED: "true",
+      EMAIL_PROVIDER: "elasticemail",
+      ELASTIC_EMAIL_API_KEY: "elastic-test-key",
+      EMAIL_FROM_ADDRESS: "verified@example.com",
+      EMAIL_FROM_NAME: "DSP Marketplace",
+      EMAIL_MODE: "production",
+    }),
+  }));
+});

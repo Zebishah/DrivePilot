@@ -11,14 +11,14 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import BrandLogo from "../../../components/BrandLogo";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-const logoSrc = "/Website-new-logo.png";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
 import { OTP_LENGTH } from "../../../constants/auth";
+import AuthLayout from "../../../layouts/AuthLayout";
 
 // Styled OTP input for consistent sizing and spacing
 const OtpInput = styled(TextField)(({ theme }) => ({
@@ -39,8 +39,8 @@ interface OtpVerificationProps {
 }
 
 const OtpVerification: React.FC<OtpVerificationProps> = ({
-  title = "Verify OTP",
-  subtitle = "Please enter the verification code sent to your device",
+  title = "Check your email",
+  subtitle = "We sent a 6-digit verification code to your email address.",
 }) => {
   const { email } = useParams();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -234,7 +234,8 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   const isOtpComplete = otp.every((digit) => digit !== "");
 
   return (
-    <Container maxWidth="sm">
+    <AuthLayout>
+      <Container maxWidth="sm">
       <Box
         sx={{
           display: "flex",
@@ -245,34 +246,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
           py: 4,
         }}
       >
-        {/* Logo */}
-        {logoSrc ? (
-          <Box
-            component="img"
-            src={logoSrc}
-            alt="Company Logo"
-            sx={{
-              width: 200,
-              height: 120,
-              mb: 3,
-              objectFit: "contain",
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              bgcolor: "primary.main",
-              width: 280,
-              height: 180,
-              mb: 3,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <LockOutlinedIcon sx={{ fontSize: 64, color: "white" }} />
-          </Box>
-        )}
+        <BrandLogo size="lg" />
 
         {/* OTP Card */}
         <Card
@@ -387,7 +361,8 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
           </CardContent>
         </Card>
       </Box>
-    </Container>
+      </Container>
+    </AuthLayout>
   );
 };
 

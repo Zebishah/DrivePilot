@@ -9,13 +9,6 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Backdrop,
 } from "@mui/material";
 import {
   ExpandMore as ExpandMoreIcon,
@@ -26,6 +19,8 @@ import { useQuery, useMutation } from "@apollo/client";
 import { GET_FAQS_BY_ADMIN } from "../../graphql/Queries/Faqs";
 import { DELETE_FAQ, UPDATE_FAQ } from "../../graphql/mutations/Faqs";
 import { Faq } from "../../types/Faq";
+import { AdminButton } from "../admin/AdminPrimitives";
+import { AdminModal } from "../admin/AdminModal";
 
 interface FaqListProps {
   adminId: string;
@@ -228,116 +223,12 @@ const FaqList: React.FC<FaqListProps> = ({ adminId }) => {
         ))}
       </Box>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteConfirmOpen}
-        onClose={handleDeleteCancel}
-        aria-labelledby="delete-dialog-title"
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle id="delete-dialog-title">Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this FAQ? This action cannot be
-            undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={handleDeleteCancel}
-            disabled={deleteLoading}
-            color="inherit"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            disabled={deleteLoading}
-            color="error"
-            variant="contained"
-            startIcon={deleteLoading ? <CircularProgress size={16} /> : null}
-          >
-            {deleteLoading ? "Deleting..." : "Delete"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit FAQ Dialog */}
-      <Dialog
-        open={editDialogOpen}
-        onClose={handleEditCancel}
-        aria-labelledby="edit-dialog-title"
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle id="edit-dialog-title">Edit FAQ</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-            <TextField
-              label="Question"
-              fullWidth
-              multiline
-              rows={2}
-              value={editingFaq?.question || ""}
-              onChange={(e) =>
-                handleEditInputChange("question", e.target.value)
-              }
-              disabled={updateLoading}
-            />
-            <TextField
-              label="Answer"
-              fullWidth
-              multiline
-              rows={4}
-              value={editingFaq?.answer || ""}
-              onChange={(e) => handleEditInputChange("answer", e.target.value)}
-              disabled={updateLoading}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={handleEditCancel}
-            disabled={updateLoading}
-            color="inherit"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleEditSave}
-            disabled={
-              updateLoading ||
-              !editingFaq?.question.trim() ||
-              !editingFaq?.answer.trim()
-            }
-            color="primary"
-            variant="contained"
-            startIcon={updateLoading ? <CircularProgress size={16} /> : null}
-          >
-            {updateLoading ? "Saving..." : "Save Changes"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Loading Backdrop for delete operation */}
-      <Backdrop
-        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.modal + 1 }}
-        open={deleteLoading}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <CircularProgress color="inherit" />
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            Deleting FAQ...
-          </Typography>
-        </Box>
-      </Backdrop>
+      <AdminModal open={deleteConfirmOpen} onClose={handleDeleteCancel} title="Delete FAQ" subtitle="This action cannot be undone." size="sm" closeOnBackdrop={!deleteLoading} closeOnEscape={!deleteLoading} footer={<><AdminButton variant="secondary" onClick={handleDeleteCancel} disabled={deleteLoading}>Cancel</AdminButton><AdminButton variant="danger" onClick={handleDeleteConfirm} disabled={deleteLoading}>{deleteLoading ? "Deleting..." : "Delete FAQ"}</AdminButton></>}>
+        <p className="dsp-admin-confirmation-copy">Are you sure you want to delete this FAQ?</p>
+      </AdminModal>
+      <AdminModal open={editDialogOpen} onClose={handleEditCancel} title="Edit FAQ" subtitle="Keep the answer clear and useful for the marketplace." size="md" footer={<><AdminButton variant="secondary" onClick={handleEditCancel} disabled={updateLoading}>Cancel</AdminButton><AdminButton onClick={handleEditSave} disabled={updateLoading || !editingFaq?.question.trim() || !editingFaq?.answer.trim()}>{updateLoading ? "Saving..." : "Save changes"}</AdminButton></>}>
+        <div className="dsp-admin-form-stack"><label className="dsp-admin-form-field">Question<textarea className="dsp-admin-input" rows={3} value={editingFaq?.question || ""} onChange={(e) => handleEditInputChange("question", e.target.value)} disabled={updateLoading} /></label><label className="dsp-admin-form-field">Answer<textarea className="dsp-admin-input" rows={6} value={editingFaq?.answer || ""} onChange={(e) => handleEditInputChange("answer", e.target.value)} disabled={updateLoading} /></label></div>
+      </AdminModal>
     </>
   );
 };

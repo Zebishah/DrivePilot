@@ -1,11 +1,10 @@
 import type React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import DSPBrandLoader from "./loaders/DSPBrandLoader";
 
 const AuthLoading = () => (
-  <div className="flex items-center justify-center h-screen loading-spinner">
-    <div className="w-10 h-10 border-4 rounded-full border-t-transparent border-blue-600 animate-spin" />
-  </div>
+  <DSPBrandLoader message="Checking your session..." />
 );
 
 export const OnboardingPrivateRoute: React.FC<{ children: React.ReactNode }> = ({

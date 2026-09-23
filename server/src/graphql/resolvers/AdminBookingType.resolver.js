@@ -13,6 +13,7 @@ const teacherAvailabilityModel = require("../../models/teacherAvailability.model
 const {
   requireAdmin,
   requireInstructorOwnership,
+  requireLiveWorkspace,
 } = require("../../utils/authorization");
 const { invalidateAvailability } = require("../../services/cacheInvalidation");
 
@@ -97,6 +98,7 @@ const AdminBookingResolvers = {
   Mutation: {
     updateBookingStatusAdmin: async (_, { input }, { user }) => {
       requireAdmin(user);
+      requireLiveWorkspace(user);
       try {
         const { bookingId, slotId, status } = input;
 

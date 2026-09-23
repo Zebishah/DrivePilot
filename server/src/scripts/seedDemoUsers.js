@@ -37,6 +37,7 @@ function demoUserDefinitions(env = process.env) {
     isProfileComplete: true,
     isUserVerified: true,
     isUserAuthenticated: true,
+    isDemo: true,
   };
 
   return [
@@ -105,6 +106,10 @@ function demoUserDefinitions(env = process.env) {
 async function ensureDemoUser({ UserModel, definition, hashPassword }) {
   const existing = await UserModel.findOne({ email: definition.email });
   if (existing) {
+    if (existing.isDemo !== true && typeof existing.save === "function") {
+      existing.isDemo = true;
+      await existing.save();
+    }
     return { email: definition.email, role: definition.role, created: false };
   }
 

@@ -68,6 +68,28 @@ export const SIGN_IN = gql`
         isUserVerified
         isUserAuthenticated
         adminLevel
+        isDemo
+      }
+    }
+  }
+`;
+
+export const LOGIN_DEMO = gql`
+  mutation LoginDemo($role: DemoRole!) {
+    loginDemo(role: $role) {
+      success
+      token
+      user {
+        id
+        email
+        firstName
+        lastName
+        role
+        isProfileComplete
+        isUserVerified
+        isUserAuthenticated
+        adminLevel
+        isDemo
       }
     }
   }

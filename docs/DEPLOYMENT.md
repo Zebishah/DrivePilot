@@ -130,7 +130,9 @@ Required when the corresponding optional integration is enabled:
 EMAIL_ENABLED=true
 EMAIL_PROVIDER=elasticemail
 ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
-EMAIL_FROM=DSP Marketplace <sender@verified-domain.example>
+EMAIL_FROM_ADDRESS=<verified-sender-address>
+EMAIL_FROM_NAME=DSP Marketplace
+EMAIL_REPLY_TO=<optional-reply-address>
 EMAIL_MODE=test
 EMAIL_TEST_RECIPIENT=<test-recipient>
 EMAIL_REQUEST_TIMEOUT_MS=10000
@@ -142,9 +144,10 @@ GEMINI_API_KEY=<gemini-api-key>
 GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
-When `EMAIL_MODE=production`, omit `EMAIL_TEST_RECIPIENT` only after Elastic
-Email has a verified sending domain. Until then, `EMAIL_MODE=test` routes the
-provider call to `EMAIL_TEST_RECIPIENT` and must not send to arbitrary users.
+When `EMAIL_MODE=production`, omit `EMAIL_TEST_RECIPIENT` only after the
+configured Elastic Email sender has been intentionally verified and delivery has
+been tested. Until then, `EMAIL_MODE=test` routes the provider call to
+`EMAIL_TEST_RECIPIENT` and must not send to arbitrary users.
 
 Optional API cache settings:
 
@@ -193,7 +196,9 @@ RUN_WORKER=true
 EMAIL_ENABLED=true
 EMAIL_PROVIDER=elasticemail
 ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
-EMAIL_FROM=DSP Marketplace <sender@verified-domain.example>
+EMAIL_FROM_ADDRESS=<verified-sender-address>
+EMAIL_FROM_NAME=DSP Marketplace
+EMAIL_REPLY_TO=<optional-reply-address>
 EMAIL_MODE=test
 EMAIL_TEST_RECIPIENT=<test-recipient>
 ```
@@ -249,10 +254,10 @@ SMTP is not used or reintroduced.
 - `EMAIL_ENABLED=true`
 - `ELASTIC_EMAIL_API_KEY` is stored only in Render and must have the `SendHttp` access level
 - `EMAIL_MODE=test` sends only to `EMAIL_TEST_RECIPIENT`
-- `EMAIL_FROM` must match an allowed Elastic Email sender
+- `EMAIL_FROM_ADDRESS` must match an allowed Elastic Email sender. `EMAIL_FROM_NAME` defaults to `DSP Marketplace`.
 
-Use a verified sender/domain before switching to `EMAIL_MODE=production`. The worker
-is the process that delivers the outbox; the API enqueues events.
+Use an intentionally verified sender before switching to `EMAIL_MODE=production`.
+The worker is the process that delivers the outbox; the API enqueues events.
 
 ### Elastic Email environment placement
 
@@ -260,7 +265,7 @@ When the API runs on Render and the worker runs on Northflank, configure the
 server-side email variables on both services because startup validation covers
 the process environment:
 
-- Render API: `EMAIL_PROVIDER`, `EMAIL_ENABLED`, `EMAIL_MODE`, `ELASTIC_EMAIL_API_KEY`, `EMAIL_FROM`, and `EMAIL_TEST_RECIPIENT` in test mode. Keep `RUN_API=true` and `RUN_WORKER=false`.
+- Render API: `EMAIL_PROVIDER`, `EMAIL_ENABLED`, `EMAIL_MODE`, `ELASTIC_EMAIL_API_KEY`, `EMAIL_FROM_ADDRESS` (or legacy `EMAIL_FROM`), and `EMAIL_TEST_RECIPIENT` in test mode. Keep `RUN_API=true` and `RUN_WORKER=false`.
 - Northflank worker: the same email variables, with `RUN_API=false` and `RUN_WORKER=true`. This is the only process that calls Elastic Email; it also needs the MongoDB URI and the worker’s normal job configuration.
 - Vercel: never add `ELASTIC_EMAIL_API_KEY` or any other server-side email secret. Vercel receives only the public `VITE_*` frontend variables.
 

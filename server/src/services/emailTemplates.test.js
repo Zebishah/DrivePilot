@@ -41,15 +41,17 @@ test("OTP templates identify and render a six-digit code", () => {
     type: "email_verification",
   });
 
-  assert.match(rendered.text, /6-digit/);
+  assert.match(rendered.text, /verification code: 081305/);
+  assert.match(rendered.text, /expires in 10 minutes/);
   assert.match(rendered.text, /081305/);
-  assert.match(rendered.html, /Your 6-digit verification code/);
+  assert.match(rendered.html, /Your verification code/);
   assert.match(rendered.html, /081305/);
+  assert.doesNotMatch(rendered.html, /href=|unsubscribe|manage notifications|dashboard/i);
+  assert.deepEqual(rendered.tracking, { trackOpens: false, trackClicks: false });
 });
 
 test("all supported HTML templates use the DSP email shell", () => {
   for (const template of [
-    "otp",
     "welcome",
     "verification",
     "signup_link",

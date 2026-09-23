@@ -6,7 +6,6 @@ import {
   Clock,
   DollarSign,
   User,
-  X,
   Edit2,
 } from "lucide-react";
 import {
@@ -22,6 +21,8 @@ import {
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { AdminModal } from "../../../components/admin/AdminModal";
+import { AdminButton } from "../../../components/admin/AdminPrimitives";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -189,32 +190,12 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
   const getDisplayStatus = (status?: string) => {
     const normalized = String(status || "").toLowerCase();
     if (normalized === "refund") return "Refunded";
-    if (!normalized) return "No Status Set Yet";
+    if (!normalized) return "Pending";
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
-          <div className="bg-white px-6 pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Booking Details
-              </h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-500 transition-colors duration-150 p-1 rounded-full hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
+    <AdminModal open={isOpen} onClose={onClose} title="Booking details" subtitle="Booking lifecycle and payment summary" size="lg" footer={<AdminButton variant="secondary" onClick={onClose}>Close</AdminButton>}>
             <div className="space-y-6">
               {/* Student Info */}
               <div>
@@ -348,19 +329,7 @@ const ViewDetailsModal: React.FC<ViewDetailsModalProps> = ({
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4">
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AdminModal>
   );
 };
 
@@ -401,27 +370,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
-          <div className="bg-white px-6 pt-6 pb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 text-center w-full">
-                Are You Sure You Want to Cancel This Booking?
-              </h3>
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
+    <AdminModal open={isOpen} onClose={onClose} title="Cancel booking" subtitle="This change will update the booking lifecycle." size="md" closeOnBackdrop={!isSubmitting} closeOnEscape={!isSubmitting} footer={<><AdminButton variant="secondary" onClick={onClose} disabled={isSubmitting}>No</AdminButton><AdminButton variant="danger" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? "Cancelling..." : "Yes, cancel booking"}</AdminButton></>}>
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
               <h4 className="font-medium text-gray-900 mb-3">Details</h4>
 
@@ -497,29 +446,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 </p>
               </div>
             </div>
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4 flex justify-center space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50"
-            >
-              No
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50"
-            >
-              {isSubmitting ? "Cancelling..." : "Yes"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AdminModal>
   );
 };
 

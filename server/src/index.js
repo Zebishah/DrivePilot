@@ -139,6 +139,7 @@ function initializeApi() {
 
   const rateLimitedGraphQLOperations = new Set([
     "SignIn",
+    "LoginDemo",
     "SignUp",
     "ForgotPassword",
     "ResetPassword",
@@ -146,7 +147,7 @@ function initializeApi() {
     "ResendOtp",
     "SendContactEmail",
   ]);
-  const sensitiveGraphQLFieldPattern = /\b(signIn|signUp|forgotPassword|resetPassword|verifyUser|resendOtp|sendContactEmail)\s*\(/i;
+  const sensitiveGraphQLFieldPattern = /\b(signIn|loginDemo|signUp|forgotPassword|resetPassword|verifyUser|resendOtp|sendContactEmail)\s*\(/i;
   const sensitiveGraphQLRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,

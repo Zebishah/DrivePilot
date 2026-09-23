@@ -20,6 +20,7 @@ const baseSchema = new mongoose.Schema(
     isProfileComplete: { type: Boolean, default: false },
     isUserVerified: { type: Boolean, default: false },
     isUserAuthenticated: { type: Boolean, default: false },
+    isDemo: { type: Boolean, default: false, index: true },
     authProvider: {
       type: String,
       enum: ["local", "google", "facebook"],
@@ -47,7 +48,7 @@ const baseSchema = new mongoose.Schema(
 const User = mongoose.model("User", baseSchema);
 
 const otpSchema = new mongoose.Schema({
-  email: { type: String, required: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
   // OTPs are strings so a valid code can never lose a leading zero.
   otp: { type: String, required: true, match: /^\d{6}$/ },
   status: {
@@ -63,6 +64,7 @@ const otpSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true },
 });
+otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const Otp = mongoose.model("Otp", otpSchema);
 
 // Student Document Schema

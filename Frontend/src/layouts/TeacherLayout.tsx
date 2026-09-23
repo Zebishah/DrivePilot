@@ -344,6 +344,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
       menuItems={menuItems}
       userName={user?.firstName}
       userAvatar={user?.profileImage}
+      userIsDemo={Boolean(user?.isDemo)}
       roleLabel="Instructor"
       onLogout={handleLogout}
       topContent={

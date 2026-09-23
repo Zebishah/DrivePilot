@@ -14,6 +14,12 @@ const typeDefs = gql`
     facebook
   }
 
+  enum DemoRole {
+    ADMIN
+    INSTRUCTOR
+    STUDENT
+  }
+
   type FileUploadResponse {
     uploadUrl: String!
     fileUrl: String!
@@ -68,6 +74,7 @@ const typeDefs = gql`
     profileImage: String
     adminLevel: String
     isUserAuthenticated: Boolean
+    isDemo: Boolean
     authProvider: AuthProvider!
     createdAt: String!
     updatedAt: String!
@@ -94,6 +101,7 @@ const typeDefs = gql`
     paymentInfo: PaymentInfo
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    isDemo: Boolean
   }
   input StudentProfileInput {
     homeAddress: String!
@@ -131,6 +139,7 @@ const typeDefs = gql`
     gender: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    isDemo: Boolean
     commission: InstructorCommission
   }
   type InstructorWithDetails implements User {
@@ -163,6 +172,7 @@ const typeDefs = gql`
     gender: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    isDemo: Boolean
     commission: InstructorCommission
   }
   type Admin implements User {
@@ -177,6 +187,7 @@ const typeDefs = gql`
     createdAt: String!
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    isDemo: Boolean
     updatedAt: String!
     adminLevel: String! # Either "super" or "regular"
   }
@@ -233,6 +244,7 @@ const typeDefs = gql`
     adminLevel: String
     isUserVerified: Boolean
     isUserAuthenticated: Boolean
+    isDemo: Boolean
   }
 
   type PaymentInfo {
@@ -449,6 +461,7 @@ const typeDefs = gql`
     deleteInstructors(instructorIds: [ID!]!): DeleteInstructorsResponse!
     updateStudentProfile(input: UpdateStudentProfileInput!): StudentProfile!
     signIn(email: String!, password: String!): AuthPayload!
+    loginDemo(role: DemoRole!): AuthPayload!
     generateUploadUrl(
       userId: String!
       role: String!

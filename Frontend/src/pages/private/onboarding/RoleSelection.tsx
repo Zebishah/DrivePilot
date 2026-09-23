@@ -1,100 +1,36 @@
 import React from "react";
-import { Box, Typography, Button, Container, useTheme } from "@mui/material";
-import { User, UserCheck } from "lucide-react";
+import { Typography, Button } from "@mui/material";
+import { GraduationCap, UsersRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Logo from "../../../components/Logo";
 import { useMutation } from "@apollo/client";
 import { SELECT_ROLE_MUTATION } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
 import { UserRole } from "../../../types/auth";
 import toast from "react-hot-toast";
+import AuthLayout from "../../../layouts/AuthLayout";
 
 interface RoleCardProps {
   title: string;
-  imageSrc: string;
+  description: string;
+  icon: React.ElementType;
   selected: boolean;
   onClick: () => void;
 }
 
 const RoleCard: React.FC<RoleCardProps> = ({
   title,
-  imageSrc,
+  description,
+  icon: Icon,
   selected,
   onClick,
 }) => {
-  const theme = useTheme();
   return (
-    <Box
-      sx={{
-        position: "relative",
-        width: { xs: "100%", sm: "45%" },
-        mx: "auto",
-        mb: 4,
-        cursor: "pointer",
-      }}
-      onClick={onClick}
-    >
-      <Box
-        sx={{
-          width: 200,
-          height: 200,
-          borderRadius: "50%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          border: selected
-            ? `4px solid ${theme.palette.primary.main}`
-            : "4px solid transparent",
-          transition: "border-color 0.3s",
-          "&:hover": {
-            borderColor: theme.palette.primary.main,
-          },
-        }}
-      >
-        <img
-          src={imageSrc}
-          alt={title}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            borderRadius: "50%",
-          }}
-        />
-      </Box>
-      <Typography
-        variant="h6"
-        component="h2"
-        sx={{
-          mt: 2,
-          textAlign: "center",
-          color: selected ? theme.palette.primary.main : "inherit",
-          fontWeight: selected ? "bold" : "normal",
-        }}
-      >
-        {title}
-      </Typography>
-      {selected && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            backgroundColor: theme.palette.primary.main,
-            color: "#fff",
-            borderRadius: "50%",
-            width: 30,
-            height: 30,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          ✓
-        </Box>
-      )}
-    </Box>
+    <button type="button" className={`dsp-onboarding-role ${selected ? "is-selected" : ""}`} onClick={onClick} aria-pressed={selected}>
+      <span className="dsp-onboarding-role__icon"><Icon size={28} /></span>
+      <strong>{title}</strong>
+      <span>{description}</span>
+      {selected && <span className="dsp-onboarding-role__check" aria-hidden="true">✓</span>}
+    </button>
   );
 };
 
@@ -138,66 +74,18 @@ const RoleSelection: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          mb: 12,
-          mt: 4,
-          gap: 6,
-        }}
-      >
-        <Logo />
-        <Typography color="#00000080" variant="h6" component="h1" gutterBottom>
-          Are you Student or Instructor
-        </Typography>
-      </Box>
-
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: "center",
-          justifyContent: "space-around",
-          mb: 4,
-        }}
-      >
-        <RoleCard
-          title="Learner"
-          imageSrc="/onboarding/learner-img.png"
-          selected={selectedRole === "student"}
-          onClick={() => setSelectedRole("student")}
-        />
-        <RoleCard
-          title="Instructor"
-          imageSrc="/onboarding/instructor-img.png"
-          selected={selectedRole === "instructor"}
-          onClick={() => setSelectedRole("instructor")}
-        />
-      </Box>
-
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Button
-          variant="contained"
-          size="large"
-          disabled={!selectedRole || loading}
-          onClick={handleContinue}
-          sx={{
-            minWidth: 300,
-            bgcolor: "#5CD2D9",
-            "&:hover": {
-              bgcolor: "#4CB8BF",
-            },
-          }}
-        >
-          {loading ? "Selecting..." : "Select"}
-        </Button>
-      </Box>
-    </Container>
+    <AuthLayout>
+      <div className="dsp-onboarding-card">
+        <span className="dsp-auth-eyebrow">CHOOSE YOUR WORKSPACE</span>
+        <Typography component="h1">How will you use DSP?</Typography>
+        <Typography className="dsp-onboarding-card__intro">Choose the workspace that matches your next step. You can complete your profile right after.</Typography>
+        <div className="dsp-onboarding-roles">
+          <RoleCard title="Student" description="Find instructors and book lessons" icon={GraduationCap} selected={selectedRole === "student"} onClick={() => setSelectedRole("student")} />
+          <RoleCard title="Instructor" description="Teach, manage students, and grow" icon={UsersRound} selected={selectedRole === "instructor"} onClick={() => setSelectedRole("instructor")} />
+        </div>
+        <Button className="dsp-onboarding-continue" variant="contained" size="large" disabled={!selectedRole || loading} onClick={handleContinue}>{loading ? "Selecting..." : "Continue"}</Button>
+      </div>
+    </AuthLayout>
   );
 };
 

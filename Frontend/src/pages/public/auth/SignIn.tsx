@@ -14,12 +14,12 @@ import {
   CircularProgress,
   InputLabel,
 } from "@mui/material";
-import { Eye, EyeOff, Facebook } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, ShieldCheck, UsersRound } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
 import { useAuth } from "../../../context/AuthContext";
-import { SIGN_IN } from "../../../graphql/mutations/auth";
+import { LOGIN_DEMO, SIGN_IN } from "../../../graphql/mutations/auth";
 import { useMutation } from "@apollo/client";
 import toast from "react-hot-toast";
 
@@ -31,11 +31,40 @@ const signInSchema = z.object({
 });
 
 type SignInFormValues = z.infer<typeof signInSchema>;
+type DemoRole = "ADMIN" | "INSTRUCTOR" | "STUDENT";
+
+const demoOptions: Array<{
+  role: DemoRole;
+  title: string;
+  description: string;
+  icon: typeof ShieldCheck;
+}> = [
+  {
+    role: "ADMIN",
+    title: "Enter Admin Demo",
+    description: "Review platform operations, users, and payments.",
+    icon: ShieldCheck,
+  },
+  {
+    role: "INSTRUCTOR",
+    title: "Enter Instructor Demo",
+    description: "Explore teaching, bookings, feedback, and payouts.",
+    icon: UsersRound,
+  },
+  {
+    role: "STUDENT",
+    title: "Enter Student Demo",
+    description: "See the learner journey, lessons, and progress tools.",
+    icon: GraduationCap,
+  },
+];
+
 const backendAuth = import.meta.env.VITE_APP_AUTH_URL;
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
-  const { login, tempUser } = useAuth();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [activeDemoRole, setActiveDemoRole] = React.useState<DemoRole | null>(null);
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -104,6 +133,32 @@ const SignIn: React.FC = () => {
       toast.error(`${error.graphQLErrors[0]?.message}`);
     },
   });
+  const [loginDemo, { loading: demoLoading }] = useMutation(LOGIN_DEMO, {
+    onCompleted: (data) => {
+      const demo = data?.loginDemo;
+      const role = demo?.user?.role;
+      if (!demo?.success || !demo?.token || !role) {
+        toast.error("The demo workspace is temporarily unavailable. Please try again later.");
+        setActiveDemoRole(null);
+        return;
+      }
+
+      login(demo);
+      if (role === "Admin") navigate("/admin-dashboard/overview");
+      else if (role === "Instructor") navigate("/teacher-dashboard/overview");
+      else navigate("/student-dashboard/overview");
+    },
+    onError: () => {
+      setActiveDemoRole(null);
+      toast.error("The demo workspace is temporarily unavailable. Please try again later.");
+    },
+  });
+
+  const handleDemoLogin = (role: DemoRole) => {
+    if (loading || demoLoading) return;
+    setActiveDemoRole(role);
+    void loginDemo({ variables: { role } });
+  };
   const onSubmit = async (formData: SignInFormValues) => {
     try {
       await signIn({
@@ -146,20 +201,12 @@ const SignIn: React.FC = () => {
             component="h1"
             sx={{ mb: 4, mt: 4, fontWeight: "bold" }}
           >
-            Welcome!
+            Welcome back
+          </Typography>
+          <Typography className="dsp-auth-intro" variant="body2">
+            Sign in to continue to your DSP workspace.
           </Typography>
         </Box>
-
-        <Box
-          component="img"
-          alt="Cricles"
-          src="/auth/decorative-circles.png"
-          sx={{
-            position: "absolute",
-            top: 1,
-            right: 1,
-          }}
-        ></Box>
 
         <Box
           component="form"
@@ -266,64 +313,71 @@ const SignIn: React.FC = () => {
               },
             }}
           >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Sign in"}
           </Button>
 
-          <Box sx={{ mt: 2, mb: 3, textAlign: "center" }}>
+          <Box className="dsp-auth-divider" sx={{ mt: 2, mb: 3, textAlign: "center" }}>
             <Typography variant="body2" color="text.secondary">
-              Or Sign in using
+              or continue with
             </Typography>
           </Box>
 
-          <Box
-            sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 3 }}
-          >
-            <IconButton
-              sx={{
-                p: 0,
-                width: 54,
-                height: 54,
-                borderRadius: 0,
-              }}
-              href={`${backendAuth}auth/facebook`}
-            >
-              <img
-                src="/auth/facebook_logo.png"
-                alt="Facebook"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </IconButton>
-            <IconButton
-              sx={{
-                border: "1px solid",
-                borderColor: "divider",
-                borderRadius: "50%",
-                p: 1.2,
-                width: 54,
-                height: 54,
-              }}
-              href={`${backendAuth}auth/google`}
-            >
-              <img
-                src="/auth/google_logo.png"
-                alt="Google"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </IconButton>
+          <Box className="dsp-auth-social">
+            <a href={`${backendAuth}auth/google`}><img src="/auth/google_logo.png" alt="" />Continue with Google</a>
+            <a href={`${backendAuth}auth/facebook`}><img src="/auth/facebook_logo.png" alt="" />Continue with Facebook</a>
           </Box>
 
           <Box sx={{ textAlign: "center", mt: 2 }}>
             <Typography variant="body2">
-              Don't have an account?{" "}
+              New to DSP?{" "}
               <MuiLink
                 component={Link}
                 to="/auth/signup"
                 variant="body2"
                 sx={{ fontWeight: "bold" }}
               >
-                Register Here
+                Create an account
               </MuiLink>
             </Typography>
+          </Box>
+
+          <Box className="dsp-demo-preview" component="section" id="recruiter-preview" aria-labelledby="dsp-demo-title">
+            <Box className="dsp-demo-preview__header">
+              <Box>
+                <Typography className="dsp-demo-preview__eyebrow">Recruiter preview</Typography>
+                <Typography id="dsp-demo-title" className="dsp-demo-preview__title">
+                  Explore every side of DSP
+                </Typography>
+              </Box>
+              <Typography className="dsp-demo-preview__note">
+                No account setup required
+              </Typography>
+            </Box>
+            <Typography className="dsp-demo-preview__intro">
+              Open a ready-to-explore workspace with the same authenticated dashboard experience.
+            </Typography>
+            <Box className="dsp-demo-preview__cards">
+              {demoOptions.map(({ role, title, description, icon: Icon }) => {
+                const isActive = activeDemoRole === role && demoLoading;
+                return (
+                  <Button
+                    key={role}
+                    type="button"
+                    className={`dsp-demo-card dsp-demo-card--${role.toLowerCase()}`}
+                    onClick={() => handleDemoLogin(role)}
+                    disabled={loading || demoLoading}
+                    aria-label={isActive ? `Opening ${title.replace("Enter ", "")}` : title}
+                  >
+                    <span className="dsp-demo-card__icon" aria-hidden="true"><Icon size={18} /></span>
+                    <span className="dsp-demo-card__copy">
+                      <span className="dsp-demo-card__title">{isActive ? `Opening ${title.replace("Enter ", "")}…` : title}</span>
+                      <span className="dsp-demo-card__description">{description}</span>
+                    </span>
+                    <span className="dsp-demo-card__arrow" aria-hidden="true">↗</span>
+                  </Button>
+                );
+              })}
+            </Box>
           </Box>
         </Box>
       </Box>

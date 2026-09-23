@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Eye, MoreVertical } from "lucide-react";
 import { StudentDetail } from "../../types/Student";
 
@@ -20,6 +20,10 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   onClick,
 }) => {
   const fullName = `${student.firstName} ${student.lastName}`;
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const profileImage = student.profileImage?.trim();
+  const imageFailed = Boolean(profileImage && failedImage === profileImage);
+  const initials = `${student.firstName?.[0] ?? ""}${student.lastName?.[0] ?? ""}`.toUpperCase();
   const progressPercentage =
     student.remainingHours > 0 ? (student.remainingHours / 100) * 100 : 0;
 
@@ -75,11 +79,21 @@ export const StudentCard: React.FC<StudentCardProps> = ({
         className={`flex items-start justify-between mb-4 ${showCheckbox ? "ml-6" : ""}`}
       >
         <div className="flex items-center space-x-3">
-          <img
-            src={student.profileImage || "/images/Portrait_Placeholder.png"}
-            alt={fullName}
-            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-          />
+          {profileImage && !imageFailed ? (
+            <img
+              src={profileImage}
+              alt={fullName}
+              onError={() => setFailedImage(profileImage)}
+              className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+            />
+          ) : (
+            <div
+              aria-label={`${fullName} avatar`}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-gray-200 bg-gray-100 text-sm font-semibold text-gray-500"
+            >
+              {initials || "S"}
+            </div>
+          )}
           <div>
             <h3
               className={`text-sm font-semibold ${isSelected ? "text-white" : "text-gray-900"}`}

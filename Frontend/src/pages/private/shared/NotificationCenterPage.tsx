@@ -156,7 +156,7 @@ export default function NotificationCenterPage() {
           <Box>
             <span className="dsp-notification-page__eyebrow">Account activity</span>
             <Typography component="h1">Notifications</Typography>
-            <Typography component="p">Review booking, lesson, payment, and account updates in one place.</Typography>
+            <Typography component="p">{user?.role === "Admin" ? "Monitor operational, document, payment, and account updates in one place." : "Review booking, lesson, payment, and account updates in one place."}</Typography>
           </Box>
           <Button
             className="dsp-notification-page__settings"
@@ -186,8 +186,8 @@ export default function NotificationCenterPage() {
         <Paper className="dsp-notification-page__panel">
           <Box className="dsp-notification-page__toolbar">
             <Box>
-              <Typography component="h2">Your notification center</Typography>
-              <Typography component="p">Stay informed without leaving your workspace.</Typography>
+              <Typography component="h2">{user?.role === "Admin" ? "Operational notification center" : "Your notification center"}</Typography>
+              <Typography component="p">{user?.role === "Admin" ? "Document reviews, refunds, bookings, and account events appear here." : "Stay informed without leaving your workspace."}</Typography>
             </Box>
             <Button
               className="dsp-notification-page__mark-all"
@@ -222,7 +222,7 @@ export default function NotificationCenterPage() {
             <Box className="dsp-notification-page__empty">
               <span><Bell size={24} /></span>
               <Typography component="h3">You’re all caught up</Typography>
-              <Typography component="p">New updates will appear here as your lessons and payments change.</Typography>
+              <Typography component="p">{user?.role === "Admin" ? "Operational updates, document reviews and account events will appear here." : "New updates will appear here as your lessons and payments change."}</Typography>
             </Box>
           ) : (
             <List className="dsp-notification-page__list" disablePadding>

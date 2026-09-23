@@ -20,6 +20,7 @@ export interface AuthPayload {
     isUserAuthenticated: boolean;
     profileImage?: string;
     adminLevel?: string;
+    isDemo?: boolean;
     token: string;
   };
 }

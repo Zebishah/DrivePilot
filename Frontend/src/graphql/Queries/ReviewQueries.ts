@@ -50,6 +50,23 @@ export const GET_INSTRUCTOR_REVIEWS = gql`
   }
 `;
 
+export const GET_ALL_REVIEWS = gql`
+  query GetAllReviews {
+    getAllReviews {
+      _id
+      reviewStatus
+      reviewRating
+      reviewDescription
+      studentId { _id firstName lastName profileImage }
+      instructorId { _id firstName lastName profileImage }
+      lessonId
+      slotId
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 // Get specific review by lesson and slot
 export const GET_REVIEW_BY_LESSON_SLOT = gql`
   query GetReviewByLessonSlot($lessonId: ID!, $slotId: String!) {

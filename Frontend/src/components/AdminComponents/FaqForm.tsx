@@ -1,15 +1,7 @@
 // components/FaqForm.tsx
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-  CircularProgress,
-} from "@mui/material";
+import { AdminButton } from "../admin/AdminPrimitives";
+import { AdminModal } from "../admin/AdminModal";
 import { useMutation } from "@apollo/client";
 import { GET_FAQS_BY_ADMIN } from "../../graphql/Queries/Faqs";
 import { CREATE_FAQ } from "../../graphql/mutations/Faqs";
@@ -61,48 +53,12 @@ const FaqForm: React.FC<FaqFormProps> = ({ open, onClose, adminId }) => {
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Add New Question</DialogTitle>
-      <form onSubmit={handleSubmit}>
-        <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <TextField
-              label="Write Your Question"
-              placeholder="Type Here"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              fullWidth
-              required
-              multiline
-              rows={2}
-            />
-            <TextField
-              label="Add Description"
-              placeholder="Type Here"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              fullWidth
-              required
-              multiline
-              rows={4}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !question.trim() || !answer.trim()}
-            startIcon={loading ? <CircularProgress size={16} /> : null}
-          >
-            {loading ? "Adding..." : "Add Question"}
-          </Button>
-        </DialogActions>
+    <AdminModal open={open} onClose={handleClose} title="Add new question" subtitle="Create a FAQ entry for the Admin help center." size="md" footer={<><AdminButton type="button" variant="secondary" onClick={handleClose} disabled={loading}>Cancel</AdminButton><AdminButton type="submit" form="faq-create-form" disabled={loading || !question.trim() || !answer.trim()}>{loading ? "Adding..." : "Add question"}</AdminButton></>}>
+      <form id="faq-create-form" onSubmit={handleSubmit} className="dsp-admin-form-stack">
+        <label className="dsp-admin-form-field">Question<textarea className="dsp-admin-input" rows={3} placeholder="Write your question" value={question} onChange={(e) => setQuestion(e.target.value)} required /></label>
+        <label className="dsp-admin-form-field">Answer<textarea className="dsp-admin-input" rows={6} placeholder="Add a helpful answer" value={answer} onChange={(e) => setAnswer(e.target.value)} required /></label>
       </form>
-    </Dialog>
+    </AdminModal>
   );
 };
 

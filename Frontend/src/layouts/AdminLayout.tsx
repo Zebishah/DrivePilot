@@ -2,10 +2,9 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Box, CssBaseline } from "@mui/material";
-import Sidebar, { type MenuItem } from "../components/common/SideBar";
-import Navbar from "../components/common/DashNavBar";
-import { Bell, LayoutGrid, HelpCircle, LogOut, UserRoundCog } from "lucide-react";
+import { type MenuItem } from "../components/common/SideBar";
+import DashboardShell from "../components/dashboard/DashboardShell";
+import { Bell, BarChart3, CalendarDays, CreditCard, FileCheck2, GraduationCap, HelpCircle, LayoutDashboard, LogOut, MessageSquareText, ReceiptText, ShieldCheck, Star, UsersRound } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -47,47 +46,68 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [location.pathname, clearUnseenCount]);
 
   const menuItems: MenuItem[] = [
-    { text: "Overview", icon: LayoutGrid, path: "/admin-dashboard/overview" },
+    { text: "Overview", icon: LayoutDashboard, path: "/admin-dashboard/overview", section: "Overview" },
+    { text: "Analytics & Reports", icon: BarChart3, path: "/admin-dashboard/analytics", section: "Overview" },
     {
       text: "Admin Access",
-      icon: UserRoundCog,
+      icon: ShieldCheck,
       path: "/admin-dashboard/admin-access",
-    },
-    {
-      text: "Documents",
-      icon: LayoutGrid,
-      path: "/admin-dashboard/documentsManagement",
+      section: "People",
     },
     {
       text: "Instructor Management",
-      icon: LayoutGrid,
+      icon: UsersRound,
       path: "/admin-dashboard/InstructorManagement",
-    },
-    {
-      text: "Booking Management",
-      icon: LayoutGrid,
-      path: "/admin-dashboard/bookingManagement",
-      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined, // ✅ Only show badge if > 0
+      section: "People",
     },
     {
       text: "Student Management",
-      icon: LayoutGrid,
+      icon: GraduationCap,
       path: "/admin-dashboard/StudentManagement",
+      section: "People",
     },
     {
-      text: "Payment management",
-      icon: LayoutGrid,
+      text: "Documents",
+      icon: FileCheck2,
+      path: "/admin-dashboard/documentsManagement",
+      section: "Operations",
+    },
+    {
+      text: "Booking Management",
+      icon: CalendarDays,
+      path: "/admin-dashboard/bookingManagement",
+      section: "Operations",
+      badge: unseenBookingsCount > 0 ? unseenBookingsCount : undefined,
+    },
+    {
+      text: "Reviews & Ratings",
+      icon: Star,
+      path: "/admin-dashboard/reviews",
+      section: "Operations",
+    },
+    {
+      text: "Student Feedback",
+      icon: MessageSquareText,
+      path: "/admin-dashboard/student-feedback",
+      section: "Operations",
+    },
+    {
+      text: "Payment Management",
+      icon: CreditCard,
       path: "/admin-dashboard/transactions",
+      section: "Finance",
     },
     {
-      text: "Refund requests",
-      icon: LayoutGrid,
+      text: "Refund Requests",
+      icon: ReceiptText,
       path: "/admin-dashboard/refund-requests",
+      section: "Finance",
     },
     {
       text: "Notifications",
       icon: Bell,
       path: "/admin-dashboard/notifications",
+      section: "Account",
     },
     ...(user?.adminLevel === "super"
       ? [
@@ -95,10 +115,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             text: "Help & Support",
             icon: HelpCircle,
             path: "/admin-dashboard/help-support",
+            section: "Support",
           },
         ]
       : []),
-    { text: "Logout", icon: LogOut, path: "/logout" },
+    { text: "Logout", icon: LogOut, path: "/logout", section: "" },
   ];
 
   const handleDrawerToggle = () => {
@@ -111,33 +132,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     toast.success("Logout Successfully");
   };
 
+  const sections = [
+    "Overview",
+    "People",
+    "Operations",
+    "Finance",
+    "Account",
+    "Support",
+  ].map((label) => ({ label, items: menuItems.filter((item) => item.section === label) }));
+
   return (
-    <>
-      <CssBaseline />
-      <Box sx={{ display: "flex", minHeight: "100vh" }}>
-        <Sidebar
-          drawerWidth={DRAWER_WIDTH}
-          mobileOpen={mobileOpen}
-          handleDrawerToggle={handleDrawerToggle}
-          menuItems={menuItems}
-          userName={user?.firstName}
-          roleLabel="Admin"
-          onLogout={handleLogout}
-        />
-        <Box
-          component="main"
-          sx={{
-            width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-          }}
-        >
-          <Navbar
-            handleDrawerToggle={handleDrawerToggle}
-            menuItems={menuItems}
-          />
-          {children}
-          <AssistantPanel pageContext="admin-dashboard" />
-        </Box>
-      </Box>
-    </>
+    <div className="dsp-admin-shell">
+      <DashboardShell
+        drawerWidth={DRAWER_WIDTH}
+        mobileOpen={mobileOpen}
+        handleDrawerToggle={handleDrawerToggle}
+        menuItems={menuItems}
+        sections={sections}
+        userName={user?.firstName || "Admin"}
+        userIsDemo={Boolean(user?.isDemo)}
+        roleLabel="Admin"
+        onLogout={handleLogout}
+      >
+        {children}
+      </DashboardShell>
+      <AssistantPanel pageContext="admin-dashboard" />
+    </div>
   );
 }

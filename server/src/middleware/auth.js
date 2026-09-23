@@ -19,6 +19,7 @@ const authMiddleware = async (req) => {
         id: decoded.id,
         email: decoded.email,
         role: decoded.role,
+        isDemo: Boolean(decoded.isDemo),
       },
     };
   } catch (err) {

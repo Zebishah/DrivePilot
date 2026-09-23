@@ -1,138 +1,33 @@
-import React, { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@mui/material";
-import { FaBars, FaTimes } from "react-icons/fa";
-const Navbar: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
+import { useEffect, useState } from "react";
+import { ChevronDown, Menu, X } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import BrandLogo from "../BrandLogo";
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-  React.useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location]);
+const links = [
+  ["For Students", "#roles"],
+  ["For Instructors", "#roles"],
+  ["How it works", "#workflow"],
+  ["Platform", "#platform"],
+  ["Engineering", "#engineering"],
+  ["FAQ", "#faq"],
+];
+
+export default function Navbar() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => setOpen(false), [location.pathname, location.hash]);
 
   return (
-    <nav className="bg-gray-900 font-poppins text-white py-4 px-6 flex justify-between items-center relative">
-      {/* Logo Section */}
-      <div className="flex items-center">
-        <img
-          src="/darkbluelogo.png"
-          alt="Logo"
-          className="h-10 w-auto md:ml-8"
-        />
+    <header className="dsp-public-header">
+      <div className="dsp-public-container dsp-public-header__inner">
+        <BrandLogo className="dsp-public-logo" to="/" aria-label="DSP Marketplace home" />
+        <button className="dsp-public-menu-button" type="button" onClick={() => setOpen(!open)} aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open}><span>{open ? <X size={21} /> : <Menu size={21} />}</span></button>
+        <nav className={`dsp-public-nav ${open ? "is-open" : ""}`} aria-label="Main navigation">
+          <div className="dsp-public-nav__links">{links.map(([label, href]) => { const target = location.pathname === "/" ? href : `/${href}`; return <a key={label} href={target}>{label}<ChevronDown size={13} /></a>; })}</div>
+          <div className="dsp-public-nav__actions"><NavLink className="dsp-public-nav__signin" to="/auth/signin">Sign in</NavLink><NavLink className="dsp-public-button dsp-public-button--primary dsp-public-button--small" to="/auth/signup">Get started <span aria-hidden="true">→</span></NavLink></div>
+        </nav>
       </div>
-
-      {/* Hamburger Menu Icon */}
-      <button
-        type="button"
-        className="md:hidden rounded-md p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-        onClick={toggleMenu}
-        aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={isMenuOpen}
-        aria-controls="public-navigation"
-      >
-        {isMenuOpen ? (
-          <FaTimes className="h-6 w-6" aria-hidden="true" />
-        ) : (
-          <FaBars className="h-6 w-6" aria-hidden="true" />
-        )}
-      </button>
-
-      {/* Links Section */}
-      <ul
-        id="public-navigation"
-        className={`flex flex-col p-6 md:p-4 md:flex-row space-y-6 md:space-y-0 md:space-x-6 absolute md:relative top-14 md:top-auto left-0 w-full md:w-auto bg-gray-900 md:bg-transparent transition-all duration-300 ease-in-out ${
-          isMenuOpen ? "block" : "hidden md:flex"
-        }`}
-      >
-        <li>
-          <NavLink
-            to="/"
-            className={({ isActive }) =>
-              isActive ? "text-primary" : "hover:text-gray-300"
-            }
-          >
-            Home
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/about"
-            className={({ isActive }) =>
-              isActive ? "text-primary" : "hover:text-gray-300"
-            }
-          >
-            About Us
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/contact"
-            className={({ isActive }) =>
-              isActive ? "text-primary" : "hover:text-gray-300"
-            }
-          >
-            Contact Us
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/professional"
-            className={({ isActive }) =>
-              isActive ? "text-primary" : "hover:text-gray-300"
-            }
-          >
-            Our Instructors
-          </NavLink>
-        </li>
-        <li className="block md:hidden w-full">
-          <Button
-            onClick={() => {
-              navigate("/auth/signin");
-            }}
-            variant="contained"
-            sx={{
-              paddingLeft: "2rem",
-              paddingRight: "2rem",
-              borderRadius: "10px",
-              backgroundColor: "#5EC2D2",
-              "&:hover": { backgroundColor: "#479A93" },
-              textTransform: "none",
-              color: "#000",
-              fontFamily: "Poppins, sans-serif",
-            }}
-          >
-            Sign In
-          </Button>
-        </li>
-      </ul>
-
-      {/* Button Section */}
-      <div className="hidden md:block mr-8">
-        <Button
-          onClick={() => {
-            navigate("/auth/signin");
-          }}
-          variant="contained"
-          sx={{
-            paddingLeft: "2rem",
-            paddingRight: "2rem",
-            borderRadius: "10px",
-            backgroundColor: "#5EC2D2",
-            "&:hover": { backgroundColor: "#479A93" },
-            textTransform: "none",
-            color: "#000",
-            fontFamily: "Poppins, sans-serif",
-          }}
-        >
-          Sign In
-        </Button>
-      </div>
-    </nav>
+    </header>
   );
-};
-
-export default Navbar;
+}

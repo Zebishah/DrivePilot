@@ -26,10 +26,20 @@ function parseEmailAddress(value) {
     return { displayName, email };
   }
   if (/^[^<>@\s]+@[^<>@\s]+$/.test(raw)) return { displayName: "", email: raw };
-  throw new EmailProviderError("EMAIL_FROM must be a valid email address", {
+  throw new EmailProviderError("Configured sender must be a valid email address", {
     code: "EMAIL_FROM_INVALID",
     retryable: false,
   });
+}
+
+function resolveConfiguredFrom(env = process.env) {
+  const address = String(env.EMAIL_FROM_ADDRESS || "").trim();
+  if (address) {
+    const name = String(env.EMAIL_FROM_NAME || "DSP Marketplace").trim();
+    return name ? `${name} <${address}>` : address;
+  }
+  // Keep deployments using the original single-variable configuration working.
+  return String(env.EMAIL_FROM || "").trim();
 }
 
 function normalizeReplyTo(value) {
@@ -48,7 +58,7 @@ function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.en
 
   return {
     isEnabled: () => enabled,
-    async send({ to, from, subject, html, text, replyTo }) {
+    async send({ to, from, subject, html, text, replyTo, tracking }) {
       if (!enabled) return { skipped: true, reason: "EMAIL_DISABLED" };
       if (typeof fetchImpl !== "function") {
         throw new EmailProviderError("Fetch is unavailable for Elastic Email", {
@@ -106,6 +116,14 @@ function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.en
       const normalizedReplyTo = normalizeReplyTo(replyTo);
       if (normalizedReplyTo) content.ReplyTo = normalizedReplyTo;
 
+      const options = {};
+      if (tracking && tracking.trackOpens !== undefined) {
+        options.TrackOpens = String(Boolean(tracking.trackOpens));
+      }
+      if (tracking && tracking.trackClicks !== undefined) {
+        options.TrackClicks = String(Boolean(tracking.trackClicks));
+      }
+
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
@@ -115,7 +133,11 @@ function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.en
             "X-ElasticEmail-ApiKey": String(env.ELASTIC_EMAIL_API_KEY).trim(),
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ Recipients: { To: recipients }, Content: content }),
+          body: JSON.stringify({
+            Recipients: { To: recipients },
+            Content: content,
+            ...(Object.keys(options).length ? { Options: options } : {}),
+          }),
           signal: controller.signal,
         });
         let body = null;
@@ -177,6 +199,7 @@ module.exports = {
   EmailProviderError,
   createElasticEmailProvider,
   createEmailProvider,
+  resolveConfiguredFrom,
   parseEmailAddress,
   emailProvider,
 };

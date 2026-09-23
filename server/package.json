@@ -13,7 +13,8 @@
     "test:financial": "node --test --test-concurrency=1 src/services/financialReliability.test.js src/services/financialOperationService.test.js src/services/stripeWebhookDurability.test.js src/services/transactionService.test.js src/utils/money.test.js src/scripts/backfillMoneyMinor.test.js src/utils/logger.test.js src/utils/metrics.test.js src/middleware/requestCorrelation.test.js",
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage",
     "money:backfill": "node src/scripts/backfillMoneyMinor.js",
-    "seed:demo-users": "node src/scripts/seedDemoUsers.js"
+    "seed:demo-users": "node src/scripts/seedDemoUsers.js",
+    "seed:demo": "node src/scripts/seedDemoUsers.js"
   },
   "dependencies": {
     "@graphql-tools/merge": "^9.0.24",

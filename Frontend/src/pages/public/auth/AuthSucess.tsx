@@ -73,13 +73,12 @@ const AuthSuccess = () => {
 
   return (
     <AuthLayout>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg p-8 flex flex-col items-center max-w-sm mx-4">
+      <div className="dsp-auth-status">
           <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-          <Typography className="text-xl font-semibold text-gray-800 mb-2">
+          <Typography component="h1">
             Completing Authentication
           </Typography>
-        </div>
+          <Typography component="p">We’re securely taking you to your workspace.</Typography>
       </div>
     </AuthLayout>
   );

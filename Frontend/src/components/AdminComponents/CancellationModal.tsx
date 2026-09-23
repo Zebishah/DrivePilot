@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { X, AlertTriangle, Calendar, Clock, User } from "lucide-react";
+import { AlertTriangle, Calendar, Clock, User } from "lucide-react";
 import { StudentBooking } from "../../types/AdminBookingShowcase";
+import { AdminButton } from "../admin/AdminPrimitives";
+import { AdminModal } from "../admin/AdminModal";
 
 interface CancelBookingModalProps {
   isOpen: boolean;
@@ -54,32 +56,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div
-          className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-
-        <div className="inline-block transform overflow-hidden rounded-xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
-          <div className="bg-white px-6 pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0 rounded-full bg-red-100 p-3">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Cancel Lesson
-                </h3>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-500 transition-colors duration-150 p-1 rounded-full hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
+    <AdminModal open={isOpen} onClose={onClose} title="Cancel lesson" subtitle="This change will update the booking status." size="md" closeOnBackdrop={!isSubmitting} closeOnEscape={!isSubmitting} footer={<><AdminButton variant="secondary" onClick={onClose} disabled={isSubmitting}>Keep lesson</AdminButton><AdminButton variant="danger" onClick={handleSubmit} disabled={!reason.trim() || isSubmitting} icon={AlertTriangle}>{isSubmitting ? "Cancelling..." : "Cancel lesson"}</AdminButton></>}>
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <h4 className="font-medium text-gray-900 mb-3">Lesson Details</h4>
               <div className="space-y-3">
@@ -145,29 +122,7 @@ const CancelBookingModal: React.FC<CancelBookingModalProps> = ({
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-3 space-y-reverse sm:space-y-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Keep Lesson
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!reason.trim() || isSubmitting}
-              className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? "Cancelling..." : "Cancel Lesson"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AdminModal>
   );
 };
 

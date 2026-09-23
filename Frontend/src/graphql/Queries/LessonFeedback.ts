@@ -78,3 +78,20 @@ export const GET_STUDENT_FEEDBACKS_LIST = gql`
     }
   }
 `;
+
+export const GET_ALL_FEEDBACKS = gql`
+  query GetAllFeedbacks {
+    getAllFeedbacks {
+      _id
+      lessonId
+      bookingId
+      instructorId
+      studentId
+      instructorEmail
+      feedbackTags
+      hoursRemaining
+      message
+      createdAt
+    }
+  }
+`;

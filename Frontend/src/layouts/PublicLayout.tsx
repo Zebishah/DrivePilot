@@ -13,6 +13,16 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   const { trackVisitor, isTracked, trackingError } = useVisitorTracking();
 
   useEffect(() => {
+    document.title = "DSP Marketplace — Driving Lessons, Instructors & Learning Management";
+    const description = "Find instructors, book lessons, manage payments, track learning progress and run driving-school operations from one connected platform.";
+    let descriptionTag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (!descriptionTag) {
+      descriptionTag = document.createElement("meta");
+      descriptionTag.name = "description";
+      document.head.appendChild(descriptionTag);
+    }
+    descriptionTag.content = description;
+
     // Track visitor when component mounts
     const handleVisitorTracking = async () => {
       try {

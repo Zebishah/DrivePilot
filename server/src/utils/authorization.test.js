@@ -4,6 +4,7 @@ process.env.STRIPE_SECRET_KEY ||= "sk_test_phase1_authorization_only";
 
 const {
   requireAuthenticatedUser,
+  requireLiveWorkspace,
   requireAdmin,
   requireSuperAdmin,
   requireStudentOwnership,
@@ -22,6 +23,16 @@ test("authorization rejects anonymous users and non-admin admin operations", () 
   assert.throws(
     () => requireAdmin({ id: "student-1", role: "Student" }),
     /Not authorized/,
+  );
+});
+
+test("demo workspaces cannot perform guarded mutations", () => {
+  assert.throws(
+    () => requireLiveWorkspace({ id: "demo-admin", role: "Admin", isDemo: true }),
+    /Demo mode: this action is disabled in the recruiter preview/,
+  );
+  assert.doesNotThrow(() =>
+    requireLiveWorkspace({ id: "admin-1", role: "Admin", isDemo: false }),
   );
 });
 

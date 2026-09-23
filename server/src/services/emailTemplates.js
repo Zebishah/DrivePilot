@@ -12,14 +12,14 @@ const FRONTEND_ORIGIN = (() => {
 })();
 
 const COLORS = {
-  navy: "#111a35",
-  blue: "#3157d5",
-  cyan: "#4cc7e8",
-  ink: "#18233f",
-  muted: "#63708a",
-  border: "#e5eaf2",
-  canvas: "#f4f8fb",
-  softBlue: "#eef3ff",
+  navy: "#111827",
+  blue: "#7c3aed",
+  cyan: "#38bdf8",
+  ink: "#111827",
+  muted: "#64748b",
+  border: "#e2e8f0",
+  canvas: "#f7f8fc",
+  softBlue: "#faf5ff",
 };
 
 function escapeHtml(value) {
@@ -126,6 +126,35 @@ function shell(title, body, { preheader = "" } = {}) {
 </html>`;
 }
 
+function otpShell(title, body) {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>${escapeHtml(title)}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f8fb;font-family:Arial,Helvetica,sans-serif;color:${COLORS.ink};-webkit-text-size-adjust:100%">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f8fb">
+      <tr><td align="center" style="padding:28px 12px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
+          <tr><td style="padding:4px 8px 18px;color:${COLORS.navy};font-size:16px;font-weight:800">DSP Marketplace</td></tr>
+          <tr><td style="background:#ffffff;border:1px solid ${COLORS.border};border-radius:14px;overflow:hidden">
+            <div style="height:4px;background:${COLORS.cyan}"></div>
+            <div style="padding:32px 34px 34px">
+              <p style="margin:0 0 10px;color:${COLORS.blue};font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase">DSP Marketplace</p>
+              <h1 style="margin:0;color:${COLORS.navy};font-size:26px;line-height:1.25">${escapeHtml(title)}</h1>
+              <div style="margin-top:24px;color:${COLORS.ink};font-size:15px;line-height:1.65">${body}</div>
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
 function slotsText(slots = []) {
   return slots
     .map((slot) => `${formatDate(slot.date)} · ${formatTime(slot.startTime)}–${formatTime(slot.endTime)}`)
@@ -168,12 +197,15 @@ function renderEmailTemplate(template, data = {}) {
     return bookingTemplate(data);
   }
   if (template === "otp") {
-    const title = data.type === "two_factor_auth" ? "Your sign-in code" : "Verify your email address";
+    const isSignIn = data.type === "two_factor_auth";
+    const title = isSignIn ? "Your DSP Marketplace sign-in code" : "Your DSP Marketplace verification code";
+    const codeLabel = isSignIn ? "Your sign-in code" : "Your verification code";
     const otp = String(data.otp ?? "");
     return {
       subject: title,
-      text: `${title}\n\nYour 6-digit one-time code is ${otp}. It expires in 10 minutes.`,
-      html: shell(title, `<p style="margin:0 0 16px">Use the verification code below to continue securely.</p>${infoCard(`<p style="margin:0 0 8px;color:${COLORS.muted};font-size:12px;text-align:center">Your 6-digit verification code</p><p style="margin:0;color:${COLORS.navy};font-size:32px;line-height:1.2;font-weight:800;letter-spacing:9px;text-align:center">${escapeHtml(otp)}</p>`)}<p style="margin:0;color:${COLORS.muted};font-size:13px">This code expires in 10 minutes. If you did not request it, you can safely ignore this email.</p>`, { preheader: "Your DSP six-digit verification code is ready." }),
+      text: `DSP Marketplace\n\n${codeLabel}: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, you can safely ignore this email.`,
+      html: otpShell(title, `<p style="margin:0 0 16px">${escapeHtml(codeLabel)}:</p><div style="margin:20px 0;background:${COLORS.softBlue};border:1px solid #dbe5ff;border-radius:10px;padding:18px;text-align:center"><p style="margin:0;color:${COLORS.navy};font-size:32px;line-height:1.2;font-weight:800;letter-spacing:9px">${escapeHtml(otp)}</p></div><p style="margin:0;color:${COLORS.muted};font-size:13px">This code expires in 10 minutes. If you did not request this, you can safely ignore this email.</p>`),
+      tracking: { trackOpens: false, trackClicks: false },
     };
   }
   if (template === "welcome") {

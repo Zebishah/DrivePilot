@@ -90,6 +90,7 @@ const reviewTypeDefs = gql`
   }
   extend type Query {
     getInstructorReviews(instructorId: ID!): [Review!]!
+    getAllReviews: [Review!]!
     getStudentReviews(studentId: ID!): [Review!]!
     getAllStudentBookingSlots: [StudentBookingSlot!]!
     getReviewByLessonSlot(lessonId: ID!, slotId: String!): Review

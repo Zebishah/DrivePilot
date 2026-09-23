@@ -1,72 +1,12 @@
 import React from "react";
-import { X, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { AdminButton } from "../admin/AdminPrimitives";
+import { AdminModal } from "../admin/AdminModal";
 
-interface StudentDeleteConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  studentCount: number;
-  isLoading?: boolean;
-}
+interface StudentDeleteConfirmationModalProps { isOpen: boolean; onClose: () => void; onConfirm: () => void; studentCount: number; isLoading?: boolean; }
 
-export const StudentDeleteConfirmationModal: React.FC<
-  StudentDeleteConfirmationModalProps
-> = ({ isOpen, onClose, onConfirm, studentCount, isLoading = false }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black bg-opacity-50"
-        onClick={onClose}
-      />
-
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full relative">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-10 h-10 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 ml-3">
-                Delete Students
-              </h3>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              disabled={isLoading}
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <div className="mb-6">
-            <p className="text-sm text-gray-600">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold">{studentCount}</span> student
-              {studentCount > 1 ? "s" : ""}? This action cannot be undone.
-            </p>
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={onClose}
-              disabled={isLoading}
-              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={isLoading}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Deleting..." : "Delete"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+export const StudentDeleteConfirmationModal: React.FC<StudentDeleteConfirmationModalProps> = ({ isOpen, onClose, onConfirm, studentCount, isLoading = false }) => (
+  <AdminModal open={isOpen} onClose={onClose} title="Delete Students" size="sm" closeOnBackdrop={!isLoading} closeOnEscape={!isLoading} footer={<><AdminButton variant="secondary" onClick={onClose} disabled={isLoading}>Cancel</AdminButton><AdminButton variant="danger" onClick={onConfirm} disabled={isLoading} icon={AlertTriangle}>{isLoading ? "Deleting..." : "Delete"}</AdminButton></>}>
+    <p className="dsp-admin-confirmation-copy">Are you sure you want to delete <strong>{studentCount}</strong> student{studentCount > 1 ? "s" : ""}? This action cannot be undone.</p>
+  </AdminModal>
+);

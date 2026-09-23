@@ -8,6 +8,7 @@ const { Admin, User } = require("../../models/User");
 const StudentBooking = require("../../models/studentBooking.model");
 const { fromMinorUnits } = require("../../utils/money");
 const { normalizePagination } = require("../../utils/pagination");
+const { requireLiveWorkspace } = require("../../utils/authorization");
 
 const amountMinorExpression = {
   $ifNull: ["$amountMinor", { $round: [{ $multiply: ["$amount", 100] }, 0] }],
@@ -477,6 +478,7 @@ const transactionResolver = {
   },
   Mutation: {
     async updatePlatformCommissionSettings(_, { input }, { user }) {
+      requireLiveWorkspace(user);
       if (!user || user.role !== "Admin") {
         throw new ForbiddenError("Not authorized");
       }

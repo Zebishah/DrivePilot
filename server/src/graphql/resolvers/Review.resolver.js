@@ -87,6 +87,13 @@ const reviewResolver = {
       );
       return reviews;
     },
+    getAllReviews: async (_, __, { user }) => {
+      requireRole(user, "Admin");
+      return Review.find({})
+        .populate("studentId", "_id firstName lastName profileImage")
+        .populate("instructorId", "_id firstName lastName profileImage")
+        .sort({ createdAt: -1 });
+    },
     getStudentHoursProgress: async (_, { studentId }, { user }) => {
       try {
         await requireStudentDataAccess(user, studentId);

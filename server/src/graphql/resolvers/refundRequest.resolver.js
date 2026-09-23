@@ -29,6 +29,7 @@ const { fromMinorUnits, toMinorUnits } = require("../../utils/money");
 const { invalidateAvailability } = require("../../services/cacheInvalidation");
 const { enqueueEmailEvent } = require("../../services/outboxService");
 const { getPrivateDocumentUrl } = require("../../services/documentUrlService");
+const { requireLiveWorkspace } = require("../../utils/authorization");
 
 function toIsoString(value) {
   if (value == null) return null;
@@ -88,6 +89,7 @@ const refundRequestResolver = {
       { bookingId, slotId, message, attachments = [] },
       { user },
     ) {
+      requireLiveWorkspace(user);
       if (!user || user.role !== "Student") {
         throw new ForbiddenError("Not authorized");
       }
@@ -266,6 +268,7 @@ const refundRequestResolver = {
     },
 
     async approveRefundRequest(_, { id }, { user }) {
+      requireLiveWorkspace(user);
       if (!user || user.role !== "Admin") {
         throw new ForbiddenError("Not authorized");
       }

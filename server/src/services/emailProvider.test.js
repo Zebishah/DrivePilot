@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { EmailProviderError, createElasticEmailProvider, createEmailProvider, parseEmailAddress } = require("./emailProvider");
+const { EmailProviderError, createElasticEmailProvider, createEmailProvider, parseEmailAddress, resolveConfiguredFrom } = require("./emailProvider");
 
 function response(status, body = {}) {
   return {
@@ -41,6 +41,7 @@ test("Elastic Email test mode maps the transactional payload and sender", async 
     subject: "Test",
     html: "<p>Hello</p>",
     text: "Hello",
+    tracking: { trackOpens: false, trackClicks: false },
   });
 
   assert.equal(calls.length, 1);
@@ -51,6 +52,7 @@ test("Elastic Email test mode maps the transactional payload and sender", async 
   assert.equal(calls[0].body.Content.From, "DSP Marketplace <sender@example.com>");
   assert.equal(calls[0].body.Content.ReplyTo, "Support <support@example.com>");
   assert.equal(calls[0].body.Content.Subject, "Test");
+  assert.deepEqual(calls[0].body.Options, { TrackOpens: "false", TrackClicks: "false" });
   assert.deepEqual(calls[0].body.Content.Body, [
     { ContentType: "HTML", Charset: "utf-8", Content: "<p>Hello</p>" },
     { ContentType: "PlainText", Charset: "utf-8", Content: "Hello" },
@@ -58,6 +60,17 @@ test("Elastic Email test mode maps the transactional payload and sender", async 
   assert.equal(result.provider, "elasticemail");
   assert.equal(result.providerMessageId, "elastic-123");
   assert.deepEqual(result.intendedRecipients, ["real-recipient@example.com"]);
+});
+
+test("new sender variables produce a DSP Marketplace display sender", () => {
+  assert.equal(
+    resolveConfiguredFrom({ EMAIL_FROM_ADDRESS: "verified@example.com", EMAIL_FROM_NAME: "DSP Marketplace" }),
+    "DSP Marketplace <verified@example.com>",
+  );
+  assert.equal(
+    resolveConfiguredFrom({ EMAIL_FROM_ADDRESS: "", EMAIL_FROM: "Legacy <legacy@example.com>" }),
+    "Legacy <legacy@example.com>",
+  );
 });
 
 test("production mode sends all intended recipients", async () => {

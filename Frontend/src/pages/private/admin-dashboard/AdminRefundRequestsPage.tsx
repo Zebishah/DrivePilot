@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Box,
-  Typography,
   Paper,
   Table,
   TableBody,
@@ -18,11 +17,6 @@ import {
   Stack,
   Tabs,
   Tab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -34,6 +28,8 @@ import {
 } from "../../../graphql/mutations/refundRequest";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { AdminButton, AdminPage, AdminPageHeader, AdminStatus } from "../../../components/admin/AdminPrimitives";
+import { AdminModal, AdminDetailGrid, AdminDetailRow } from "../../../components/admin/AdminModal";
 
 function formatDate(value: string | null | undefined): string {
   if (value == null || value === "") return "—";
@@ -123,13 +119,8 @@ export default function AdminRefundRequestsPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-        Refund Requests
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Students request refunds after cancelling a lesson. Approve or reject each request here.
-      </Typography>
+    <AdminPage>
+      <AdminPageHeader title="Refund requests" description="Review and resolve Student refund requests without changing the existing payment workflow." />
 
       <Tabs
         value={statusFilter}
@@ -214,7 +205,7 @@ export default function AdminRefundRequestsPage() {
                     align="center"
                     sx={{ py: 4 }}
                   >
-                    No refund requests found.
+                    No refund requests to review. New Student requests will appear here.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -306,113 +297,12 @@ export default function AdminRefundRequestsPage() {
         </TableContainer>
       )}
 
-      <Dialog open={!!rejectDialog} onClose={() => setRejectDialog(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Reject refund request</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Optional: add a reason for the student (e.g. &quot;Payout already sent&quot;).
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={2}
-            label="Reason (optional)"
-            value={rejectDialog?.reason ?? ""}
-            onChange={(e) =>
-              setRejectDialog((prev) => (prev ? { ...prev, reason: e.target.value } : null))
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectDialog(null)} disabled={isProcessing}>
-            Cancel
-          </Button>
-          <Button variant="contained" color="error" onClick={handleRejectSubmit} disabled={isProcessing}>
-            {rejecting ? <CircularProgress size={24} /> : "Reject"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={!!detailsRow} onClose={() => setDetailsRow(null)} maxWidth="md" fullWidth>
-        <DialogTitle>Refund request details</DialogTitle>
-        <DialogContent>
-          {detailsRow && (
-            <Stack spacing={1.5} sx={{ pt: 0.5 }}>
-              <Typography variant="body2">
-                <strong>Student:</strong> {detailsRow.studentName ?? "—"}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Instructor:</strong> {detailsRow.instructorName ?? "—"}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Lesson:</strong> {detailsRow.slotDate ?? "—"}{" "}
-                {formatTime24(detailsRow.slotStartTime)}
-                {detailsRow.slotStartTime || detailsRow.slotEndTime ? "–" : ""}
-                {formatTime24(detailsRow.slotEndTime)}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Amount:</strong> {detailsRow.currency} {detailsRow.amount.toFixed(2)}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Requested at:</strong> {formatDate(detailsRow.requestedAt)}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Status:</strong>{" "}
-                {detailsRow.status.charAt(0).toUpperCase() + detailsRow.status.slice(1)}
-              </Typography>
-              {detailsRow.rejectionReason && (
-                <Typography variant="body2">
-                  <strong>Rejection reason:</strong> {detailsRow.rejectionReason}
-                </Typography>
-              )}
-              <Typography variant="body2">
-                <strong>Student message:</strong>
-              </Typography>
-              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "grey.50" }}>
-                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                  {detailsRow.message?.trim() || "—"}
-                </Typography>
-              </Paper>
-              <Typography variant="body2">
-                <strong>Uploaded documents:</strong>
-              </Typography>
-              {Array.isArray(detailsRow.attachments) && detailsRow.attachments.length > 0 ? (
-                <Stack spacing={1}>
-                  {detailsRow.attachments.map((file) => (
-                    <Paper
-                      key={`${detailsRow.id}-${file.url}`}
-                      variant="outlined"
-                      sx={{ p: 1.25, display: "flex", justifyContent: "space-between", gap: 1 }}
-                    >
-                      <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
-                        {file.fileName}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="text"
-                        component="a"
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        sx={{ textTransform: "none", whiteSpace: "nowrap" }}
-                      >
-                        Open
-                      </Button>
-                    </Paper>
-                  ))}
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No documents uploaded.
-                </Typography>
-              )}
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsRow(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      <AdminModal open={Boolean(rejectDialog)} onClose={() => setRejectDialog(null)} title="Reject refund request" subtitle="Add an optional reason for the Student." size="sm" closeOnBackdrop={!isProcessing} closeOnEscape={!isProcessing} footer={<><AdminButton variant="secondary" onClick={() => setRejectDialog(null)} disabled={isProcessing}>Cancel</AdminButton><AdminButton variant="danger" onClick={handleRejectSubmit} disabled={isProcessing}>{rejecting ? "Rejecting..." : "Reject request"}</AdminButton></>}>
+        <label className="dsp-admin-form-field">Reason (optional)<textarea className="dsp-admin-input" rows={4} value={rejectDialog?.reason ?? ""} onChange={(event) => setRejectDialog((prev) => (prev ? { ...prev, reason: event.target.value } : null))} placeholder="For example: payout already sent" /></label>
+      </AdminModal>
+      <AdminModal open={Boolean(detailsRow)} onClose={() => setDetailsRow(null)} title="Refund request details" subtitle={detailsRow ? `${detailsRow.currency} ${detailsRow.amount.toFixed(2)} refund request` : undefined} size="lg" footer={<AdminButton variant="secondary" onClick={() => setDetailsRow(null)}>Close</AdminButton>}>
+        {detailsRow && <div className="dsp-admin-modal-stack"><AdminDetailGrid><AdminDetailRow label="Student" value={detailsRow.studentName} /><AdminDetailRow label="Instructor" value={detailsRow.instructorName} /><AdminDetailRow label="Lesson" value={`${detailsRow.slotDate ?? "Not provided"} ${formatTime24(detailsRow.slotStartTime)}${detailsRow.slotStartTime || detailsRow.slotEndTime ? "–" : ""}${formatTime24(detailsRow.slotEndTime)}`} /><AdminDetailRow label="Amount" value={`${detailsRow.currency} ${detailsRow.amount.toFixed(2)}`} /><AdminDetailRow label="Requested at" value={formatDate(detailsRow.requestedAt)} /><AdminDetailRow label="Status" value={<AdminStatus tone={detailsRow.status === "approved" ? "success" : detailsRow.status === "rejected" ? "danger" : "warning"}>{detailsRow.status}</AdminStatus>} />{detailsRow.rejectionReason && <AdminDetailRow label="Rejection reason" value={detailsRow.rejectionReason} />}</AdminDetailGrid><section className="dsp-admin-modal-section"><h3>Student message</h3><p className="dsp-admin-feedback-detail__message">{detailsRow.message?.trim() || "No message provided."}</p></section><section className="dsp-admin-modal-section"><h3>Uploaded documents</h3>{detailsRow.attachments?.length ? <div className="dsp-admin-attachment-list">{detailsRow.attachments.map((file) => <a key={`${detailsRow.id}-${file.url}`} href={file.url} target="_blank" rel="noreferrer" className="dsp-admin-attachment-row"><span>{file.fileName}</span><span>Open</span></a>)}</div> : <p className="dsp-admin-muted">No documents uploaded.</p>}</section></div>}
+      </AdminModal>
+    </AdminPage>
   );
 }

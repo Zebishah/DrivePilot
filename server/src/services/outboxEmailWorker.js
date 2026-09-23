@@ -3,7 +3,7 @@ const OutboxEvent = require("../models/OutboxEvent");
 const User = require("../models/User").User;
 const Otp = require("../models/User").Otp;
 const SignupToken = require("../models/SignupLink");
-const { emailProvider } = require("./emailProvider");
+const { emailProvider, resolveConfiguredFrom } = require("./emailProvider");
 const { renderEmailTemplate } = require("./emailTemplates");
 const metrics = require("../utils/metrics");
 const { logger, classifyError } = require("../utils/logger");
@@ -29,7 +29,7 @@ async function resolveReferences(event) {
 
   if (references.otpId) {
     const otp = await Otp.findById(references.otpId).lean();
-    if (!otp || new Date(otp.expiresAt) <= new Date()) {
+    if (!otp || otp.status !== "unused" || new Date(otp.expiresAt) <= new Date()) {
       throw Object.assign(new Error("OTP is missing or expired"), { code: "OTP_EXPIRED", retryable: false });
     }
     data.otp = otp.otp;
@@ -134,9 +134,19 @@ async function deliverEvent(event, { provider = emailProvider } = {}) {
   const payload = event.payload || {};
   const data = await resolveReferences(event);
   const message = renderEmailTemplate(payload.template, data);
-  const from = process.env.EMAIL_FROM || "";
+  const from = resolveConfiguredFrom(process.env);
+  const replyTo = String(process.env.EMAIL_REPLY_TO || "").trim() || undefined;
   logger.info("email_send_attempt", { eventId: event.eventId, eventType: event.eventType, attempt: event.attemptCount });
-  return provider.send({ to: payload.to, from, subject: message.subject, html: message.html, text: message.text, metadata: event.metadata });
+  return provider.send({
+    to: payload.to,
+    from,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    replyTo,
+    tracking: message.tracking,
+    metadata: event.metadata,
+  });
 }
 
 async function runOutboxEmailJob(context = {}) {

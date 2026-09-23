@@ -9,10 +9,11 @@ import {
   Typography,
   CircularProgress,
   InputLabel,
+  Link as MuiLink,
 } from "@mui/material";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { FORGOT_PASSWORD } from "../../../graphql/mutations/auth";
 import { useMutation } from "@apollo/client";
 import toast from "react-hot-toast";
@@ -24,7 +25,6 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 const ForgotPassword: React.FC = () => {
-  const nav = useNavigate();
   const {
     control,
     handleSubmit,
@@ -52,8 +52,8 @@ const ForgotPassword: React.FC = () => {
       } else {
         toast.error("Failed to send reset email. Please try again.");
       }
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred. Please try again.");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "An error occurred. Please try again.");
     }
   };
 
@@ -71,16 +71,6 @@ const ForgotPassword: React.FC = () => {
         }}
       >
         <Box
-          component="img"
-          alt="Cricles"
-          src="/auth/decorative-circles.png"
-          sx={{
-            position: "absolute",
-            top: 1,
-            right: 1,
-          }}
-        ></Box>
-        <Box
           sx={{
             mb: 4,
             display: "flex",
@@ -96,15 +86,14 @@ const ForgotPassword: React.FC = () => {
             component="h1"
             sx={{ mt: 4, fontWeight: "bold" }}
           >
-            Forgot Password?
+            Forgot your password?
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mt: 1, whiteSpace: "nowrap" }}
           >
-            Enter your email address and we'll send you a link to reset your
-            password.
+            Enter your email and we’ll send reset instructions.
           </Typography>
         </Box>
 
@@ -151,9 +140,14 @@ const ForgotPassword: React.FC = () => {
             {loading ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
-              "Change Password"
+              "Send reset instructions"
             )}
           </Button>
+          <Box sx={{ textAlign: "center", mt: 1 }}>
+            <MuiLink component={Link} to="/auth/signin" variant="body2">
+              Back to sign in
+            </MuiLink>
+          </Box>
         </Box>
       </Box>
     </AuthLayout>

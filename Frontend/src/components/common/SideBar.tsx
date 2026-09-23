@@ -1,12 +1,6 @@
 import {
   Avatar,
   Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   Drawer,
   List,
   ListItem,
@@ -26,6 +20,9 @@ import type { IconType } from "react-icons/lib";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { clearUnreadMessages } from "../../store/slices/chatSlice";
+import { AdminButton } from "../admin/AdminPrimitives";
+import { AdminModal } from "../admin/AdminModal";
+import BrandLogo from "../BrandLogo";
 
 export interface MenuItem {
   text: string;
@@ -81,6 +78,7 @@ interface SidebarProps {
   sections?: SidebarSection[];
   userName?: string;
   userAvatar?: string;
+  userIsDemo?: boolean;
   roleLabel?: "Student" | "Instructor" | "Admin";
   overviewMode?: boolean;
   onLogout?: () => void;
@@ -96,6 +94,7 @@ export default function Sidebar({
   sections,
   userName = "John",
   userAvatar,
+  userIsDemo = false,
   roleLabel = "Student",
   overviewMode = false,
   onLogout,
@@ -169,11 +168,7 @@ export default function Sidebar({
             : undefined
         }
       >
-        <img
-          src="/Website-new-logo.png"
-          alt="DSP Logo"
-          style={{ height: 42, width: "auto" }}
-        />
+        <BrandLogo size="md" to="/" aria-label="DSP Marketplace home" />
       </Box>
 
       <Box className="dsp-sidebar__identity">
@@ -193,6 +188,7 @@ export default function Sidebar({
               <span className="dsp-sidebar__status-dot" aria-hidden="true" />
               {roleLabel}
             </span>
+            {userIsDemo ? <span className="dsp-sidebar__demo-badge">Recruiter Demo</span> : null}
           </Box>
         </Box>
         <Typography className="dsp-sidebar__eyebrow">
@@ -283,32 +279,9 @@ export default function Sidebar({
         </List>
       )}
 
-      <Dialog
-        open={logoutDialogOpen}
-        onClose={handleCancelLogout}
-        aria-labelledby="logout-dialog-title"
-        aria-describedby="logout-dialog-description"
-      >
-        <DialogTitle id="logout-dialog-title">Confirm Logout</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="logout-dialog-description">
-            Are you sure you want to log out of your account?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelLogout} color="primary">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmLogout}
-            color="primary"
-            variant="contained"
-            autoFocus
-          >
-            Logout
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AdminModal open={logoutDialogOpen} onClose={handleCancelLogout} title="Confirm logout" subtitle="You can sign back in whenever you need to return." size="sm" footer={<><AdminButton variant="secondary" onClick={handleCancelLogout}>Cancel</AdminButton><AdminButton variant="danger" onClick={handleConfirmLogout}>Logout</AdminButton></>}>
+        <p className="dsp-admin-confirmation-copy">Are you sure you want to log out of your account?</p>
+      </AdminModal>
     </Box>
   );
 
