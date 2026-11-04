@@ -181,7 +181,7 @@ export default function StudentProfileSetting() {
               src={avatarFailed ? undefined : studentData.profileImage || undefined}
               alt={fullName}
               onError={() => setAvatarFailed(true)}
-              sx={{ width: 112, height: 112, fontSize: "2rem", fontWeight: 800, color: "var(--ws-primary, #6D28D9)", bgcolor: "var(--ws-surface, #F3E8FF)" }}
+              sx={{ width: 112, height: 112, fontSize: "2rem", fontWeight: 800, color: "var(--ws-primary-ink, #6D28D9)", bgcolor: "var(--ws-surface, #F3E8FF)" }}
             >
               {initialsFor(firstName, lastName)}
             </Avatar>

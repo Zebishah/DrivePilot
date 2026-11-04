@@ -46,7 +46,7 @@ export const FAQListSkeleton: React.FC = () => (
       alignItems="center"
       minHeight="400px"
     >
-      <CircularProgress size={48} sx={{ color: "var(--ws-primary, #4DD0E1)" }} />
+      <CircularProgress size={48} sx={{ color: "var(--ws-primary-ink, #4DD0E1)" }} />
     </Box>
   </Paper>
 );
@@ -89,7 +89,7 @@ export const FAQListActions: React.FC<FAQListActionsProps> = ({
           onClick={onLoadMore}
           sx={{
             borderColor: "var(--ws-primary, #4db6ac)",
-            color: "var(--ws-primary, #4db6ac)",
+            color: "var(--ws-primary-ink, #4db6ac)",
             "&:hover": {
               borderColor: "var(--ws-info-border, #26a69a)",
               backgroundColor: "rgba(77, 182, 172, 0.04)",

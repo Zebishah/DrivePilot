@@ -1,10 +1,10 @@
 # Customer-first driving lesson experience
 
-DSP is presented as a driving-school marketplace: learners find instructors and book lessons; instructors manage teaching; admins run marketplace operations. The midnight and mint palette remains consistent across marketing, authentication, and all three workspaces.
+DSP is presented as a driving-school marketplace: learners find instructors and book lessons; instructors manage teaching; admins run marketplace operations. The approved ocean-blue, golden-yellow, and off-white palette remains consistent across marketing, authentication, and all three workspaces.
 
 ## Customer and reviewer journeys
 
-- The landing hero names driving lessons directly. Its primary action opens the instructor marketplace; the secondary action creates an instructor account.
+- The landing hero names driving lessons directly. Its primary action scrolls to the embedded instructor marketplace; the secondary action creates an instructor account.
 - Learner and instructor sections explain profiles, lesson options, availability, bookings, payment, messages, and feedback without inventing prices or performance claims.
 - An interactive Find / Book / Learn preview explains the lesson journey with real navigation links.
 - Recruiter and product-review access has a dedicated section and links to the existing three demo sign-in actions. Technical implementation details appear in a disclosure in that section.
@@ -30,5 +30,7 @@ Subtle route animations, the interactive lesson preview, workspace entry motion,
 - Landing page checks cover customer links, the interactive lesson journey, role tabs and keyboard controls, the assistant example, FAQ, reviewer disclosure, and navigation to the existing demo entry points.
 - Responsive checks pass at 320, 390, 768, 1024, and 1440 px for the landing page and three dashboard overviews, and at 320, 390, 768, and 1440 px for the six auth screens.
 - Automated axe WCAG A/AA scans report zero violations on the landing page, six auth screens, and three dashboard overviews. Automated scans do not replace manual accessibility review.
-- The existing dashboard route, onboarding, assistant drawer, and logout-dialog checks still pass with isolated sample GraphQL data. Live authentication and payment services were not exercised.
+- The existing dashboard route, onboarding, assistant panel, and logout-dialog checks still pass with isolated sample GraphQL data. Live authentication and payment services were not exercised.
 - A TypeScript diagnostic comparison against the original checkout finds no new error signatures. The existing repository errors remain.
+
+The public assistant and embedded instructor browser are documented in [assistant-and-discovery.md](assistant-and-discovery.md).

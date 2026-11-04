@@ -565,7 +565,7 @@ export const AvailabilityTab: React.FC = () => {
               <Divider sx={{ mb: 2 }} />
               {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                  <CircularProgress size={32} sx={{ color: "var(--ws-primary, #8B5CF6)" }} />
+                  <CircularProgress size={32} sx={{ color: "var(--ws-primary-ink, #8B5CF6)" }} />
                 </Box>
               ) : displaySlots && displaySlots.length > 0 ? (
                 displaySlots.map((slot: AvailabilitySlot) => (
@@ -608,7 +608,7 @@ export const AvailabilityTab: React.FC = () => {
                           }
                         })()}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: slot.booked ? "#7C3AED" : "#16a34a", fontWeight: 700 }}>{slot.booked ? "Booked lesson" : "Open availability"}</Typography>
+                      <Typography variant="caption" sx={{ color: slot.booked ? "#114C5A" : "#16a34a", fontWeight: 700 }}>{slot.booked ? "Booked lesson" : "Open availability"}</Typography>
                       <Box
                         sx={{ display: "flex", alignItems: "center", gap: 1 }}
                       >

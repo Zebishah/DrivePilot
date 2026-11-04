@@ -1,27 +1,27 @@
-/** The same midnight / mint palette used by the public landing experience. */
+/** Approved ocean-blue / golden-yellow palette, shared across every DSP route. */
 export const intelligentTokens = {
-  canvas: "#071211",
-  sidebar: "#0a1713",
-  surface: "#102019",
-  elevated: "#172a21",
-  hover: "#1b3025",
-  border: "#294034",
-  ink: "#eff4eb",
-  muted: "#a2b5a4",
-  subtle: "#8fa58f",
-  primary: "#b8f5a1",
-  primaryHover: "#cbffb9",
-  primarySoft: "#223a27",
-  onPrimary: "#14251a",
-  success: "#a3e6b0",
-  warning: "#edca82",
-  error: "#ffaaa5",
-  info: "#9bd7cf",
-  chart: ["#b8f5a1", "#7cc8b3", "#d8d28c", "#8daea0", "#d2b895"],
+  canvas: "#F1F6F4",
+  sidebar: "#172B36",
+  ocean: "#114C5A",
+  surface: "#FFFFFF",
+  elevated: "#F6F9F8",
+  hover: "#E8F0EF",
+  border: "#D2DFE1",
+  ink: "#172B36",
+  muted: "#4F6874",
+  subtle: "#566F7A",
+  primary: "#FFC801",
+  primaryHover: "#EAB700",
+  primarySoft: "#FFF5C7",
+  primaryInk: "#114C5A",
+  onPrimary: "#172B36",
+  success: "#23765B",
+  warning: "#805800",
+  error: "#B63838",
+  info: "#17667B",
+  chart: ["#114C5A", "#FFC801", "#427E90", "#FF9932", "#A8C5CD"],
 } as const;
 
 export function usesIntelligentTheme(pathname: string) {
-  return /^\/(auth(?:\/|$)|signup\/|payment(?:\/|$)|onboarding(?:\/|$)|(?:student|teacher|admin)-dashboard(?:\/|$))/.test(
-    pathname,
-  );
+  return pathname.startsWith("/");
 }

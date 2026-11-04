@@ -1033,7 +1033,7 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 fontWeight: 600,
               },
               "& .Mui-selected": {
-                color: "var(--ws-primary, #7C3AED) !important",
+                color: "var(--ws-primary-ink, #7C3AED) !important",
               },
               "& .MuiTabs-indicator": {
                 background: "linear-gradient(90deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",

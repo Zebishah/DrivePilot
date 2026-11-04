@@ -1,9 +1,11 @@
 import React, { ReactNode, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import useVisitorTracking from "../hooks/UseVisitorsTracking";
 import "../pages/public/landing.css";
+import "../pages/public/marketplace.css";
+import AssistantPanel from "../features/assistant/components/AssistantPanel";
 
 // Define props for PublicLayout
 interface PublicLayoutProps {
@@ -11,7 +13,6 @@ interface PublicLayoutProps {
 }
 
 const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
-  const { pathname } = useLocation();
   const { trackVisitor, isTracked, trackingError } = useVisitorTracking();
 
   useEffect(() => {
@@ -50,7 +51,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
 
   // Optional: You can add some debug info in development
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       if (isTracked) {
         console.log("✅ Visitor tracked successfully");
       }
@@ -61,12 +62,11 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   }, [isTracked, trackingError]);
 
   return (
-    <div
-      className={pathname === "/" ? "dsp-ai-shell" : "min-h-screen bg-gray-50"}
-    >
+    <div className="dsp-ai-shell">
       <Navbar />
       <main>{children || <Outlet />}</main>
       <Footer />
+      <AssistantPanel pageContext="public marketplace" publicMode />
     </div>
   );
 };

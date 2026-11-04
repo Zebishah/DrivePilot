@@ -165,7 +165,7 @@ export default function ProfileSetting() {
       <div className="dsp-profile-layout">
         <section className="dsp-profile-card dsp-profile-card--identity">
           <div className="dsp-profile-identity__topline"><span className="dsp-profile-eyebrow">Instructor identity</span><span className={`dsp-profile-status ${completion.percent === 100 ? "is-complete" : ""}`}><CheckCircle2 size={14} />{completion.percent === 100 ? "Profile ready" : `${completion.percent}% complete`}</span></div>
-          <div className="dsp-profile-avatar-ring"><Avatar src={avatarFailed ? undefined : teacherData.profileImage || undefined} alt={fullName} onError={() => setAvatarFailed(true)} sx={{ width: 112, height: 112, fontSize: "2rem", fontWeight: 800, color: "var(--ws-primary, #6D28D9)", bgcolor: "var(--ws-surface, #F3E8FF)" }}>{initialsFor(firstName, lastName)}</Avatar></div>
+          <div className="dsp-profile-avatar-ring"><Avatar src={avatarFailed ? undefined : teacherData.profileImage || undefined} alt={fullName} onError={() => setAvatarFailed(true)} sx={{ width: 112, height: 112, fontSize: "2rem", fontWeight: 800, color: "var(--ws-primary-ink, #6D28D9)", bgcolor: "var(--ws-surface, #F3E8FF)" }}>{initialsFor(firstName, lastName)}</Avatar></div>
           <h2>{fullName}</h2>
           <div className="dsp-profile-identity__location"><MapPin size={16} /><span>{teacherData.location || "Location not added yet"}</span></div>
           <span className="dsp-profile-role">Instructor</span>

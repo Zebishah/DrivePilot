@@ -1,9 +1,11 @@
 import type React from "react";
+import { Suspense } from "react";
 import { Box, CssBaseline } from "@mui/material";
 import { useLocation } from "react-router-dom";
 import Sidebar, { type MenuItem } from "../common/SideBar";
 import Navbar from "../common/DashNavBar";
 import DashboardExperience from "./DashboardExperience";
+import RouteLoadingFallback from "../loaders/RouteLoadingFallback";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -79,7 +81,7 @@ export default function DashboardShell({
             isDemo={userIsDemo}
             overview={isOverview}
           />
-          {children}
+          <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
         </Box>
       </Box>
     </>

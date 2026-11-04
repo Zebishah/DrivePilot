@@ -1,107 +1,415 @@
-import { useMemo, useState } from "react";
-import { Box, Button, Chip, Divider, Drawer, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
-import { Bot, Loader2, RotateCcw, Send, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  ArrowUp,
+  ArrowUpRight,
+  Bot,
+  MessageCircle,
+  Plus,
+  Square,
+  X,
+} from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import "./assistant.css";
 
-type AssistantRole = "Student" | "Instructor" | "Admin";
-type AssistantMessage = { role: "user" | "assistant"; content: string };
-
-const suggestions: Record<AssistantRole, string[]> = {
-  Student: ["What's my next lesson?", "Do I have any payments needing action?", "Summarize my upcoming bookings."],
-  Instructor: ["Summarize tomorrow's lessons.", "Do I have pending payouts?", "Which students need attention?"],
-  Admin: ["Show refunds needing attention.", "Summarize operational issues.", "Are there financial operations in manual review?"],
+type Message = { role: "user" | "assistant"; content: string };
+const suggestions: Record<string, string[]> = {
+  public: [
+    "How do I find an instructor?",
+    "How does booking work?",
+    "What can the AI assistant do?",
+  ],
+  Student: [
+    "What's my next lesson?",
+    "Do I have any payments needing action?",
+    "Summarize my upcoming bookings.",
+  ],
+  Instructor: [
+    "Summarize tomorrow's lessons.",
+    "Do I have pending payouts?",
+    "Which students need attention?",
+  ],
+  Admin: [
+    "Show refunds needing attention.",
+    "Summarize operational issues.",
+    "Are there financial operations in manual review?",
+  ],
 };
-
 function backendBaseUrl() {
-  const configured = import.meta.env.VITE_API_URL || import.meta.env.VITE_APP_BACKEND_URL || "http://localhost:4000";
-  return String(configured).replace(/\/graphql\/?$/, "").replace(/\/$/, "");
+  return String(
+    import.meta.env.VITE_API_URL ||
+      import.meta.env.VITE_APP_BACKEND_URL ||
+      "http://localhost:4000",
+  )
+    .replace(/\/graphql\/?$/, "")
+    .replace(/\/$/, "");
 }
-
-export default function AssistantPanel({ pageContext }: { pageContext: string }) {
-  const { user, token } = useAuth();
-  const role = user?.role as AssistantRole | undefined;
-  const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [responseMode, setResponseMode] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AssistantMessage[]>([
-    { role: "assistant", content: "Ask me about DSP Marketplace or your authorized dashboard information." },
-  ]);
-
-  const roleSuggestions = useMemo(() => (role ? suggestions[role] : []), [role]);
-  if (!role || !["Student", "Instructor", "Admin"].includes(role)) return null;
-
-  const sendMessage = async (preset?: string) => {
-    const content = (preset ?? input).trim();
-    if (!content || sending) return;
-    setSending(true);
-    setError(null);
-    const nextMessages = [...messages, { role: "user" as const, content }];
-    setMessages(nextMessages);
-    setInput("");
-    try {
-      const response = await fetch(`${backendBaseUrl()}/api/v1/assistant/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
-        body: JSON.stringify({
-          message: content,
-          history: nextMessages.slice(-8, -1),
-          pageContext: `${pageContext} ${typeof window !== "undefined" ? window.location.pathname : ""}`.trim().slice(0, 80),
-        }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || "The assistant is temporarily unavailable.");
-      setResponseMode(body.mode === "fallback" ? "fallback" : null);
-      setMessages((current) => [...current, { role: "assistant", content: body.answer || "I could not find an answer." }]);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "The assistant is temporarily unavailable.");
-    } finally {
-      setSending(false);
-    }
+function MessageContent({ content }: { content: string }) {
+  const links: Record<string, string> = {
+    "/professional": "Browse instructors",
+    "/auth/signin": "Sign in",
+    "/auth/signup": "Create an account",
   };
-
-  const clearConversation = () => {
-    setMessages([{ role: "assistant", content: "Ask me about DSP Marketplace or your authorized dashboard information." }]);
-    setError(null);
-    setResponseMode(null);
-  };
-
-  const retryLastMessage = () => {
-    const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
-    if (lastUserMessage) void sendMessage(lastUserMessage.content);
-  };
-
   return (
     <>
-      <IconButton className="dsp-assistant-launcher" aria-label="Open DSP assistant" onClick={() => setOpen(true)} sx={{ position: "fixed", right: 24, bottom: 24, zIndex: 1200, bgcolor: "primary.main", color: "white", boxShadow: 4, "&:hover": { bgcolor: "primary.dark" } }}>
-        <Bot size={22} />
-      </IconButton>
-      <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
-        <Box sx={{ width: { xs: "100vw", sm: 390 }, maxWidth: "100vw", height: "100%", display: "flex", flexDirection: "column" }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2 }}>
-            <Box><Typography variant="h6" fontWeight={700}>DSP Assistant</Typography><Typography variant="caption" color="text.secondary">Read-only help for your dashboard</Typography></Box>
-            <Stack direction="row"><IconButton aria-label="Clear conversation" onClick={clearConversation}><RotateCcw size={18} /></IconButton><IconButton aria-label="Close assistant" onClick={() => setOpen(false)}><X size={20} /></IconButton></Stack>
-          </Stack>
-          <Divider />
-          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }} role="log" aria-live="polite" aria-busy={sending}>
-            <Stack spacing={1.5}>
-              {messages.map((message, index) => <Paper key={`${message.role}-${index}`} elevation={0} aria-label={`${message.role === "user" ? "You" : "DSP Assistant"} message`} sx={{ p: 1.5, alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "88%", bgcolor: message.role === "user" ? "primary.dark" : "grey.100", color: message.role === "user" ? "primary.contrastText" : "text.primary", borderRadius: 2 }}><Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{message.content}</Typography></Paper>)}
-              {sending && <Stack direction="row" spacing={1} alignItems="center"><Loader2 size={16} className="assistant-spin" aria-hidden="true" /><Typography variant="body2" color="text.secondary">Checking your authorized data…</Typography></Stack>}
-              {responseMode === "fallback" && <Typography variant="caption" color="text.secondary">Based on verified DSP data and DSP Marketplace context.</Typography>}
-              {error && <Stack spacing={0.5}><Typography variant="body2" color="error">{error}</Typography><Button size="small" onClick={retryLastMessage} disabled={sending} sx={{ alignSelf: "flex-start" }}>Retry</Button></Stack>}
-            </Stack>
-          </Box>
-          <Divider />
-          <Box sx={{ p: 2 }}>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>{roleSuggestions.map((suggestion) => <Chip key={suggestion} label={suggestion} size="small" onClick={() => void sendMessage(suggestion)} disabled={sending} />)}</Stack>
-            <Stack component="form" direction="row" spacing={1} onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
-              <TextField value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} fullWidth size="small" multiline maxRows={4} placeholder="Ask about your dashboard" helperText="Enter to send · Shift+Enter for a new line" inputProps={{ maxLength: 4000, "aria-label": "Assistant message" }} disabled={sending} />
-              <Button type="submit" variant="contained" aria-label="Send message" disabled={sending || !input.trim()} sx={{ minWidth: 48, alignSelf: "flex-start", minHeight: 40 }}>{sending ? <Loader2 size={18} className="assistant-spin" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}</Button>
-            </Stack>
-          </Box>
-        </Box>
-      </Drawer>
+      {content
+        .split(
+          /(\/auth\/signin|\/auth\/signup|\/professional|\*\*[^*\n]+\*\*)/g,
+        )
+        .map((part, index) =>
+          links[part] ? (
+            <a key={index} href={part}>
+              {links[part]}
+            </a>
+          ) : part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={index}>{part.slice(2, -2)}</strong>
+          ) : (
+            part
+          ),
+        )}
     </>
+  );
+}
+export default function AssistantPanel({
+  pageContext,
+  publicMode = false,
+}: {
+  pageContext: string;
+  publicMode?: boolean;
+}) {
+  const { user, token } = useAuth();
+  const scope = publicMode ? "public" : user?.role || "";
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [mode, setMode] = useState("");
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
+  const end = useRef<HTMLDivElement>(null);
+  const controller = useRef<AbortController | null>(null);
+  const activeRequest = useRef(0);
+  const previouslyOpen = useRef(false);
+  const identity = `${scope}:${publicMode ? "guest" : user?.id || ""}`;
+  useEffect(() => {
+    activeRequest.current++;
+    controller.current?.abort();
+    setMessages([]);
+    setError("");
+    setMode("");
+    setSending(false);
+    setInput("");
+    return () => {
+      activeRequest.current++;
+      controller.current?.abort();
+    };
+  }, [identity]);
+  useEffect(() => {
+    const handleOpen = (event: Event) => {
+      setOpen(true);
+      if ((event as CustomEvent).detail)
+        setInput(String((event as CustomEvent).detail).slice(0, 4000));
+    };
+    window.addEventListener("dsp:assistant-open", handleOpen);
+    return () => window.removeEventListener("dsp:assistant-open", handleOpen);
+  }, []);
+  useEffect(() => {
+    if (open) composer.current?.focus();
+    else if (previouslyOpen.current) launcher.current?.focus();
+    previouslyOpen.current = open;
+  }, [open]);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }, [messages, sending, error, open]);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        launcher.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+  const stop = () => {
+    activeRequest.current++;
+    controller.current?.abort();
+    setSending(false);
+  };
+  const reset = () => {
+    stop();
+    setMessages([]);
+    setError("");
+    setMode("");
+    composer.current?.focus();
+  };
+  const send = async (preset?: string, retry = false) => {
+    const content = (preset ?? input).trim();
+    if (!content || sending) return;
+    const history =
+      retry && messages[messages.length - 1]?.role === "user"
+        ? messages.slice(0, -1)
+        : messages;
+    setMessages([...history, { role: "user", content }]);
+    setInput("");
+    setError("");
+    setSending(true);
+    const request = ++activeRequest.current;
+    const abort = new AbortController();
+    controller.current = abort;
+    const timeout = window.setTimeout(() => abort.abort(), 30000);
+    try {
+      const response = await fetch(
+        `${backendBaseUrl()}/api/v1/assistant/${publicMode ? "public/" : ""}chat`,
+        {
+          method: "POST",
+          signal: abort.signal,
+          headers: {
+            "Content-Type": "application/json",
+            ...(!publicMode ? { Authorization: `Bearer ${token || ""}` } : {}),
+          },
+          body: JSON.stringify({
+            message: content,
+            history: history.slice(-8),
+            pageContext: `${pageContext} ${window.location.pathname}`.slice(
+              0,
+              80,
+            ),
+          }),
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok)
+        throw new Error(
+          body.error || "The assistant could not connect. Please try again.",
+        );
+      if (request !== activeRequest.current) return;
+      if (typeof body.answer !== "string" || !body.answer.trim())
+        throw new Error("No answer was received. Please try again.");
+      setMode(body.mode || "");
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: body.answer },
+      ]);
+    } catch (failure) {
+      if (request === activeRequest.current)
+        setError(
+          failure instanceof Error && failure.name !== "AbortError"
+            ? failure.message
+            : "The request timed out. Please try again.",
+        );
+    } finally {
+      window.clearTimeout(timeout);
+      if (request === activeRequest.current) setSending(false);
+    }
+  };
+  if (!suggestions[scope]) return null;
+  return createPortal(
+    <div className="dsp-chat-root">
+      <button
+        type="button"
+        ref={launcher}
+        className={`dsp-chat-launcher ${open ? "is-hidden" : ""}`}
+        aria-label="Open DSP assistant"
+        aria-expanded={open}
+        aria-controls="dsp-chat-panel"
+        onClick={() => setOpen(true)}
+      >
+        <span>
+          <Bot size={23} />
+        </span>
+        <span>
+          Ask DSP<small>Your driving companion</small>
+        </span>
+        <ArrowUpRight size={17} />
+      </button>
+      {open && (
+        <section
+          id="dsp-chat-panel"
+          className="dsp-chat-panel"
+          role="dialog"
+          aria-labelledby="dsp-chat-title"
+        >
+          <header className="dsp-chat-header">
+            <span className="dsp-chat-mark">
+              <Bot size={24} />
+            </span>
+            <div>
+              <h2 id="dsp-chat-title">DSP Assistant</h2>
+              <p>
+                <i />
+                {publicMode
+                  ? "Your marketplace guide"
+                  : `${scope} workspace · Read-only help`}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Clear conversation"
+              title="New conversation"
+              onClick={reset}
+            >
+              <Plus size={20} />
+            </button>
+            <button
+              type="button"
+              aria-label="Close assistant"
+              onClick={() => {
+                setOpen(false);
+                launcher.current?.focus();
+              }}
+            >
+              <X size={20} />
+            </button>
+          </header>
+          <div
+            className="dsp-chat-conversation"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions text"
+            aria-busy={sending}
+          >
+            {!messages.length && (
+              <div className="dsp-chat-welcome">
+                <span className="dsp-chat-welcome-icon">
+                  <MessageCircle size={30} />
+                </span>
+                <span className="dsp-chat-eyebrow">
+                  A LITTLE GUIDANCE. A CLEARER ROAD.
+                </span>
+                <h3>
+                  {publicMode
+                    ? "Where would you like to start?"
+                    : "Your workspace, explained."}
+                </h3>
+                <p>
+                  {publicMode
+                    ? "Find your instructor, understand booking, or explore what DSP can do for you."
+                    : "Ask about your lessons, payments, or the information in your workspace."}
+                </p>
+                <div className="dsp-chat-suggestions">
+                  {suggestions[scope].map((text) => (
+                    <button
+                      type="button"
+                      key={text}
+                      onClick={() => void send(text)}
+                    >
+                      {text}
+                      <ArrowUpRight size={15} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {messages.map((message, index) => (
+              <div
+                className={`dsp-chat-message dsp-chat-message--${message.role}`}
+                key={index}
+              >
+                <span className="dsp-chat-message-label">
+                  {message.role === "user" ? "You" : "DSP Assistant"}
+                </span>
+                <div className="dsp-chat-bubble">
+                  {message.role === "assistant" ? (
+                    <MessageContent content={message.content} />
+                  ) : (
+                    message.content
+                  )}
+                </div>
+              </div>
+            ))}
+            {sending && (
+              <div className="dsp-chat-thinking" role="status">
+                <span />
+                <span />
+                <span />
+                <small>
+                  {publicMode
+                    ? "Finding your way…"
+                    : "Checking your workspace…"}
+                </small>
+              </div>
+            )}
+            {error && (
+              <div className="dsp-chat-error" role="alert">
+                <p>{error}</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void send(messages[messages.length - 1]?.content, true)
+                  }
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+            <div ref={end} />
+          </div>
+          <footer className="dsp-chat-footer">
+            {messages.length > 0 && !sending && !error && (
+              <div className="dsp-chat-source">
+                {mode === "guide"
+                  ? "Product guide · Based on DSP features"
+                  : publicMode
+                    ? "Product information · No account access"
+                    : "Answers use your authorized DSP information"}
+              </div>
+            )}
+            <form
+              className="dsp-chat-composer"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void send();
+              }}
+            >
+              <textarea
+                ref={composer}
+                rows={2}
+                maxLength={4000}
+                value={input}
+                aria-label="Assistant message"
+                placeholder={
+                  publicMode
+                    ? "Ask about lessons, booking, or DSP…"
+                    : "Ask about your workspace…"
+                }
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
+                    event.preventDefault();
+                    void send();
+                  }
+                }}
+              />
+              {sending ? (
+                <button type="button" aria-label="Stop response" onClick={stop}>
+                  <Square size={16} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  aria-label="Send message"
+                  disabled={!input.trim()}
+                >
+                  <ArrowUp size={19} />
+                </button>
+              )}
+            </form>
+            <p>
+              {publicMode
+                ? "Personal bookings and payments? Sign in to your workspace."
+                : "Read-only assistance. Review details in your workspace."}
+            </p>
+          </footer>
+        </section>
+      )}
+    </div>,
+    document.body,
   );
 }

@@ -37,7 +37,7 @@ const BulkPackageCard = ({
   // Define card styles based on variant
   const cardStyles = {
     highlighted: {
-      backgroundColor: "#5FC2D333",
+      backgroundColor: "#FFC80133",
       color: "var(--ws-ink, #000000)",
       border: "1px solid var(--ws-border, #A19A99)",
     },
@@ -119,8 +119,8 @@ const BulkPackageCard = ({
           variant="contained"
           onClick={() => onSelect({ lessons, cost, startDate, endDate })}
           sx={{
-            backgroundColor: isSelected ? "#4bb1c2" : "#5FC2D3",
-            color: "#ffffff",
+            backgroundColor: isSelected ? "#FFC801" : "#FFC801",
+            color: "#172B36",
             "&:hover": {
               backgroundColor: "var(--ws-primary, #4bb1c2)",
             },
@@ -282,14 +282,14 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
             },
             ".slick-dots li button:before": {
               fontSize: 12,
-              color: "var(--ws-primary, #5FC2D3)",
+              color: "var(--ws-primary-ink, #5FC2D3)",
             },
             ".slick-dots li.slick-active button:before": {
-              color: "var(--ws-primary, #5FC2D3)",
+              color: "var(--ws-primary-ink, #5FC2D3)",
             },
             ".slick-prev, .slick-next": {
               "&:before": {
-                color: "var(--ws-primary, #5FC2D3)",
+                color: "var(--ws-primary-ink, #5FC2D3)",
               },
             },
             py: 2,

@@ -462,7 +462,7 @@ export const BookingList: React.FC<BookingListProps> = ({
               fontWeight: 600,
             },
             "& .Mui-selected": {
-              color: "var(--ws-primary, #5fc2d3) !important",
+              color: "var(--ws-primary-ink, #5fc2d3) !important",
             },
             "& .MuiTabs-indicator": {
               backgroundColor: "var(--ws-primary, #5fc2d3)",

@@ -694,7 +694,7 @@ const BookingDetails: React.FC = () => {
                     width: "200px",
                     opacity: cannotCancel ? 0.6 : 1,
                     pointerEvents: cannotCancel ? "none" : "auto",
-                    bgcolor: cannotCancel ? "#d3d3d3" : "#5ec2d2",
+                    bgcolor: cannotCancel ? "#d3d3d3" : "#FFC801",
                     mr: 2,
                     "&:hover": {
                       bgcolor: cannotCancel ? "#d3d3d3" : "rgba(65, 135, 147)",
@@ -1386,12 +1386,12 @@ const BookingDetails: React.FC = () => {
                                 borderRadius: 2,
                                 px: 1.8,
                                 py: 1.2,
-                                borderColor: isSelected ? "#5ec2d2" : "#b7dfea",
-                                bgcolor: isSelected ? "#5ec2d2" : "#fff",
+                                borderColor: isSelected ? "#114C5A" : "#b7dfea",
+                                bgcolor: isSelected ? "#FFC801" : "#fff",
                                 color: isSelected ? "#083b45" : "#1d4e89",
                                 "&:hover": {
                                   borderColor: "var(--ws-primary, #5ec2d2)",
-                                  bgcolor: isSelected ? "#4db1c1" : "#f0fbff",
+                                  bgcolor: isSelected ? "#FFC801" : "#f0fbff",
                                 },
                               }}
                             >

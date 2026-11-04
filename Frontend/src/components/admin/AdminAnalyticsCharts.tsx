@@ -31,7 +31,7 @@ export type ConversionPoint = {
 type ChartType = "bar" | "line" | "area";
 
 const chartColors = {
-  violet: "#7C3AED",
+  violet: "#114C5A",
   cyan: "#0284C7",
   green: "#16A34A",
   amber: "#D97706",

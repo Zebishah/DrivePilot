@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -27,6 +27,70 @@ import {
 import { Link } from "react-router-dom";
 import { CustomerPaths, ReviewerSection } from "./LandingAudiences";
 import DrivingRoute from "../../components/DrivingRoute";
+
+import { openAssistant } from "../../features/assistant/assistantEvents";
+const InstructorBrowser = lazy(
+  () => import("../../components/ProfessionalInstructor/InstructorInfo"),
+);
+function LandingLessons() {
+  const section = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "350px" },
+    );
+    if (section.current) observer.observe(section.current);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <section
+      id="find-lessons"
+      ref={section}
+      className="ai-section ai-container dsp-landing-lessons"
+    >
+      <div className="dsp-market-section-heading">
+        <div>
+          <span className="ai-eyebrow">YOUR NEXT CHAPTER STARTS HERE</span>
+          <h2>
+            A real instructor.
+            <br />
+            Your kind of journey.
+          </h2>
+          <p>
+            Compare profiles, check lesson prices, and choose a time that works
+            for you.
+          </p>
+        </div>
+        <Link to="/professional" className="ai-button ai-button--outline">
+          Browse all instructors <ArrowUpRight size={16} />
+        </Link>
+      </div>
+      {visible ? (
+        <Suspense
+          fallback={
+            <div className="dsp-market-placeholder" role="status">
+              Preparing instructor search…
+            </div>
+          }
+        >
+          <InstructorBrowser embedded />
+        </Suspense>
+      ) : (
+        <div className="dsp-market-placeholder" aria-hidden="true" />
+      )}
+    </section>
+  );
+}
 
 type RoleKey = "student" | "instructor" | "admin";
 
@@ -399,9 +463,9 @@ export default function Home() {
             account.
           </p>
           <div className="ai-hero-actions">
-            <Link to="/professional" className="ai-button ai-button--mint">
+            <a href="#find-lessons" className="ai-button ai-button--mint">
               Find a driving instructor <ArrowUpRight size={18} />
-            </Link>
+            </a>
             <Link to="/auth/signup" className="ai-button ai-button--ghost">
               <span className="ai-play-icon">
                 <UsersRound size={14} />
@@ -483,9 +547,13 @@ export default function Home() {
               <br />
               your next lesson?
             </p>
-            <a href="#engineering">
-              Meet your dashboard assistant <ArrowUpRight size={14} />
-            </a>
+            <button
+              type="button"
+              className="dsp-open-assistant"
+              onClick={() => openAssistant()}
+            >
+              Ask the DSP assistant <ArrowUpRight size={14} />
+            </button>
           </div>
           <div className="ai-stage-caption">
             <span>
@@ -524,6 +592,7 @@ export default function Home() {
       </div>
 
       <CustomerPaths />
+      <LandingLessons />
 
       <section className="ai-section ai-container" id="platform">
         <div className="ai-section-heading" data-reveal>
@@ -570,6 +639,13 @@ export default function Home() {
                 dashboard. Get context when you need it.
               </p>
             </div>
+            <button
+              type="button"
+              className="ai-text-link dsp-open-assistant"
+              onClick={() => openAssistant()}
+            >
+              Try the assistant <ArrowUpRight size={15} />
+            </button>
             <div className="ai-assistant-demo">
               <div className="ai-assistant-demo-heading">
                 <span>

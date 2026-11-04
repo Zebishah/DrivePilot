@@ -182,7 +182,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiInputLabel-root": {
               fontSize: "1rem",
               "&.Mui-focused": {
-                color: "var(--ws-primary, #4db6ac)",
+                color: "var(--ws-primary-ink, #4db6ac)",
               },
             },
           }}
@@ -216,7 +216,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiInputLabel-root": {
               fontSize: "1rem",
               "&.Mui-focused": {
-                color: "var(--ws-primary, #4db6ac)",
+                color: "var(--ws-primary-ink, #4db6ac)",
               },
             },
           }}
@@ -245,7 +245,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
               },
             },
             "& .MuiInputLabel-root.Mui-focused": {
-              color: "var(--ws-primary, #4db6ac)",
+              color: "var(--ws-primary-ink, #4db6ac)",
             },
           }}
         />

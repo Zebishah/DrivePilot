@@ -89,7 +89,7 @@ body.dsp-intelligent .hover\:border-\[\#4BA1B0\]:hover {
   border-color: var(--ws-primary, #4ba1b0) !important;
 }
 body.dsp-intelligent .hover\:text-\[\#3d8a97\]:hover {
-  color: var(--ws-primary, #3d8a97) !important;
+  color: var(--ws-primary-ink, #3d8a97) !important;
 }
 body.dsp-intelligent .text-\[\#31bdd3\] {
   color: var(--ws-info, #31bdd3) !important;
@@ -98,16 +98,16 @@ body.dsp-intelligent .text-\[\#357a85\] {
   color: var(--ws-info, #357a85) !important;
 }
 body.dsp-intelligent .text-\[\#4BA1B0\] {
-  color: var(--ws-primary, #4ba1b0) !important;
+  color: var(--ws-primary-ink, #4ba1b0) !important;
 }
 body.dsp-intelligent .text-\[\#4DD0E1\] {
-  color: var(--ws-primary, #4dd0e1) !important;
+  color: var(--ws-primary-ink, #4dd0e1) !important;
 }
 body.dsp-intelligent .text-\[\#545454\] {
   color: var(--ws-muted, #545454) !important;
 }
 body.dsp-intelligent .text-\[\#5FC2D3\] {
-  color: var(--ws-primary, #5fc2d3) !important;
+  color: var(--ws-primary-ink, #5fc2d3) !important;
 }
 body.dsp-intelligent .text-\[\#A19A99\] {
   color: var(--ws-muted, #a19a99) !important;

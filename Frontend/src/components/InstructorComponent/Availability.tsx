@@ -232,7 +232,7 @@ const Availability: React.FC<AvailabilityProps> = ({
       <Typography
         sx={{
           fontFamily: "Poppins, sans-serif",
-          color: "var(--ws-primary, #5FC2D3)",
+          color: "var(--ws-primary-ink, #5FC2D3)",
           mb: 2,
         }}
       >
@@ -514,7 +514,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                     onClick={() => handleDayCardClick(dayData)}
                     sx={{
                       borderRadius: "10px",
-                      backgroundColor: "#5FC2D333",
+                      backgroundColor: "#FFC80133",
                       border: "1px solid var(--ws-info-border, #cce4f7)",
                       boxShadow: 1,
                       width: "100%",
@@ -537,7 +537,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                       >
                         <CalendarCheck2
                           size={18}
-                          style={{ color: "var(--ws-primary, #7C3AED)" }}
+                          style={{ color: "var(--ws-primary-ink, #7C3AED)" }}
                         />
                         <Typography
                           variant="body1"
@@ -558,7 +558,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                           gap: 1,
                         }}
                       >
-                        <FaRegCheckCircle style={{ color: "var(--ws-primary, #7C3AED)" }} />
+                        <FaRegCheckCircle style={{ color: "var(--ws-primary-ink, #7C3AED)" }} />
                         <Typography
                           variant="body2"
                           sx={{

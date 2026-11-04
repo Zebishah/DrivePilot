@@ -34,7 +34,7 @@ export default function Footer() {
               <strong>Explore</strong>
               <a href="/#workflow">How it works</a>
               <a href="/#engineering">
-                {isHome ? "Your AI assistant" : "Engineering"}
+                Your AI assistant
               </a>
               <a href="/#recruiters">Recruiter demos</a>
               <a href="/#faq">FAQ</a>

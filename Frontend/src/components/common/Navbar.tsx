@@ -1,29 +1,18 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRight, ChevronDown, Menu, X } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import BrandLogo from "../BrandLogo";
-
-const links = [
-  ["For Students", "#roles"],
-  ["For Instructors", "#roles"],
-  ["How it works", "#workflow"],
-  ["Platform", "#platform"],
-  ["Engineering", "#engineering"],
-  ["FAQ", "#faq"],
-];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
-  const navigationLinks = isHome
-    ? [
-        ["Find lessons", "/professional"],
-        ["How it works", "#workflow"],
-        ["For instructors", "#teach"],
-        ["Project demo", "#recruiters"],
-      ]
-    : links;
+  const navigationLinks = [
+    ["Find lessons", "#find-lessons"],
+    ["How it works", "#workflow"],
+    ["For instructors", "#teach"],
+    ["Project demo", "#recruiters"],
+  ];
 
   useEffect(() => setOpen(false), [location.pathname, location.hash]);
 
@@ -67,11 +56,11 @@ export default function Navbar() {
         >
           <div className="dsp-public-nav__links">
             {navigationLinks.map(([label, href]) => {
-              const target = location.pathname === "/" ? href : `/${href}`;
+              const target =
+                href.startsWith("#") && !isHome ? `/${href}` : href;
               return (
                 <a key={label} href={target} onClick={() => setOpen(false)}>
                   {label}
-                  {!isHome && <ChevronDown size={13} />}
                 </a>
               );
             })}

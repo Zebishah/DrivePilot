@@ -86,6 +86,7 @@ binds the Render-provided `PORT` through Node's HTTP server and exposes:
 - `POST /webhooks/stripe`: Stripe raw-body webhook ingress
 - `POST /graphql`: Apollo GraphQL API
 - `POST /api/v1/assistant/chat`: authenticated assistant API
+- `POST /api/v1/assistant/public/chat`: rate-limited guest product guide; no account access or tools. Uses live AI when configured, otherwise returns labeled product guidance.
 - `/auth/google` and `/auth/google/callback`
 - `/auth/facebook` and `/auth/facebook/callback`
 - Socket.IO on the API origin

@@ -106,7 +106,7 @@ export default function StripePaymentComplete() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={36} sx={{ color: "var(--ws-primary, #8B5CF6)" }} />
+              <CircularProgress size={36} sx={{ color: "var(--ws-primary-ink, #8B5CF6)" }} />
             </Box>
             <Box textAlign="center">
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
@@ -261,7 +261,7 @@ export default function StripePaymentComplete() {
                   }}
                 >
                   <PaymentsOutlinedIcon
-                    sx={{ fontSize: 42, color: "var(--ws-primary, #8B5CF6)" }}
+                    sx={{ fontSize: 42, color: "var(--ws-primary-ink, #8B5CF6)" }}
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>

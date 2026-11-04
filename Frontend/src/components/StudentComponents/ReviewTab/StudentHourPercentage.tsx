@@ -70,9 +70,9 @@ const ProgressRing: React.FC<{
             x2="100%"
             y2="100%"
           >
-            <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="55%" stopColor="#A855F7" />
-            <stop offset="100%" stopColor="#EC4899" />
+            <stop offset="0%" stopColor="#114C5A" />
+            <stop offset="55%" stopColor="#427E90" />
+            <stop offset="100%" stopColor="#FFC801" />
           </linearGradient>
         </defs>
         <circle

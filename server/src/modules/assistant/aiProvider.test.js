@@ -32,3 +32,14 @@ test("Gemini provider classifies rate limits and missing configuration safely", 
   const missing = createGeminiProvider({ config: { enabled: true, mode: "live", provider: "gemini" }, env: {}, fetchImpl: async () => ({ ok: true, status: 200, async json() { return {}; } }) });
   await assert.rejects(missing.generate({ system: "x", messages: [], tools: [] }), (error) => error.code === "AI_CONFIGURATION_MISSING" && !error.retryable);
 });
+
+test("Gemini product guidance omits function declarations when no tools are available", async () => {
+  const provider = createGeminiProvider({
+    config: { enabled: true, mode: "live", provider: "gemini", model: "test-model", requestTimeoutMs: 1000 }, env: { GEMINI_API_KEY: "test-key" },
+    fetchImpl: async (_url, options) => {
+      assert.equal(Object.hasOwn(JSON.parse(options.body), "tools"), false);
+      return { ok: true, status: 200, async json() { return { candidates: [{ content: { parts: [{ text: "Find lessons on DSP." }] } }] }; } };
+    },
+  });
+  assert.equal((await provider.generate({ system: "Product context", messages: [{ role: "user", content: "Find lessons" }], tools: [] })).text, "Find lessons on DSP.");
+});

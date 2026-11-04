@@ -1,8 +1,8 @@
 # DSP landing page
 
-The public home route uses a midnight green and mint visual system, centered oversized typography, a human driving-lesson hero, translucent floating cards, and interactive product previews. See [Customer experience](customer-experience.md) for the current customer and recruiter journeys and the new lesson photograph. Other routes keep their existing styling. Styles live in `Frontend/src/pages/public/landing.css` and are scoped to `.dsp-ai-shell`.
+The public home route uses the approved ocean-blue, golden-yellow, and off-white visual system, centered oversized typography, a human driving-lesson hero, floating cards, and interactive product previews. See [Approved palette](ocean-palette.md) and [Customer experience](customer-experience.md). Shared colors extend across public pages, authentication, and dashboards; layouts remain in `landing.css` and `marketplace.css`.
 
-The workspace figures and example assistant conversations are illustrative, labeled previews. The public page does not call the authenticated assistant or imply that it can modify bookings. Links use the existing instructor marketplace, signup, signin, and support routes.
+The workspace figures and example assistant conversations are illustrative, labeled previews. The public page uses a separate product-help assistant endpoint without account access. The illustrated account examples remain labeled previews, and the assistant cannot modify bookings. Links use the existing instructor marketplace, signup, signin, and support routes.
 
 Animation respects reduced-motion preferences. Workspace tabs support arrow keys, Home, and End. The FAQ supports keyboard activation and exposes its expanded state.
 

@@ -185,12 +185,12 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               step={1}
               sx={{
                 "& .MuiSlider-thumb": {
-                  color: "var(--ws-primary, #5FC2D3)",
+                  color: "var(--ws-primary-ink, #5FC2D3)",
                   "&:hover": {
                     boxShadow: "0 0 0 8px rgba(95, 194, 211, 0.16)",
                   },
                 },
-                "& .MuiSlider-track": { color: "var(--ws-primary, #5FC2D3)" },
+                "& .MuiSlider-track": { color: "var(--ws-primary-ink, #5FC2D3)" },
                 "& .MuiSlider-rail": { color: "var(--ws-subtle, #d8d8d8)" },
                 "& .MuiSlider-markLabel": {
                   fontFamily: "Poppins, sans-serif",
@@ -442,7 +442,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               min={60}
               max={120}
               sx={{
-                "& .MuiSlider-thumb": { color: "var(--ws-primary, #5FC2D3)" },
+                "& .MuiSlider-thumb": { color: "var(--ws-primary-ink, #5FC2D3)" },
                 "& .MuiSlider-track": { color: "var(--ws-subtle, #d8d8d8)" },
                 "& .MuiSlider-rail": { color: "var(--ws-subtle, #d8d8d8)" },
               }}
@@ -504,7 +504,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               sx={{
                 fontFamily: "Poppins, sans-serif",
                 borderColor: "var(--ws-primary, #5FC2D3)",
-                color: "var(--ws-primary, #5FC2D3)",
+                color: "var(--ws-primary-ink, #5FC2D3)",
               }}
             >
               Cancel

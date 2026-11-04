@@ -1,0 +1,420 @@
+.dsp-marketplace {
+  padding-bottom: 90px;
+}
+.dsp-market-hero {
+  padding-block: 70px 65px;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+.dsp-market-hero h1 {
+  font-size: clamp(42px, 5.8vw, 82px);
+  font-weight: 450;
+  line-height: 1.04;
+  letter-spacing: -4px;
+  margin: 23px 0;
+}
+.dsp-market-hero em {
+  font-style: normal;
+  color: #172b36;
+}
+.dsp-market-hero__copy > p {
+  max-width: 470px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: #4f6874;
+}
+.dsp-market-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.dsp-market-hero__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 30px;
+  color: #4f6874;
+  font-size: 10px;
+}
+.dsp-market-hero__details > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dsp-market-hero__details svg {
+  color: #172b36;
+}
+.dsp-market-hero__visual {
+  height: 420px;
+  position: relative;
+  border: 1px solid #d2dfe1;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #ffffff;
+}
+.dsp-market-hero__visual > img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  object-position: 65% center;
+}
+.dsp-market-hero__visual:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, #172b36e6, transparent 65%);
+}
+.dsp-market-hero__caption {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.dsp-market-hero__caption strong {
+  font-size: 13px;
+  font-weight: 500;
+  display: block;
+}
+.dsp-market-hero__caption small {
+  font-size: 10px;
+  color: #f1f6f4;
+  display: block;
+  margin-top: 5px;
+}
+.dsp-market-orbit {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #172b366b;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.dsp-market-orbit:after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: #d9e8e2;
+  border-radius: 50%;
+  box-shadow: 0 0 18px #114c5a;
+}
+.dsp-market-hero__label {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 1;
+  border: 1px solid #ffc8014d;
+  border-radius: 20px;
+  background: #172b369c;
+  color: #f1f6f4;
+  font-size: 8px;
+  letter-spacing: 1.3px;
+  padding: 8px 12px;
+}
+.dsp-market-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 30px;
+  margin-bottom: 28px;
+}
+.dsp-market-section-heading h2 {
+  font-size: clamp(30px, 3.5vw, 48px);
+  letter-spacing: -1.8px;
+  line-height: 1.13;
+  font-weight: 450;
+  margin: 15px 0;
+}
+.dsp-market-section-heading p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #4f6874;
+  margin: 0;
+}
+.dsp-landing-lessons {
+  scroll-margin-top: 110px;
+  padding-block: 80px;
+}
+.dsp-market-results {
+  scroll-margin-top: 112px;
+}
+.dsp-ai-shell .dsp-instructor-results {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+.dsp-ai-shell .dsp-instructor-results__toolbar {
+  background: #ffffff;
+  border: 1px solid #d2dfe1;
+  border-radius: 13px;
+  padding: 17px 20px;
+  margin-bottom: 22px;
+  box-shadow: none;
+}
+.dsp-ai-shell .dsp-instructor-results__eyebrow {
+  color: #172b36;
+}
+.dsp-ai-shell .dsp-instructor-result-card {
+  background: #ffffff;
+  border: 1px solid #d2dfe1;
+  border-radius: 17px;
+  box-shadow: none;
+  padding: 24px;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.dsp-ai-shell .dsp-instructor-result-card:hover {
+  border-color: #d2dfe1;
+  transform: translateY(-2px);
+}
+.dsp-ai-shell .dsp-instructor-result-card__photo {
+  border-radius: 17px;
+  border-color: #d2dfe1;
+}
+.dsp-ai-shell .dsp-instructor-result-card__identity h2 {
+  color: #172b36;
+  letter-spacing: -0.5px;
+}
+.dsp-ai-shell .dsp-instructor-result-card__facts {
+  background: #ffffff;
+  border-color: #d2dfe1;
+}
+.dsp-ai-shell .dsp-instructor-result-card__price strong {
+  color: #172b36;
+}
+.dsp-ai-shell .dsp-instructor-result-card__next-slot {
+  color: #172b36;
+}
+.dsp-ai-shell .dsp-instructor-result-card__primary-action.MuiButton-root,
+.dsp-ai-shell .dsp-instructor-results__filter-button.MuiButton-root {
+  background: #ffc801;
+  color: #172b36;
+  box-shadow: none;
+  border: 0;
+}
+.dsp-ai-shell .dsp-instructor-result-card__secondary-action.MuiButton-root,
+.dsp-ai-shell .dsp-instructor-results__reset-button.MuiButton-root {
+  color: #172b36;
+  border: 1px solid #d2dfe1;
+  background: transparent;
+  box-shadow: none;
+}
+.dsp-ai-shell .dsp-instructor-results__map-panel {
+  background: #ffffff;
+  border: 1px solid #d2dfe1;
+  border-radius: 17px;
+  overflow: hidden;
+}
+.dsp-ai-shell .dsp-instructor-results__map-heading {
+  background: #ffffff;
+  color: #172b36;
+}
+.dsp-ai-shell
+  .dsp-instructor-results--embedded
+  .dsp-instructor-results__workspace {
+  display: block;
+}
+.dsp-ai-shell .dsp-instructor-results--embedded .dsp-instructor-results__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.dsp-ai-shell
+  .dsp-instructor-results--embedded
+  .dsp-instructor-result-card__top {
+  display: flex;
+  gap: 13px;
+}
+.dsp-ai-shell
+  .dsp-instructor-results--embedded
+  .dsp-instructor-result-card__photo {
+  height: 66px;
+  width: 66px;
+}
+.dsp-ai-shell
+  .dsp-instructor-results--embedded
+  .dsp-instructor-result-card__identity
+  h2 {
+  font-size: 16px;
+}
+.dsp-ai-shell
+  .dsp-instructor-results--embedded
+  .dsp-instructor-result-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  font-size: 10px;
+}
+.dsp-ai-shell
+  .dsp-instructor-results--embedded
+  .dsp-instructor-result-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dsp-market-error,
+.dsp-market-placeholder {
+  border: 1px solid #d2dfe1;
+  border-radius: 16px;
+  padding: 42px;
+  background: #ffffff;
+  color: #4f6874;
+  text-align: center;
+}
+.dsp-market-placeholder {
+  min-height: 210px;
+}
+.dsp-market-error h3 {
+  color: #172b36;
+  font-size: 19px;
+}
+.dsp-market-error button {
+  padding: 10px 18px;
+  background: #d9e8e2;
+  border: 0;
+  border-radius: 8px;
+  color: #172b36;
+  margin-top: 15px;
+}
+.dsp-open-assistant {
+  background: transparent;
+  border: 0;
+  color: #172b36;
+  padding: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font: inherit;
+  cursor: pointer;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary {
+  padding: 32px 0 70px;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary .MuiTabs-root {
+  background: #ffffff;
+  border: 1px solid #d2dfe1;
+  border-radius: 13px;
+  padding: 5px;
+  min-height: 56px;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary .MuiTab-root {
+  color: #4f6874 !important;
+  border-radius: 8px;
+  min-height: 44px;
+  text-transform: none;
+  font:
+    12px Inter,
+    sans-serif;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary .MuiTab-root.Mui-selected {
+  background: #ffffff;
+  color: #172b36 !important;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary .MuiTabs-indicator {
+  display: none;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary__hero,
+.dsp-ai-shell .dsp-instructor-profile-summary__booking-card {
+  border-color: #d2dfe1;
+  background: #ffffff;
+  box-shadow: none;
+}
+.dsp-ai-shell
+  .dsp-instructor-profile-summary__booking-card
+  .MuiButton-contained {
+  background: #ffc801;
+  color: #172b36;
+  box-shadow: none;
+}
+.dsp-ai-shell .dsp-instructor-profile-summary__booking-kicker {
+  color: #172b36;
+}
+@media (max-width: 1100px) {
+  .dsp-market-hero {
+    gap: 30px;
+  }
+  .dsp-ai-shell
+    .dsp-instructor-results--embedded
+    .dsp-instructor-results__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dsp-ai-shell
+    .dsp-instructor-results--embedded
+    .dsp-instructor-result-card:last-child {
+    grid-column: 1/-1;
+  }
+  .dsp-market-hero__visual {
+    height: 380px;
+  }
+}
+@media (max-width: 760px) {
+  .dsp-market-hero {
+    grid-template-columns: 1fr;
+    padding-top: 42px;
+    gap: 30px;
+  }
+  .dsp-market-hero h1 {
+    font-size: 54px;
+    letter-spacing: -2.8px;
+  }
+  .dsp-market-hero__visual {
+    height: 300px;
+  }
+  .dsp-market-section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .dsp-ai-shell
+    .dsp-instructor-results--embedded
+    .dsp-instructor-results__list {
+    grid-template-columns: 1fr;
+  }
+  .dsp-landing-lessons {
+    padding-block: 55px;
+  }
+  .dsp-ai-shell .dsp-instructor-results__toolbar {
+    padding: 14px;
+  }
+  .dsp-ai-shell .dsp-instructor-result-card {
+    padding: 19px;
+  }
+  .dsp-market-hero__actions {
+    gap: 8px;
+  }
+  .dsp-market-hero__actions .ai-button {
+    font-size: 11px;
+  }
+}
+
+.dsp-ai-shell .dsp-instructor-results__map {
+  background: #ffffff;
+}
+.dsp-ai-shell .dsp-instructor-results--embedded .dsp-instructor-results__list {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.dsp-ai-shell .ai-feature--assistant .dsp-open-assistant {
+  color: #f1f6f4;
+  font-size: 12px;
+  margin-bottom: 16px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.dsp-ai-shell .dsp-instructor-results .leaflet-control-attribution {
+  background: #ffffff;
+  color: #172b36;
+}
+.dsp-ai-shell .dsp-instructor-results .leaflet-control-attribution a {
+  color: #172b36;
+}

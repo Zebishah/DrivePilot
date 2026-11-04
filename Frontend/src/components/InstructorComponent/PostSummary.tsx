@@ -15,12 +15,18 @@ import Availability from "./Availability";
 import Summary from "./Summary";
 
 import { GET_INSTRUCTOR_PROFILE } from "../../graphql/mutations/instructorPublic";
-import { ArrowLeft, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Clock3,
+  MapPin,
+  ShieldCheck,
+  Star,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import BulkLessonPackages from "./BulkPackageCard";
 import { useAuth } from "../../context/AuthContext";
 import { Reviews } from "@mui/icons-material";
-import { fallbackInstructor, fallbackTariff } from "../../types/HourSlots";
 import { BackButton } from "./common/BackButton";
 import { IoStarOutline, IoStarSharp } from "react-icons/io5";
 import InstructorReviews from "../StudentComponents/InstructorReviews";
@@ -47,12 +53,11 @@ const ProfileSummary: React.FC = () => {
     AvailabilitySlot[]
   >([]);
 
-  const { loading, error, data } = useQuery(GET_INSTRUCTOR_PROFILE, {
+  const { loading, error, data, refetch } = useQuery(GET_INSTRUCTOR_PROFILE, {
     variables: { id: id || "" },
     errorPolicy: "all",
     fetchPolicy: "cache-and-network", // Ensures fresh data
   });
-  console.log("data profile sumary", data);
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
@@ -63,33 +68,28 @@ const ProfileSummary: React.FC = () => {
     setActiveTab(0);
   };
 
-  // Fallback data for when no data is available
-
-  const fallbackAvailability = [];
-
   // Determine the actual data to use
-  const instructor =
-    data?.getInstructorPublicProfile?.instructor || fallbackInstructor;
-  const tariff = data?.getInstructorPublicProfile?.tariff || fallbackTariff;
-  const availability =
-    data?.getInstructorPublicProfile?.availability || fallbackAvailability;
-  const locationLabel = [instructor?.address, instructor?.location]
-    .filter(
-      (value) =>
-        typeof value === "string" &&
-        value.trim().length > 0 &&
-        value.trim().toLowerCase() !== "undefined",
-    )
-    .join(", ") || "Location Not Available";
+  const instructor = data?.getInstructorPublicProfile?.instructor || {};
+  const tariff = data?.getInstructorPublicProfile?.tariff || {};
+  const availability = data?.getInstructorPublicProfile?.availability || [];
+  const locationLabel =
+    [instructor?.address, instructor?.location]
+      .filter(
+        (value) =>
+          typeof value === "string" &&
+          value.trim().length > 0 &&
+          value.trim().toLowerCase() !== "undefined",
+      )
+      .join(", ") || "Location Not Available";
   const firstAvailableSlot = availability
     .flatMap((day: any) => day.availableSlots || [])
     .find((slot: any) => !slot.booked && slot.status !== "booked");
   const originalLessonFee = Number(tariff?.lessonFee || 0);
   const lessonDiscount = Number(tariff?.lessonDiscount || 0);
-  const finalLessonFee = lessonDiscount > 0
-    ? originalLessonFee * (1 - lessonDiscount / 100)
-    : originalLessonFee;
-  console.log("instructor", instructor);
+  const finalLessonFee =
+    lessonDiscount > 0
+      ? originalLessonFee * (1 - lessonDiscount / 100)
+      : originalLessonFee;
   const handleBookNow = () => {
     if (selectedAvailability.length === 0) {
       toast.error("Please select an availability slot before booking.");
@@ -102,7 +102,7 @@ const ProfileSummary: React.FC = () => {
           instructorId: id,
           selectedAvailability: selectedAvailability,
           instructorData: {
-            id: instructor._id,
+            id: instructor.id || instructor._id || id,
             name: `${instructor.firstName} ${instructor.lastName}`,
             email: instructor.email,
             description: instructor.description,
@@ -161,6 +161,34 @@ const ProfileSummary: React.FC = () => {
       </Box>
     );
   }
+  if (!data?.getInstructorPublicProfile?.instructor || error) {
+    return (
+      <div className="ai-container dsp-market-error" role="alert">
+        <h3>
+          {error
+            ? "We couldn’t load this instructor."
+            : "Instructor not found."}
+        </h3>
+        <p>
+          {error
+            ? "Please try again, or explore other instructors."
+            : "This profile may no longer be available."}
+        </p>
+        {error && <Button onClick={() => void refetch()}>Try again</Button>}
+        <Button
+          onClick={() =>
+            navigate(
+              location.pathname.startsWith("/student-dashboard")
+                ? "/student-dashboard/search"
+                : "/professional",
+            )
+          }
+        >
+          Browse instructors
+        </Button>
+      </div>
+    );
+  }
   const handleGoBack = () => {
     if (user) {
       navigate("/student-dashboard/search");
@@ -169,7 +197,7 @@ const ProfileSummary: React.FC = () => {
     }
   };
   return (
-      <Box className="dsp-instructor-profile-summary" sx={{ width: "100%" }}>
+    <Box className="dsp-instructor-profile-summary" sx={{ width: "100%" }}>
       <BackButton variant="outline" label="Back" />
       <Box
         sx={{
@@ -185,7 +213,8 @@ const ProfileSummary: React.FC = () => {
           },
         }}
       >
-        <Card className="dsp-instructor-profile-summary__hero"
+        <Card
+          className="dsp-instructor-profile-summary__hero"
           sx={{ display: "flex", flexDirection: { xs: "column", md: "row" } }}
         >
           <Avatar
@@ -285,7 +314,11 @@ const ProfileSummary: React.FC = () => {
                             }}
                           >
                             {/* Background star (unfilled) */}
-                            <Star size={20} fill="none" stroke="var(--ws-subtle, #ccc)" />
+                            <Star
+                              size={20}
+                              fill="none"
+                              stroke="var(--ws-subtle, #ccc)"
+                            />
                             {/* Foreground star (filled portion) */}
                             <Box
                               sx={{
@@ -296,7 +329,11 @@ const ProfileSummary: React.FC = () => {
                                 overflow: "hidden",
                               }}
                             >
-                              <Star size={20} fill="var(--ws-warning, #FFD700)" stroke="var(--ws-warning, #FFD700)" />
+                              <Star
+                                size={20}
+                                fill="var(--ws-warning, #FFD700)"
+                                stroke="var(--ws-warning, #FFD700)"
+                              />
                             </Box>
                           </Box>
                         );
@@ -314,7 +351,10 @@ const ProfileSummary: React.FC = () => {
                     // Show empty star with "No reviews yet" when no rating
                     <>
                       <IoStarOutline
-                        style={{ color: "var(--ws-subtle, #D1D5DB)", marginRight: "0.5rem" }}
+                        style={{
+                          color: "var(--ws-subtle, #D1D5DB)",
+                          marginRight: "0.5rem",
+                        }}
                       />
                       <p className="mr-0.5 text-gray-500">No reviews yet</p>
                     </>
@@ -357,20 +397,38 @@ const ProfileSummary: React.FC = () => {
             </Box>
           </Box>
           <Box className="dsp-instructor-profile-summary__booking-card">
-            <span className="dsp-instructor-profile-summary__booking-kicker"><ShieldCheck size={14} /> Ready to learn?</span>
+            <span className="dsp-instructor-profile-summary__booking-kicker">
+              <ShieldCheck size={14} /> Ready to learn?
+            </span>
             <Typography variant="h6">Book a lesson</Typography>
             <div className="dsp-instructor-profile-summary__booking-price">
-              {lessonDiscount > 0 && <del>CHF {originalLessonFee.toFixed(2)}</del>}
-              <strong>{finalLessonFee ? `CHF ${finalLessonFee.toFixed(2)}` : "Price not listed"}</strong>
+              {lessonDiscount > 0 && (
+                <del>CHF {originalLessonFee.toFixed(2)}</del>
+              )}
+              <strong>
+                {finalLessonFee
+                  ? `CHF ${finalLessonFee.toFixed(2)}`
+                  : "Price not listed"}
+              </strong>
               {finalLessonFee > 0 && <span>/ hour</span>}
             </div>
             {firstAvailableSlot ? (
               <div className="dsp-instructor-profile-summary__next-slot">
                 <CalendarDays size={16} />
-                <span><small>Next available</small>{new Date(firstAvailableSlot.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {firstAvailableSlot.startTime}</span>
+                <span>
+                  <small>Next available</small>
+                  {new Date(firstAvailableSlot.date).toLocaleDateString(
+                    undefined,
+                    { weekday: "short", month: "short", day: "numeric" },
+                  )}{" "}
+                  · {firstAvailableSlot.startTime}
+                </span>
               </div>
             ) : (
-              <div className="dsp-instructor-profile-summary__next-slot is-muted"><CalendarDays size={16} /><span>No upcoming availability</span></div>
+              <div className="dsp-instructor-profile-summary__next-slot is-muted">
+                <CalendarDays size={16} />
+                <span>No upcoming availability</span>
+              </div>
             )}
             <Button
               variant="contained"
@@ -381,15 +439,21 @@ const ProfileSummary: React.FC = () => {
                   handleBookNow();
                   return;
                 }
-                document.getElementById("dsp-availability-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                document
+                  .getElementById("dsp-availability-section")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
-              {selectedAvailability.length > 0 ? "Book selected lesson" : "Choose a time"}
+              {selectedAvailability.length > 0
+                ? "Book selected lesson"
+                : "Choose a time"}
             </Button>
-            <small className="dsp-instructor-profile-summary__booking-hint"><MapPin size={13} /> {locationLabel}</small>
+            <small className="dsp-instructor-profile-summary__booking-hint">
+              <MapPin size={13} /> {locationLabel}
+            </small>
           </Box>
         </Card>
-        {tariff?.bulkPackages.length > 0 && (
+        {tariff?.bulkPackages?.length > 0 && (
           <Card sx={{ marginTop: "0.5rem", padding: "0.5rem" }}>
             <BulkLessonPackages
               tariff={tariff}
@@ -398,7 +462,9 @@ const ProfileSummary: React.FC = () => {
           </Card>
         )}
 
-        <Tabs className="dsp-instructor-profile-summary__tabs"
+        <Tabs
+          className="dsp-instructor-profile-summary__tabs"
+          aria-label="Instructor profile"
           sx={{
             marginTop: "1rem",
             "& .MuiTabs-indicator": {
@@ -416,56 +482,68 @@ const ProfileSummary: React.FC = () => {
             sx={{
               textTransform: "none",
               fontWeight: activeTab === 0 ? "600" : "400",
-              color: activeTab === 0 ? "black !important" : "inherit",
+              color: activeTab === 0 ? "var(--ws-primary, #5FC2D3)" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
+            id="instructor-profile-tab-0"
+            aria-controls="instructor-profile-panel"
             label="Availability"
           />
           <Tab
             sx={{
               textTransform: "none",
               fontWeight: activeTab === 1 ? "600" : "400",
-              color: activeTab === 1 ? "black !important" : "inherit",
+              color: activeTab === 1 ? "var(--ws-primary, #5FC2D3)" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
+            id="instructor-profile-tab-1"
+            aria-controls="instructor-profile-panel"
             label="Profile Summary"
           />
           <Tab
             sx={{
               textTransform: "none",
               fontWeight: activeTab === 2 ? "600" : "400",
-              color: activeTab === 2 ? "black !important" : "inherit",
+              color: activeTab === 2 ? "var(--ws-primary, #5FC2D3)" : "inherit",
               fontFamily: "Poppins, sans-serif",
             }}
+            id="instructor-profile-tab-2"
+            aria-controls="instructor-profile-panel"
             label="Reviews"
           />
         </Tabs>
 
-        {activeTab === 0 && (
-          <Availability
-            availabilityData={availability}
-            loading={loading}
-            instructorData={instructor._id}
-            onSelectAvailability={setSelectedAvailability}
-            selectedPackage={selectedPackage}
-          />
-        )}
-        {activeTab === 1 && (
-          <Summary
-            instructorData={instructor}
-            tariffData={tariff}
-            loading={loading}
-          />
-        )}
-        {activeTab === 2 && (
-          <>
-            {" "}
-            <InstructorReviews
-              instructorId={instructor._id}
-              activeTab={activeTab}
-            />{" "}
-          </>
-        )}
+        <Box
+          role="tabpanel"
+          id="instructor-profile-panel"
+          aria-labelledby={`instructor-profile-tab-${activeTab}`}
+        >
+          {activeTab === 0 && (
+            <Availability
+              availabilityData={availability}
+              loading={loading}
+              instructorData={instructor.id || instructor._id || id}
+              onSelectAvailability={setSelectedAvailability}
+              selectedPackage={selectedPackage}
+            />
+          )}
+          {activeTab === 1 && (
+            <Summary
+              instructorData={instructor}
+              tariffData={tariff}
+              loading={loading}
+            />
+          )}
+          {activeTab === 2 && (
+            <>
+              {" "}
+              <InstructorReviews
+                instructorId={instructor.id || instructor._id || id}
+                activeTab={activeTab}
+              />{" "}
+            </>
+          )}
+        </Box>
       </Box>
     </Box>
   );

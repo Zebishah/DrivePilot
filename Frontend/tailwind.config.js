@@ -9,30 +9,30 @@ export default {
       },
 
       colors: {
-        defaultColor: "#5FC2D3",
+        defaultColor: "#FFC801",
         primary: {
-          DEFAULT: "#5EC2D2",
+          DEFAULT: "#FFC801",
           //// Example for Adding Shades For Colors  also for hovers and disable etc ////
           50: "#F0F9FF",
           100: "#E0F2FE",
         },
         secondary: {
-          DEFAULT: "#15172C",
+          DEFAULT: "#114C5A",
           // 50: "#F0F9FF",
           // 100: "#E0F2FE",
         },
         success: {
-          DEFAULT: "#FFBB38",
+          DEFAULT: "#23765B",
           // 50: "#FEFCE8",
           // 100: "#FEF9C3",
         },
         error: {
-          DEFAULT: "#FF5900",
+          DEFAULT: "#B63838",
           // 50: "#FEF2F2",
           // 100: "#FEE2E2",
         },
         warning: {
-          DEFAULT: "#FCAD14",
+          DEFAULT: "#805800",
           // 50: "#FFFBEB",
           // 100: "#FEF3C7",
         },

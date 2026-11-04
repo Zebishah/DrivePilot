@@ -27,7 +27,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
         backgroundColor: isDisabled
           ? "#f1f5f9"
           : isSelected
-          ? "#5FC2D333"
+          ? "#FFC80133"
           : "#f8fafc",
         border: isDisabled
           ? "1px solid #cbd5e1"
@@ -96,7 +96,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                ? "#5FC2D3"
+                ? "#114C5A"
                 : "#64748b",
               fontSize: "16px",
             }}
@@ -109,7 +109,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                ? "#5FC2D3"
+                ? "#114C5A"
                 : "#334155",
             }}
           >
@@ -130,7 +130,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                ? "#5FC2D3"
+                ? "#114C5A"
                 : "#64748b",
               fontSize: "16px",
             }}
@@ -143,7 +143,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
               color: isDisabled
                 ? "#94a3b8"
                 : isSelected
-                ? "#5FC2D3"
+                ? "#114C5A"
                 : "#64748b",
             }}
           >

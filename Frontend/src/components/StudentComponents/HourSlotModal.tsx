@@ -125,7 +125,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <CalendarCheck2 size={24} style={{ color: "var(--ws-primary, #7C3AED)" }} />
+          <CalendarCheck2 size={24} style={{ color: "var(--ws-primary-ink, #7C3AED)" }} />
           <Typography
             variant="h5"
             sx={{
@@ -335,7 +335,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                             ? "#9ca3af"
                             : isSelected
                             ? "white"
-                            : "#7C3AED",
+                            : "#114C5A",
                         }}
                       />
                       <Typography

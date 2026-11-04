@@ -2,6 +2,7 @@ const express = require("express");
 const { ipKeyGenerator, rateLimit } = require("express-rate-limit");
 const authMiddleware = require("../../middleware/auth");
 const { assistantService } = require("./assistantService");
+const { publicAssistantService } = require("./publicAssistantService");
 const { logger } = require("../../utils/logger");
 
 const router = express.Router();
@@ -30,6 +31,21 @@ async function requireAssistantAuth(req, res, next) {
 }
 
 router.use(express.json({ limit: "32kb" }));
+const publicRateLimit = rateLimit({
+  windowMs: Number.isInteger(configuredWindow) && configuredWindow > 0 ? configuredWindow : 60_000,
+  limit: Number.isInteger(configuredMax) && configuredMax > 0 ? configuredMax : 10,
+  standardHeaders: "draft-7", legacyHeaders: false,
+  keyGenerator: req => `public:${ipKeyGenerator(req.ip)}`,
+  handler: (_req, res) => res.status(429).json({ error: "Please wait a moment before sending another message." }),
+});
+router.post("/api/v1/assistant/public/chat", publicRateLimit, async (req, res) => {
+  try {
+    return res.json(await publicAssistantService.chat({ message: req.body?.message, history: req.body?.history, requestId: req.requestId }));
+  } catch (error) {
+    const status = ["AI_INPUT_INVALID", "AI_INPUT_TOO_LARGE"].includes(error.code) ? 400 : 500;
+    return res.status(status).json({ error: status === 400 ? error.message : "The product guide is temporarily unavailable." });
+  }
+});
 router.post("/api/v1/assistant/chat", requireAssistantAuth, aiRateLimit, async (req, res) => {
   try {
     const result = await assistantService.chat({

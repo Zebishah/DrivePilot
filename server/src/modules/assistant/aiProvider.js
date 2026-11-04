@@ -63,7 +63,7 @@ function createGeminiProvider({ fetchImpl = global.fetch, env = process.env, con
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: system }] },
               contents: messages.map(geminiContent),
-              tools: geminiTools(tools),
+              ...(tools?.length ? { tools: geminiTools(tools) } : {}),
               generationConfig: { temperature, maxOutputTokens: maxTokens },
             }),
             signal: controller.signal,

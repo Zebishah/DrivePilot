@@ -447,7 +447,7 @@ export const TariffTab: React.FC = () => {
             min={MIN_DISCOUNT}
             max={MAX_DISCOUNT}
             sx={{
-              color: "var(--ws-primary, #8B5CF6)",
+              color: "var(--ws-primary-ink, #8B5CF6)",
               "& .MuiSlider-thumb": {
                 height: 24,
                 width: 24,
@@ -670,7 +670,7 @@ export const TariffTab: React.FC = () => {
                           min={MIN_DISCOUNT}
                           max={MAX_DISCOUNT}
                           sx={{
-                            color: "var(--ws-primary, #8B5CF6)",
+                            color: "var(--ws-primary-ink, #8B5CF6)",
                             "& .MuiSlider-thumb": {
                               height: 24,
                               width: 24,

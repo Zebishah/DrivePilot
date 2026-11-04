@@ -60,7 +60,7 @@ const Testimonials: React.FC = () => {
               alt={testimonial.name}
               className="w-36 h-36 rounded-full mt-4 mx-auto mb-4 border-2"
               style={{
-                borderColor: testimonial.highlighted ? 'white' : '#5FC2D3',
+                borderColor: testimonial.highlighted ? 'white' : '#114C5A',
               }}
             />
             <h6

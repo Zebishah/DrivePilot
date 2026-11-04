@@ -12,7 +12,6 @@ const ApexChart = lazy(() => import("react-apexcharts"));
 export default function LazyApexChart(props: ApexChartProps) {
   const { palette } = useTheme();
   const options = useMemo<ApexOptions | undefined>(() => {
-    if (palette.mode !== "dark") return props.options;
     const original = props.options || {};
     const yAxes = Array.isArray(original.yaxis)
       ? original.yaxis
@@ -31,7 +30,7 @@ export default function LazyApexChart(props: ApexChartProps) {
       colors: [...c.chart],
       theme: {
         ...original.theme,
-        mode: "dark",
+        mode: palette.mode,
         monochrome: { ...original.theme?.monochrome, enabled: false },
       },
       chart: {
@@ -45,7 +44,7 @@ export default function LazyApexChart(props: ApexChartProps) {
         ...original.legend,
         labels: { ...original.legend?.labels, colors: c.muted },
       },
-      tooltip: { ...original.tooltip, theme: "dark" },
+      tooltip: { ...original.tooltip, theme: palette.mode },
       xaxis: {
         ...original.xaxis,
         labels: {
