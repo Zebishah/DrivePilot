@@ -82,7 +82,7 @@ export const WeeklyLineChart = ({ data }) => {
     },
     grid: {
       show: true,
-      borderColor: "#e5e7eb",
+      borderColor: "var(--ws-border, #e5e7eb)",
       strokeDashArray: 0,
       position: "back",
       xaxis: {

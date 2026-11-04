@@ -425,13 +425,13 @@ const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = fa
           className="dsp-instructor-results__filter-button"
           sx={{
             fontFamily: "Poppins, sans-serif",
-            backgroundColor: "#5FC2D3",
-            color: "black",
+            backgroundColor: "var(--ws-primary, #5FC2D3)",
+            color: "var(--ws-ink, #000000)",
             textTransform: "none",
             paddingLeft: "2rem",
             paddingRight: "2rem",
             "&:hover": {
-              backgroundColor: "#4AB0C0",
+              backgroundColor: "var(--ws-primary, #4AB0C0)",
             },
             "& .MuiButton-startIcon": {
               marginRight: "0.5rem",
@@ -450,13 +450,13 @@ const InstructorsInfo: React.FC<{ studentMode?: boolean }> = ({ studentMode = fa
           className="dsp-instructor-results__reset-button"
           sx={{
             fontFamily: "Poppins, sans-serif",
-            backgroundColor: "#5FC2D3",
-            color: "black",
+            backgroundColor: "var(--ws-primary, #5FC2D3)",
+            color: "var(--ws-ink, #000000)",
             textTransform: "none",
             paddingLeft: "2rem",
             paddingRight: "2rem",
             "&:hover": {
-              backgroundColor: "#4AB0C0",
+              backgroundColor: "var(--ws-primary, #4AB0C0)",
             },
             "& .MuiButton-startIcon": {
               marginRight: "0.5rem",

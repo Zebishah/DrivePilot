@@ -447,12 +447,12 @@ export const TariffTab: React.FC = () => {
             min={MIN_DISCOUNT}
             max={MAX_DISCOUNT}
             sx={{
-              color: "#8B5CF6",
+              color: "var(--ws-primary, #8B5CF6)",
               "& .MuiSlider-thumb": {
                 height: 24,
                 width: 24,
-                backgroundColor: "#fff",
-                border: "2px solid #A855F7",
+                backgroundColor: "var(--ws-surface, #fff)",
+                border: "2px solid var(--ws-primary, #A855F7)",
                 "&:focus, &:hover, &.Mui-active": {
                   boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
                 },
@@ -503,7 +503,7 @@ export const TariffTab: React.FC = () => {
             "& .MuiOutlinedInput-root": {
               padding: 1.1,
               borderRadius: 1.6,
-              backgroundColor: "#f5f5f5", // Visual indication it's disabled
+              backgroundColor: "var(--ws-surface, #f5f5f5)", // Visual indication it's disabled
             },
           }}
         />
@@ -527,8 +527,8 @@ export const TariffTab: React.FC = () => {
               variant="contained"
               onClick={addBulkPackage}
               sx={{
-                background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-                "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
+                background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+                "&:hover": { background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))" },
                 textTransform: "none",
                 borderRadius: 2,
                 px: 2,
@@ -547,7 +547,7 @@ export const TariffTab: React.FC = () => {
             <Box
               key={index}
               className="dsp-tariff-package"
-              sx={{ mb: 3, p: 2, border: "1px solid #e0e0e0", borderRadius: 2 }}
+              sx={{ mb: 3, p: 2, border: "1px solid var(--ws-border, #e0e0e0)", borderRadius: 2 }}
             >
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={11}>
@@ -628,7 +628,7 @@ export const TariffTab: React.FC = () => {
                           "& .MuiOutlinedInput-root": {
                             padding: 1.1,
                             borderRadius: 1.6,
-                            backgroundColor: "#f5f5f5", // Visual indication it's disabled
+                            backgroundColor: "var(--ws-surface, #f5f5f5)", // Visual indication it's disabled
                           },
                         }}
                         InputProps={{
@@ -670,12 +670,12 @@ export const TariffTab: React.FC = () => {
                           min={MIN_DISCOUNT}
                           max={MAX_DISCOUNT}
                           sx={{
-                            color: "#8B5CF6",
+                            color: "var(--ws-primary, #8B5CF6)",
                             "& .MuiSlider-thumb": {
                               height: 24,
                               width: 24,
-                              backgroundColor: "#fff",
-                              border: "2px solid #A855F7",
+                              backgroundColor: "var(--ws-surface, #fff)",
+                              border: "2px solid var(--ws-primary, #A855F7)",
                               "&:focus, &:hover, &.Mui-active": {
                                 boxShadow: "0 0 0 8px rgba(94, 194, 210, 0.16)",
                               },
@@ -708,7 +708,7 @@ export const TariffTab: React.FC = () => {
                             "& .MuiOutlinedInput-root": {
                               padding: 1.1,
                               borderRadius: 1.6,
-                              backgroundColor: "#f5f5f5", // Visual indication it's disabled
+                              backgroundColor: "var(--ws-surface, #f5f5f5)", // Visual indication it's disabled
                             },
                           }}
                           InputProps={{
@@ -739,7 +739,7 @@ export const TariffTab: React.FC = () => {
                             "& .MuiOutlinedInput-root": {
                               padding: 1.1,
                               borderRadius: 1.6,
-                              backgroundColor: "#f5f5f5", // Visual indication it's disabled
+                              backgroundColor: "var(--ws-surface, #f5f5f5)", // Visual indication it's disabled
                             },
                           }}
                           InputProps={{
@@ -784,10 +784,10 @@ export const TariffTab: React.FC = () => {
                                     borderRadius: "8px",
                                   },
                                   "& .MuiOutlinedInput-notchedOutline": {
-                                    borderColor: "#e0e0e0",
+                                    borderColor: "var(--ws-border, #e0e0e0)",
                                   },
                                   "&:hover .MuiOutlinedInput-notchedOutline": {
-                                    borderColor: "#bdbdbd",
+                                    borderColor: "var(--ws-border, #bdbdbd)",
                                   },
                                   padding: "2px",
                                 }}
@@ -877,8 +877,8 @@ export const TariffTab: React.FC = () => {
           onClick={handleSaveChanges}
           disabled={isLoading}
           sx={{
-            background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-            "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
+            background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+            "&:hover": { background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))" },
             textTransform: "none",
             px: 6,
             py: 1,
@@ -890,7 +890,7 @@ export const TariffTab: React.FC = () => {
               <CircularProgress
                 size={24}
                 sx={{
-                  color: "white",
+                  color: "#ffffff",
                   position: "absolute",
                   left: "50%",
                   marginLeft: "-12px",

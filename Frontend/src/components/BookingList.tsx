@@ -462,10 +462,10 @@ export const BookingList: React.FC<BookingListProps> = ({
               fontWeight: 600,
             },
             "& .Mui-selected": {
-              color: "#5fc2d3 !important",
+              color: "var(--ws-primary, #5fc2d3) !important",
             },
             "& .MuiTabs-indicator": {
-              backgroundColor: "#5fc2d3",
+              backgroundColor: "var(--ws-primary, #5fc2d3)",
             },
           }}
         >
@@ -692,9 +692,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   disabled={resumeCheckoutBookingId === row.booking._id}
                                   onClick={() => handleCompleteOrRetryPayment(row)}
                                   sx={{
-                                    bgcolor: "#f59e0b",
-                                    color: "#111827",
-                                    "&:hover": { bgcolor: "#d97706" },
+                                    bgcolor: "var(--ws-warning-soft, #f59e0b)",
+                                    color: "var(--ws-ink, #111827)",
+                                    "&:hover": { bgcolor: "var(--ws-warning-soft, #d97706)" },
                                     borderRadius: 2.5,
                                     px: 1.6,
                                     py: 0.75,
@@ -747,8 +747,8 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   })()}
                                   onClick={() => onRequestRefund(row.booking, row.slot)}
                                   sx={{
-                                    bgcolor: "#8b5cf6",
-                                    "&:hover": { bgcolor: "#7c3aed" },
+                                    bgcolor: "var(--ws-primary-soft, #8b5cf6)",
+                                    "&:hover": { bgcolor: "var(--ws-primary, #7c3aed)" },
                                     borderRadius: 2.5,
                                     px: 1.6,
                                     py: 0.75,
@@ -769,9 +769,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                                   )
                                 }
                                 sx={{
-                                  bgcolor: "#5fc2d3",
-                                  color: "#111827",
-                                  "&:hover": { bgcolor: "#4bb1c2" },
+                                  bgcolor: "var(--ws-primary, #5fc2d3)",
+                                  color: "var(--ws-ink, #111827)",
+                                  "&:hover": { bgcolor: "var(--ws-primary, #4bb1c2)" },
                                   borderRadius: 2.5,
                                   px: 1.6,
                                   py: 0.75,
@@ -787,7 +787,7 @@ export const BookingList: React.FC<BookingListProps> = ({
                         </TableRow>
                         {row.tab === "abandoned" && (
                           <TableRow>
-                            <TableCell colSpan={tabValue === 2 ? 11 : 10} sx={{ py: 1.2, bgcolor: "#fff7ed" }}>
+                            <TableCell colSpan={tabValue === 2 ? 11 : 10} sx={{ py: 1.2, bgcolor: "var(--ws-surface, #fff7ed)" }}>
                               <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 600 }}>
                                 {canRetryPayment(row)
                                   ? cancelDeadlineLabel
@@ -802,11 +802,11 @@ export const BookingList: React.FC<BookingListProps> = ({
                           <TableRow>
                             <TableCell
                               colSpan={tabValue === 2 ? 11 : 10}
-                              sx={{ py: 1.2, bgcolor: "#fef2f2" }}
+                              sx={{ py: 1.2, bgcolor: "var(--ws-surface, #fef2f2)" }}
                             >
                               <Typography
                                 variant="caption"
-                                sx={{ fontWeight: 600, color: "#991b1b" }}
+                                sx={{ fontWeight: 600, color: "var(--ws-danger, #991b1b)" }}
                               >
                                 This slot is cancelled and not available because
                                 payment was not completed before the deadline.
@@ -830,10 +830,10 @@ export const BookingList: React.FC<BookingListProps> = ({
                 sx={{
                   "& .MuiPaginationItem-root": {
                     "&.Mui-selected": {
-                      bgcolor: "#5fc2d3",
-                      color: "white",
+                      bgcolor: "var(--ws-primary, #5fc2d3)",
+                      color: "var(--ws-on-primary, #ffffff)",
                       "&:hover": {
-                        bgcolor: "#4bb1c2",
+                        bgcolor: "var(--ws-primary, #4bb1c2)",
                       },
                     },
                   },
@@ -862,9 +862,9 @@ export const BookingList: React.FC<BookingListProps> = ({
                 onClick={onNewBooking}
                 sx={{
                   mt: 2,
-                  bgcolor: "#5fc2d3",
+                  bgcolor: "var(--ws-primary, #5fc2d3)",
                   "&:hover": {
-                    bgcolor: "#4bb1c2",
+                    bgcolor: "var(--ws-primary, #4bb1c2)",
                   },
                 }}
               >

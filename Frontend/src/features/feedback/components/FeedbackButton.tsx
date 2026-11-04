@@ -15,7 +15,7 @@ export const FeedbackButton: React.FC<FeedbackButtonProps> = ({
 }) => (
   <Link
     to={`/teacher-dashboard/feedbackForm/${bookingId}/${studentId}`}
-    className={`px-4 py-2 bg-[#5CC2D2] text-white rounded-md hover:bg-[#5CC2D2] transition-colors text-sm font-medium ${className}`}
+    className={`dsp-dashboard-button dsp-dashboard-button--primary ${className}`}
   >
     {feedbackStatus === "pending" ? "Give Feedback" : "View Feedback"}
   </Link>

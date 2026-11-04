@@ -1,33 +1,14 @@
-import React, { useState } from "react";
-import {
-  useStripe,
-  useElements,
-  CardElement,
-} from "@stripe/react-stripe-js";
+import React, { useMemo, useState } from "react";
+import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 import { Box, Button, Typography, CircularProgress } from "@mui/material";
-
-const CARD_ELEMENT_OPTIONS = {
-  style: {
-    base: {
-      color: "#32325d",
-      fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
-      fontSmoothing: "antialiased" as const,
-      fontSize: "16px",
-      "::placeholder": { color: "#aab7c4" },
-    },
-    invalid: {
-      color: "#fa755a",
-      iconColor: "#fa755a",
-    },
-  },
-};
+import { useTheme } from "@mui/material/styles";
 
 type StripeCardFormProps = {
   amount: number;
   onSuccess: (
     paymentMethodId: string,
     cardLast4?: string,
-    cardBrand?: string
+    cardBrand?: string,
   ) => void;
   onError: (message: string) => void;
   disabled?: boolean;
@@ -47,6 +28,24 @@ export function StripeCardForm({
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const { palette } = useTheme();
+  // Stripe renders in its own iframe, so pass resolved colors rather than host CSS variables.
+  const cardElementOptions = useMemo(
+    () => ({
+      style: {
+        base: {
+          color: palette.text.primary,
+          iconColor: palette.primary.main,
+          fontFamily: '"Inter", sans-serif',
+          fontSmoothing: "antialiased" as const,
+          fontSize: "16px",
+          "::placeholder": { color: palette.text.secondary },
+        },
+        invalid: { color: palette.error.main, iconColor: palette.error.main },
+      },
+    }),
+    [palette],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,11 +80,7 @@ export function StripeCardForm({
       }
 
       const card = paymentMethod.card;
-      onSuccess(
-        paymentMethod.id,
-        card?.last4,
-        card?.brand ?? undefined
-      );
+      onSuccess(paymentMethod.id, card?.last4, card?.brand ?? undefined);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Payment failed";
       onError(message);
@@ -108,7 +103,7 @@ export function StripeCardForm({
           bgcolor: "background.paper",
         }}
       >
-        <CardElement options={CARD_ELEMENT_OPTIONS} />
+        <CardElement options={cardElementOptions} />
       </Box>
       <Box sx={{ mt: 2 }}>
         <Button
@@ -117,7 +112,7 @@ export function StripeCardForm({
           fullWidth
           disabled={!stripe || !elements || loading || disabled}
           sx={{
-            bgcolor: "#5ec2d2",
+            bgcolor: "var(--ws-primary, #5ec2d2)",
             "&:hover": { bgcolor: "rgba(65, 135, 147)" },
           }}
         >

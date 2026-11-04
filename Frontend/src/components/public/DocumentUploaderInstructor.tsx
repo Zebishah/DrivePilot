@@ -90,7 +90,7 @@ const DocumentUploaderInstructor: React.FC<DocumentUploaderInstructorProps> = ({
         border: "2px dashed",
         borderColor: "primary.main",
         textAlign: "center",
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "var(--ws-surface, #f5f5f5)",
       }}
     >
       <Typography variant="body1" sx={{ mb: 2 }}>
@@ -121,7 +121,7 @@ const DocumentUploaderInstructor: React.FC<DocumentUploaderInstructorProps> = ({
             sx={{
               mt: 2,
               p: 2,
-              border: "1px solid #e0e0e0",
+              border: "1px solid var(--ws-border, #e0e0e0)",
               borderRadius: 1,
               backgroundColor: "background.paper",
             }}
@@ -163,7 +163,7 @@ const DocumentUploaderInstructor: React.FC<DocumentUploaderInstructorProps> = ({
                 sx={{
                   mt: 1,
                   p: 2,
-                  backgroundColor: "#f5f5f5",
+                  backgroundColor: "var(--ws-surface, #f5f5f5)",
                   borderRadius: 1,
                   display: "flex",
                   alignItems: "center",

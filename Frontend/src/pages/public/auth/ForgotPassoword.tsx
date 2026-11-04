@@ -133,8 +133,8 @@ const ForgotPassword: React.FC = () => {
               mt: 3,
               mb: 2,
               py: 1.5,
-              bgcolor: "#4CC9F0",
-              "&:hover": { bgcolor: "#3AB7E0" },
+              bgcolor: "var(--ws-primary, #4CC9F0)",
+              "&:hover": { bgcolor: "var(--ws-primary, #3AB7E0)" },
             }}
           >
             {loading ? (

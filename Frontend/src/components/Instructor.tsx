@@ -146,7 +146,7 @@ const Instructor = () => {
                   className="absolute top-12 -right-0.5 w-24 h-24 bg-#5FC2D3"
                   style={{
                     clipPath: "circle(100% at 100% 0)",
-                    backgroundColor: "#5FC2D3",
+                    backgroundColor: "var(--ws-primary, #5FC2D3)",
                   }}
                 />
 
@@ -164,13 +164,13 @@ const Instructor = () => {
       Reference Check
      </Typography> */}
                     <IoStarSharp
-                      style={{ color: "#FFDB20", marginRight: "0.5rem" }}
+                      style={{ color: "var(--ws-warning, #FFDB20)", marginRight: "0.5rem" }}
                     />
                     <IoStarSharp
-                      style={{ color: "#FFDB20", marginRight: "0.5rem" }}
+                      style={{ color: "var(--ws-warning, #FFDB20)", marginRight: "0.5rem" }}
                     />
                     <IoStarSharp
-                      style={{ color: "#FFDB20", marginRight: "0.8rem" }}
+                      style={{ color: "var(--ws-warning, #FFDB20)", marginRight: "0.8rem" }}
                     />
                     <p className="mr-0.5"> {step.rating}</p>
                   </Box>
@@ -196,12 +196,12 @@ const Instructor = () => {
                     variant="contained"
                     className="w-3"
                     style={{
-                      backgroundColor: "#5FC2D3",
+                      backgroundColor: "var(--ws-primary, #5FC2D3)",
                       borderRadius: "10px",
                       marginTop: "2rem",
                       width: "100%", // Adjust the button width
                       textTransform: "none",
-                      color: "black",
+                      color: "var(--ws-ink, #000000)",
                     }}
                     onClick={() => {
                       window.scrollTo({ top: 0, behavior: "smooth" });

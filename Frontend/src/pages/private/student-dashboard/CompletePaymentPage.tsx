@@ -225,7 +225,7 @@ export const CompletePaymentPage: React.FC = () => {
             </Typography>
             <Button
               variant="contained"
-              sx={{ mt: 2, bgcolor: "#5fc2d3" }}
+              sx={{ mt: 2, bgcolor: "var(--ws-primary, #5fc2d3)" }}
               onClick={() => navigate("/student-dashboard/book")}
             >
               Go to Booked lessons
@@ -297,7 +297,7 @@ export const CompletePaymentPage: React.FC = () => {
               </Alert>
               <Button
                 variant="contained"
-                sx={{ bgcolor: "#5fc2d3" }}
+                sx={{ bgcolor: "var(--ws-primary, #5fc2d3)" }}
                 onClick={() => navigate("/student-dashboard/book")}
               >
                 Back to Booked lessons
@@ -315,7 +315,7 @@ export const CompletePaymentPage: React.FC = () => {
               </Typography>
               <Button
                 variant="contained"
-                sx={{ bgcolor: "#5fc2d3" }}
+                sx={{ bgcolor: "var(--ws-primary, #5fc2d3)" }}
                 onClick={() => navigate("/student-dashboard/book")}
               >
                 Back to Booked lessons

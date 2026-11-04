@@ -268,7 +268,7 @@ const BookLesson: React.FC = () => {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "50vh",
-          bgcolor: "#f5f5f5",
+          bgcolor: "var(--ws-surface, #f5f5f5)",
         }}
       >
         <Box
@@ -294,8 +294,8 @@ const BookLesson: React.FC = () => {
             variant="contained"
             onClick={() => refetch()}
             sx={{
-              bgcolor: "#5fc2d3",
-              "&:hover": { bgcolor: "#4bb1c2" },
+              bgcolor: "var(--ws-primary, #5fc2d3)",
+              "&:hover": { bgcolor: "var(--ws-primary, #4bb1c2)" },
             }}
           >
             Try again
@@ -375,7 +375,7 @@ const BookLesson: React.FC = () => {
       <div className="dsp-student-bookings-page__heading"><span>Student workspace</span><h1>Booked lessons</h1><p>Manage your upcoming lessons, payment status, and lesson history.</p></div>
       {/* Abandoned checkouts: resume payment for the same booking (no re-search, slot stays reserved). */}
       {abandonedByBooking.length > 0 && (
-        <Card sx={{ mb: 3, mt: 2, borderLeft: "4px solid #9e9e9e" }}>
+        <Card sx={{ mb: 3, mt: 2, borderLeft: "4px solid var(--ws-border, #9e9e9e)" }}>
           <Box
             sx={{
               pb: 1.6,
@@ -448,7 +448,7 @@ const BookLesson: React.FC = () => {
                       variant="contained"
                       size="small"
                       disabled={loadingCheckoutBookingId != null || checkoutPendingLoading}
-                      sx={{ bgcolor: "#5fc2d3", textTransform: "none" }}
+                      sx={{ bgcolor: "var(--ws-primary, #5fc2d3)", textTransform: "none" }}
                       onClick={() => handleContinueToCheckout(item.bookingId)}
                     >
                       {thisButtonLoading ? "Loading…" : "Continue to checkout"}
@@ -480,7 +480,7 @@ const BookLesson: React.FC = () => {
           </Box>
           <CardContent>
             <Card sx={{ display: "flex", alignItems: "center", p: 2, mb: 2 }}>
-              <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
+              <Avatar sx={{ bgcolor: "var(--ws-primary, #6a1b9a)", mr: 2 }}>S</Avatar>
               <CardContent sx={{ flex: 1 }}>
                 <Typography variant="body1">Debit Card</Typography>
                 <Typography variant="body2" color="textSecondary">
@@ -494,8 +494,8 @@ const BookLesson: React.FC = () => {
                 sx={{
                   borderRadius: 20,
                   textTransform: "none",
-                  borderColor: "#1976d2",
-                  color: "#1976d2",
+                  borderColor: "var(--ws-info-border, #1976d2)",
+                  color: "var(--ws-info, #1976d2)",
                 }}
                 endIcon={<ChatIcon />}
                 onClick={handleConfirmPay}
@@ -574,7 +574,7 @@ const BookLesson: React.FC = () => {
                           display: "flex",
                           alignItems: "center",
                           p: 1,
-                          bgcolor: "#e6f0fa",
+                          bgcolor: "var(--ws-surface, #e6f0fa)",
                           borderRadius: 2,
                         }}
                       >

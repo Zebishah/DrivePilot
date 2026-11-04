@@ -609,7 +609,7 @@ const BookingDetails: React.FC = () => {
   // User returned from Stripe with checkout=cancelled; redirect loses location.state so show retry message
   if (paymentCancelledReturn && !instructorId) {
     return (
-      <Box className="dsp-student-booking-details" sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+      <Box className="dsp-student-booking-details" sx={{ py: 1, px: 3, bgcolor: "var(--ws-surface, #f5f5f5)", minHeight: "100vh" }}>
         <BackButton variant="outline" showIcon={true} />
         <Card sx={{ mb: 3, mt: 2, p: 3 }}>
           <Alert severity="info" sx={{ mb: 2 }}>
@@ -631,7 +631,7 @@ const BookingDetails: React.FC = () => {
   }
 
   return (
-    <Box className="dsp-student-booking-details" sx={{ py: 1, px: 3, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+    <Box className="dsp-student-booking-details" sx={{ py: 1, px: 3, bgcolor: "var(--ws-surface, #f5f5f5)", minHeight: "100vh" }}>
       <BackButton variant="outline" showIcon={true} />
       <Card sx={{ mb: 3, mt: 2 }}>
         <Box
@@ -747,7 +747,7 @@ const BookingDetails: React.FC = () => {
             Payment Method
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-            <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
+            <Avatar sx={{ bgcolor: "var(--ws-primary, #6a1b9a)", mr: 2 }}>S</Avatar>
             <Box>
               <Typography variant="body1">
                 {paymentMethod?.type || "N/A"}
@@ -881,7 +881,7 @@ const BookingDetails: React.FC = () => {
                       display: "flex",
                       alignItems: "center",
                       p: 1,
-                      bgcolor: "#e6f0fa",
+                      bgcolor: "var(--ws-surface, #e6f0fa)",
                       borderRadius: 2,
                     }}
                   >
@@ -955,7 +955,7 @@ const BookingDetails: React.FC = () => {
               disabled={!initialPriceShown || checkoutLoading}
               sx={{
                 width: "200px",
-                bgcolor: "#5ec2d2",
+                bgcolor: "var(--ws-primary, #5ec2d2)",
                 "&:hover": {
                   bgcolor: "rgba(65, 135, 147);",
                 },
@@ -1164,7 +1164,7 @@ const BookingDetails: React.FC = () => {
                     py: 1.5,
                     fontSize: "0.95rem",
                     fontWeight: 600,
-                    bgcolor: "#5ec2d2",
+                    bgcolor: "var(--ws-primary, #5ec2d2)",
                     "&:hover": {
                       bgcolor: "rgba(65, 135, 147)",
                     },
@@ -1185,13 +1185,13 @@ const BookingDetails: React.FC = () => {
                     )
                   : "Not selected"}
               </Typography>
-              <Box sx={{ bgcolor: "#f5f5f5", p: 3, borderRadius: 1, mt: 2 }}>
+              <Box sx={{ bgcolor: "var(--ws-surface, #f5f5f5)", p: 3, borderRadius: 1, mt: 2 }}>
                 <Typography variant="h6" gutterBottom>
                   Details
                 </Typography>
 
                 <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                  <Avatar sx={{ bgcolor: "#6a1b9a", mr: 2 }}>S</Avatar>
+                  <Avatar sx={{ bgcolor: "var(--ws-primary, #6a1b9a)", mr: 2 }}>S</Avatar>
                   <Box>
                     <Typography variant="body1">
                       {paymentMethod?.type || "Credit card"}
@@ -1342,8 +1342,8 @@ const BookingDetails: React.FC = () => {
                 )}
               <Box
                 sx={{
-                  bgcolor: "#f7fafc",
-                  border: "1px solid #e2e8f0",
+                  bgcolor: "var(--ws-surface, #f7fafc)",
+                  border: "1px solid var(--ws-border, #e2e8f0)",
                   p: 2,
                   borderRadius: 2,
                   mt: 2,
@@ -1390,7 +1390,7 @@ const BookingDetails: React.FC = () => {
                                 bgcolor: isSelected ? "#5ec2d2" : "#fff",
                                 color: isSelected ? "#083b45" : "#1d4e89",
                                 "&:hover": {
-                                  borderColor: "#5ec2d2",
+                                  borderColor: "var(--ws-primary, #5ec2d2)",
                                   bgcolor: isSelected ? "#4db1c1" : "#f0fbff",
                                 },
                               }}
@@ -1404,7 +1404,7 @@ const BookingDetails: React.FC = () => {
                                 </Typography>
                               </Box>
                               {isSelected && (
-                                <Chip size="small" label="Selected" sx={{ bgcolor: "#fff", color: "#0f5563" }} />
+                                <Chip size="small" label="Selected" sx={{ bgcolor: "var(--ws-surface, #fff)", color: "var(--ws-info, #0f5563)" }} />
                               )}
                             </Button>
                           </Grid>
@@ -1427,8 +1427,8 @@ const BookingDetails: React.FC = () => {
             justifyContent: "space-between",
             px: 3,
             py: 2,
-            borderTop: "1px solid #edf2f7",
-            bgcolor: "#fff",
+            borderTop: "1px solid var(--ws-border, #edf2f7)",
+            bgcolor: "var(--ws-surface, #fff)",
           }}
         >
           {!isTooLate && (
@@ -1438,7 +1438,7 @@ const BookingDetails: React.FC = () => {
               disabled={rescheduleLoading || !selectedRescheduleSlotId}
               sx={{
                 minWidth: "210px",
-                bgcolor: "#5ec2d2",
+                bgcolor: "var(--ws-primary, #5ec2d2)",
                 "&:hover": {
                   bgcolor: "rgba(65, 135, 147)",
                 },

@@ -1033,10 +1033,10 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
                 fontWeight: 600,
               },
               "& .Mui-selected": {
-                color: "#7C3AED !important",
+                color: "var(--ws-primary, #7C3AED) !important",
               },
               "& .MuiTabs-indicator": {
-                background: "linear-gradient(90deg, #7C3AED, #EC4899)",
+                background: "linear-gradient(90deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
               },
             }}
           >
@@ -1332,10 +1332,10 @@ const StudentBookingWInst: React.FC<BookingsTableProps> = ({
             sx={{
               "& .MuiPaginationItem-root": {
                 "&.Mui-selected": {
-                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-                  color: "white",
+                  background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+                  color: "var(--ws-on-primary, #ffffff)",
                   "&:hover": {
-                    background: "linear-gradient(135deg, #6D28D9, #DB2777)",
+                    background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))",
                   },
                 },
               },

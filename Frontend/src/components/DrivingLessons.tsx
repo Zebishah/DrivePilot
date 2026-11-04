@@ -41,7 +41,7 @@ const DrivingLessons = () => {
               variant="contained"
               className="relative z-10"
               style={{
-                backgroundColor: "#5FC2D3",
+                backgroundColor: "var(--ws-primary, #5FC2D3)",
                 borderRadius: "10px",
                 marginTop: "1rem",
                 textTransform: "none",
@@ -57,7 +57,7 @@ const DrivingLessons = () => {
         <div
           className="p-6 rounded-tr-lg  text-gray-900 flex flex-col justify-between items-center text-center"
           style={{
-            backgroundColor: "#5FC2D3",
+            backgroundColor: "var(--ws-primary, #5FC2D3)",
           }}
         >
           <div className="m-12">
@@ -72,7 +72,7 @@ const DrivingLessons = () => {
               variant="contained"
               className="text-white"
               style={{
-                backgroundColor: "#15172C",
+                backgroundColor: "var(--ws-elevated, #15172C)",
                 borderRadius: "10px",
                 marginTop: "1rem",
                 textTransform: "none",
@@ -88,7 +88,7 @@ const DrivingLessons = () => {
         <div
           className="md:col-span-2 p-6 rounded-bl-lg rounded-br-lg text-white flex flex-col justify-between items-center text-center"
           style={{
-            backgroundColor: "#15172C",
+            backgroundColor: "var(--ws-elevated, #15172C)",
           }}
         >
           <div className="m-12">
@@ -108,11 +108,11 @@ const DrivingLessons = () => {
             <Button
               variant="contained"
               style={{
-                backgroundColor: "#5FC2D3",
+                backgroundColor: "var(--ws-primary, #5FC2D3)",
                 borderRadius: "10px",
                 marginTop: "2rem",
                 textTransform: "none",
-                color: "black",
+                color: "var(--ws-ink, #000000)",
                 fontFamily: "Poppins, sans-serif",
               }}
             >

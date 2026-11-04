@@ -174,7 +174,7 @@ const FaqList: React.FC<FaqListProps> = ({ adminId }) => {
             key={faq._id}
             expanded={expanded === faq._id}
             onChange={handleChange(faq._id)}
-            sx={{ mb: 1, border: "1px solid #e0e0e0", borderRadius: 1 }}
+            sx={{ mb: 1, border: "1px solid var(--ws-border, #e0e0e0)", borderRadius: 1 }}
           >
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}

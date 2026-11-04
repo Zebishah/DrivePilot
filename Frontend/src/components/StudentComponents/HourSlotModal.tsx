@@ -121,17 +121,17 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
           justifyContent: "space-between",
           alignItems: "center",
           pb: 2,
-          borderBottom: "1px solid #e2e8f0",
+          borderBottom: "1px solid var(--ws-border, #e2e8f0)",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <CalendarCheck2 size={24} style={{ color: "#7C3AED" }} />
+          <CalendarCheck2 size={24} style={{ color: "var(--ws-primary, #7C3AED)" }} />
           <Typography
             variant="h5"
             sx={{
               fontWeight: "600",
               fontFamily: "Poppins, sans-serif",
-              color: "#1e293b",
+              color: "var(--ws-ink, #1e293b)",
             }}
           >
             Select Time Slots
@@ -140,9 +140,9 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
         <IconButton
           onClick={handleClose}
           sx={{
-            color: "#64748b",
+            color: "var(--ws-muted, #64748b)",
             "&:hover": {
-              backgroundColor: "#f1f5f9",
+              backgroundColor: "var(--ws-surface, #f1f5f9)",
             },
           }}
         >
@@ -157,10 +157,10 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
           sx={{
             mb: 3,
             borderRadius: "12px",
-            backgroundColor: "#f0f9ff",
-            border: "1px solid #bae6fd",
+            backgroundColor: "var(--ws-surface, #f0f9ff)",
+            border: "1px solid var(--ws-info-border, #bae6fd)",
             "& .MuiAlert-icon": {
-              color: "#0284c7",
+              color: "var(--ws-info, #0284c7)",
             },
           }}
         >
@@ -168,7 +168,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             sx={{
               fontFamily: "Poppins, sans-serif",
               fontSize: "14px",
-              color: "#0c4a6e",
+              color: "var(--ws-info, #0c4a6e)",
             }}
           >
             Select the time slots you want to book for your lessons.
@@ -179,7 +179,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
         <Box
           sx={{
             p: 2,
-            backgroundColor: "#f8fafc",
+            backgroundColor: "var(--ws-surface, #f8fafc)",
             borderRadius: "12px",
             mb: 3,
           }}
@@ -189,7 +189,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             sx={{
               fontFamily: "Poppins, sans-serif",
               fontWeight: "600",
-              color: "#1e293b",
+              color: "var(--ws-ink, #1e293b)",
               mb: 1,
             }}
           >
@@ -199,7 +199,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             variant="body1"
             sx={{
               fontFamily: "Poppins, sans-serif",
-              color: "#64748b",
+              color: "var(--ws-muted, #64748b)",
             }}
           >
             Available slots: {originalSlot.timeRange}
@@ -212,7 +212,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
           sx={{
             fontFamily: "Poppins, sans-serif",
             fontWeight: "600",
-            color: "#1e293b",
+            color: "var(--ws-ink, #1e293b)",
             mb: 2,
           }}
         >
@@ -268,8 +268,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                         position: "absolute",
                         top: 8,
                         right: 8,
-                        backgroundColor: "#ef4444",
-                        color: "white",
+                        backgroundColor: "var(--ws-danger-soft, #ef4444)",
+                        color: "#ffffff",
                         px: 1,
                         py: "2px",
                         borderRadius: "6px",
@@ -287,8 +287,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                         position: "absolute",
                         top: 8,
                         right: 8,
-                        backgroundColor: "#16a34a",
-                        color: "white",
+                        backgroundColor: "var(--ws-success-soft, #16a34a)",
+                        color: "#ffffff",
                         px: 1,
                         py: "2px",
                         borderRadius: "6px",
@@ -306,8 +306,8 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
                         position: "absolute",
                         top: 8,
                         right: 8,
-                        backgroundColor: "#64748b",
-                        color: "white",
+                        backgroundColor: "var(--ws-muted, #64748b)",
+                        color: "#ffffff",
                         px: 1,
                         py: "2px",
                         borderRadius: "6px",
@@ -392,16 +392,16 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             sx={{
               mt: 3,
               p: 2,
-              backgroundColor: "#f0f9ff",
+              backgroundColor: "var(--ws-surface, #f0f9ff)",
               borderRadius: "12px",
-              border: "1px solid #bae6fd",
+              border: "1px solid var(--ws-info-border, #bae6fd)",
             }}
           >
             <Typography
               sx={{
                 fontFamily: "Poppins, sans-serif",
                 fontWeight: "500",
-                color: "#0c4a6e",
+                color: "var(--ws-info, #0c4a6e)",
               }}
             >
               Selected: {selectedHourSlots.length} time slot
@@ -414,7 +414,7 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
       <DialogActions
         sx={{
           p: 3,
-          borderTop: "1px solid #e2e8f0",
+          borderTop: "1px solid var(--ws-border, #e2e8f0)",
           gap: 2,
         }}
       >
@@ -429,11 +429,11 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             textTransform: "none",
             fontFamily: "Poppins, sans-serif",
             fontWeight: "500",
-            borderColor: "#d1d5db",
-            color: "#6b7280",
+            borderColor: "var(--ws-border, #d1d5db)",
+            color: "var(--ws-muted, #6b7280)",
             "&:hover": {
-              borderColor: "#9ca3af",
-              backgroundColor: "#f9fafb",
+              borderColor: "var(--ws-subtle, #9ca3af)",
+              backgroundColor: "var(--ws-surface, #f9fafb)",
             },
           }}
         >
@@ -451,20 +451,20 @@ const HourSlotModal: React.FC<HourSlotModalProps> = ({
             textTransform: "none",
             fontFamily: "Poppins, sans-serif",
             fontWeight: "500",
-            background: "linear-gradient(135deg, #7C3AED, #A855F7 48%, #EC4899)",
-            color: "black",
+            background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary-soft, #A855F7) 48%, var(--ws-primary, #EC4899))",
+            color: "var(--ws-ink, #000000)",
             minWidth: "120px",
             "&:hover": {
-              backgroundColor: "#4db5c7",
+              backgroundColor: "var(--ws-info-soft, #4db5c7)",
             },
             "&:disabled": {
-              backgroundColor: "#e2e8f0",
-              color: "#9ca3af",
+              backgroundColor: "var(--ws-surface-muted, #e2e8f0)",
+              color: "var(--ws-subtle, #9ca3af)",
             },
           }}
         >
           {loading ? (
-            <CircularProgress size={20} sx={{ color: "#9ca3af" }} />
+            <CircularProgress size={20} sx={{ color: "var(--ws-subtle, #9ca3af)" }} />
           ) : (
             "Confirm Selection"
           )}

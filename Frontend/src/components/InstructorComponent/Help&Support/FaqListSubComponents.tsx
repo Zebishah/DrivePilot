@@ -10,7 +10,7 @@ import { MdOutlineQuestionAnswer } from "react-icons/md";
 
 // 3. FAQ List Sub-components
 export const FAQListHeader: React.FC = () => (
-  <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
+  <Box sx={{ p: 2, borderBottom: "1px solid var(--ws-border, #e0e0e0)" }}>
     <Typography variant="h6" sx={{ fontWeight: 600 }}>
       Frequently Asked Questions
     </Typography>
@@ -29,7 +29,7 @@ export const EmptyFAQState: React.FC = () => (
       py={8}
     >
       <MdOutlineQuestionAnswer
-        style={{ fontSize: 64, color: "#ccc", marginBottom: 2 }}
+        style={{ fontSize: 64, color: "var(--ws-subtle, #ccc)", marginBottom: 2 }}
       />
       <Typography variant="h6" color="text.secondary">
         No FAQs available at the moment.
@@ -46,7 +46,7 @@ export const FAQListSkeleton: React.FC = () => (
       alignItems="center"
       minHeight="400px"
     >
-      <CircularProgress size={48} sx={{ color: "#4DD0E1" }} />
+      <CircularProgress size={48} sx={{ color: "var(--ws-primary, #4DD0E1)" }} />
     </Box>
   </Paper>
 );
@@ -81,17 +81,17 @@ export const FAQListActions: React.FC<FAQListActionsProps> = ({
       display="flex"
       justifyContent="center"
       gap={2}
-      sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}
+      sx={{ p: 2, borderTop: "1px solid var(--ws-border, #e0e0e0)" }}
     >
       {hasMore && (
         <Button
           variant="outlined"
           onClick={onLoadMore}
           sx={{
-            borderColor: "#4db6ac",
-            color: "#4db6ac",
+            borderColor: "var(--ws-primary, #4db6ac)",
+            color: "var(--ws-primary, #4db6ac)",
             "&:hover": {
-              borderColor: "#26a69a",
+              borderColor: "var(--ws-info-border, #26a69a)",
               backgroundColor: "rgba(77, 182, 172, 0.04)",
             },
             px: 4,
@@ -110,10 +110,10 @@ export const FAQListActions: React.FC<FAQListActionsProps> = ({
           variant="outlined"
           onClick={onShowLess}
           sx={{
-            borderColor: "#ff7043",
-            color: "#ff7043",
+            borderColor: "var(--ws-danger-border, #ff7043)",
+            color: "var(--ws-danger, #ff7043)",
             "&:hover": {
-              borderColor: "#f4511e",
+              borderColor: "var(--ws-danger-border, #f4511e)",
               backgroundColor: "rgba(255, 112, 67, 0.04)",
             },
             px: 4,

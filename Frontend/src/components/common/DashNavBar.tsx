@@ -161,7 +161,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
               width: 40,
               height: 40,
               borderRadius: "50%",
-              bgcolor: "#e0e0e0",
+              bgcolor: "var(--ws-surface-muted, #e0e0e0)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -194,7 +194,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
       sx={{
         borderBottom: "1px solid rgba(231, 229, 228, 0.9)",
         backgroundColor: "rgba(255, 255, 255, 0.86)",
-        color: "#15171D",
+        color: "var(--ws-ink, #15171D)",
         backdropFilter: "blur(12px)",
         zIndex: (theme) => theme.zIndex.appBar,
       }}
@@ -220,7 +220,7 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
             title={selectedLanguage.label}
             style={{ width: 24, height: 16 }}
           />
-          <Typography sx={{ display: { xs: "none", md: "block" }, fontSize: "0.82rem", fontWeight: 600, color: "#526071" }}>
+          <Typography sx={{ display: { xs: "none", md: "block" }, fontSize: "0.82rem", fontWeight: 600, color: "var(--ws-info, #526071)" }}>
             {selectedLanguage.label}
           </Typography>
 

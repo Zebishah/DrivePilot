@@ -241,8 +241,7 @@ export const InstructorAnalyticsDashboard = () => {
   });
 
   const analytics = data?.getInstructorAnalytics as
-    | InstructorAnalytics
-    | undefined;
+    InstructorAnalytics | undefined;
   const recentBookings = useMemo(
     () => (analytics?.recentBookings ?? []) as StudentBookingNew[],
     [analytics?.recentBookings],
@@ -294,11 +293,11 @@ export const InstructorAnalyticsDashboard = () => {
 
   return (
     <div className="dsp-overview-page dsp-instructor-overview dsp-instructor-overview--radical">
-      <main className="dsp-overview-page__content">
+      <div className="dsp-overview-page__content">
         <header className="dsp-overview__compact-header">
           <div>
             <span className="dsp-overview__eyebrow">Instructor workspace</span>
-            <h1>Good morning{user?.firstName ? `, ${user.firstName}` : ""}</h1>
+            <h2>Your teaching overview</h2>
             <p>
               {overviewDate} <span aria-hidden="true">·</span> {todayCount}{" "}
               lesson{todayCount === 1 ? "" : "s"} today
@@ -322,37 +321,6 @@ export const InstructorAnalyticsDashboard = () => {
         </header>
 
         <div className="dsp-overview__top-grid">
-          <section
-            className="dsp-overview__welcome-card"
-            aria-labelledby="teaching-day-title"
-          >
-            <div className="dsp-overview__welcome-orb" aria-hidden="true">
-              <UsersRound size={22} className="text-white" />
-            </div>
-            <span className="dsp-overview__welcome-kicker">
-              Your teaching day
-            </span>
-            <h2 id="teaching-day-title">
-              Stay close to what needs your attention.
-            </h2>
-            <p>
-              {user?.isProfileComplete
-                ? "Your instructor profile is ready for students. Keep your schedule current and your next lesson close at hand."
-                : "Complete your instructor profile so students can confidently discover and book you."}
-            </p>
-            <Link
-              to={
-                user?.isProfileComplete
-                  ? "/teacher-dashboard/bookingManagement"
-                  : "/teacher-dashboard/settings"
-              }
-              className="dsp-overview__inline-action"
-            >
-              {user?.isProfileComplete ? "Review schedule" : "Complete profile"}
-              <ArrowRight size={15} />
-            </Link>
-          </section>
-
           <section
             className="dsp-overview__next-card"
             aria-labelledby="next-lesson-title"
@@ -691,7 +659,7 @@ export const InstructorAnalyticsDashboard = () => {
             />
           </div>
         </OverviewSection>
-      </main>
+      </div>
     </div>
   );
 };

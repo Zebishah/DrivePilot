@@ -543,7 +543,7 @@ export const PaymentTab: React.FC = () => {
                 <Card elevation={0} sx={{ flex: 1, minWidth: 170, borderRadius: 2.5, bgcolor: "rgba(0, 191, 165, 0.08)", border: "1px solid rgba(0, 191, 165, 0.35)" }}>
                   <CardContent sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                     <Box sx={{ width: 36, height: 36, borderRadius: "50%", bgcolor: "rgba(0, 191, 165, 0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <AttachMoneyIcon sx={{ color: "#0EA5E9", fontSize: 20 }} />
+                      <AttachMoneyIcon sx={{ color: "var(--ws-info, #0EA5E9)", fontSize: 20 }} />
                     </Box>
                     <Box>
                       <Typography color="text.secondary" variant="caption">Total received</Typography>

@@ -81,7 +81,7 @@ function makeOptions({
     plotOptions: {
       bar: { borderRadius: 6, columnWidth: "48%" },
     },
-    grid: { borderColor: "#E2E8F0", strokeDashArray: 4, padding: { left: 8, right: 8 } },
+    grid: { borderColor: "var(--ws-border, #E2E8F0)", strokeDashArray: 4, padding: { left: 8, right: 8 } },
     legend: { position: "top", horizontalAlign: "left", fontSize: "12px", labels: { colors: "#64748B" } },
     xaxis: {
       categories,

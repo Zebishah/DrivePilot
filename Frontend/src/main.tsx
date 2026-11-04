@@ -1,10 +1,17 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.tsx";
+import "./index.css";
+import "./themes/workspace.css";
+import { usesIntelligentTheme } from "./themes/intelligentTokens";
 
-createRoot(document.getElementById('root')!).render(
+document.body.classList.toggle(
+  "dsp-intelligent",
+  usesIntelligentTheme(window.location.pathname),
+);
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );

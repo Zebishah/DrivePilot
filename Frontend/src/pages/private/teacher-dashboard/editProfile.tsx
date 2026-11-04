@@ -333,7 +333,7 @@ export default function EditProfile() {
             width: 130,
             height: 130,
             borderRadius: "50%",
-            bgcolor: "#e0e0e0",
+            bgcolor: "var(--ws-surface-muted, #e0e0e0)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -369,7 +369,7 @@ export default function EditProfile() {
               width: 130,
               height: 130,
               borderRadius: "50%",
-              bgcolor: "#e0e0e0",
+              bgcolor: "var(--ws-surface-muted, #e0e0e0)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -415,10 +415,10 @@ export default function EditProfile() {
                   {...bindTrigger(popupState)}
                   size="small"
                   sx={{
-                    backgroundColor: "white",
+                    backgroundColor: "var(--ws-surface, #ffffff)",
                     boxShadow: 1,
                     "&:hover": {
-                      backgroundColor: "#f5f5f5",
+                      backgroundColor: "var(--ws-surface, #f5f5f5)",
                     },
                   }}
                 >
@@ -496,7 +496,7 @@ export default function EditProfile() {
   };
 
   return (
-    <Box className="dsp-instructor-page dsp-edit-profile-page" sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
+    <Box className="dsp-instructor-page dsp-edit-profile-page" sx={{ minHeight: "100vh", bgcolor: "var(--ws-surface, #f5f7fa)" }}>
       <DashboardBackLink label="Back to profile" />
       {/* Main Content */}
       <Box sx={{ flex: 1, p: 3 }}>
@@ -536,7 +536,7 @@ export default function EditProfile() {
               >
                 <Typography
                   variant="h6"
-                  color="black"
+                  color="var(--ws-ink, #000000)"
                 >{`${formData.firstName} ${formData.lastName}`}</Typography>
                 <Box
                   sx={{
@@ -560,7 +560,7 @@ export default function EditProfile() {
                 fontSize: "18px",
                 textAlign: "center",
                 fontWeight: "bold",
-                color: "black",
+                color: "var(--ws-ink, #000000)",
               }}
             >
               Introduction
@@ -580,7 +580,7 @@ export default function EditProfile() {
                   width: "50%",
 
                   p: "0px !important",
-                  backgroundColor: "#EEEEEE",
+                  backgroundColor: "var(--ws-surface-muted, #EEEEEE)",
                 }}
               />
             </Box>
@@ -716,7 +716,7 @@ export default function EditProfile() {
                                   sx={{
                                     "& .MuiTypography-root": {
                                       fontSize: "0.875rem",
-                                      color: "#2c3e50",
+                                      color: "var(--ws-info, #2c3e50)",
                                     },
                                   }}
                                 />
@@ -896,8 +896,8 @@ export default function EditProfile() {
               <Button
                 variant="contained"
                 sx={{
-                  background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-                  "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
+                  background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+                  "&:hover": { background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))" },
                   paddingX: 4,
                   borderRadius: "8px",
                   py: 1,

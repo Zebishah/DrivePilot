@@ -292,9 +292,11 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
                       my: 2,
                     }}
                     onPaste={handlePaste}
+                    className="dsp-otp-fields"
                   >
                     {otp.map((digit, index) => (
                       <OtpInput
+                        className="dsp-otp-digit"
                         key={index}
                         inputRef={(el) => (inputRefs.current[index] = el)}
                         variant="outlined"
@@ -302,6 +304,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
                         onChange={(e) => handleChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
                         inputProps={{
+                          "aria-label": `Verification code digit ${index + 1} of ${OTP_LENGTH}`,
                           maxLength: 1,
                           inputMode: "numeric",
                           pattern: "[0-9]*",

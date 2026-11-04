@@ -327,7 +327,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                       top: 12,
                       right: 12,
                       zIndex: 2,
-                      backgroundColor: "rgba(124, 58, 237, 0.92)",
+                      backgroundColor: "rgba(var(--ws-accent-rgb, 124, 58, 237), 0.92)",
                       borderRadius: "50%",
                       width: 40,
                       height: 40,
@@ -336,7 +336,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                       justifyContent: "center",
                     }}
                   >
-                    <VisibilityIcon sx={{ color: "white", fontSize: 20 }} />
+                    <VisibilityIcon sx={{ color: "#ffffff", fontSize: 20 }} />
                   </Box>
                 </Fade>
 
@@ -350,13 +350,13 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
                       flexDirection: "column",
                       justifyContent: "center",
                       alignItems: "center",
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: "var(--ws-surface, #f8f9fa)",
                       borderRadius: 2,
                       position: "relative",
                       mb: 2,
                     }}
                   >
-                    <DescriptionIcon sx={{ fontSize: 60, color: "#e53e3e" }} />
+                    <DescriptionIcon sx={{ fontSize: 60, color: "var(--ws-danger, #e53e3e)" }} />
                     <Typography
                       variant="caption"
                       color="text.secondary"
@@ -443,7 +443,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
           <Box
             sx={{
               p: 3,
-              borderBottom: "1px solid #e0e0e0",
+              borderBottom: "1px solid var(--ws-border, #e0e0e0)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -487,7 +487,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
               justifyContent: "center",
               alignItems: "center",
               overflow: "auto",
-              bgcolor: "#f8f9fa",
+              bgcolor: "var(--ws-surface, #f8f9fa)",
             }}
           >
             {selectedDoc?.documentUrl?.endsWith(".pdf") ? (
@@ -542,12 +542,12 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
           <Box
             sx={{
               p: 3,
-              borderBottom: "1px solid #e0e0e0",
+              borderBottom: "1px solid var(--ws-border, #e0e0e0)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               bgcolor: "primary.main",
-              color: "white",
+              color: "var(--ws-on-primary, #ffffff)",
             }}
           >
             <Typography variant="h6" component="h2" fontWeight="bold">
@@ -556,7 +556,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
             <IconButton
               onClick={handleUpdateModalClose}
               sx={{
-                color: "white",
+                color: "#ffffff",
                 "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
               }}
             >

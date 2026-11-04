@@ -158,7 +158,7 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
             maxHeight: 200,
             overflowY: "auto",
             borderRadius: 1,
-            border: "1px solid #c4c4c4",
+            border: "1px solid var(--ws-border, #c4c4c4)",
             boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
           }}
         >
@@ -174,7 +174,7 @@ const AddressSearch: React.FC<AddressSearchProps> = ({
                   fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
                   lineHeight: "1.4375em",
                   "&:hover": {
-                    backgroundColor: "#f0f0f0",
+                    backgroundColor: "var(--ws-surface, #f0f0f0)",
                   },
                 }}
               >

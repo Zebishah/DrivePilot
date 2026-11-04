@@ -297,7 +297,7 @@ export default function EditStudentProfile() {
             width: 130,
             height: 130,
             borderRadius: "50%",
-            bgcolor: "#e0e0e0",
+            bgcolor: "var(--ws-surface-muted, #e0e0e0)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -321,7 +321,7 @@ export default function EditStudentProfile() {
               width: 130,
               height: 130,
               borderRadius: "50%",
-              bgcolor: "#e0e0e0",
+              bgcolor: "var(--ws-surface-muted, #e0e0e0)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -358,7 +358,7 @@ export default function EditStudentProfile() {
             position: "relative",
             bottom: 44,
             right: "calc(50% - 168px)",
-            backgroundColor: "white",
+            backgroundColor: "var(--ws-surface, #ffffff)",
             borderRadius: "50%",
             width: 32,
             height: 32,
@@ -412,7 +412,7 @@ export default function EditStudentProfile() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        bgcolor: "#f5f7fa",
+        bgcolor: "var(--ws-surface, #f5f7fa)",
       }}
     >
       <Box>
@@ -469,7 +469,7 @@ export default function EditStudentProfile() {
               >
                 <Typography
                   variant="h6"
-                  color="black"
+                  color="var(--ws-ink, #000000)"
                 >{`${formData.firstName} ${formData.lastName}`}</Typography>
                 <Box
                   sx={{
@@ -493,7 +493,7 @@ export default function EditStudentProfile() {
                 fontSize: "18px",
                 textAlign: "center",
                 fontWeight: "bold",
-                color: "black",
+                color: "var(--ws-ink, #000000)",
               }}
             >
               Introduction
@@ -513,7 +513,7 @@ export default function EditStudentProfile() {
                   width: "50%",
 
                   p: "0px !important",
-                  backgroundColor: "#EEEEEE",
+                  backgroundColor: "var(--ws-surface-muted, #EEEEEE)",
                 }}
               />
             </Box>
@@ -649,7 +649,7 @@ export default function EditStudentProfile() {
                                   sx={{
                                     "& .MuiTypography-root": {
                                       fontSize: "0.875rem",
-                                      color: "#2c3e50",
+                                      color: "var(--ws-info, #2c3e50)",
                                     },
                                   }}
                                 />
@@ -813,8 +813,8 @@ export default function EditStudentProfile() {
               <Button
                 variant="contained"
                 sx={{
-                  bgcolor: "#5ec2d2",
-                  "&:hover": { bgcolor: "#4ba1b0" },
+                  bgcolor: "var(--ws-primary, #5ec2d2)",
+                  "&:hover": { bgcolor: "var(--ws-primary, #4ba1b0)" },
                   paddingX: 4,
                   borderRadius: "8px",
                   py: 1,

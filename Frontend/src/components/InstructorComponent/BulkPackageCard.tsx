@@ -38,13 +38,13 @@ const BulkPackageCard = ({
   const cardStyles = {
     highlighted: {
       backgroundColor: "#5FC2D333",
-      color: "black",
-      border: "1px solid #A19A99",
+      color: "var(--ws-ink, #000000)",
+      border: "1px solid var(--ws-border, #A19A99)",
     },
     default: {
-      backgroundColor: "white",
-      color: "black",
-      border: "1px solid #A19A99",
+      backgroundColor: "var(--ws-surface, #ffffff)",
+      color: "var(--ws-ink, #000000)",
+      border: "1px solid var(--ws-border, #A19A99)",
     },
   }[variant];
 
@@ -88,7 +88,7 @@ const BulkPackageCard = ({
               </Typography>
               <Typography
                 variant="subtitle1"
-                sx={{ color: "#31D62F !important", fontWeight: 600 }}
+                sx={{ color: "var(--ws-success, #31D62F) !important", fontWeight: 600 }}
               >
                 CHF {finalPrice}
               </Typography>
@@ -99,7 +99,7 @@ const BulkPackageCard = ({
         </Box>
         <Box display="flex" justifyContent="space-between" mb={2}>
           <Typography variant="subtitle1">You Save</Typography>
-          <Typography variant="subtitle1" sx={{ color: "#31D62F !important" }}>
+          <Typography variant="subtitle1" sx={{ color: "var(--ws-success, #31D62F) !important" }}>
             CHF {save}
           </Typography>
         </Box>
@@ -120,9 +120,9 @@ const BulkPackageCard = ({
           onClick={() => onSelect({ lessons, cost, startDate, endDate })}
           sx={{
             backgroundColor: isSelected ? "#4bb1c2" : "#5FC2D3",
-            color: "white",
+            color: "#ffffff",
             "&:hover": {
-              backgroundColor: "#4bb1c2",
+              backgroundColor: "var(--ws-primary, #4bb1c2)",
             },
           }}
         >
@@ -260,7 +260,7 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
             startIcon={<ClearIcon />}
             onClick={handleClearSelection}
             sx={{
-              color: "#666",
+              color: "var(--ws-muted, #666)",
               "&:hover": {
                 backgroundColor: "rgba(0,0,0,0.04)",
               },
@@ -282,14 +282,14 @@ const BulkLessonPackages = ({ tariff, onPackageSelect }) => {
             },
             ".slick-dots li button:before": {
               fontSize: 12,
-              color: "#5FC2D3",
+              color: "var(--ws-primary, #5FC2D3)",
             },
             ".slick-dots li.slick-active button:before": {
-              color: "#5FC2D3",
+              color: "var(--ws-primary, #5FC2D3)",
             },
             ".slick-prev, .slick-next": {
               "&:before": {
-                color: "#5FC2D3",
+                color: "var(--ws-primary, #5FC2D3)",
               },
             },
             py: 2,

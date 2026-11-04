@@ -14,7 +14,13 @@ import {
   CircularProgress,
   InputLabel,
 } from "@mui/material";
-import { Eye, EyeOff, GraduationCap, ShieldCheck, UsersRound } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  GraduationCap,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
@@ -64,7 +70,9 @@ const SignIn: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = React.useState(false);
-  const [activeDemoRole, setActiveDemoRole] = React.useState<DemoRole | null>(null);
+  const [activeDemoRole, setActiveDemoRole] = React.useState<DemoRole | null>(
+    null,
+  );
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -138,7 +146,9 @@ const SignIn: React.FC = () => {
       const demo = data?.loginDemo;
       const role = demo?.user?.role;
       if (!demo?.success || !demo?.token || !role) {
-        toast.error("The demo workspace is temporarily unavailable. Please try again later.");
+        toast.error(
+          "The demo workspace is temporarily unavailable. Please try again later.",
+        );
         setActiveDemoRole(null);
         return;
       }
@@ -150,7 +160,9 @@ const SignIn: React.FC = () => {
     },
     onError: () => {
       setActiveDemoRole(null);
-      toast.error("The demo workspace is temporarily unavailable. Please try again later.");
+      toast.error(
+        "The demo workspace is temporarily unavailable. Please try again later.",
+      );
     },
   });
 
@@ -204,7 +216,8 @@ const SignIn: React.FC = () => {
             Welcome back
           </Typography>
           <Typography className="dsp-auth-intro" variant="body2">
-            Sign in to continue to your DSP workspace.
+            Book driving lessons, manage your students, or run your driving
+            school.
           </Typography>
         </Box>
 
@@ -307,24 +320,37 @@ const SignIn: React.FC = () => {
               mt: 3,
               mb: 2,
               py: 1.5,
-              bgcolor: "#4CC9F0",
+              bgcolor: "var(--ws-primary, #4CC9F0)",
               "&:hover": {
-                bgcolor: "#3AB7E0",
+                bgcolor: "var(--ws-primary, #3AB7E0)",
               },
             }}
           >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Sign in"}
+            {loading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              "Sign in"
+            )}
           </Button>
 
-          <Box className="dsp-auth-divider" sx={{ mt: 2, mb: 3, textAlign: "center" }}>
+          <Box
+            className="dsp-auth-divider"
+            sx={{ mt: 2, mb: 3, textAlign: "center" }}
+          >
             <Typography variant="body2" color="text.secondary">
               or continue with
             </Typography>
           </Box>
 
           <Box className="dsp-auth-social">
-            <a href={`${backendAuth}auth/google`}><img src="/auth/google_logo.png" alt="" />Continue with Google</a>
-            <a href={`${backendAuth}auth/facebook`}><img src="/auth/facebook_logo.png" alt="" />Continue with Facebook</a>
+            <a href={`${backendAuth}auth/google`}>
+              <img src="/auth/google_logo.png" alt="" />
+              Continue with Google
+            </a>
+            <a href={`${backendAuth}auth/facebook`}>
+              <img src="/auth/facebook_logo.png" alt="" />
+              Continue with Facebook
+            </a>
           </Box>
 
           <Box sx={{ textAlign: "center", mt: 2 }}>
@@ -341,12 +367,22 @@ const SignIn: React.FC = () => {
             </Typography>
           </Box>
 
-          <Box className="dsp-demo-preview" component="section" id="recruiter-preview" aria-labelledby="dsp-demo-title">
+          <Box
+            className="dsp-demo-preview"
+            component="section"
+            id="recruiter-preview"
+            aria-labelledby="dsp-demo-title"
+          >
             <Box className="dsp-demo-preview__header">
               <Box>
-                <Typography className="dsp-demo-preview__eyebrow">Recruiter preview</Typography>
-                <Typography id="dsp-demo-title" className="dsp-demo-preview__title">
-                  Explore every side of DSP
+                <Typography className="dsp-demo-preview__eyebrow">
+                  For recruiters & product reviewers
+                </Typography>
+                <Typography
+                  id="dsp-demo-title"
+                  className="dsp-demo-preview__title"
+                >
+                  Reviewing DSP? Try the role demos.
                 </Typography>
               </Box>
               <Typography className="dsp-demo-preview__note">
@@ -354,7 +390,9 @@ const SignIn: React.FC = () => {
               </Typography>
             </Box>
             <Typography className="dsp-demo-preview__intro">
-              Open a ready-to-explore workspace with the same authenticated dashboard experience.
+              Explore how learners book lessons, instructors manage teaching,
+              and admins run the marketplace. Customers can sign in or create an
+              account above.
             </Typography>
             <Box className="dsp-demo-preview__cards">
               {demoOptions.map(({ role, title, description, icon: Icon }) => {
@@ -366,14 +404,28 @@ const SignIn: React.FC = () => {
                     className={`dsp-demo-card dsp-demo-card--${role.toLowerCase()}`}
                     onClick={() => handleDemoLogin(role)}
                     disabled={loading || demoLoading}
-                    aria-label={isActive ? `Opening ${title.replace("Enter ", "")}` : title}
+                    aria-label={
+                      isActive
+                        ? `Opening ${title.replace("Enter ", "")}`
+                        : title
+                    }
                   >
-                    <span className="dsp-demo-card__icon" aria-hidden="true"><Icon size={18} /></span>
-                    <span className="dsp-demo-card__copy">
-                      <span className="dsp-demo-card__title">{isActive ? `Opening ${title.replace("Enter ", "")}…` : title}</span>
-                      <span className="dsp-demo-card__description">{description}</span>
+                    <span className="dsp-demo-card__icon" aria-hidden="true">
+                      <Icon size={18} />
                     </span>
-                    <span className="dsp-demo-card__arrow" aria-hidden="true">↗</span>
+                    <span className="dsp-demo-card__copy">
+                      <span className="dsp-demo-card__title">
+                        {isActive
+                          ? `Opening ${title.replace("Enter ", "")}…`
+                          : title}
+                      </span>
+                      <span className="dsp-demo-card__description">
+                        {description}
+                      </span>
+                    </span>
+                    <span className="dsp-demo-card__arrow" aria-hidden="true">
+                      ↗
+                    </span>
                   </Button>
                 );
               })}

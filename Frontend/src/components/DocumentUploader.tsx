@@ -127,7 +127,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         border: "2px dashed",
         borderColor: "primary.main",
         textAlign: "center",
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "var(--ws-surface, #f5f5f5)",
       }}
     >
       <Typography variant="body1" sx={{ mb: 2 }}>

@@ -40,7 +40,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
             }}
           >
             {/* Background star (unfilled) */}
-            <Star size={size} fill="none" stroke="#ccc" />
+            <Star size={size} fill="none" stroke="var(--ws-subtle, #ccc)" />
             {/* Foreground star (filled portion) */}
             <Box
               sx={{
@@ -51,7 +51,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
                 overflow: "hidden",
               }}
             >
-              <Star size={size} fill="#FFD700" stroke="#FFD700" />
+              <Star size={size} fill="var(--ws-warning, #FFD700)" stroke="var(--ws-warning, #FFD700)" />
             </Box>
           </Box>
         );

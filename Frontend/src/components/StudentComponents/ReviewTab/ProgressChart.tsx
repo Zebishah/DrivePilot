@@ -61,12 +61,12 @@ const ProgressChart: React.FC<ProgressChartProps> = ({
         colorStops: [
           {
             offset: 0,
-            color: "#3b82f6",
+            color: "var(--ws-info, #3b82f6)",
             opacity: 0.4,
           },
           {
             offset: 100,
-            color: "#3b82f6",
+            color: "var(--ws-info, #3b82f6)",
             opacity: 0.1,
           },
         ],
@@ -101,7 +101,7 @@ const ProgressChart: React.FC<ProgressChartProps> = ({
 
     grid: {
       show: true,
-      borderColor: "#f3f4f6",
+      borderColor: "var(--ws-border, #f3f4f6)",
       strokeDashArray: 3,
       yaxis: {
         lines: {

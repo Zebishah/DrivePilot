@@ -3,6 +3,7 @@ import { Box, CssBaseline } from "@mui/material";
 import { useLocation } from "react-router-dom";
 import Sidebar, { type MenuItem } from "../common/SideBar";
 import Navbar from "../common/DashNavBar";
+import DashboardExperience from "./DashboardExperience";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -35,12 +36,20 @@ export default function DashboardShell({
   topContent,
 }: DashboardShellProps) {
   const location = useLocation();
-  const isInstructorOverview = roleLabel === "Instructor" && location.pathname === "/teacher-dashboard/overview";
+  const isInstructorOverview =
+    roleLabel === "Instructor" &&
+    location.pathname === "/teacher-dashboard/overview";
+  const isOverview = /\/(student|teacher|admin)-dashboard\/overview\/?$/.test(
+    location.pathname,
+  );
 
   return (
     <>
       <CssBaseline />
-      <Box className={`dsp-dashboard-shell${isInstructorOverview ? " dsp-dashboard-shell--instructor-overview" : ""}`} sx={{ display: "flex", minHeight: "100vh" }}>
+      <Box
+        className={`dsp-dashboard-shell${isInstructorOverview ? " dsp-dashboard-shell--instructor-overview" : ""}`}
+        sx={{ display: "flex", minHeight: "100vh" }}
+      >
         <Sidebar
           drawerWidth={drawerWidth}
           mobileOpen={mobileOpen}
@@ -59,8 +68,17 @@ export default function DashboardShell({
           className={`dsp-dashboard-main dsp-dashboard-main--${roleLabel.toLowerCase()}${isInstructorOverview ? " dsp-dashboard-main--instructor-overview" : ""}`}
           sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, minWidth: 0 }}
         >
-          <Navbar handleDrawerToggle={handleDrawerToggle} menuItems={menuItems} />
+          <Navbar
+            handleDrawerToggle={handleDrawerToggle}
+            menuItems={menuItems}
+          />
           {topContent}
+          <DashboardExperience
+            role={roleLabel}
+            name={userName}
+            isDemo={userIsDemo}
+            overview={isOverview}
+          />
           {children}
         </Box>
       </Box>

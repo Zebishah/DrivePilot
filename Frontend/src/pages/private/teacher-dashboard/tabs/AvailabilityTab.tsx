@@ -80,8 +80,8 @@ export function CustomDay(
       badgeContent={slotCount > 0 ? slotCount : undefined} // Only show badge if count > 0
       sx={{
         "& .MuiBadge-badge": {
-          background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-          color: "white",
+          background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+          color: "var(--ws-on-primary, #ffffff)",
           right: 8,
           top: 8,
           minWidth: "20px",
@@ -399,7 +399,7 @@ export const AvailabilityTab: React.FC = () => {
             elevation={0}
             sx={{
               borderRadius: 2,
-              border: "1px solid #e0e0e0",
+              border: "1px solid var(--ws-border, #e0e0e0)",
               height: "100%",
             }}
           >
@@ -409,7 +409,7 @@ export const AvailabilityTab: React.FC = () => {
                 sx={{
                   mb: 1,
                   fontWeight: 600,
-                  color: "#2c3e50",
+                  color: "var(--ws-info, #2c3e50)",
                   fontSize: "1.25rem",
                 }}
               >
@@ -464,7 +464,7 @@ export const AvailabilityTab: React.FC = () => {
                       "& .MuiPickersCalendarHeader-label": {
                         fontSize: "1.1rem",
                         fontWeight: 600,
-                        color: "#2c3e50",
+                        color: "var(--ws-info, #2c3e50)",
                       },
                       "& .MuiDayCalendar-header, & .MuiDayCalendar-weekContainer":
                         {
@@ -480,16 +480,16 @@ export const AvailabilityTab: React.FC = () => {
                       },
                       "& .MuiDayCalendar-weekDayLabel": {
                         fontSize: "0.875rem",
-                        color: "#64748b",
+                        color: "var(--ws-muted, #64748b)",
                         fontWeight: 600,
                         width: "40px",
                         height: "40px",
                         margin: "2px",
                       },
                       "& .MuiPickersDay-root.Mui-selected": {
-                        background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-                        color: "white",
-                        "&:hover": { background: "linear-gradient(135deg, #6D28D9, #DB2777)" },
+                        background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+                        color: "var(--ws-on-primary, #ffffff)",
+                        "&:hover": { background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))" },
                       },
                     }}
                   />
@@ -505,7 +505,7 @@ export const AvailabilityTab: React.FC = () => {
             elevation={0}
             sx={{
               borderRadius: 2,
-              border: "1px solid #e0e0e0",
+              border: "1px solid var(--ws-border, #e0e0e0)",
               height: "50vh",
               overflowY: "auto",
             }}
@@ -521,7 +521,7 @@ export const AvailabilityTab: React.FC = () => {
               >
                 <Typography
                   variant="h6"
-                  sx={{ fontWeight: 600, color: "#2c3e50" }}
+                  sx={{ fontWeight: 600, color: "var(--ws-info, #2c3e50)" }}
                 >
                   {selectedDate
                     ? `Slots for ${format(selectedDate, "MMM dd, yyyy")}`
@@ -535,11 +535,11 @@ export const AvailabilityTab: React.FC = () => {
                       sx={{
                         fontSize: "0.75rem",
                         textTransform: "none",
-                        color: "#64748b",
-                        bgcolor: "#f1f5f9",
+                        color: "var(--ws-muted, #64748b)",
+                        bgcolor: "var(--ws-surface, #f1f5f9)",
                         borderRadius: 4,
                         "&:hover": {
-                          bgcolor: "#e2e8f0",
+                          bgcolor: "var(--ws-surface-muted, #e2e8f0)",
                         },
                       }}
                     >
@@ -549,10 +549,10 @@ export const AvailabilityTab: React.FC = () => {
                   <IconButton
                     onClick={handleAddButtonClick}
                     sx={{
-                      background: "linear-gradient(135deg, #7C3AED, #EC4899)",
-                      color: "white",
+                      background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
+                      color: "var(--ws-on-primary, #ffffff)",
                       "&:hover": {
-                        background: "linear-gradient(135deg, #6D28D9, #DB2777)",
+                        background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))",
                         transform: "scale(1.05)",
                       },
                       transition: "all 0.2s ease-in-out",
@@ -565,7 +565,7 @@ export const AvailabilityTab: React.FC = () => {
               <Divider sx={{ mb: 2 }} />
               {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                  <CircularProgress size={32} sx={{ color: "#8B5CF6" }} />
+                  <CircularProgress size={32} sx={{ color: "var(--ws-primary, #8B5CF6)" }} />
                 </Box>
               ) : displaySlots && displaySlots.length > 0 ? (
                 displaySlots.map((slot: AvailabilitySlot) => (
@@ -574,7 +574,7 @@ export const AvailabilityTab: React.FC = () => {
                     sx={{
                       p: 2,
                       mb: 1.5,
-                      border: "1px solid #e0e0e0",
+                      border: "1px solid var(--ws-border, #e0e0e0)",
                       borderRadius: 2,
                       display: "flex",
                       justifyContent: "space-between",
@@ -582,7 +582,7 @@ export const AvailabilityTab: React.FC = () => {
                       transition: "all 0.2s ease-in-out",
                       "&:hover": {
                         boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                        borderColor: "#A855F7",
+                        borderColor: "var(--ws-primary, #A855F7)",
                       },
                       opacity: isDeletingSlot === slot.id ? 0.5 : 1,
                       pointerEvents:
@@ -592,7 +592,7 @@ export const AvailabilityTab: React.FC = () => {
                     <Box>
                       <Typography
                         variant="subtitle2"
-                        sx={{ fontWeight: 600, color: "#2c3e50", mb: 0.5 }}
+                        sx={{ fontWeight: 600, color: "var(--ws-info, #2c3e50)", mb: 0.5 }}
                       >
                         {(() => {
                           try {
@@ -613,21 +613,21 @@ export const AvailabilityTab: React.FC = () => {
                         sx={{ display: "flex", alignItems: "center", gap: 1 }}
                       >
                         <AccessTimeIcon
-                          sx={{ fontSize: "1rem", color: "#64748b" }}
+                          sx={{ fontSize: "1rem", color: "var(--ws-muted, #64748b)" }}
                         />
-                        <Typography variant="body2" sx={{ color: "#64748b" }}>
+                        <Typography variant="body2" sx={{ color: "var(--ws-muted, #64748b)" }}>
                           {slot.startTime} - {slot.endTime}
                         </Typography>
                       </Box>
                     </Box>
                     {slot.booked ? null : isDeletingSlot === slot.id ? (
-                      <CircularProgress size={20} sx={{ color: "#ef4444" }} />
+                      <CircularProgress size={20} sx={{ color: "var(--ws-danger, #ef4444)" }} />
                     ) : (
                       <IconButton
                         size="small"
                         onClick={() => handleDeleteSlot(slot.id)}
                         sx={{
-                          color: "#ef4444",
+                          color: "var(--ws-danger, #ef4444)",
                           "&:hover": {
                             bgcolor: "rgba(239, 68, 68, 0.08)",
                           },
@@ -640,7 +640,7 @@ export const AvailabilityTab: React.FC = () => {
                 ))
               ) : (
                 <Typography
-                  sx={{ p: 2, textAlign: "center", color: "#64748b" }}
+                  sx={{ p: 2, textAlign: "center", color: "var(--ws-muted, #64748b)" }}
                 >
                   No availability slots{" "}
                   {selectedDate ? "for this date" : "found"}
@@ -665,12 +665,12 @@ export const AvailabilityTab: React.FC = () => {
       >
         <DialogTitle
           sx={{
-            borderBottom: "1px solid #e0e0e0",
+            borderBottom: "1px solid var(--ws-border, #e0e0e0)",
             px: 3,
             py: 2,
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--ws-info, #2c3e50)" }}>
             Add Availability Slot
           </Typography>
         </DialogTitle>
@@ -791,7 +791,7 @@ export const AvailabilityTab: React.FC = () => {
             </LocalizationProvider>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid var(--ws-border, #e0e0e0)" }}>
           <Button
             onClick={handleAddSlot}
             variant="contained"
@@ -802,15 +802,15 @@ export const AvailabilityTab: React.FC = () => {
               ) : null
             }
             sx={{
-              background: "linear-gradient(135deg, #7C3AED, #EC4899)",
+              background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
               borderRadius: 2,
               py: 1.3,
               px: 4.6,
               textTransform: "none",
               boxShadow: "none",
               "&:hover": {
-                background: "linear-gradient(135deg, #6D28D9, #DB2777)",
-                boxShadow: "0 2px 8px rgba(124, 58, 237, 0.25)",
+                background: "linear-gradient(135deg, var(--ws-primary, #6D28D9), var(--ws-primary, #DB2777))",
+                boxShadow: "0 2px 8px rgba(var(--ws-accent-rgb, 124, 58, 237), 0.25)",
               },
             }}
           >
@@ -827,12 +827,12 @@ export const AvailabilityTab: React.FC = () => {
             sx={{
               borderRadius: 2,
               textTransform: "none",
-              borderColor: "#e0e0e0",
+              borderColor: "var(--ws-border, #e0e0e0)",
               py: 1.3,
               px: 4.6,
-              color: "#64748b",
+              color: "var(--ws-muted, #64748b)",
               "&:hover": {
-                borderColor: "#cbd5e1",
+                borderColor: "var(--ws-subtle, #cbd5e1)",
                 bgcolor: "rgba(203, 213, 225, 0.08)",
               },
             }}

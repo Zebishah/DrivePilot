@@ -68,7 +68,7 @@ const HourSlotCard: React.FC<SlotCardProps> = ({
             size="small"
             sx={{
               backgroundColor: isBooked ? "#ef4444" : "#94a3b8",
-              color: "white",
+              color: "#ffffff",
               fontWeight: "600",
               fontSize: "10px",
               height: "20px",

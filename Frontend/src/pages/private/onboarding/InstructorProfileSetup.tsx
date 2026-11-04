@@ -914,11 +914,11 @@ const InstructorProfileSetup: React.FC = () => {
               aria-controls="optional-documents-content"
               id="optional-documents-header"
               sx={{
-                backgroundColor: "#168a72",
+                backgroundColor: "var(--ws-success-soft, #168a72)",
                 color: "#ffffff",
                 borderRadius: "4px",
                 "&:hover": {
-                  backgroundColor: "#11705d",
+                  backgroundColor: "var(--ws-success-soft, #11705d)",
                 },
                 "& .MuiAccordionSummary-expandIconWrapper": {
                   color: "#ffffff",
@@ -927,7 +927,7 @@ const InstructorProfileSetup: React.FC = () => {
                   color: "#ffffff",
                 },
                 "&.Mui-expanded": {
-                  backgroundColor: "#168a72",
+                  backgroundColor: "var(--ws-success-soft, #168a72)",
                   borderBottomLeftRadius: 0,
                   borderBottomRightRadius: 0,
                 },
@@ -939,7 +939,7 @@ const InstructorProfileSetup: React.FC = () => {
               sx={{
                 pt: 3,
                 border: "1px solid",
-                borderColor: "#168a72",
+                borderColor: "var(--ws-success-border, #168a72)",
                 borderTop: "none",
                 borderBottomLeftRadius: "4px",
                 borderBottomRightRadius: "4px",
@@ -1008,7 +1008,7 @@ const InstructorProfileSetup: React.FC = () => {
                               flexDirection: "column",
                               mt: 2,
                               p: 2,
-                              border: "1px solid #e0e0e0",
+                              border: "1px solid var(--ws-border, #e0e0e0)",
                               borderRadius: 1,
                             }}
                           >
@@ -1070,7 +1070,7 @@ const InstructorProfileSetup: React.FC = () => {
                                 sx={{
                                   mt: 1,
                                   p: 2,
-                                  backgroundColor: "#f5f5f5",
+                                  backgroundColor: "var(--ws-surface, #f5f5f5)",
                                   borderRadius: 1,
                                   display: "flex",
                                   alignItems: "center",

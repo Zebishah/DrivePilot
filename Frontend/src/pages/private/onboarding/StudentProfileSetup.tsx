@@ -643,7 +643,7 @@ const StudentProfileSetup = () => {
         <Button
           variant="contained"
           onClick={handleSubmit(handleNext, onError)}
-          sx={{ bgcolor: "#5CD2D9" }}
+          sx={{ bgcolor: "var(--ws-info-soft, #5CD2D9)" }}
           disabled={loading}
         >
           {loading ? (

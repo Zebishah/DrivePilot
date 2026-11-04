@@ -51,7 +51,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
     },
     grid: {
       show: true,
-      borderColor: "#E5E7EB",
+      borderColor: "var(--ws-border, #E5E7EB)",
       strokeDashArray: 3,
     },
     xaxis: {

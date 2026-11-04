@@ -169,10 +169,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiOutlinedInput-root": {
               borderRadius: 2,
               "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#4db6ac",
+                borderColor: "var(--ws-primary, #4db6ac)",
               },
               "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#4db6ac",
+                borderColor: "var(--ws-primary, #4db6ac)",
               },
               "& .MuiOutlinedInput-input": {
                 padding: "14px 16px !important",
@@ -182,7 +182,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiInputLabel-root": {
               fontSize: "1rem",
               "&.Mui-focused": {
-                color: "#4db6ac",
+                color: "var(--ws-primary, #4db6ac)",
               },
             },
           }}
@@ -203,10 +203,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiOutlinedInput-root": {
               borderRadius: 2,
               "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#4db6ac",
+                borderColor: "var(--ws-primary, #4db6ac)",
               },
               "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#4db6ac",
+                borderColor: "var(--ws-primary, #4db6ac)",
               },
               "& .MuiOutlinedInput-input": {
                 padding: "14px 16px !important",
@@ -216,7 +216,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiInputLabel-root": {
               fontSize: "1rem",
               "&.Mui-focused": {
-                color: "#4db6ac",
+                color: "var(--ws-primary, #4db6ac)",
               },
             },
           }}
@@ -238,14 +238,14 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             "& .MuiOutlinedInput-root": {
               borderRadius: 2,
               "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#4db6ac",
+                borderColor: "var(--ws-primary, #4db6ac)",
               },
               "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#4db6ac",
+                borderColor: "var(--ws-primary, #4db6ac)",
               },
             },
             "& .MuiInputLabel-root.Mui-focused": {
-              color: "#4db6ac",
+              color: "var(--ws-primary, #4db6ac)",
             },
           }}
         />
@@ -264,12 +264,12 @@ const ContactForm: React.FC<ContactFormProps> = ({ onSubmit }) => {
             )
           }
           sx={{
-            backgroundColor: "#4db6ac",
+            backgroundColor: "var(--ws-primary, #4db6ac)",
             "&:hover": {
-              backgroundColor: "#26a69a",
+              backgroundColor: "var(--ws-info-soft, #26a69a)",
             },
             "&:disabled": {
-              backgroundColor: "#B0BEC5",
+              backgroundColor: "var(--ws-elevated, #B0BEC5)",
             },
             py: 1.5,
             borderRadius: 2,

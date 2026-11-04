@@ -146,7 +146,7 @@ const OverallStatsChart = ({
       title: {
         text: "Count",
         style: {
-          color: "#9ca3af",
+          color: "var(--ws-subtle, #9ca3af)",
           fontSize: "12px",
         },
       },
@@ -294,7 +294,7 @@ const StudentProgressDashboard: React.FC<StudentProgressDashboardProps> = ({
                 <CircularProgress
                   value={totalRequiredHours}
                   maxValue={totalRequiredHours}
-                  color="#f59e0b"
+                  color="var(--ws-warning, #f59e0b)"
                   size={120}
                   strokeWidth={10}
                 />
@@ -309,7 +309,7 @@ const StudentProgressDashboard: React.FC<StudentProgressDashboardProps> = ({
                 <CircularProgress
                   value={completedHours}
                   maxValue={totalRequiredHours}
-                  color="#10b981"
+                  color="var(--ws-success, #10b981)"
                   size={120}
                   strokeWidth={10}
                 />
@@ -324,7 +324,7 @@ const StudentProgressDashboard: React.FC<StudentProgressDashboardProps> = ({
                 <CircularProgress
                   value={remainingHours}
                   maxValue={totalRequiredHours}
-                  color="#3b82f6"
+                  color="var(--ws-info, #3b82f6)"
                   size={120}
                   strokeWidth={10}
                 />

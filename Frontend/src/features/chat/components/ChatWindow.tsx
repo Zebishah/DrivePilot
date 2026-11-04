@@ -21,7 +21,7 @@ import { MessageType, UserType } from "../../../types/chatTypes";
 import { useAuth } from "../../../context/AuthContext";
 import { Spin, Avatar } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import EmojiPicker from "emoji-picker-react";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 import { getSocket } from "../../../utils/socket";
 import { debounce } from "lodash";
 import { createSelector } from "reselect";
@@ -432,7 +432,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversation }) => {
             />
             {showEmojiPicker && (
               <div className="absolute bottom-full right-0 z-50">
-                <EmojiPicker onEmojiClick={onEmojiClick} />
+                <EmojiPicker theme={Theme.DARK} onEmojiClick={onEmojiClick} />
               </div>
             )}
           </div>

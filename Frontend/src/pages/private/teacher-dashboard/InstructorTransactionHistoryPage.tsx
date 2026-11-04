@@ -160,7 +160,7 @@ export default function InstructorTransactionHistoryPage() {
   }
 
   return (
-    <Box className="dsp-instructor-page dsp-transactions-page" sx={{ p: 3, bgcolor: "#f5f7fa", minHeight: "100vh" }}>
+    <Box className="dsp-instructor-page dsp-transactions-page" sx={{ p: 3, bgcolor: "var(--ws-surface, #f5f7fa)", minHeight: "100vh" }}>
       <DashboardPageHeader
         title="Transaction history"
         description="Track payments, payouts, refunds, and transfer reversals in one place."
@@ -212,7 +212,7 @@ export default function InstructorTransactionHistoryPage() {
                       justifyContent: "center",
                     }}
                   >
-                    <AttachMoneyIcon sx={{ color: "#0EA5E9", fontSize: 20 }} />
+                    <AttachMoneyIcon sx={{ color: "var(--ws-info, #0EA5E9)", fontSize: 20 }} />
                   </Box>
                   <Box className="dsp-transaction-kpi__copy">
                     <Typography className="dsp-transaction-kpi__label" color="text.secondary" variant="caption">

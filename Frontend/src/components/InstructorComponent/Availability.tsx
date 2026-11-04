@@ -215,7 +215,7 @@ const Availability: React.FC<AvailabilityProps> = ({
 
   const CustomInput = React.forwardRef(({ value, onClick }: any, ref: any) => (
     <CalendarIconButton onClick={onClick} ref={ref}>
-      <SlCalender style={{ color: "black" }} />
+      <SlCalender style={{ color: "var(--ws-ink, #000000)" }} />
     </CalendarIconButton>
   ));
 
@@ -232,7 +232,7 @@ const Availability: React.FC<AvailabilityProps> = ({
       <Typography
         sx={{
           fontFamily: "Poppins, sans-serif",
-          color: "#5FC2D3",
+          color: "var(--ws-primary, #5FC2D3)",
           mb: 2,
         }}
       >
@@ -405,8 +405,8 @@ const Availability: React.FC<AvailabilityProps> = ({
                   onClick={() => setSelectedDate(null)}
                   size="small"
                   sx={{
-                    bgcolor: "#f0f0f0",
-                    "&:hover": { bgcolor: "#e0e0e0" },
+                    bgcolor: "var(--ws-surface, #f0f0f0)",
+                    "&:hover": { bgcolor: "var(--ws-surface-muted, #e0e0e0)" },
                   }}
                 >
                   <Clear fontSize="small" />
@@ -423,9 +423,9 @@ const Availability: React.FC<AvailabilityProps> = ({
                     "& .MuiInputBase-root": {
                       height: "40px",
                       borderRadius: "8px",
-                      backgroundColor: "#5fc2d3",
+                      backgroundColor: "var(--ws-primary, #5fc2d3)",
                       "& .MuiInputBase-input": {
-                        color: "black",
+                        color: "var(--ws-ink, #000000)",
                         fontWeight: 500,
                         padding: "8px",
                       },
@@ -451,13 +451,13 @@ const Availability: React.FC<AvailabilityProps> = ({
                           "&.MuiPickersDay-root": {
                             borderRadius: "50%",
                             '&[aria-current="date"]': {
-                              border: "2px solid #5fc2d3 !important",
+                              border: "2px solid var(--ws-primary, #5fc2d3) !important",
                             },
                             "&.Mui-selected": {
-                              backgroundColor: "#5fc2d3 !important",
+                              backgroundColor: "var(--ws-primary, #5fc2d3) !important",
                               color: "#fff !important",
                               "&:hover": {
-                                backgroundColor: "#4bb1c2 !important",
+                                backgroundColor: "var(--ws-primary, #4bb1c2) !important",
                               },
                             },
                           },
@@ -468,12 +468,12 @@ const Availability: React.FC<AvailabilityProps> = ({
                             ...base,
                             "&.MuiPickersDay-root": {
                               ...base["&.MuiPickersDay-root"],
-                              color: "#00966D !important",
+                              color: "var(--ws-success, #00966D) !important",
                               fontWeight: 700,
-                              border: "2px solid #00966D !important",
+                              border: "2px solid var(--ws-success-border, #00966D) !important",
                               backgroundColor: "rgba(0,150,110,0.1) !important",
                               "&:hover": {
-                                backgroundColor: "#d1f0f7 !important",
+                                backgroundColor: "var(--ws-info-soft, #d1f0f7) !important",
                               },
                             },
                           };
@@ -515,7 +515,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                     sx={{
                       borderRadius: "10px",
                       backgroundColor: "#5FC2D333",
-                      border: "1px solid #cce4f7",
+                      border: "1px solid var(--ws-info-border, #cce4f7)",
                       boxShadow: 1,
                       width: "100%",
                       cursor: "pointer",
@@ -537,7 +537,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                       >
                         <CalendarCheck2
                           size={18}
-                          style={{ color: "#7C3AED" }}
+                          style={{ color: "var(--ws-primary, #7C3AED)" }}
                         />
                         <Typography
                           variant="body1"
@@ -558,7 +558,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                           gap: 1,
                         }}
                       >
-                        <FaRegCheckCircle style={{ color: "#7C3AED" }} />
+                        <FaRegCheckCircle style={{ color: "var(--ws-primary, #7C3AED)" }} />
                         <Typography
                           variant="body2"
                           sx={{
@@ -596,8 +596,8 @@ const Availability: React.FC<AvailabilityProps> = ({
                         <Chip
                           label={`${dayData.availableCount} slots`}
                           sx={{
-                            backgroundColor: "#e0f2fe",
-                            color: "#0369a1",
+                            backgroundColor: "var(--ws-surface-muted, #e0f2fe)",
+                            color: "var(--ws-info, #0369a1)",
                             fontSize: "11px",
                             fontFamily: "Poppins, sans-serif",
                             fontWeight: "500",
@@ -618,7 +618,7 @@ const Availability: React.FC<AvailabilityProps> = ({
                     alignItems: "center",
                     height: "200px",
                     width: "100%",
-                    bgcolor: "#f5f5f5",
+                    bgcolor: "var(--ws-surface, #f5f5f5)",
                     borderRadius: "10px",
                   }}
                 >

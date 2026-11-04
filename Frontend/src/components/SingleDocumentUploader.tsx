@@ -99,7 +99,7 @@ const SingleDocumentUploader: React.FC<SingleDocumentUploaderProps> = ({
         border: "2px dashed",
         borderColor: "primary.main",
         textAlign: "center",
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "var(--ws-surface, #f5f5f5)",
         mb: 3,
       }}
     >

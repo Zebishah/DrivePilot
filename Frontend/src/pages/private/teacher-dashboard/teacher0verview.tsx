@@ -9,7 +9,7 @@ export default function TeacherOverview() {
             {/* Stats Grid */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ bgcolor: "#ffcdd2", height: "100%" }}>
+                    <Card sx={{ bgcolor: "var(--ws-surface-muted, #ffcdd2)", height: "100%" }}>
                         <CardContent>
                             <Typography variant="h6" gutterBottom>
                                 Total Lessons
@@ -60,7 +60,7 @@ export default function TeacherOverview() {
             <Box sx={{ mb: 4 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                     <Typography variant="h5">This Week's Lessons</Typography>
-                    <Button variant="contained" sx={{ bgcolor: "#5ec2d2", "&:hover": { bgcolor: "#4ba1b0" } }}>
+                    <Button variant="contained" sx={{ bgcolor: "var(--ws-primary, #5ec2d2)", "&:hover": { bgcolor: "var(--ws-primary, #4ba1b0)" } }}>
                         Find Instructor
                     </Button>
                 </Box>

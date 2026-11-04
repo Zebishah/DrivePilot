@@ -285,7 +285,7 @@ const ProfileSummary: React.FC = () => {
                             }}
                           >
                             {/* Background star (unfilled) */}
-                            <Star size={20} fill="none" stroke="#ccc" />
+                            <Star size={20} fill="none" stroke="var(--ws-subtle, #ccc)" />
                             {/* Foreground star (filled portion) */}
                             <Box
                               sx={{
@@ -296,7 +296,7 @@ const ProfileSummary: React.FC = () => {
                                 overflow: "hidden",
                               }}
                             >
-                              <Star size={20} fill="#FFD700" stroke="#FFD700" />
+                              <Star size={20} fill="var(--ws-warning, #FFD700)" stroke="var(--ws-warning, #FFD700)" />
                             </Box>
                           </Box>
                         );
@@ -314,7 +314,7 @@ const ProfileSummary: React.FC = () => {
                     // Show empty star with "No reviews yet" when no rating
                     <>
                       <IoStarOutline
-                        style={{ color: "#D1D5DB", marginRight: "0.5rem" }}
+                        style={{ color: "var(--ws-subtle, #D1D5DB)", marginRight: "0.5rem" }}
                       />
                       <p className="mr-0.5 text-gray-500">No reviews yet</p>
                     </>
@@ -402,7 +402,7 @@ const ProfileSummary: React.FC = () => {
           sx={{
             marginTop: "1rem",
             "& .MuiTabs-indicator": {
-              backgroundColor: "black",
+              backgroundColor: "var(--ws-elevated, #000000)",
               fontWeight: "500",
               height: "2px",
             },

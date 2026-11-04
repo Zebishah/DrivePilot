@@ -81,7 +81,7 @@ export default function StripePaymentComplete() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: "#f5f7fb",
+          bgcolor: "var(--ws-surface, #f5f7fb)",
           px: 2,
         }}
       >
@@ -106,7 +106,7 @@ export default function StripePaymentComplete() {
                 justifyContent: "center",
               }}
             >
-              <CircularProgress size={36} sx={{ color: "#8B5CF6" }} />
+              <CircularProgress size={36} sx={{ color: "var(--ws-primary, #8B5CF6)" }} />
             </Box>
             <Box textAlign="center">
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
@@ -136,7 +136,7 @@ export default function StripePaymentComplete() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "#f5f7fb",
+        bgcolor: "var(--ws-surface, #f5f7fb)",
         px: 2,
       }}
     >
@@ -177,7 +177,7 @@ export default function StripePaymentComplete() {
                   }}
                 >
                   <CheckCircleOutlineIcon
-                    sx={{ fontSize: 42, color: "#2ecc71" }}
+                    sx={{ fontSize: 42, color: "var(--ws-success, #2ecc71)" }}
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -205,7 +205,7 @@ export default function StripePaymentComplete() {
                   }}
                 >
                   <HourglassEmptyIcon
-                    sx={{ fontSize: 42, color: "#f6a700" }}
+                    sx={{ fontSize: 42, color: "var(--ws-warning, #f6a700)" }}
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -233,7 +233,7 @@ export default function StripePaymentComplete() {
                   }}
                 >
                   <ReportProblemOutlinedIcon
-                    sx={{ fontSize: 42, color: "#ff9800" }}
+                    sx={{ fontSize: 42, color: "var(--ws-warning, #ff9800)" }}
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -261,7 +261,7 @@ export default function StripePaymentComplete() {
                   }}
                 >
                   <PaymentsOutlinedIcon
-                    sx={{ fontSize: 42, color: "#8B5CF6" }}
+                    sx={{ fontSize: 42, color: "var(--ws-primary, #8B5CF6)" }}
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -321,8 +321,8 @@ export default function StripePaymentComplete() {
                 sx={{
                   minWidth: 160,
                   textTransform: "none",
-                  bgcolor: "#ff9800",
-                  "&:hover": { bgcolor: "#fb8c00" },
+                  bgcolor: "var(--ws-warning-soft, #ff9800)",
+                  "&:hover": { bgcolor: "var(--ws-warning-soft, #fb8c00)" },
                 }}
               >
                 {regenLoading ? "Opening Stripe..." : "Fix now in Stripe"}

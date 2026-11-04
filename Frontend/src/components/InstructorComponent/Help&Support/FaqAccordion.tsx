@@ -28,15 +28,15 @@ const FAQAccordion: React.FC<FAQAccordionProps> = ({
           display: "none",
         },
         "& .MuiAccordionSummary-root": {
-          backgroundColor: "#f8f9fa",
+          backgroundColor: "var(--ws-surface, #f8f9fa)",
           borderRadius: expanded ? "8px 8px 0 0" : "8px",
           minHeight: "64px",
           "&:hover": {
-            backgroundColor: "#e9ecef",
+            backgroundColor: "var(--ws-surface-muted, #e9ecef)",
           },
         },
         "& .MuiAccordionDetails-root": {
-          backgroundColor: "white",
+          backgroundColor: "var(--ws-surface, #ffffff)",
           borderRadius: "0 0 8px 8px",
         },
       }}
@@ -51,8 +51,8 @@ const FAQAccordion: React.FC<FAQAccordionProps> = ({
               width: 32,
               height: 32,
               borderRadius: "50%",
-              backgroundColor: "#4DD0E1",
-              color: "white",
+              backgroundColor: "var(--ws-primary, #4DD0E1)",
+              color: "var(--ws-on-primary, #ffffff)",
             }}
           >
             {expanded ? <RemoveIcon /> : <AddIcon />}
@@ -66,7 +66,7 @@ const FAQAccordion: React.FC<FAQAccordionProps> = ({
             variant="body1"
             sx={{
               fontWeight: 500,
-              color: "#333",
+              color: "var(--ws-ink, #333)",
               pr: 2,
               flex: 1,
             }}
@@ -79,7 +79,7 @@ const FAQAccordion: React.FC<FAQAccordionProps> = ({
         <Typography
           variant="body2"
           sx={{
-            color: "#666",
+            color: "var(--ws-muted, #666)",
             lineHeight: 1.6,
             pl: 2,
           }}

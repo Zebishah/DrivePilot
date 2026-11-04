@@ -172,7 +172,7 @@ const ContactDetails: React.FC = () => {
                 placeholder="Enter support email address"
                 disabled={isSubmitting}
                 sx={{
-                  backgroundColor: "#f9f9f9",
+                  backgroundColor: "var(--ws-surface, #f9f9f9)",
                   borderRadius: 1,
                   "& .MuiInputBase-root": {
                     padding: "12px",

@@ -76,9 +76,7 @@ const SignUp: React.FC = () => {
     },
   });
   const [signUp, { loading }] = useMutation(SIGN_UP_MUTATION);
-  const {
-    data,
-  } = useQuery(GET_SIGNUP_TOKEN_DETAILS, {
+  const { data } = useQuery(GET_SIGNUP_TOKEN_DETAILS, {
     skip: !token,
     variables: { token: token || "" },
   });
@@ -177,7 +175,8 @@ const SignUp: React.FC = () => {
             Create your account
           </Typography>
           <Typography className="dsp-auth-intro" variant="body2">
-            Start your learning or teaching journey with DSP.
+            Create a learner or instructor account to book or teach driving
+            lessons.
           </Typography>
         </Box>
         <Box
@@ -366,9 +365,9 @@ const SignUp: React.FC = () => {
               mt: 1,
               mb: 1,
               py: 1.5,
-              bgcolor: "#4CC9F0",
+              bgcolor: "var(--ws-primary, #4CC9F0)",
               "&:hover": {
-                bgcolor: "#3AB7E0",
+                bgcolor: "var(--ws-primary, #3AB7E0)",
               },
             }}
           >
@@ -379,15 +378,24 @@ const SignUp: React.FC = () => {
             )}
           </Button>
 
-          <Box className="dsp-auth-divider" sx={{ mt: 1, mb: 2, textAlign: "center" }}>
+          <Box
+            className="dsp-auth-divider"
+            sx={{ mt: 1, mb: 2, textAlign: "center" }}
+          >
             <Typography variant="body2" color="text.secondary">
               or continue with
             </Typography>
           </Box>
 
           <Box className="dsp-auth-social">
-            <a href={`${backendAuth}auth/google`}><img src="/auth/google_logo.png" alt="" />Continue with Google</a>
-            <a href={`${backendAuth}auth/facebook`}><img src="/auth/facebook_logo.png" alt="" />Continue with Facebook</a>
+            <a href={`${backendAuth}auth/google`}>
+              <img src="/auth/google_logo.png" alt="" />
+              Continue with Google
+            </a>
+            <a href={`${backendAuth}auth/facebook`}>
+              <img src="/auth/facebook_logo.png" alt="" />
+              Continue with Facebook
+            </a>
           </Box>
 
           <Typography className="dsp-auth-account-link" variant="body2">

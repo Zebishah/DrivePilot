@@ -71,8 +71,8 @@ function CustomDay(
       badgeContent={isHighlighted ? slotCount : undefined}
       sx={{
         "& .MuiBadge-badge": {
-          backgroundColor: "#5ec2d2",
-          color: "white",
+          backgroundColor: "var(--ws-primary, #5ec2d2)",
+          color: "var(--ws-on-primary, #ffffff)",
           right: 8,
           top: 8,
           minWidth: "20px",
@@ -302,7 +302,7 @@ export const AvailabilityTabOverview: React.FC = () => {
               elevation={0}
               sx={{
                 borderRadius: 2,
-                border: "1px solid #e0e0e0",
+                border: "1px solid var(--ws-border, #e0e0e0)",
                 height: "100%",
               }}
             >
@@ -312,7 +312,7 @@ export const AvailabilityTabOverview: React.FC = () => {
                   sx={{
                     mb: 1,
                     fontWeight: 600,
-                    color: "#2c3e50",
+                    color: "var(--ws-info, #2c3e50)",
                     fontSize: "1.25rem",
                   }}
                 >
@@ -359,7 +359,7 @@ export const AvailabilityTabOverview: React.FC = () => {
                         "& .MuiPickersCalendarHeader-label": {
                           fontSize: "1.1rem",
                           fontWeight: 600,
-                          color: "#2c3e50",
+                          color: "var(--ws-info, #2c3e50)",
                         },
                         "& .MuiDayCalendar-header, & .MuiDayCalendar-weekContainer":
                           {
@@ -375,16 +375,16 @@ export const AvailabilityTabOverview: React.FC = () => {
                         },
                         "& .MuiDayCalendar-weekDayLabel": {
                           fontSize: "0.875rem",
-                          color: "#64748b",
+                          color: "var(--ws-muted, #64748b)",
                           fontWeight: 600,
                           width: "40px",
                           height: "40px",
                           margin: "2px",
                         },
                         "& .MuiPickersDay-root.Mui-selected": {
-                          backgroundColor: "#5ec2d2",
-                          color: "white",
-                          "&:hover": { backgroundColor: "#4ba1b0" },
+                          backgroundColor: "var(--ws-primary, #5ec2d2)",
+                          color: "var(--ws-on-primary, #ffffff)",
+                          "&:hover": { backgroundColor: "var(--ws-primary, #4ba1b0)" },
                         },
                       }}
                     />

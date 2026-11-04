@@ -1,8 +1,9 @@
 import React, { ReactNode, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import useVisitorTracking from "../hooks/UseVisitorsTracking";
+import "../pages/public/landing.css";
 
 // Define props for PublicLayout
 interface PublicLayoutProps {
@@ -10,12 +11,17 @@ interface PublicLayoutProps {
 }
 
 const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
+  const { pathname } = useLocation();
   const { trackVisitor, isTracked, trackingError } = useVisitorTracking();
 
   useEffect(() => {
-    document.title = "DSP Marketplace — Driving Lessons, Instructors & Learning Management";
-    const description = "Find instructors, book lessons, manage payments, track learning progress and run driving-school operations from one connected platform.";
-    let descriptionTag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    document.title =
+      "DSP Marketplace — Driving Lessons, Instructors & Learning Management";
+    const description =
+      "Find driving instructors, compare lesson options, and book driving lessons online. Manage payments, learning progress, and teaching with DSP Marketplace.";
+    let descriptionTag = document.querySelector<HTMLMetaElement>(
+      'meta[name="description"]',
+    );
     if (!descriptionTag) {
       descriptionTag = document.createElement("meta");
       descriptionTag.name = "description";
@@ -55,7 +61,9 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   }, [isTracked, trackingError]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className={pathname === "/" ? "dsp-ai-shell" : "min-h-screen bg-gray-50"}
+    >
       <Navbar />
       <main>{children || <Outlet />}</main>
       <Footer />

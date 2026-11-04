@@ -23,7 +23,7 @@ const FaqTab: React.FC<FaqTabProps> = ({ adminId }) => {
   return (
     <Box>
       {/* Header */}
-      <Paper sx={{ p: 2, mb: 2, backgroundColor: "#f8f9fa" }}>
+      <Paper sx={{ p: 2, mb: 2, backgroundColor: "var(--ws-surface, #f8f9fa)" }}>
         <Box
           sx={{
             display: "flex",
@@ -39,9 +39,9 @@ const FaqTab: React.FC<FaqTabProps> = ({ adminId }) => {
             startIcon={<AddIcon />}
             onClick={handleOpenForm}
             sx={{
-              backgroundColor: "#4db6ac",
+              backgroundColor: "var(--ws-primary, #4db6ac)",
               "&:hover": {
-                backgroundColor: "#26a69a",
+                backgroundColor: "var(--ws-info-soft, #26a69a)",
               },
               borderRadius: 2,
               textTransform: "none",
@@ -58,7 +58,7 @@ const FaqTab: React.FC<FaqTabProps> = ({ adminId }) => {
 
       {/* Questions & Answers Section */}
       <Paper sx={{ minHeight: 400 }}>
-        <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
+        <Box sx={{ p: 2, borderBottom: "1px solid var(--ws-border, #e0e0e0)" }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Questions & Answers
           </Typography>

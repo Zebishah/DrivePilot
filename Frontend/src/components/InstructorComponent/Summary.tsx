@@ -81,7 +81,7 @@ const Summary: React.FC<SummaryProps> = ({
                 (lang: string, idx: number) => (
                   <ListItem key={idx} disableGutters sx={{ pl: 0 }}>
                     <CircleIcon
-                      sx={{ fontSize: "0.5rem", color: "#4D4D4D", mr: 1 }}
+                      sx={{ fontSize: "0.5rem", color: "var(--ws-muted, #4D4D4D)", mr: 1 }}
                     />
                     <Typography
                       variant="body2"
@@ -153,7 +153,7 @@ const Summary: React.FC<SummaryProps> = ({
             >
               Criminal Record Check
             </Typography>
-            <FaRegCheckCircle style={{ color: "#25D422" }} />
+            <FaRegCheckCircle style={{ color: "var(--ws-success, #25D422)" }} />
           </Box>
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Typography
@@ -166,7 +166,7 @@ const Summary: React.FC<SummaryProps> = ({
             >
               Reference Check
             </Typography>
-            <FaRegCheckCircle style={{ color: "#25D422" }} />
+            <FaRegCheckCircle style={{ color: "var(--ws-success, #25D422)" }} />
           </Box>
         </CardContent>
       </Card>

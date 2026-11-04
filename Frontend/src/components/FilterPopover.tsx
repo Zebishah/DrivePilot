@@ -153,7 +153,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
             sx={{
               fontFamily: "Poppins, sans-serif",
               fontWeight: 600,
-              color: "#333",
+              color: "var(--ws-ink, #333)",
               marginLeft: 2,
             }}
           >
@@ -161,7 +161,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
           </Typography>
           <div
             className="border-b w-full mt-2"
-            style={{ borderColor: "#CCCCCC" }}
+            style={{ borderColor: "var(--ws-border, #CCCCCC)" }}
           ></div>
         </div>
 
@@ -185,17 +185,17 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               step={1}
               sx={{
                 "& .MuiSlider-thumb": {
-                  color: "#5FC2D3",
+                  color: "var(--ws-primary, #5FC2D3)",
                   "&:hover": {
                     boxShadow: "0 0 0 8px rgba(95, 194, 211, 0.16)",
                   },
                 },
-                "& .MuiSlider-track": { color: "#5FC2D3" },
-                "& .MuiSlider-rail": { color: "#d8d8d8" },
+                "& .MuiSlider-track": { color: "var(--ws-primary, #5FC2D3)" },
+                "& .MuiSlider-rail": { color: "var(--ws-subtle, #d8d8d8)" },
                 "& .MuiSlider-markLabel": {
                   fontFamily: "Poppins, sans-serif",
                   fontSize: "0.75rem",
-                  color: "#666",
+                  color: "var(--ws-muted, #666)",
                 },
               }}
             />
@@ -262,18 +262,18 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                         ...(isAvailable &&
                           isFutureOrToday &&
                           !isSelected && {
-                            backgroundColor: "#2196F3 !important",
-                            color: "white",
+                            backgroundColor: "var(--ws-info-soft, #2196F3) !important",
+                            color: "#ffffff",
                             borderRadius: "50%",
                             "&:hover": {
-                              backgroundColor: "#1976D2",
+                              backgroundColor: "var(--ws-info-soft, #1976D2)",
                             },
                           }),
                         ...(isSelected && {
-                          backgroundColor: "#5FC2D3 !important",
+                          backgroundColor: "var(--ws-primary, #5FC2D3) !important",
                           color: "white !important",
                           "&:hover": {
-                            backgroundColor: "#4AA8B8 !important",
+                            backgroundColor: "var(--ws-info-soft, #4AA8B8) !important",
                           },
                         }),
                       },
@@ -292,7 +292,7 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
                       color="primary"
                       sx={{
                         "& .MuiBadge-badge": {
-                          backgroundColor: "#000000 !important",
+                          backgroundColor: "var(--ws-elevated, #000000) !important",
                           color: "white !important",
                         },
                       }}
@@ -442,9 +442,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               min={60}
               max={120}
               sx={{
-                "& .MuiSlider-thumb": { color: "#5FC2D3" },
-                "& .MuiSlider-track": { color: "#d8d8d8" },
-                "& .MuiSlider-rail": { color: "#d8d8d8" },
+                "& .MuiSlider-thumb": { color: "var(--ws-primary, #5FC2D3)" },
+                "& .MuiSlider-track": { color: "var(--ws-subtle, #d8d8d8)" },
+                "& .MuiSlider-rail": { color: "var(--ws-subtle, #d8d8d8)" },
               }}
             />
             <div className="flex justify-between text-xs text-gray-600">
@@ -503,8 +503,8 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               onClick={onClose}
               sx={{
                 fontFamily: "Poppins, sans-serif",
-                borderColor: "#5FC2D3",
-                color: "#5FC2D3",
+                borderColor: "var(--ws-primary, #5FC2D3)",
+                color: "var(--ws-primary, #5FC2D3)",
               }}
             >
               Cancel
@@ -514,9 +514,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               onClick={handleApplyFilters}
               sx={{
                 fontFamily: "Poppins, sans-serif",
-                backgroundColor: "#5FC2D3",
-                color: "black",
-                "&:hover": { backgroundColor: "#4AB0C0" },
+                backgroundColor: "var(--ws-primary, #5FC2D3)",
+                color: "var(--ws-ink, #000000)",
+                "&:hover": { backgroundColor: "var(--ws-primary, #4AB0C0)" },
               }}
             >
               Apply Filters
@@ -526,9 +526,9 @@ const FilterPopover: React.FC<FilterPopoverProps> = ({
               onClick={handleResetFilters}
               sx={{
                 fontFamily: "Poppins, sans-serif",
-                backgroundColor: "#5FC2D3",
-                color: "black",
-                "&:hover": { backgroundColor: "#4AB0C0" },
+                backgroundColor: "var(--ws-primary, #5FC2D3)",
+                color: "var(--ws-ink, #000000)",
+                "&:hover": { backgroundColor: "var(--ws-primary, #4AB0C0)" },
               }}
             >
               Reset

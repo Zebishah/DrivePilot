@@ -16,7 +16,15 @@ const AppContent: React.FC = () => {
     <ApolloProvider client={client}>
       <ThemeProvider theme={theme}>
         <Provider store={store}>
-          <Toaster />
+          <Toaster
+            toastOptions={{
+              style: {
+                background: "var(--ws-elevated, #ffffff)",
+                color: "var(--ws-ink, #111827)",
+                border: "1px solid var(--ws-border, #e2e8f0)",
+              },
+            }}
+          />
           <RouterProvider router={router} />
         </Provider>
       </ThemeProvider>

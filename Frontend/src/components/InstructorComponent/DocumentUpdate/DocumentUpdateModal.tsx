@@ -476,7 +476,7 @@ const InstructorDocumentUpdate: React.FC<InstructorDocumentUpdateProps> = ({
               top: -8,
               right: 16,
               bgcolor: "success.main",
-              color: "white",
+              color: "#ffffff",
               px: 2,
               py: 0.5,
               borderRadius: 2,
@@ -808,7 +808,7 @@ const InstructorDocumentUpdate: React.FC<InstructorDocumentUpdateProps> = ({
   }
 
   return (
-    <Box sx={{ p: 4, bgcolor: "#f8f9fa" }}>
+    <Box sx={{ p: 4, bgcolor: "var(--ws-surface, #f8f9fa)" }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
@@ -961,7 +961,7 @@ const InstructorDocumentUpdate: React.FC<InstructorDocumentUpdateProps> = ({
                     sx={{
                       p: 2,
                       borderRadius: 2,
-                      border: "1px solid #e0e0e0",
+                      border: "1px solid var(--ws-border, #e0e0e0)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -998,7 +998,7 @@ const InstructorDocumentUpdate: React.FC<InstructorDocumentUpdateProps> = ({
             bottom: 0,
             bgcolor: "background.paper",
             p: 3,
-            borderTop: "1px solid #e0e0e0",
+            borderTop: "1px solid var(--ws-border, #e0e0e0)",
             display: "flex",
             gap: 2,
             justifyContent: "center",
@@ -1025,10 +1025,10 @@ const InstructorDocumentUpdate: React.FC<InstructorDocumentUpdateProps> = ({
               borderRadius: 3,
               textTransform: "none",
               fontWeight: "bold",
-              background: "#5CC2D2",
+              background: "var(--ws-info-soft, #5CC2D2)",
               boxShadow: 4,
               "&:hover": {
-                background: "#4BA1B0",
+                background: "var(--ws-primary, #4BA1B0)",
                 boxShadow: 6,
               },
             }}

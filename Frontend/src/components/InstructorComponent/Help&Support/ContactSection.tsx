@@ -15,7 +15,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
   subtitle = "Need more help? Send us a message and we'll get back to you soon.",
 }) => (
   <Paper sx={{ minHeight: 400 }}>
-    <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
+    <Box sx={{ p: 2, borderBottom: "1px solid var(--ws-border, #e0e0e0)" }}>
       <Typography variant="h6" sx={{ fontWeight: 600 }}>
         {title}
       </Typography>
