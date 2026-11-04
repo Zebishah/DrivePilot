@@ -9,21 +9,26 @@ import {
   Container,
   Stack,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import BrandLogo from "../../../components/BrandLogo";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
+import toast from "react-hot-toast";
 import { OTP_LENGTH } from "../../../constants/auth";
 import AuthLayout from "../../../layouts/AuthLayout";
+import EmailDeliveryNotice from "../../../components/EmailDeliveryNotice";
+import { useEmailResendCooldown } from "../../../hooks/useEmailResendCooldown";
 
 // Styled OTP input for consistent sizing and spacing
 const OtpInput = styled(TextField)(({ theme }) => ({
-  width: "3rem",
-  margin: theme.spacing(0, 0.5),
+  width: "100%",
+  minWidth: 0,
+  margin: 0,
   "& input": {
     textAlign: "center",
     fontSize: "1.5rem",
@@ -40,24 +45,14 @@ interface OtpVerificationProps {
 
 const OtpVerification: React.FC<OtpVerificationProps> = ({
   title = "Check your email",
-  subtitle = "We sent a 6-digit verification code to your email address.",
+  subtitle = "Verify your email to finish creating your account.",
 }) => {
   const { email } = useParams();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
-    Array(OTP_LENGTH).fill(null)
+    Array(OTP_LENGTH).fill(null),
   );
   const { login } = useAuth();
-  // State for toast messages
-  const [, setToast] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info" | "warning";
-  }>({
-    open: false,
-    message: "",
-    severity: "info",
-  });
   const navigate = useNavigate();
   // GraphQL mutations
   const [verifyUser, { loading: verifying }] = useMutation(VERIFY_OTP);
@@ -65,6 +60,11 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
 
   const [isVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<{
+    severity: "success" | "error";
+    message: string;
+  } | null>(null);
+  const { secondsRemaining, restartCooldown } = useEmailResendCooldown(60);
 
   // Handle OTP input change
   const handleChange = (index: number, value: string) => {
@@ -90,7 +90,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   // Handle key events for navigation between inputs
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLElement>,
   ) => {
     if (isVerified) return;
 
@@ -135,12 +135,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
         // Update the user state first
         login(data.verifyUser);
 
-        setToast({
-          open: true,
-          message:
-            "OTP verified successfully! Sign Up Successful. Please select your role.",
-          severity: "success",
-        });
+        toast.success("Your email is verified. You’re ready to continue.");
 
         // Don't set isVerified if you want to navigate immediately
         // Instead, navigate right away
@@ -152,11 +147,6 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
         }
       } else {
         setError("Invalid OTP. Please try again.");
-        setToast({
-          open: true,
-          message: "Invalid OTP. Please try again.",
-          severity: "error",
-        });
       }
     } catch (err) {
       const errorMessage =
@@ -164,42 +154,41 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
           ? err.message
           : "Verification failed. Please try again.";
       setError(errorMessage);
-      setToast({
-        open: true,
-        message: errorMessage,
-        severity: "error",
-      });
     }
   };
 
-  // Handle resend OTP
+  // Keep delivery feedback visible next to the code entry form.
   const handleResendOtp = async () => {
+    if (resending || verifying || secondsRemaining > 0) return;
+    setResendStatus(null);
     try {
       const { data } = await resendOtp({
-        variables: {
-          input: {
-            email: email,
-            type: "email_verification", // or "two_factor_auth"
-          },
-        },
+        variables: { input: { email, type: "email_verification" } },
       });
 
-      if (data && data.resendOtp.success) {
-        setToast({
-          open: true,
-          message: "Verification code resent successfully!",
+      if (data?.resendOtp?.success) {
+        setResendStatus({
           severity: "success",
+          message:
+            "A new code has been sent. Check your inbox and use the newest code.",
+        });
+        setOtp(Array(OTP_LENGTH).fill(""));
+        setError(null);
+        restartCooldown();
+        inputRefs.current[0]?.focus();
+      } else {
+        setResendStatus({
+          severity: "error",
+          message: "We couldn’t send a new code. Please try again.",
         });
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to resend code. Please try again.";
-      setToast({
-        open: true,
-        message: errorMessage,
+      setResendStatus({
         severity: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Failed to resend code. Please try again.",
       });
     }
   };
@@ -236,134 +225,170 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   return (
     <AuthLayout>
       <Container maxWidth="sm">
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          py: 4,
-        }}
-      >
-        <BrandLogo size="lg" />
-
-        {/* OTP Card */}
-        <Card
-          elevation={3}
+        <Box
           sx={{
-            width: "100%",
-            borderRadius: 2,
-            overflow: "visible",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            py: 4,
           }}
         >
-          <CardContent sx={{ p: 4 }}>
-            <Stack spacing={3} alignItems="center">
-              <Typography
-                variant="h5"
-                component="h1"
-                fontWeight="bold"
-                textAlign="center"
-              >
-                {isVerified ? "Verification Successful" : title}
-              </Typography>
+          <BrandLogo size="lg" />
 
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                textAlign="center"
-              >
-                {isVerified ? "You have been successfully verified" : subtitle}
-              </Typography>
+          {/* OTP Card */}
+          <Card
+            elevation={3}
+            sx={{
+              width: "100%",
+              borderRadius: 2,
+              overflow: "visible",
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Stack spacing={3} alignItems="center">
+                <Typography
+                  variant="h5"
+                  component="h1"
+                  fontWeight="bold"
+                  textAlign="center"
+                >
+                  {isVerified ? "Verification Successful" : title}
+                </Typography>
 
-              {isVerified ? (
-                <CheckCircleOutlineIcon
-                  color="success"
-                  sx={{ fontSize: 60, my: 2 }}
-                />
-              ) : (
-                <>
-                  <Box
-                    component="form"
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      flexWrap: "wrap",
-                      my: 2,
-                    }}
-                    onPaste={handlePaste}
-                    className="dsp-otp-fields"
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  textAlign="center"
+                >
+                  {isVerified
+                    ? "You have been successfully verified"
+                    : subtitle}
+                </Typography>
+
+                {!isVerified && email && (
+                  <EmailDeliveryNotice email={email} kind="verification" />
+                )}
+                {resendStatus && (
+                  <Alert
+                    severity={resendStatus.severity}
+                    role={
+                      resendStatus.severity === "success" ? "status" : "alert"
+                    }
+                    sx={{ width: "100%" }}
                   >
-                    {otp.map((digit, index) => (
-                      <OtpInput
-                        className="dsp-otp-digit"
-                        key={index}
-                        inputRef={(el) => (inputRefs.current[index] = el)}
-                        variant="outlined"
-                        value={digit}
-                        onChange={(e) => handleChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                        inputProps={{
-                          "aria-label": `Verification code digit ${index + 1} of ${OTP_LENGTH}`,
-                          maxLength: 1,
-                          inputMode: "numeric",
-                          pattern: "[0-9]*",
-                        }}
-                        autoComplete={index === 0 ? "one-time-code" : "off"}
-                        disabled={verifying || isVerified}
-                        error={!!error}
-                      />
-                    ))}
-                  </Box>
+                    {resendStatus.message}
+                  </Alert>
+                )}
 
-                  {error && (
+                {isVerified ? (
+                  <CheckCircleOutlineIcon
+                    color="success"
+                    sx={{ fontSize: 60, my: 2 }}
+                  />
+                ) : (
+                  <>
+                    <Box
+                      component="form"
+                      id="email-verification-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (isOtpComplete && !verifying && !resending)
+                          void handleVerify();
+                      }}
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: `repeat(${OTP_LENGTH}, minmax(0, 1fr))`,
+                        gap: 0.75,
+                        width: "100%",
+                        maxWidth: 320,
+                        my: 2,
+                      }}
+                      onPaste={handlePaste}
+                      className="dsp-otp-fields"
+                    >
+                      {otp.map((digit, index) => (
+                        <OtpInput
+                          className="dsp-otp-digit"
+                          key={index}
+                          inputRef={(el) => (inputRefs.current[index] = el)}
+                          variant="outlined"
+                          value={digit}
+                          onChange={(e) => handleChange(index, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(index, e)}
+                          inputProps={{
+                            "aria-label": `Verification code digit ${index + 1} of ${OTP_LENGTH}`,
+                            maxLength: 1,
+                            inputMode: "numeric",
+                            pattern: "[0-9]*",
+                          }}
+                          autoComplete={index === 0 ? "one-time-code" : "off"}
+                          disabled={verifying || isVerified}
+                          error={!!error}
+                        />
+                      ))}
+                    </Box>
+
+                    {error && (
+                      <Alert severity="error" sx={{ width: "100%" }}>
+                        {error}
+                      </Alert>
+                    )}
+
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      size="large"
+                      type="submit"
+                      form="email-verification-form"
+                      disabled={
+                        !isOtpComplete || verifying || resending || isVerified
+                      }
+                      sx={{ mt: 2 }}
+                      startIcon={
+                        verifying && (
+                          <CircularProgress size={20} color="inherit" />
+                        )
+                      }
+                    >
+                      {verifying ? "Verifying..." : "Verify"}
+                    </Button>
+
                     <Typography
                       variant="body2"
-                      color="error"
+                      color="text.secondary"
                       textAlign="center"
                     >
-                      {error}
+                      Didn't receive the code?{" "}
+                      <Button
+                        color="primary"
+                        sx={{ p: 0, minWidth: "auto" }}
+                        variant="text"
+                        onClick={handleResendOtp}
+                        disabled={
+                          resending ||
+                          verifying ||
+                          isVerified ||
+                          secondsRemaining > 0
+                        }
+                      >
+                        {resending
+                          ? "Sending…"
+                          : secondsRemaining > 0
+                            ? `Resend in ${secondsRemaining}s`
+                            : "Resend code"}
+                      </Button>
                     </Typography>
-                  )}
-
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    onClick={handleVerify}
-                    disabled={!isOtpComplete || verifying || isVerified}
-                    sx={{ mt: 2 }}
-                    startIcon={
-                      verifying && (
-                        <CircularProgress size={20} color="inherit" />
-                      )
-                    }
-                  >
-                    {verifying ? "Verifying..." : "Verify"}
-                  </Button>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    textAlign="center"
-                  >
-                    Didn't receive the code?{" "}
-                    <Button
-                      color="primary"
-                      sx={{ p: 0, minWidth: "auto" }}
-                      variant="text"
-                      onClick={handleResendOtp}
-                      disabled={resending || isVerified}
-                    >
-                      Resend
+                    <Button component={Link} to="/auth/signin" variant="text">
+                      Back to sign in
                     </Button>
-                  </Typography>
-                </>
-              )}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Box>
+                  </>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
       </Container>
     </AuthLayout>
   );

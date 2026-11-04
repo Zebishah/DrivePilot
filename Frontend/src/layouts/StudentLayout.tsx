@@ -78,10 +78,10 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleLogout = () => {
-    logout();
-    nav("/auth/signin");
-    toast.success("Logout Successfully");
+  const handleLogout = async () => {
+    await logout();
+    nav("/auth/signin", { replace: true });
+    toast.success("You’ve been logged out.");
   };
 
   const { data } = useQuery(GET_STUDENT_BOOKINGS, {

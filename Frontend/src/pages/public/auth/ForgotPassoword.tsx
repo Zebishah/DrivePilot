@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
+  Alert,
   Box,
   Button,
   TextField,
@@ -13,13 +14,14 @@ import {
 } from "@mui/material";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
+import EmailDeliveryNotice from "../../../components/EmailDeliveryNotice";
 import { Link } from "react-router-dom";
 import { FORGOT_PASSWORD } from "../../../graphql/mutations/auth";
 import { useMutation } from "@apollo/client";
-import toast from "react-hot-toast";
+import { useEmailResendCooldown } from "../../../hooks/useEmailResendCooldown";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.string().trim().email("Please enter a valid email address"),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
@@ -31,123 +33,180 @@ const ForgotPassword: React.FC = () => {
     formState: { errors },
   } = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: {
-      email: "",
-    },
+    defaultValues: { email: "" },
   });
-
+  const [sentEmail, setSentEmail] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+  const confirmationHeading = useRef<HTMLHeadingElement>(null);
+  const { secondsRemaining, restartCooldown } = useEmailResendCooldown();
   const [forgotPassword, { loading }] = useMutation(FORGOT_PASSWORD);
 
-  const onSubmit = async (data: ForgotPasswordFormValues) => {
-    try {
-      const response = await forgotPassword({
-        variables: { email: data.email },
-      });
+  useEffect(() => {
+    if (sentEmail) confirmationHeading.current?.focus();
+  }, [sentEmail]);
 
+  const sendResetEmail = async (email: string) => {
+    if (loading || secondsRemaining > 0) return;
+    setError(null);
+    setResent(false);
+    try {
+      const response = await forgotPassword({ variables: { email } });
       if (response.data?.forgotPassword.success) {
-        toast.success(
-          response.data.forgotPassword.message ||
-            "Password reset email sent! Please check your inbox."
-        );
+        setResent(sentEmail !== null);
+        setSentEmail(email);
+        restartCooldown();
       } else {
-        toast.error("Failed to send reset email. Please try again.");
+        setError("We couldn’t request a reset email. Please try again.");
       }
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "An error occurred. Please try again.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t request a reset email. Please try again.",
+      );
     }
   };
 
   return (
     <AuthLayout>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "background.paper",
-          height: "100vh",
-          overflowY: "auto",
-        }}
-      >
-        <Box
-          sx={{
-            mb: 4,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            alignSelf: "flex-start",
-            width: "100%",
-          }}
-        >
-          <Logo />
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{ mt: 4, fontWeight: "bold" }}
-          >
-            Forgot your password?
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 1, whiteSpace: "nowrap" }}
-          >
-            Enter your email and we’ll send reset instructions.
-          </Typography>
-        </Box>
-
-        <Box
-          component="form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          sx={{ width: "100%" }}
-        >
-          <InputLabel htmlFor="email">E-mail address</InputLabel>
-          <Controller
-            name="email"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                placeholder="E-mail address"
-                autoComplete="email"
-                autoFocus
-                error={!!errors.email}
-                helperText={errors.email?.message}
-                sx={{ mb: 2 }}
-              />
+      <Box sx={{ width: "100%", py: 3 }}>
+        <Logo />
+        {sentEmail ? (
+          <Box sx={{ mt: 4, textAlign: "center" }}>
+            <Typography
+              variant="h4"
+              component="h1"
+              ref={confirmationHeading}
+              tabIndex={-1}
+              sx={{ mb: 3, fontWeight: "bold" }}
+            >
+              Check your inbox
+            </Typography>
+            <EmailDeliveryNotice email={sentEmail} kind="password-reset" />
+            {resent && (
+              <Alert
+                severity="success"
+                role="status"
+                sx={{ mt: 3, textAlign: "left" }}
+              >
+                Another reset email has been requested. When it arrives, use the
+                link in the newest email.
+              </Alert>
             )}
-          />
-
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            disabled={loading}
-            sx={{
-              mt: 3,
-              mb: 2,
-              py: 1.5,
-              bgcolor: "var(--ws-primary, #4CC9F0)",
-              "&:hover": { bgcolor: "var(--ws-primary, #3AB7E0)" },
-            }}
-          >
-            {loading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              "Send reset instructions"
+            {error && (
+              <Alert severity="error" sx={{ mt: 3, textAlign: "left" }}>
+                {error}
+              </Alert>
             )}
-          </Button>
-          <Box sx={{ textAlign: "center", mt: 1 }}>
-            <MuiLink component={Link} to="/auth/signin" variant="body2">
-              Back to sign in
-            </MuiLink>
+            <Button
+              fullWidth
+              variant="contained"
+              disabled={loading || secondsRemaining > 0}
+              onClick={() => void sendResetEmail(sentEmail)}
+              sx={{ mt: 3 }}
+            >
+              {loading
+                ? "Requesting email…"
+                : secondsRemaining > 0
+                  ? `Resend available in ${secondsRemaining}s`
+                  : "Resend reset email"}
+            </Button>
+            <Button
+              fullWidth
+              disabled={loading}
+              onClick={() => {
+                setSentEmail(null);
+                setError(null);
+                setResent(false);
+              }}
+              sx={{ mt: 1 }}
+            >
+              Use a different email
+            </Button>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              Signed up with Google or Facebook? Use that option on the sign-in
+              page.
+            </Typography>
           </Box>
+        ) : (
+          <>
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{ mt: 4, fontWeight: "bold" }}
+            >
+              Forgot your password?
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1, mb: 4 }}
+            >
+              Enter your email and we’ll send reset instructions.
+            </Typography>
+            <Box
+              component="form"
+              noValidate
+              onSubmit={handleSubmit(({ email }) => sendResetEmail(email))}
+              sx={{ width: "100%" }}
+            >
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+              <InputLabel htmlFor="email">E-mail address</InputLabel>
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="email"
+                    type="email"
+                    placeholder="E-mail address"
+                    autoComplete="email"
+                    autoFocus
+                    disabled={loading}
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                    sx={{ mb: 2 }}
+                  />
+                )}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                disabled={loading || secondsRemaining > 0}
+                sx={{ mt: 3, mb: 2, py: 1.5 }}
+              >
+                {loading ? (
+                  <>
+                    <CircularProgress
+                      size={20}
+                      color="inherit"
+                      sx={{ mr: 1 }}
+                    />{" "}
+                    Sending instructions…
+                  </>
+                ) : secondsRemaining > 0 ? (
+                  `Send available in ${secondsRemaining}s`
+                ) : (
+                  "Send reset instructions"
+                )}
+              </Button>
+            </Box>
+          </>
+        )}
+        <Box sx={{ textAlign: "center", mt: 3 }}>
+          <MuiLink component={Link} to="/auth/signin" variant="body2">
+            Back to sign in
+          </MuiLink>
         </Box>
       </Box>
     </AuthLayout>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   AppBar,
   Avatar,
@@ -7,10 +7,11 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  ListSubheader,
   Toolbar,
   Typography,
 } from "@mui/material";
-import { ChevronDown, MenuIcon } from "lucide-react";
+import { LogOut, MenuIcon } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useQuery } from "@apollo/client";
@@ -19,70 +20,58 @@ import { GET_TEACHER_PROFILE } from "../../graphql/mutations/profile";
 import { designTokens } from "../../themes/tokens";
 import NotificationBell from "../dashboard/NotificationBell";
 
-// Flag components
-import { US, FR, DE, IT } from "country-flag-icons/react/3x2";
-
 interface MenuItemProps {
   text: string;
   icon: React.ElementType;
   path: string;
 }
 
-interface Language {
-  code: string;
-  label: string;
-  Flag: React.ElementType;
-}
-
-const LANGUAGES: Language[] = [
-  { code: "en", label: "English", Flag: US },
-  { code: "fr", label: "French", Flag: FR },
-  { code: "de", label: "German", Flag: DE },
-  { code: "it", label: "Italian", Flag: IT },
-];
-
 interface NavbarProps {
   handleDrawerToggle: () => void;
   menuItems: MenuItemProps[];
+  onLogout?: () => void;
 }
 
-export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(
-    LANGUAGES[0]
+export default function Navbar({
+  handleDrawerToggle,
+  menuItems,
+  onLogout,
+}: NavbarProps) {
+  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(
+    null,
   );
-
+  const logoutRequested = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [isImageLoading, setIsImageLoading] = useState(false);
 
   const isStudent = user?.role === "Student";
   const isInstructor = user?.role === "Instructor";
   const isAdmin = user?.role === "Admin";
-  const isInstructorOverview = isInstructor && location.pathname === "/teacher-dashboard/overview";
+  const isInstructorOverview =
+    isInstructor && location.pathname === "/teacher-dashboard/overview";
 
   const { data: studentData, loading: studentLoading } = useQuery(
     GET_STUDENT_PROFILE,
     {
       skip: !isStudent,
-    }
+    },
   );
   const { data: teacherData, loading: teacherLoading } = useQuery(
     GET_TEACHER_PROFILE,
     {
       skip: !isInstructor,
-    }
+    },
   );
 
-  const profileImage = isAdmin
-    ? "/admin-avatar.jpg"
-    : isStudent
-      ? studentData?.studentProfile?.profileImage
-      : isInstructor
-        ? teacherData?.teacherProfile?.profileImage
-        : "/default-avatar.jpg";
+  const profileImage = isStudent
+    ? studentData?.studentProfile?.profileImage
+    : isInstructor
+      ? teacherData?.teacherProfile?.profileImage
+      : undefined;
+
+  useEffect(() => setIsImageLoading(Boolean(profileImage)), [profileImage]);
 
   const isLoading =
     (isStudent && studentLoading) || (isInstructor && teacherLoading);
@@ -93,43 +82,13 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
 
   const pageTitle = currentMenuItem ? currentMenuItem?.text : "Dashboard";
 
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event?.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
   const handleProfileClose = () => {
     setProfileAnchorEl(null);
   };
 
-  const handleLanguageChange = (language: Language) => {
-    setSelectedLanguage(language);
-    setAnchorEl(null);
-    // Add actual i18n language change logic here
-  };
   const renderAvatar = () => {
     const handleAvatarClick = (event: React.MouseEvent<HTMLElement>) => {
-      if (isStudent || isInstructor) {
-        setProfileAnchorEl(event.currentTarget);
-        return;
-      }
-      switch (user?.role) {
-        case "Admin":
-          navigate("/admin-dashboard/overview");
-          break;
-        case "Student":
-          navigate("/student-dashboard/overview");
-          break;
-        case "Instructor":
-          navigate("/teacher-dashboard/overview");
-          break;
-        default:
-          // Optional fallback
-          navigate("/");
-      }
+      setProfileAnchorEl(event.currentTarget);
     };
 
     return (
@@ -139,7 +98,8 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
         className="dsp-topbar__avatar-button"
         aria-label="Open profile menu"
         aria-controls={profileAnchorEl ? "profile-menu" : undefined}
-        aria-haspopup="true"
+        aria-haspopup="menu"
+        aria-expanded={Boolean(profileAnchorEl)}
         sx={{
           position: "relative",
           width: 46,
@@ -173,15 +133,25 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
         )}
 
         <Avatar
-          src={profileImage || "/default-avatar.jpg"}
-          sx={{ width: 40, height: 40, zIndex: isImageLoading ? 0 : 2, backgroundColor: designTokens.color.purpleSurface }}
+          src={profileImage || undefined}
+          sx={{
+            width: 40,
+            height: 40,
+            zIndex: isImageLoading ? 0 : 2,
+            backgroundColor: designTokens.color.purpleSurface,
+          }}
           imgProps={{
             onLoad: () => setIsImageLoading(false),
             onError: () => {
               setIsImageLoading(false);
             },
           }}
-        />
+        >
+          {[user?.firstName, user?.lastName]
+            .map((name) => name?.[0])
+            .join("")
+            .toUpperCase() || "D"}
+        </Avatar>
       </Box>
     );
   };
@@ -211,56 +181,19 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
         </IconButton>
 
         <Box className="dsp-topbar__context">
-          <Typography className="dsp-topbar__crumb">DSP / {user?.role || "Workspace"}</Typography>
+          <Typography className="dsp-topbar__crumb">
+            DSP / {user?.role || "Workspace"}
+          </Typography>
           <Typography className="dsp-topbar__title">{pageTitle}</Typography>
         </Box>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, sm: 1.25 } }}>
-          <selectedLanguage.Flag
-            title={selectedLanguage.label}
-            style={{ width: 24, height: 16 }}
-          />
-          <Typography sx={{ display: { xs: "none", md: "block" }, fontSize: "0.82rem", fontWeight: 600, color: "var(--ws-info, #526071)" }}>
-            {selectedLanguage.label}
-          </Typography>
-
-          <IconButton
-            size="small"
-            aria-label="language"
-            aria-controls="menu-appbar"
-            aria-haspopup="true"
-            onClick={handleMenu}
-            color="inherit"
-          >
-            <ChevronDown size={20} />
-          </IconButton>
-
-          <Menu
-            id="menu-appbar"
-            anchorEl={anchorEl}
-            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-            keepMounted
-            transformOrigin={{ vertical: "top", horizontal: "right" }}
-            open={Boolean(anchorEl)}
-            onClose={handleClose}
-          >
-            {LANGUAGES.map((lang) => (
-              <MenuItem
-                key={lang.code}
-                selected={lang.code === selectedLanguage.code}
-                onClick={() => handleLanguageChange(lang)}
-              >
-                <Box display="flex" alignItems="center" gap={1}>
-                  <lang.Flag
-                    title={lang.label}
-                    style={{ width: 24, height: 16 }}
-                  />
-                  {lang.label}
-                </Box>
-              </MenuItem>
-            ))}
-          </Menu>
-
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: 0.5, sm: 1.25 },
+          }}
+        >
           <NotificationBell />
           {renderAvatar()}
           <Menu
@@ -270,23 +203,63 @@ export default function Navbar({ handleDrawerToggle, menuItems }: NavbarProps) {
             transformOrigin={{ vertical: "top", horizontal: "right" }}
             open={Boolean(profileAnchorEl)}
             onClose={handleProfileClose}
+            TransitionProps={{
+              onExited: () => {
+                // Let the menu restore focus before the confirmation dialog opens.
+                if (logoutRequested.current) {
+                  logoutRequested.current = false;
+                  onLogout?.();
+                }
+              },
+            }}
           >
-            <Box className="dsp-profile-menu__header">
+            <ListSubheader
+              role="presentation"
+              className="dsp-profile-menu__header"
+              disableSticky
+            >
               <Typography className="dsp-profile-menu__name">
                 {user?.firstName || "Your profile"} {user?.lastName || ""}
               </Typography>
               <Typography className="dsp-profile-menu__role">
                 {user?.role || "Workspace"}
               </Typography>
-            </Box>
-            <MenuItem
-              onClick={() => {
-                handleProfileClose();
-                navigate(isStudent ? "/student-dashboard/settings" : "/teacher-dashboard/settings");
-              }}
-            >
-              Profile settings
-            </MenuItem>
+            </ListSubheader>
+            {!isAdmin && (
+              <MenuItem
+                onClick={() => {
+                  handleProfileClose();
+                  navigate(
+                    isStudent
+                      ? "/student-dashboard/settings"
+                      : "/teacher-dashboard/settings",
+                  );
+                }}
+              >
+                Profile settings
+              </MenuItem>
+            )}
+            {isAdmin && (
+              <MenuItem
+                onClick={() => {
+                  handleProfileClose();
+                  navigate("/admin-dashboard/overview");
+                }}
+              >
+                Your workspace
+              </MenuItem>
+            )}
+            {onLogout && (
+              <MenuItem
+                onClick={() => {
+                  logoutRequested.current = true;
+                  handleProfileClose();
+                }}
+                sx={{ gap: 1 }}
+              >
+                <LogOut size={16} aria-hidden="true" /> Log out
+              </MenuItem>
+            )}
           </Menu>
         </Box>
       </Toolbar>

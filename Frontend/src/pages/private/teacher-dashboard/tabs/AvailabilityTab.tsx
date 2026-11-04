@@ -79,6 +79,9 @@ export function CustomDay(
       overlap="circular"
       badgeContent={slotCount > 0 ? slotCount : undefined} // Only show badge if count > 0
       sx={{
+        width: "100%",
+        minWidth: 0,
+        justifyContent: "center",
         "& .MuiBadge-badge": {
           background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
           color: "var(--ws-on-primary, #ffffff)",
@@ -99,9 +102,10 @@ export function CustomDay(
           borderRadius: "8px",
           "&.MuiPickersDay-root": {
             fontSize: "0.875rem",
-            width: "40px",
+            width: "100%",
+            maxWidth: "40px",
             height: "40px",
-            margin: "2px",
+            margin: "2px 0",
           },
           ...(slotCount > 0 && {
             backgroundColor: "rgba(94, 194, 210, 0.1)",
@@ -456,20 +460,21 @@ export const AvailabilityTab: React.FC = () => {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        paddingLeft: "16px",
-                        paddingRight: "16px",
+                        paddingLeft: { xs: 0, sm: "16px" },
+                        paddingRight: { xs: 0, sm: "16px" },
                         marginTop: "8px",
                         marginBottom: "16px",
                       },
                       "& .MuiPickersCalendarHeader-label": {
-                        fontSize: "1.1rem",
+                        fontSize: { xs: "0.95rem", sm: "1.1rem" },
                         fontWeight: 600,
                         color: "var(--ws-info, #2c3e50)",
                       },
                       "& .MuiDayCalendar-header, & .MuiDayCalendar-weekContainer":
                         {
-                          display: "flex",
-                          justifyContent: "space-around",
+                          display: "grid",
+                          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                          justifyItems: "center",
                           maxWidth: "none",
                           width: "100%",
                           margin: 0,
@@ -482,9 +487,10 @@ export const AvailabilityTab: React.FC = () => {
                         fontSize: "0.875rem",
                         color: "var(--ws-muted, #64748b)",
                         fontWeight: 600,
-                        width: "40px",
+                        width: "100%",
+                        maxWidth: "40px",
                         height: "40px",
-                        margin: "2px",
+                        margin: "2px 0",
                       },
                       "& .MuiPickersDay-root.Mui-selected": {
                         background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
@@ -547,6 +553,7 @@ export const AvailabilityTab: React.FC = () => {
                     </Button>
                   )}
                   <IconButton
+                    aria-label="Add available time slots"
                     onClick={handleAddButtonClick}
                     sx={{
                       background: "linear-gradient(135deg, var(--ws-primary, #7C3AED), var(--ws-primary, #EC4899))",
@@ -621,10 +628,11 @@ export const AvailabilityTab: React.FC = () => {
                       </Box>
                     </Box>
                     {slot.booked ? null : isDeletingSlot === slot.id ? (
-                      <CircularProgress size={20} sx={{ color: "var(--ws-danger, #ef4444)" }} />
+                      <CircularProgress aria-label="Deleting time slot" size={20} sx={{ color: "var(--ws-danger, #ef4444)" }} />
                     ) : (
                       <IconButton
                         size="small"
+                        aria-label={`Delete time slot ${slot.startTime} to ${slot.endTime}`}
                         onClick={() => handleDeleteSlot(slot.id)}
                         sx={{
                           color: "var(--ws-danger, #ef4444)",

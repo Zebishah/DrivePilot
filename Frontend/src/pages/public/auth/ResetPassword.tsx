@@ -1,9 +1,10 @@
 import React from "react";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
+  Alert,
   Box,
   Button,
   TextField,
@@ -16,11 +17,10 @@ import {
 } from "@mui/material";
 import AuthLayout from "../../../layouts/AuthLayout";
 import Logo from "../../../components/Logo";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { RESET_PASSWORD } from "../../../graphql/mutations/auth";
 import { useMutation } from "@apollo/client";
-import toast from "react-hot-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 const resetPasswordSchema = z
   .object({
@@ -40,9 +40,11 @@ const resetPasswordSchema = z
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 const ResetPassword: React.FC = () => {
-  const nav = useNavigate();
   const { token } = useParams<{ token: string }>();
   const [resetPassword, { loading }] = useMutation(RESET_PASSWORD);
+  const [isReset, setIsReset] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const successHeading = useRef<HTMLHeadingElement>(null);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const {
@@ -58,216 +60,224 @@ const ResetPassword: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!token) {
-      toast.error("Invalid or missing reset token. Please try again.");
-    }
-  }, [token]);
+    if (isReset) successHeading.current?.focus();
+  }, [isReset]);
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
-    if (!token) {
-      toast.error("Invalid or missing reset token. Please try again.");
-      return;
-    }
-
+    if (!token || loading || isReset) return;
+    setError(null);
     try {
       const response = await resetPassword({
-        variables: {
-          token: token,
-          newPassword: data.password,
-        },
+        variables: { token, newPassword: data.password },
       });
       if (response.data?.resetPassword.success) {
-        toast.success(
-          response.data.resetPassword.message || "Password reset successful!"
-        );
-
-        // // Store the token if it was returned
-        // if (response.data.resetPassword.token) {
-        //     localStorage.setItem('authToken', response.data.resetPassword.token);
-        // }
-
-        setTimeout(() => {
-          nav("/auth/signin");
-        }, 3000);
+        setIsReset(true);
       } else {
-        toast.error("Failed to reset password. Please try again.");
+        setError(
+          response.data?.resetPassword.message ||
+            "We couldn’t reset your password. Please try again.",
+        );
       }
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "An error occurred. Please try again.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t reset your password. Please try again.",
+      );
     }
   };
 
   return (
     <AuthLayout>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "background.paper",
-          height: "100vh",
-          overflowY: "auto",
-        }}
-      >
+      {isReset ? (
+        <Box sx={{ width: "100%", textAlign: "center", py: 4 }}>
+          <CheckCircle2
+            size={44}
+            aria-hidden="true"
+            style={{
+              margin: "0 auto 24px",
+              color: "var(--ws-success, #23765B)",
+            }}
+          />
+          <Typography
+            component="h1"
+            variant="h4"
+            ref={successHeading}
+            tabIndex={-1}
+          >
+            Your password has been reset
+          </Typography>
+          <Typography sx={{ mt: 2, mb: 3 }} color="text.secondary">
+            You’re ready to sign in with your new password.
+          </Typography>
+          <Button
+            component={Link}
+            to="/auth/signin"
+            variant="contained"
+            fullWidth
+          >
+            Continue to sign in
+          </Button>
+        </Box>
+      ) : (
         <Box
           sx={{
-            mb: 4,
             display: "flex",
             flexDirection: "column",
-            alignItems: "flex-start",
-            alignSelf: "flex-start",
-            width: "100%",
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "background.paper",
+            height: "100vh",
+            overflowY: "auto",
           }}
         >
-          <Logo />
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{ mt: 4, fontWeight: "bold" }}
-          >
-            Create a new password
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 1, whiteSpace: "nowrap" }}
-          >
-            Use a new password to keep your DSP account secure.
-          </Typography>
-        </Box>
-
-        <Box
-          component="form"
-          noValidate
-          onSubmit={handleSubmit(onSubmit)}
-          sx={{ width: "100%" }}
-        >
-          <InputLabel htmlFor="password">New Password</InputLabel>
-          <Controller
-            name="password"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                type={showPassword ? "text" : "password"}
-                id="password"
-                placeholder="New Password"
-                autoComplete="new-password"
-                error={!!errors.password}
-                helperText={errors.password?.message}
-                sx={{ mb: 2 }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        aria-label="toggle password visibility"
-                      >
-                        {showPassword ? (
-                          <EyeOff size={20} />
-                        ) : (
-                          <Eye size={20} />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            )}
-          />
-
-          {/* <InputLabel htmlFor="confirmPassword">Confirm Password</InputLabel>
-          <Controller
-            name="confirmPassword"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                type="password"
-                id="confirmPassword"
-                placeholder="Confirm Password"
-                autoComplete="new-password"
-                error={!!errors.confirmPassword}
-                helperText={errors.confirmPassword?.message}
-                sx={{ mb: 2 }}
-              />
-            )}
-          /> */}
-
-          <InputLabel htmlFor="confirmPassword">Confirm Password</InputLabel>
-          <Controller
-            name="confirmPassword"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                margin="normal"
-                required
-                fullWidth
-                type={showConfirmPassword ? "text" : "password"}
-                id="confirmPassword"
-                placeholder="Confirm Password"
-                autoComplete="new-password"
-                error={!!errors.confirmPassword}
-                helperText={errors.confirmPassword?.message}
-                sx={{ mb: 2 }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                        edge="end"
-                        aria-label="toggle confirm password visibility"
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff size={20} />
-                        ) : (
-                          <Eye size={20} />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            )}
-          />
-
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            disabled={loading}
+          <Box
             sx={{
-              mt: 3,
-              mb: 2,
-              py: 1.5,
-              bgcolor: "var(--ws-primary, #4CC9F0)",
-              "&:hover": { bgcolor: "var(--ws-primary, #3AB7E0)" },
+              mb: 4,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              alignSelf: "flex-start",
+              width: "100%",
             }}
           >
-            {loading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              "Reset password"
+            <Logo />
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{ mt: 4, fontWeight: "bold" }}
+            >
+              Create a new password
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Use a new password to keep your DSP account secure.
+            </Typography>
+          </Box>
+
+          <Box
+            component="form"
+            noValidate
+            onSubmit={handleSubmit(onSubmit)}
+            sx={{ width: "100%" }}
+          >
+            {(!token || error) && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error || "This reset link is missing or incomplete."}{" "}
+                <MuiLink component={Link} to="/auth/forgot-password">
+                  Request a new reset link
+                </MuiLink>
+              </Alert>
             )}
-          </Button>
-          <Box sx={{ textAlign: "center", mt: 1 }}>
-            <MuiLink component={Link} to="/auth/signin" variant="body2">
-              Back to sign in
-            </MuiLink>
+            <InputLabel htmlFor="password">New Password</InputLabel>
+            <Controller
+              name="password"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  margin="normal"
+                  required
+                  fullWidth
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  placeholder="New Password"
+                  autoComplete="new-password"
+                  error={!!errors.password}
+                  helperText={
+                    errors.password?.message ||
+                    "Use at least 8 characters with uppercase and lowercase letters and a number."
+                  }
+                  disabled={loading || !token}
+                  sx={{ mb: 2 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                          aria-label="toggle password visibility"
+                        >
+                          {showPassword ? (
+                            <EyeOff size={20} />
+                          ) : (
+                            <Eye size={20} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            />
+
+            <InputLabel htmlFor="confirmPassword">Confirm Password</InputLabel>
+            <Controller
+              name="confirmPassword"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  margin="normal"
+                  required
+                  fullWidth
+                  type={showConfirmPassword ? "text" : "password"}
+                  id="confirmPassword"
+                  placeholder="Confirm Password"
+                  autoComplete="new-password"
+                  error={!!errors.confirmPassword}
+                  helperText={errors.confirmPassword?.message}
+                  disabled={loading || !token}
+                  sx={{ mb: 2 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          edge="end"
+                          aria-label="toggle confirm password visibility"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff size={20} />
+                          ) : (
+                            <Eye size={20} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+            />
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading || !token}
+              sx={{
+                mt: 3,
+                mb: 2,
+                py: 1.5,
+                bgcolor: "var(--ws-primary, #4CC9F0)",
+                "&:hover": { bgcolor: "var(--ws-primary, #3AB7E0)" },
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Reset password"
+              )}
+            </Button>
+            <Box sx={{ textAlign: "center", mt: 1 }}>
+              <MuiLink component={Link} to="/auth/signin" variant="body2">
+                Back to sign in
+              </MuiLink>
+            </Box>
           </Box>
         </Box>
-      </Box>
+      )}
     </AuthLayout>
   );
 };

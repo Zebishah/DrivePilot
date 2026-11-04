@@ -440,7 +440,7 @@ export const TariffTab: React.FC = () => {
             onChange={(_, newValue) =>
               handleDiscountChange("lessonDiscount", Number(newValue))
             }
-            aria-labelledby="discount-slider"
+            aria-label="Lesson discount percentage"
             valueLabelDisplay="auto"
             step={1}
             marks
@@ -663,7 +663,7 @@ export const TariffTab: React.FC = () => {
                               newValue
                             );
                           }}
-                          aria-labelledby={`package-discount-slider-${index}`}
+                          aria-label={`Package ${index + 1} discount percentage`}
                           valueLabelDisplay="auto"
                           step={1}
                           marks

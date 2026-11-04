@@ -14,14 +14,11 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import { Fragment, useState } from "react";
-import type { MouseEvent } from "react";
+import { Fragment } from "react";
 import type { IconType } from "react-icons/lib";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { clearUnreadMessages } from "../../store/slices/chatSlice";
-import { AdminButton } from "../admin/AdminPrimitives";
-import { AdminModal } from "../admin/AdminModal";
 import BrandLogo from "../BrandLogo";
 
 export interface MenuItem {
@@ -103,7 +100,6 @@ export default function Sidebar({
   const reducedMotion = useReducedMotion();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const router = useLocation();
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const dispatch = useDispatch();
   const { unreadMessages } = useSelector((state: RootState) => state.chat);
 
@@ -117,22 +113,6 @@ export default function Sidebar({
         duration: reducedMotion ? 0 : 0.18,
       },
     }),
-  };
-
-  const handleLogoutClick = (e: MouseEvent) => {
-    e.preventDefault();
-    setLogoutDialogOpen(true);
-  };
-
-  const handleConfirmLogout = () => {
-    setLogoutDialogOpen(false);
-    if (onLogout) {
-      onLogout();
-    }
-  };
-
-  const handleCancelLogout = () => {
-    setLogoutDialogOpen(false);
   };
 
   const initials = userName
@@ -157,17 +137,6 @@ export default function Sidebar({
         component={motion.div}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
-        role={isMobile ? "button" : undefined}
-        tabIndex={isMobile ? 0 : undefined}
-        aria-label={isMobile ? "Close navigation" : undefined}
-        onKeyDown={
-          isMobile
-            ? (event) => {
-                if (event.key === "Enter" || event.key === " ")
-                  handleDrawerToggle();
-              }
-            : undefined
-        }
       >
         <BrandLogo size="md" to="/" aria-label="DSP Marketplace home" />
       </Box>
@@ -222,41 +191,34 @@ export default function Sidebar({
                     variants={listItemVariants}
                     key={item.text}
                   >
-                    <Link
+                    <ListItemButton
+                      component={Link}
                       to={item.path}
-                      className="dsp-sidebar__link"
                       onClick={() => {
                         if (item.text === "Messages") {
                           dispatch(clearUnreadMessages());
-                          localStorage.setItem("unreadMessages", "0");
                         }
                         if (isMobile && mobileOpen) handleDrawerToggle();
                       }}
+                      aria-current={isActive ? "page" : undefined}
+                      className="dsp-sidebar__item"
+                      sx={{
+                        borderRadius: 2,
+                        mb: 0.5,
+                        minHeight: 44,
+                        position: "relative",
+                      }}
                     >
-                      <ListItemButton
-                        component={motion.div}
-                        aria-current={isActive ? "page" : undefined}
-                        whileHover={reducedMotion ? undefined : { x: 2 }}
-                        whileTap={reducedMotion ? undefined : { scale: 0.98 }}
-                        className="dsp-sidebar__item"
-                        sx={{
-                          borderRadius: 2,
-                          mb: 0.5,
-                          minHeight: 44,
-                          position: "relative",
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 34 }}>
-                          <Icon size={19} />
-                        </ListItemIcon>
-                        <ListItemText primary={item.text} />
-                        {hasBadge && (
-                          <Box className="dsp-sidebar__badge">
-                            {item.badge || unreadMessages}
-                          </Box>
-                        )}
-                      </ListItemButton>
-                    </Link>
+                      <ListItemIcon sx={{ minWidth: 34 }}>
+                        <Icon size={19} />
+                      </ListItemIcon>
+                      <ListItemText primary={item.text} />
+                      {hasBadge && (
+                        <Box className="dsp-sidebar__badge">
+                          {item.badge || unreadMessages}
+                        </Box>
+                      )}
+                    </ListItemButton>
                   </MotionListItem>
                 );
               })}
@@ -265,44 +227,22 @@ export default function Sidebar({
         </List>
       </Box>
 
-      {logoutItem && (
+      {logoutItem && onLogout && (
         <List className="dsp-sidebar__logout">
           <MotionListItem disablePadding>
             <ListItemButton
               className="dsp-sidebar__logout-button"
-              onClick={handleLogoutClick}
+              onClick={onLogout}
               aria-label="Log out"
             >
               <ListItemIcon sx={{ minWidth: 34 }}>
                 <logoutItem.icon size={19} />
               </ListItemIcon>
-              <ListItemText primary={logoutItem.text} />
+              <ListItemText primary="Log out" />
             </ListItemButton>
           </MotionListItem>
         </List>
       )}
-
-      <AdminModal
-        open={logoutDialogOpen}
-        onClose={handleCancelLogout}
-        title="Confirm logout"
-        subtitle="You can sign back in whenever you need to return."
-        size="sm"
-        footer={
-          <>
-            <AdminButton variant="secondary" onClick={handleCancelLogout}>
-              Cancel
-            </AdminButton>
-            <AdminButton variant="danger" onClick={handleConfirmLogout}>
-              Logout
-            </AdminButton>
-          </>
-        }
-      >
-        <p className="dsp-admin-confirmation-copy">
-          Are you sure you want to log out of your account?
-        </p>
-      </AdminModal>
     </Box>
   );
 

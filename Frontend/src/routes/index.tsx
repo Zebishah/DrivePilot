@@ -77,7 +77,7 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: "reset-password/:token",
+            path: "reset-password/:token?",
             element: lazyPage(
               () => import("../pages/public/auth/ResetPassword"),
             ),

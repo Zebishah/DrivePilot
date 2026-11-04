@@ -142,6 +142,11 @@ const intelligentTheme = createTheme({
       },
     },
     MuiTabs: {
+      defaultProps: {
+        variant: "scrollable",
+        scrollButtons: "auto",
+        allowScrollButtonsMobile: true,
+      },
       styleOverrides: { indicator: { background: c.ocean, height: 2 } },
     },
     MuiTab: {

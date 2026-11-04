@@ -1,4 +1,5 @@
 import React from "react";
+import "./legal.css";
 import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 

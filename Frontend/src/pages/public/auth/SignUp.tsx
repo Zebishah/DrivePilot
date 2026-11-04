@@ -5,6 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
+  Alert,
   Box,
   Button,
   TextField,
@@ -26,15 +27,14 @@ import {
   SIGN_UP_MUTATION,
   UPDATE_SIGNUP_LINK_STATUS,
 } from "../../../graphql/mutations/auth";
-import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
 
 // Define schema for form validation
 const signUpSchema = z
   .object({
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
-    email: z.string().email("Please enter a valid email address"),
+    firstName: z.string().trim().min(1, "First name is required"),
+    lastName: z.string().trim().min(1, "Last name is required"),
+    email: z.string().trim().email("Please enter a valid email address"),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -63,18 +63,8 @@ const SignUp: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkID, setLinkID] = useState(null);
   const nav = useNavigate();
-  const { verifyUser } = useAuth();
-  const [updateSignupLinkStatus] = useMutation(UPDATE_SIGNUP_LINK_STATUS, {
-    onCompleted: () => {
-      toast.success("Signup successful! Redirecting you to Sign in...");
-      setTimeout(() => {
-        nav("/auth/signin");
-      }, 2000); // delay for better UX, or remove if not needed
-    },
-    onError: (err) => {
-      toast.error(err.message || "Something went wrong!");
-    },
-  });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [updateSignupLinkStatus] = useMutation(UPDATE_SIGNUP_LINK_STATUS);
   const [signUp, { loading }] = useMutation(SIGN_UP_MUTATION);
   const { data } = useQuery(GET_SIGNUP_TOKEN_DETAILS, {
     skip: !token,
@@ -99,7 +89,7 @@ const SignUp: React.FC = () => {
   });
 
   useEffect(() => {
-    if (token && data) {
+    if (token && data?.getSignupTokenDetails) {
       if (data.getSignupTokenDetails.pending === true)
         setValue("firstName", data.getSignupTokenDetails.firstName);
       setValue("lastName", data.getSignupTokenDetails.lastName);
@@ -108,38 +98,46 @@ const SignUp: React.FC = () => {
     }
   }, [data, setValue, token]);
 
-  const onSubmit = async (data: SignUpFormValues) => {
+  const onSubmit = async (values: SignUpFormValues) => {
+    if (isSubmitting) return;
+    setFormError(null);
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
       const { data: authData } = await signUp({
         variables: {
           input: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: data.email,
-            password: data.password,
-            agreeToTerms: data.agreeToTerms,
+            firstName: values.firstName,
+            lastName: values.lastName,
+            email: values.email,
+            password: values.password,
+            agreeToTerms: values.agreeToTerms,
           },
         },
       });
-      if (token && linkID) {
-        const pending = false;
-        await updateSignupLinkStatus({
-          variables: { id: linkID, pending, email: data.email },
-        });
+      if (!authData?.signUp?.success || !authData.signUp.user?.email) {
+        setFormError("We couldn’t create your account. Please try again.");
+        return;
       }
-
-      // tempUser(authData.signUp);
-      if (!token) {
-        verifyUser(authData.signUp);
-
-        if (authData.signUp.success) {
-          nav(`/auth/verificationPage/${authData.signUp.user.email}`);
+      if (token && linkID) {
+        try {
+          await updateSignupLinkStatus({
+            variables: { id: linkID, pending: false, email: values.email },
+          });
+        } catch {
+          toast.error(
+            "Your account was created, but the invitation could not be updated. Please verify your email to continue.",
+          );
         }
       }
-      // nav("/onboarding/role-selection");
-    } catch (error) {
-      toast.error(`${error?.message}`);
+      nav(
+        `/auth/verificationPage/${encodeURIComponent(authData.signUp.user.email)}`,
+      );
+    } catch (error: unknown) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t create your account. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -190,6 +188,11 @@ const SignUp: React.FC = () => {
             // boxSizing: "content-box" // Ensures padding doesn't affect width
           }}
         >
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {formError}
+            </Alert>
+          )}
           <InputLabel htmlFor="firstName">First Name</InputLabel>
           <Controller
             name="firstName"

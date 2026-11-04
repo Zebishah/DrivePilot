@@ -1,11 +1,12 @@
 import type React from "react";
-import { Suspense } from "react";
+import { Suspense, useRef, useState } from "react";
 import { Box, CssBaseline } from "@mui/material";
 import { useLocation } from "react-router-dom";
 import Sidebar, { type MenuItem } from "../common/SideBar";
 import Navbar from "../common/DashNavBar";
 import DashboardExperience from "./DashboardExperience";
 import RouteLoadingFallback from "../loaders/RouteLoadingFallback";
+import LogoutDialog from "../common/LogoutDialog";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -18,7 +19,7 @@ interface DashboardShellProps {
   userAvatar?: string;
   userIsDemo?: boolean;
   roleLabel: "Student" | "Instructor" | "Admin";
-  onLogout?: () => void;
+  onLogout?: () => void | Promise<void>;
   topContent?: React.ReactNode;
 }
 
@@ -38,6 +39,28 @@ export default function DashboardShell({
   topContent,
 }: DashboardShellProps) {
   const location = useLocation();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const logoutPending = useRef(false);
+  const requestLogout = () => {
+    setLogoutError(null);
+    setLogoutOpen(true);
+  };
+  const confirmLogout = async () => {
+    if (logoutPending.current || !onLogout) return;
+    logoutPending.current = true;
+    setLoggingOut(true);
+    try {
+      await onLogout();
+      setLogoutOpen(false);
+    } catch {
+      setLogoutError("We couldn’t finish logging out. Please try again.");
+    } finally {
+      logoutPending.current = false;
+      setLoggingOut(false);
+    }
+  };
   const isInstructorOverview =
     roleLabel === "Instructor" &&
     location.pathname === "/teacher-dashboard/overview";
@@ -63,7 +86,7 @@ export default function DashboardShell({
           userIsDemo={userIsDemo}
           roleLabel={roleLabel}
           overviewMode={isInstructorOverview}
-          onLogout={onLogout}
+          onLogout={onLogout ? requestLogout : undefined}
         />
         <Box
           component="main"
@@ -73,6 +96,7 @@ export default function DashboardShell({
           <Navbar
             handleDrawerToggle={handleDrawerToggle}
             menuItems={menuItems}
+            onLogout={onLogout ? requestLogout : undefined}
           />
           {topContent}
           <DashboardExperience
@@ -84,6 +108,15 @@ export default function DashboardShell({
           <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
         </Box>
       </Box>
+      <LogoutDialog
+        open={logoutOpen}
+        busy={loggingOut}
+        error={logoutError}
+        onCancel={() => {
+          if (!logoutPending.current) setLogoutOpen(false);
+        }}
+        onConfirm={() => void confirmLogout()}
+      />
     </>
   );
 }

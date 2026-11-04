@@ -896,7 +896,7 @@ body.dsp-intelligent
   border-color: #d2dfe1 !important;
 }
 body.dsp-intelligent :is(input, textarea, select) {
-  color-scheme: dark;
+  color-scheme: light;
 }
 body.dsp-intelligent .ant-input,
 body.dsp-intelligent .ant-input-affix-wrapper,
@@ -1164,6 +1164,9 @@ body.dsp-intelligent .dsp-admin-chart {
 }
 body.dsp-intelligent .dsp-admin-chart .apexcharts-canvas {
   max-width: 100% !important;
+}
+body.dsp-intelligent .route-error__eyebrow {
+  color: var(--ws-primary-ink, #114C5A);
 }
 body.dsp-intelligent .route-error__actions button {
   color: #172b36;

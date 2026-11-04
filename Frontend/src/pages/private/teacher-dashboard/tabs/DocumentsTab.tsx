@@ -196,8 +196,10 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
         <Box
           sx={{
             display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
             justifyContent: "space-between",
-            alignItems: "center",
+            alignItems: { xs: "flex-start", sm: "center" },
             mb: 3,
           }}
         >
@@ -207,13 +209,14 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({
           <Box
             sx={{
               display: "flex",
+              flexWrap: "wrap",
               alignItems: "center",
               gap: 2,
             }}
           >
             <button
               onClick={() => refetch()}
-              title="Refresh Students"
+              title="Refresh documents"
               disabled={isRefetching}
               className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >

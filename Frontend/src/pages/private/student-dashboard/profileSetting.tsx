@@ -200,7 +200,7 @@ export default function StudentProfileSetting() {
 
         <section className="dsp-profile-card dsp-profile-card--completeness">
           <div className="dsp-profile-card__header"><div><span className="dsp-profile-eyebrow">Account readiness</span><h2>Profile completeness</h2></div><span className="dsp-profile-percentage">{completion.percent}%</span></div>
-          <div className="dsp-profile-progress" role="progressbar" aria-valuenow={completion.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${completion.percent}%` }} /></div>
+          <div className="dsp-profile-progress" role="progressbar" aria-label="Profile completion" aria-valuenow={completion.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${completion.percent}%` }} /></div>
           <p className="dsp-profile-card__helper">Complete your profile to make bookings and communication smoother.</p>
           {completion.missing.length > 0 ? <div className="dsp-profile-missing"><strong>Still to add</strong><div>{completion.missing.slice(0, 4).map((item) => <span key={item}>{item}</span>)}</div>{completion.missing.length > 4 && <small>+{completion.missing.length - 4} more</small>}</div> : <div className="dsp-profile-ready"><CheckCircle2 size={17} />Your profile is complete.</div>}
         </section>

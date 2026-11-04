@@ -7,7 +7,7 @@ export const store = configureStore({
     auth: authReducer,
     chat: chatReducer,
   },
-  devTools: process.env.NODE_ENV !== "production",
+  devTools: import.meta.env.DEV,
 });
 
 export type RootState = ReturnType<typeof store.getState>;

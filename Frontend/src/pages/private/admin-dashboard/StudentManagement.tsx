@@ -199,12 +199,12 @@ export const StudentManagement: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 border-b border-gray-200 pb-4">
+        <div className="flex flex-col items-start gap-4 mb-8 border-b border-gray-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-gray-900">
             Student Management
           </h1>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <button
               onClick={() => refetch()}
               title="Refresh Students"
@@ -253,13 +253,15 @@ export const StudentManagement: React.FC = () => {
 
             <div className="relative">
               <button
+                aria-haspopup="dialog"
+                aria-expanded={showFilterPopover}
                 onClick={() => setShowFilterPopover(!showFilterPopover)}
                 className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
                   Object.values(filters).some(
                     (value) => value !== "" && value !== undefined
                   )
                     ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    : "border-gray-300 bg-[#5DC3D2] text-gray-700 hover:bg-[#2da4b6]"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Filter className="w-4 h-4 mr-2" />

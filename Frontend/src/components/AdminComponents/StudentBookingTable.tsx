@@ -512,16 +512,17 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
     <div
       className={`dsp-admin-bookings bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}
     >
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+      <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col items-start gap-4 lg:flex-row lg:items-center lg:justify-between">
         <h2 className="text-lg font-medium text-gray-900">All bookings</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">Filter:</span>
-          <select
+        <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto">
+          <label className="grid gap-1">
+            <span className="text-sm text-gray-600">Filter:</span>
+          <select aria-label="Filter bookings by status"
             value={statusFilter}
             onChange={(e) =>
               setStatusFilter(e.target.value as typeof statusFilter)
             }
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+            className="w-full min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
           >
             <option value="all">All</option>
             <option value="upcoming">Upcoming</option>
@@ -531,11 +532,13 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             <option value="missed">Missed</option>
           </select>
 
-          <span className="text-sm text-gray-600">Sort:</span>
-          <select
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm text-gray-600">Sort:</span>
+          <select aria-label="Sort bookings"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
+            className="w-full min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#5FC2D3]/60 focus:border-[#5FC2D3] transition-colors"
           >
             <option value="date_desc">Date: Newest → Oldest</option>
             <option value="date_asc">Date: Oldest → Newest</option>
@@ -544,6 +547,7 @@ const StudentBookingTable: React.FC<BookingsTableProps> = ({
             <option value="status_cancelled">Status: Cancelled</option>
             <option value="status_missed">Status: Missed</option>
           </select>
+          </label>
         </div>
       </div>
 

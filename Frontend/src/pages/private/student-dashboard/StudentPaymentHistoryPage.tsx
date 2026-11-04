@@ -348,7 +348,7 @@ export default function StudentPaymentHistoryPage() {
         Payment list
       </Typography>
       {isTableLoading && <LinearProgress sx={{ mb: 1 }} />}
-      <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+      <TableContainer component={Paper} tabIndex={0} role="region" aria-label="Payment history" elevation={0} sx={{ borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
         <Table
           size="medium"
           stickyHeader

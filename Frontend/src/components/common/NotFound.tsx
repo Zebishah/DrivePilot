@@ -1,32 +1,20 @@
-import type React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import BrandLogo from "../BrandLogo";
 
-const NotFound: React.FC = () => {
-  const navigate = useNavigate();
+export default function NotFound() {
 
   return (
-    <div className="text-center flex flex-col h-screen justify-center items-center">
-      <h1 className="text-primary font-bold text-6xl font-inter mb-2">
-        Oops - Page Not Found
-      </h1>
-
-      <p className="text-lg text-neutral-600">
-        The page you are looking for does not exist.
-      </p>
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="bg-primary text-white p-2.5 rounded-md mt-4"
-      >
-        Go Back
-      </button>
-      <img
-        src="/Assets/web resources/404.png"
-        alt="404 illustration"
-        className="w-96 mx-auto"
-      />
-    </div>
+    <main className="route-error">
+      <div>
+        <BrandLogo size="lg" to="/" />
+        <p className="route-error__eyebrow">404 · Page not found</p>
+        <h1>Let’s get you back on the road</h1>
+        <p>This link may have changed or the page may no longer exist.</p>
+        <div className="route-error__actions">
+          <Link to="/">Return home</Link>
+          <Link to="/professional">Find driving lessons</Link>
+        </div>
+      </div>
+    </main>
   );
-};
-
-export default NotFound;
+}

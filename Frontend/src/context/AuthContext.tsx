@@ -19,12 +19,15 @@ import CryptoJS from "crypto-js";
 import type { AuthPayload, TempAuthPayload } from "../types/auth";
 import { clearAllOnboardingDrafts } from "../utils/onboardingDraft";
 import DSPBrandLoader from "../components/loaders/DSPBrandLoader";
+import { disconnectSocket } from "../utils/socket";
+import { store } from "../store";
+import { logout as resetAuth } from "../store/slices/authSlice";
 
 // Constants
 const COOKIE_TOKEN_KEY = "token_dsp";
 const COOKIE_USER_KEY = "user_dsp";
 const COOKIE_EXPIRES = 1; // days
-const PUBLIC_OPERATIONS = ["loginUser", "signupUser", "forgotPassword", "LoginDemo"];
+const PUBLIC_OPERATIONS = ["SignIn", "SignUp", "ForgotPassword", "ResetPassword", "VerifyUserOtp", "ResendOtp", "LoginDemo", "SendContactEmail"];
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
 const ENCRYPTION_KEY =
   import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secure";
@@ -59,7 +62,7 @@ interface AuthContextType {
   login: (authPayload: AuthPayload) => void;
   tempUser: (authPayload: AuthPayload) => void;
   verifyUser: (authPayload: TempAuthPayload) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   client: ApolloClient<NormalizedCacheObject>;
   markUserProfileComplete: () => void;
   authLoading: boolean;
@@ -130,10 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(() => {
-    void import("../utils/socket").then(({ disconnectSocket }) => {
-      disconnectSocket();
-    });
+  const logout = useCallback(async () => {
+    disconnectSocket();
     Cookies.remove(COOKIE_TOKEN_KEY);
     Cookies.remove(COOKIE_USER_KEY);
 
@@ -143,9 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsTempAuthenticated(false);
     setIsVerified(false);
     setTempUserData(null);
-    clearAllOnboardingDrafts();
+    store.dispatch(resetAuth());
+    try {
+      localStorage.removeItem(COOKIE_USER_KEY);
+      localStorage.removeItem("unreadMessages");
+      clearAllOnboardingDrafts();
+    } catch {
+      // Restricted browser storage must not prevent signing out.
+    }
 
-    client.resetStore();
+    // Clear private query results without refetching after credentials are removed.
+    await client.clearStore();
   }, [client]);
 
   const login = useCallback((authPayload: AuthPayload) => {

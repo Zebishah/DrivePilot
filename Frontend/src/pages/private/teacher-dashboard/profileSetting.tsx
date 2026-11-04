@@ -182,7 +182,7 @@ export default function ProfileSetting() {
 
         <section className="dsp-profile-card dsp-profile-card--completeness">
           <div className="dsp-profile-card__header"><div><span className="dsp-profile-eyebrow">Instructor readiness</span><h2>Profile completeness</h2></div><span className="dsp-profile-percentage">{completion.percent}%</span></div>
-          <div className="dsp-profile-progress" role="progressbar" aria-valuenow={completion.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${completion.percent}%` }} /></div>
+          <div className="dsp-profile-progress" role="progressbar" aria-label="Profile completion" aria-valuenow={completion.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${completion.percent}%` }} /></div>
           <p className="dsp-profile-card__helper">Complete your profile so students can understand your teaching offer with confidence.</p>
           {completion.missing.length > 0 ? <div className="dsp-profile-missing"><strong>Still to add</strong><div>{completion.missing.slice(0, 4).map((item) => <span key={item}>{item}</span>)}</div>{completion.missing.length > 4 && <small>+{completion.missing.length - 4} more</small>}</div> : <div className="dsp-profile-ready"><CheckCircle2 size={17} />Your profile is complete.</div>}
           <div className="dsp-instructor-readiness"><div><span>Documents</span><strong>{documentReadiness}</strong></div><div><span>Account</span><strong>{teacherData.isActive == null ? "Not available" : teacherData.isActive ? "Active" : "Inactive"}</strong></div></div>

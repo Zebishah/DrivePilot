@@ -21,7 +21,7 @@ import {
   Paper,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation } from "@apollo/client";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -88,6 +88,7 @@ export const BookingList: React.FC<BookingListProps> = ({
   showNewBookingButton = true,
   onNewBooking,
 }) => {
+  const filterId = useId();
   const [page, setPage] = useState(1);
   const [tabValue, setTabValue] = useState(0);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
@@ -480,8 +481,9 @@ export const BookingList: React.FC<BookingListProps> = ({
       <CardContent>
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 2, flexWrap: "wrap" }}>
           <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Sort</InputLabel>
+            <InputLabel id={`${filterId}-sort-label`}>Sort</InputLabel>
             <Select
+              labelId={`${filterId}-sort-label`}
               value={sortOrder}
               label="Sort"
               onChange={(e) => {
@@ -496,8 +498,9 @@ export const BookingList: React.FC<BookingListProps> = ({
 
           {tabValue === 4 && (
             <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel>History Status</InputLabel>
+              <InputLabel id={`${filterId}-history-label`}>History Status</InputLabel>
               <Select
+                labelId={`${filterId}-history-label`}
                 value={historyStatusFilter}
                 label="History Status"
                 onChange={(e) => {

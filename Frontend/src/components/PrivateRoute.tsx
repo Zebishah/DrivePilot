@@ -50,7 +50,7 @@ export const TempPrivateRoute: React.FC<{ children: React.ReactNode }> = ({
   return (isTempAuthenticated || isAuthenticated) && user?.isUserVerified ? (
     <>{children}</>
   ) : (
-    <Navigate to="/auth/signin" />
+    <Navigate to="/auth/signin" replace />
   );
 };
 
@@ -63,7 +63,7 @@ export const StudentPrivateRoute: React.FC<{ children: React.ReactNode }> = ({
     user?.isProfileComplete ? (
     <>{children}</>
   ) : (
-    <Navigate to="/auth/signin" />
+    <Navigate to="/auth/signin" replace />
   );
 };
 
@@ -76,7 +76,7 @@ export const TeacherPrivateRoute: React.FC<{ children: React.ReactNode }> = ({
     user?.isProfileComplete ? (
     <>{children}</>
   ) : (
-    <Navigate to="/auth/signin" />
+    <Navigate to="/auth/signin" replace />
   );
 };
 
@@ -87,6 +87,6 @@ export const AdminPrivateRoute: React.FC<{ children: React.ReactNode }> = ({
   return isAuthenticated && user?.role === "Admin" ? (
     <>{children}</>
   ) : (
-    <Navigate to="/auth/signin" />
+    <Navigate to="/auth/signin" replace />
   );
 };

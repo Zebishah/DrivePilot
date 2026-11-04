@@ -4,6 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
+  Alert,
   Box,
   Button,
   TextField,
@@ -31,7 +32,7 @@ import toast from "react-hot-toast";
 
 // Define schema for form validation
 const signInSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.string().trim().email("Please enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   rememberMe: z.boolean().optional(),
 });
@@ -69,6 +70,7 @@ const backendAuth = import.meta.env.VITE_APP_AUTH_URL;
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [formError, setFormError] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
   const [activeDemoRole, setActiveDemoRole] = React.useState<DemoRole | null>(
     null,
@@ -78,7 +80,11 @@ const SignIn: React.FC = () => {
   useEffect(() => {
     const error = searchParams.get("error");
     if (error) {
-      toast.error(decodeURIComponent(error));
+      setFormError(
+        error === "auth_failed"
+          ? "We couldn’t complete that sign-in. Please try again."
+          : error,
+      );
 
       // Remove error param from URL after showing toast
       const newParams = new URLSearchParams(searchParams);
@@ -103,44 +109,24 @@ const SignIn: React.FC = () => {
   const [signIn, { loading }] = useMutation(SIGN_IN, {
     onCompleted: (data) => {
       const { signIn } = data;
-
-      if (signIn?.user?.role === "Admin") {
-        login(signIn);
-        navigate(`/admin-dashboard/overview`);
+      if (!signIn?.success || !signIn?.user?.email) {
+        setFormError(
+          "We couldn’t sign you in. Please check your details and try again.",
+        );
         return;
       }
-      if (!signIn?.user?.isUserVerified) {
-        navigate(`/auth/verificationPage/${signIn?.user.email}`);
+      if (signIn.user.role === "Admin" && signIn.token) {
+        login(signIn);
+        navigate("/admin-dashboard/overview", { replace: true });
       } else {
-        if (signIn?.success) {
-          navigate(`/auth/twoFactorAuthPage/${signIn.user.email}`);
-        }
+        const page = signIn.user.isUserVerified
+          ? "twoFactorAuthPage"
+          : "verificationPage";
+        navigate(`/auth/${page}/${encodeURIComponent(signIn.user.email)}`);
       }
-
-      // if (signIn?.user?.isProfileComplete) {
-      //     login(signIn);
-
-      //     if (signIn?.user?.role === "Student") navigate("/student-dashboard/overview");
-      //     else if (signIn?.user?.role === "Instructor") navigate("/teacher-dashboard/overview");
-      //     else if (signIn?.user?.role === "Admin") navigate("/admin-dashboard/overview");
-      //     toast.success("Login Successfully");
-      // } else {
-      //     toast.success("Please Complete your Profile");
-      //     const userRole = signIn?.user?.role.toLowerCase();
-      //     tempUser(signIn);
-      //     if (userRole === "userbase") {
-      //         navigate("/onboarding/role-selection");
-      //     } else if (userRole === "student") {
-      //         navigate("/onboarding/student-profile");
-      //     } else if (userRole === "instructor") {
-      //         navigate("/onboarding/instructor-profile");
-      //     }
-      // }
-    },
-    onError: (error) => {
-      toast.error(`${error.graphQLErrors[0]?.message}`);
     },
   });
+
   const [loginDemo, { loading: demoLoading }] = useMutation(LOGIN_DEMO, {
     onCompleted: (data) => {
       const demo = data?.loginDemo;
@@ -172,6 +158,8 @@ const SignIn: React.FC = () => {
     void loginDemo({ variables: { role } });
   };
   const onSubmit = async (formData: SignInFormValues) => {
+    if (loading || demoLoading) return;
+    setFormError(null);
     try {
       await signIn({
         variables: {
@@ -179,8 +167,12 @@ const SignIn: React.FC = () => {
           password: formData.password,
         },
       });
-    } catch (error) {
-      toast.error(`Login error: ${error?.message}`);
+    } catch (error: unknown) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t sign you in. Please try again.",
+      );
     }
   };
 
@@ -227,6 +219,11 @@ const SignIn: React.FC = () => {
           onSubmit={handleSubmit(onSubmit)}
           sx={{ width: "100%" }}
         >
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {formError}
+            </Alert>
+          )}
           <InputLabel htmlFor="email">E-mail address</InputLabel>
           <Controller
             name="email"
@@ -315,7 +312,7 @@ const SignIn: React.FC = () => {
             type="submit"
             fullWidth
             variant="contained"
-            disabled={loading}
+            disabled={loading || demoLoading}
             sx={{
               mt: 3,
               mb: 2,

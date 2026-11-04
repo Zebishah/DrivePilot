@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { MessageType } from "../../types/chatTypes";
 import dayjs from "dayjs";
+import { logout } from "./authSlice";
 
 export interface Conversation {
   _id: string;
@@ -45,6 +46,14 @@ const initialState: ChatState = {
 const chatSlice = createSlice({
   name: "chat",
   initialState,
+  extraReducers: (builder) => {
+    builder.addCase(logout, () => ({
+      conversations: [],
+      selectedConversation: null,
+      messagesByConversation: {},
+      unreadMessages: 0,
+    }));
+  },
   reducers: {
     setConversations: (state, action: PayloadAction<Conversation[]>) => {
       state.conversations = action.payload.sort((a, b) => {

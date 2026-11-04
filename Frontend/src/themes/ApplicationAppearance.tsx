@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import { CssBaseline, ThemeProvider } from "@mui/material";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, ScrollRestoration, useLocation } from "react-router-dom";
 import intelligentTheme from "./intelligentTheme";
 import theme from "./theme";
 import { usesIntelligentTheme } from "./intelligentTokens";
@@ -19,6 +19,7 @@ export default function ApplicationAppearance() {
     <ThemeProvider theme={isWorkspace ? intelligentTheme : theme}>
       {isWorkspace && <CssBaseline />}
       <Outlet />
+      <ScrollRestoration />
     </ThemeProvider>
   );
 }
