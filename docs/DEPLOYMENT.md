@@ -81,6 +81,7 @@ Create a Render **Web Service** from the same repository and branch.
 The API command explicitly sets `RUN_API=true` and `RUN_WORKER=false`. It
 binds the Render-provided `PORT` through Node's HTTP server and exposes:
 
+- `GET /`: public JSON success response for uptime monitoring; `HEAD /` is also supported
 - `GET /health`: process liveness
 - `GET /ready`: MongoDB and Apollo/API initialization readiness
 - `POST /webhooks/stripe`: Stripe raw-body webhook ingress
@@ -445,6 +446,45 @@ curl --fail --silent https://<render-api-service>.onrender.com/ready
 `/health` means the API process is serving. `/ready` requires an open MongoDB
 connection and completed Apollo initialization. Redis is intentionally not a
 readiness dependency.
+
+### UptimeRobot monitor
+
+After deploying the API change, create an HTTP(s) monitor in UptimeRobot:
+
+| Setting | Value |
+| --- | --- |
+| Friendly name | `DSP Marketplace API` |
+| URL | `https://<render-api-service>.onrender.com/` (the backend origin, not the frontend or `/graphql`) |
+| HTTP method | `GET` if configurable; the default `HEAD` also works |
+| Monitoring interval | 5 minutes |
+| Request timeout | 60 seconds, to allow for cold starts |
+| Up HTTP status codes | `200` if configurable |
+| Authentication, request body, custom headers | None |
+| Alerts | Select your verified alert contact |
+
+The root returns HTTP 200 with:
+
+```json
+{"success":true,"status":"ok","message":"DSP Marketplace API is running."}
+```
+
+It sets `Cache-Control: no-store`, requires no sign-in, and does not query
+MongoDB, Redis, Stripe, or the AI provider. It checks whether the API is serving
+requests. Use `/ready` for a separate monitor if database/API readiness matters.
+
+The existing handover notes list `https://dsp-cloud.onrender.com` as a backend
+origin. Use `https://dsp-cloud.onrender.com/` only if that is still your deployed
+API; otherwise copy the current public URL from your Render web service.
+
+[UptimeRobot's free plan](https://help.uptimerobot.com/en/articles/11604710-who-should-use-uptimerobot-s-free-plan)
+supports five-minute checks. See its [monitor setup guide](https://help.uptimerobot.com/en/articles/11358364-how-to-create-your-first-monitor-on-uptimerobot-quick-setup-guide)
+and [advanced settings](https://help.uptimerobot.com/en/articles/11360863-uptimerobot-advanced-settings-customize-your-monitor-configuration).
+[Render Free](https://render.com/docs/free) services spin down after 15 minutes
+without inbound traffic. Five-minute HTTP checks can keep requests arriving,
+but they do not guarantee uninterrupted hosting: monthly free-instance hours
+are shared across the workspace, and free services can restart. For an
+always-running service without idle spin-down, use a paid Render instance.
+Monitoring the API does not keep a separate worker running.
 
 On `SIGTERM` or `SIGINT`, the API stops new HTTP work, stops Apollo, closes
 HTTP/Socket.IO, disconnects MongoDB, and closes Redis. The worker stops the

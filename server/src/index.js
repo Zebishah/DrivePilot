@@ -127,6 +127,16 @@ function initializeApi() {
     express.raw({ type: "application/json" }),
     stripeWebhookRoutes,
   );
+  // Public, dependency-free liveness response for browsers and uptime monitors.
+  // Express also serves HEAD / through this handler without a response body.
+  app.get("/", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
+      success: true,
+      status: "ok",
+      message: "DSP Marketplace API is running.",
+    });
+  });
   app.get("/health", (_req, res) => res.status(200).json({ ok: true }));
   app.get("/ready", (_req, res) => {
     const ready = mongoose.connection.readyState === 1 && apiInitialized;
