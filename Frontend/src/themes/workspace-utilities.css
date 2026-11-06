@@ -1,0 +1,114 @@
+/* Legacy arbitrary utilities resolve through the same workspace palette. */
+body.dsp-intelligent .bg-\[\#13152A\] {
+  background-color: var(--ws-elevated, #13152a) !important;
+}
+body.dsp-intelligent .bg-\[\#357a85\] {
+  background-color: var(--ws-info-soft, #357a85) !important;
+}
+body.dsp-intelligent .bg-\[\#3d8a97\] {
+  background-color: var(--ws-primary, #3d8a97) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .bg-\[\#4BA1B0\] {
+  background-color: var(--ws-primary, #4ba1b0) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .bg-\[\#4BB3C4\] {
+  background-color: var(--ws-primary, #4bb3c4) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .bg-\[\#4DD0E1\] {
+  background-color: var(--ws-primary, #4dd0e1) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .bg-\[\#5DC3D2\] {
+  background-color: var(--ws-primary, #5dc3d2) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .bg-\[\#5FC2D3\] {
+  background-color: var(--ws-primary, #5fc2d3) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .bg-\[\#999999\] {
+  background-color: var(--ws-elevated, #999999) !important;
+}
+body.dsp-intelligent .border-\[\#357a85\] {
+  border-color: var(--ws-info-border, #357a85) !important;
+}
+body.dsp-intelligent .border-\[\#3d8a97\] {
+  border-color: var(--ws-primary, #3d8a97) !important;
+}
+body.dsp-intelligent .border-\[\#4BA1B0\] {
+  border-color: var(--ws-primary, #4ba1b0) !important;
+}
+body.dsp-intelligent .border-\[\#5FC2D3\] {
+  border-color: var(--ws-primary, #5fc2d3) !important;
+}
+body.dsp-intelligent .border-\[\#A19A99\] {
+  border-color: var(--ws-border, #a19a99) !important;
+}
+body.dsp-intelligent .focus\:border-\[\#5FC2D3\]:focus {
+  border-color: var(--ws-primary, #5fc2d3) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#2da4b6\]:hover {
+  background-color: var(--ws-primary, #2da4b6) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#3285af\]:hover {
+  background-color: var(--ws-info-soft, #3285af) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#38b5c5\]:hover {
+  background-color: var(--ws-info-soft, #38b5c5) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#3b95a3\]:hover {
+  background-color: var(--ws-info-soft, #3b95a3) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#3c8e9c\]:hover {
+  background-color: var(--ws-info-soft, #3c8e9c) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#3d8a97\]:hover {
+  background-color: var(--ws-primary, #3d8a97) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#4BA1B0\]:hover {
+  background-color: var(--ws-primary, #4ba1b0) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#4BB3C4\]:hover {
+  background-color: var(--ws-primary, #4bb3c4) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .hover\:bg-\[\#5DC3D2\]:hover {
+  background-color: var(--ws-primary, #5dc3d2) !important;
+  color: var(--ws-on-primary) !important;
+}
+body.dsp-intelligent .hover\:border-\[\#3d8a97\]:hover {
+  border-color: var(--ws-primary, #3d8a97) !important;
+}
+body.dsp-intelligent .hover\:border-\[\#4BA1B0\]:hover {
+  border-color: var(--ws-primary, #4ba1b0) !important;
+}
+body.dsp-intelligent .hover\:text-\[\#3d8a97\]:hover {
+  color: var(--ws-primary-ink, #3d8a97) !important;
+}
+body.dsp-intelligent .text-\[\#31bdd3\] {
+  color: var(--ws-info, #31bdd3) !important;
+}
+body.dsp-intelligent .text-\[\#357a85\] {
+  color: var(--ws-info, #357a85) !important;
+}
+body.dsp-intelligent .text-\[\#4BA1B0\] {
+  color: var(--ws-primary-ink, #4ba1b0) !important;
+}
+body.dsp-intelligent .text-\[\#4DD0E1\] {
+  color: var(--ws-primary-ink, #4dd0e1) !important;
+}
+body.dsp-intelligent .text-\[\#545454\] {
+  color: var(--ws-muted, #545454) !important;
+}
+body.dsp-intelligent .text-\[\#5FC2D3\] {
+  color: var(--ws-primary-ink, #5fc2d3) !important;
+}
+body.dsp-intelligent .text-\[\#A19A99\] {
+  color: var(--ws-muted, #a19a99) !important;
+}

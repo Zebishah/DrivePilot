@@ -1,0 +1,437 @@
+// src/pages/Public/SignIn.tsx
+import React, { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Alert,
+  Box,
+  Button,
+  TextField,
+  Typography,
+  IconButton,
+  InputAdornment,
+  Link as MuiLink,
+  CircularProgress,
+  InputLabel,
+} from "@mui/material";
+import {
+  Eye,
+  EyeOff,
+  GraduationCap,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import AuthLayout from "../../../layouts/AuthLayout";
+import Logo from "../../../components/Logo";
+import { useAuth } from "../../../context/AuthContext";
+import { LOGIN_DEMO, SIGN_IN } from "../../../graphql/mutations/auth";
+import { useMutation } from "@apollo/client";
+import toast from "react-hot-toast";
+
+// Define schema for form validation
+const signInSchema = z.object({
+  email: z.string().trim().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  rememberMe: z.boolean().optional(),
+});
+
+type SignInFormValues = z.infer<typeof signInSchema>;
+type DemoRole = "ADMIN" | "INSTRUCTOR" | "STUDENT";
+
+const demoOptions: Array<{
+  role: DemoRole;
+  title: string;
+  description: string;
+  icon: typeof ShieldCheck;
+}> = [
+  {
+    role: "ADMIN",
+    title: "Enter Admin Demo",
+    description: "Review platform operations, users, and payments.",
+    icon: ShieldCheck,
+  },
+  {
+    role: "INSTRUCTOR",
+    title: "Enter Instructor Demo",
+    description: "Explore teaching, bookings, feedback, and payouts.",
+    icon: UsersRound,
+  },
+  {
+    role: "STUDENT",
+    title: "Enter Student Demo",
+    description: "See the learner journey, lessons, and progress tools.",
+    icon: GraduationCap,
+  },
+];
+
+const backendAuth = import.meta.env.VITE_APP_AUTH_URL;
+const SignIn: React.FC = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [activeDemoRole, setActiveDemoRole] = React.useState<DemoRole | null>(
+    null,
+  );
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      setFormError(
+        error === "auth_failed"
+          ? "We couldn’t complete that sign-in. Please try again."
+          : error,
+      );
+
+      // Remove error param from URL after showing toast
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("error");
+      navigate(`?${newParams.toString()}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignInFormValues>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      rememberMe: false,
+    },
+  });
+
+  const [signIn, { loading }] = useMutation(SIGN_IN, {
+    onCompleted: (data) => {
+      const { signIn } = data;
+      if (!signIn?.success || !signIn?.user?.email) {
+        setFormError(
+          "We couldn’t sign you in. Please check your details and try again.",
+        );
+        return;
+      }
+      if (signIn.user.role === "Admin" && signIn.token) {
+        login(signIn);
+        navigate("/admin-dashboard/overview", { replace: true });
+      } else {
+        const page = signIn.user.isUserVerified
+          ? "twoFactorAuthPage"
+          : "verificationPage";
+        navigate(`/auth/${page}/${encodeURIComponent(signIn.user.email)}`);
+      }
+    },
+  });
+
+  const [loginDemo, { loading: demoLoading }] = useMutation(LOGIN_DEMO, {
+    onCompleted: (data) => {
+      const demo = data?.loginDemo;
+      const role = demo?.user?.role;
+      if (!demo?.success || !demo?.token || !role) {
+        toast.error(
+          "The demo workspace is temporarily unavailable. Please try again later.",
+        );
+        setActiveDemoRole(null);
+        return;
+      }
+
+      login(demo);
+      if (role === "Admin") navigate("/admin-dashboard/overview");
+      else if (role === "Instructor") navigate("/teacher-dashboard/overview");
+      else navigate("/student-dashboard/overview");
+    },
+    onError: () => {
+      setActiveDemoRole(null);
+      toast.error(
+        "The demo workspace is temporarily unavailable. Please try again later.",
+      );
+    },
+  });
+
+  const handleDemoLogin = (role: DemoRole) => {
+    if (loading || demoLoading) return;
+    setActiveDemoRole(role);
+    void loginDemo({ variables: { role } });
+  };
+  const onSubmit = async (formData: SignInFormValues) => {
+    if (loading || demoLoading) return;
+    setFormError(null);
+    try {
+      await signIn({
+        variables: {
+          email: formData.email,
+          password: formData.password,
+        },
+      });
+    } catch (error: unknown) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "We couldn’t sign you in. Please try again.",
+      );
+    }
+  };
+
+  return (
+    <AuthLayout>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "background.paper",
+          height: "100vh",
+          overflowY: "auto",
+        }}
+      >
+        <Box
+          sx={{
+            mb: 4,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            alignSelf: "flex-start",
+            width: "100%",
+          }}
+        >
+          <Logo />
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ mb: 4, mt: 4, fontWeight: "bold" }}
+          >
+            Welcome back
+          </Typography>
+          <Typography className="dsp-auth-intro" variant="body2">
+            Book driving lessons, manage your students, or run your driving
+            school.
+          </Typography>
+        </Box>
+
+        <Box
+          component="form"
+          noValidate
+          onSubmit={handleSubmit(onSubmit)}
+          sx={{ width: "100%" }}
+        >
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {formError}
+            </Alert>
+          )}
+          <InputLabel htmlFor="email">E-mail address</InputLabel>
+          <Controller
+            name="email"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                placeholder="E-mail address"
+                autoComplete="email"
+                autoFocus
+                error={!!errors.email}
+                helperText={errors.email?.message}
+                sx={{ mb: 2 }}
+              />
+            )}
+          />
+          <InputLabel htmlFor="password">Password</InputLabel>
+          <Controller
+            name="password"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                margin="normal"
+                required
+                fullWidth
+                placeholder="Password"
+                type={showPassword ? "text" : "password"}
+                id="password"
+                autoComplete="current-password"
+                error={!!errors.password}
+                helperText={errors.password?.message}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        aria-label="toggle password visibility"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={20} />
+                        ) : (
+                          <Eye size={20} />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+          />
+
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              mt: 1,
+            }}
+          >
+            {/* <Controller
+                        name="rememberMe"
+                        control={control}
+                        render={({ field }) => (
+                            <FormControlLabel
+                                control={<Checkbox {...field} color="primary" />}
+                                label="Remember me"
+                            />
+                        )}
+                    /> */}
+            <MuiLink
+              component={Link}
+              to="/auth/forgot-password"
+              variant="body2"
+            >
+              Forgot Password?
+            </MuiLink>
+          </Box>
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            disabled={loading || demoLoading}
+            sx={{
+              mt: 3,
+              mb: 2,
+              py: 1.5,
+              bgcolor: "var(--ws-primary, #4CC9F0)",
+              "&:hover": {
+                bgcolor: "var(--ws-primary, #3AB7E0)",
+              },
+            }}
+          >
+            {loading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              "Sign in"
+            )}
+          </Button>
+
+          <Box
+            className="dsp-auth-divider"
+            sx={{ mt: 2, mb: 3, textAlign: "center" }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              or continue with
+            </Typography>
+          </Box>
+
+          <Box className="dsp-auth-social">
+            <a href={`${backendAuth}auth/google`}>
+              <img src="/auth/google_logo.png" alt="" />
+              Continue with Google
+            </a>
+            <a href={`${backendAuth}auth/facebook`}>
+              <img src="/auth/facebook_logo.png" alt="" />
+              Continue with Facebook
+            </a>
+          </Box>
+
+          <Box sx={{ textAlign: "center", mt: 2 }}>
+            <Typography variant="body2">
+              New to DSP?{" "}
+              <MuiLink
+                component={Link}
+                to="/auth/signup"
+                variant="body2"
+                sx={{ fontWeight: "bold" }}
+              >
+                Create an account
+              </MuiLink>
+            </Typography>
+          </Box>
+
+          <Box
+            className="dsp-demo-preview"
+            component="section"
+            id="recruiter-preview"
+            aria-labelledby="dsp-demo-title"
+          >
+            <Box className="dsp-demo-preview__header">
+              <Box>
+                <Typography className="dsp-demo-preview__eyebrow">
+                  For recruiters & product reviewers
+                </Typography>
+                <Typography
+                  id="dsp-demo-title"
+                  className="dsp-demo-preview__title"
+                >
+                  Reviewing DSP? Try the role demos.
+                </Typography>
+              </Box>
+              <Typography className="dsp-demo-preview__note">
+                No account setup required
+              </Typography>
+            </Box>
+            <Typography className="dsp-demo-preview__intro">
+              Explore how learners book lessons, instructors manage teaching,
+              and admins run the marketplace. Customers can sign in or create an
+              account above.
+            </Typography>
+            <Box className="dsp-demo-preview__cards">
+              {demoOptions.map(({ role, title, description, icon: Icon }) => {
+                const isActive = activeDemoRole === role && demoLoading;
+                return (
+                  <Button
+                    key={role}
+                    type="button"
+                    className={`dsp-demo-card dsp-demo-card--${role.toLowerCase()}`}
+                    onClick={() => handleDemoLogin(role)}
+                    disabled={loading || demoLoading}
+                    aria-label={
+                      isActive
+                        ? `Opening ${title.replace("Enter ", "")}`
+                        : title
+                    }
+                  >
+                    <span className="dsp-demo-card__icon" aria-hidden="true">
+                      <Icon size={18} />
+                    </span>
+                    <span className="dsp-demo-card__copy">
+                      <span className="dsp-demo-card__title">
+                        {isActive
+                          ? `Opening ${title.replace("Enter ", "")}…`
+                          : title}
+                      </span>
+                      <span className="dsp-demo-card__description">
+                        {description}
+                      </span>
+                    </span>
+                    <span className="dsp-demo-card__arrow" aria-hidden="true">
+                      ↗
+                    </span>
+                  </Button>
+                );
+              })}
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    </AuthLayout>
+  );
+};
+
+export default SignIn;

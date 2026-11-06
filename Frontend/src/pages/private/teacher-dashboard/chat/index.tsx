@@ -1,0 +1,136 @@
+import React, { useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import ChatList from "../../../../features/chat/components/ChatList";
+import ChatWindow from "../../../../features/chat/components/ChatWindow";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../../../store";
+import {
+  selectConversation,
+  clearMessages,
+  clearUnreadMessages,
+} from "../../../../store/slices/chatSlice";
+import { useAuth } from "../../../../context/AuthContext";
+import { ConversationType, UserType } from "../../../../types/chatTypes";
+import { DashboardPageHeader } from "../../../../components/dashboard/OverviewWidgets";
+
+const InstructorChatPage: React.FC = () => {
+  const dispatch = useDispatch();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { conversations, selectedConversation } = useSelector(
+    (state: RootState) => state.chat
+  );
+
+  const studentIdFromState = (location.state as { studentId?: string } | null)
+    ?.studentId;
+
+  useEffect(() => {
+    if (conversations.length > 0 && studentIdFromState) {
+      const withStudent = conversations.find(
+        (c) => c.user._id === studentIdFromState
+      );
+      if (withStudent) {
+        dispatch(selectConversation(withStudent));
+      }
+    }
+  }, [conversations, studentIdFromState, dispatch]);
+
+  useEffect(() => {
+    if (
+      conversations.length > 0 &&
+      !selectedConversation &&
+      !studentIdFromState
+    ) {
+      const mostRecentConversation = conversations[0];
+      dispatch(selectConversation(mostRecentConversation));
+    }
+    // Clear unread messages when entering chat page
+    dispatch(clearUnreadMessages());
+    localStorage.setItem("unreadMessages", "0");
+  }, [conversations, selectedConversation, studentIdFromState, dispatch]);
+
+  useEffect(() => {
+    return () => {
+      if (selectedConversation?._id) {
+        dispatch(clearMessages(selectedConversation._id));
+      }
+    };
+  }, [dispatch, selectedConversation]);
+
+  const currentUser: UserType | null = useMemo(() => {
+    if (!user) return null;
+    return {
+      _id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      profileImage: user.profileImage?.trim()
+        ? user.profileImage
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            `${user.firstName} ${user.lastName}`
+          )}`,
+      role: "instructor",
+    };
+  }, [user]);
+
+  const selectedAsConversation = useMemo(() => {
+    if (selectedConversation && currentUser) {
+      return {
+        _id: selectedConversation._id,
+        participants: [currentUser, selectedConversation.user],
+        lastMessage: selectedConversation.lastMessage,
+      } as ConversationType;
+    }
+    return null;
+  }, [selectedConversation, currentUser]);
+
+  if (!user) {
+    return <div className="p-4 text-center">Please login to view chat.</div>;
+  }
+
+  return (
+    <div className="dsp-instructor-page dsp-messages-page">
+      <div className="dsp-instructor-page__content">
+        <DashboardPageHeader title="Messages" description="Stay connected with students and keep lesson conversations in one focused workspace." />
+        <div className="dsp-messages-page__workspace">
+        <div className="dsp-messages-page__list">
+          {conversations.length > 0 ? (
+            <ChatList
+              conversations={conversations}
+              selectedUserId={selectedConversation?._id}
+              onSelect={(conversation) => {
+                if (selectedConversation?._id === conversation._id) {
+                  return;
+                }
+                if (selectedConversation?._id) {
+                  dispatch(clearMessages(selectedConversation._id));
+                }
+                dispatch(selectConversation(conversation));
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              No students found. Students with bookings will appear here.
+            </div>
+          )}
+        </div>
+        <div className="dsp-messages-page__conversation">
+          {selectedAsConversation ? (
+            <ChatWindow
+              key={selectedAsConversation._id}
+              conversation={selectedAsConversation}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Select a conversation to start chatting
+            </div>
+          )}
+        </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default InstructorChatPage;

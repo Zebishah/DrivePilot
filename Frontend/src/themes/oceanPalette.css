@@ -1,0 +1,557 @@
+/* Approved palette: off-white canvas, ocean-blue structure, golden-yellow actions.
+   Shared semantic colors live in workspace.css and intelligentTokens.ts. */
+body.dsp-intelligent
+  :is(.dsp-auth-brand-panel, .dsp-sidebar__content, .dsp-experience-hero) {
+  --ws-ink: #f1f6f4;
+  --ws-muted: #bfd0d6;
+  --ws-subtle: #adc3cb;
+  --ws-primary-ink: #ffc801;
+}
+body.dsp-intelligent .dsp-dashboard-shell .dsp-dashboard-main,
+body.dsp-intelligent .dsp-dashboard-main > div,
+body.dsp-intelligent .dsp-auth-layout,
+body.dsp-intelligent .dsp-auth-main {
+  background: #f1f6f4 !important;
+}
+body.dsp-intelligent .dsp-dashboard-shell .dsp-dashboard-topbar {
+  background: #ffffffed !important;
+  color: #172b36 !important;
+  border-bottom-color: #d2dfe1 !important;
+}
+body.dsp-intelligent .dsp-topbar__title {
+  color: #172b36 !important;
+}
+body.dsp-intelligent .dsp-topbar__crumb {
+  color: #114c5a !important;
+}
+body.dsp-intelligent .dsp-sidebar__brand .dsp-brand__wordmark,
+body.dsp-intelligent .dsp-auth-brand .dsp-brand__wordmark {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-brand__mark-surface {
+  fill: #ffc801;
+}
+body.dsp-intelligent .dsp-brand__route {
+  stroke: #172b36;
+}
+body.dsp-intelligent .dsp-brand__route--secondary {
+  stroke: #114c5a;
+}
+body.dsp-intelligent .dsp-brand__waypoint {
+  fill: #172b36;
+}
+body.dsp-intelligent
+  .dsp-sidebar__item[aria-current="page"].MuiListItemButton-root {
+  background: #ffc801 !important;
+  color: #172b36 !important;
+  border-color: #ffc801 !important;
+}
+body.dsp-intelligent
+  .dsp-sidebar__item[aria-current="page"]
+  :is(.MuiListItemText-primary, .MuiListItemIcon-root) {
+  color: #172b36 !important;
+}
+body.dsp-intelligent .dsp-sidebar__demo-badge {
+  background: #ffc801;
+  color: #172b36;
+  border-color: #ffc801;
+}
+body.dsp-intelligent .dsp-sidebar__avatar {
+  color: #ffc801 !important;
+  background: #21414f !important;
+}
+body.dsp-intelligent .dsp-sidebar__status-dot {
+  background: #ffc801;
+}
+body.dsp-intelligent .dsp-sidebar__item.MuiListItemButton-root:hover {
+  background: #21414f;
+}
+body.dsp-intelligent .dsp-experience-hero {
+  background: #114c5a;
+  border-color: #345f6b;
+}
+body.dsp-intelligent .dsp-experience-hero__visual > img {
+  opacity: 1;
+}
+body.dsp-intelligent
+  .dsp-experience-hero
+  :is(.dsp-experience-primary, .dsp-experience-primary:hover) {
+  color: #172b36;
+  background: #ffc801;
+}
+body.dsp-intelligent .dsp-experience-secondary {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-experience-secondary:hover {
+  color: #ffc801;
+  background: #172b36;
+}
+body.dsp-intelligent
+  .dsp-experience-hero
+  :is(.dsp-experience-eyebrow, .dsp-experience-account) {
+  color: #bfd0d6;
+}
+body.dsp-intelligent .dsp-experience-hero .dsp-driving-route {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-experience-demo {
+  color: #4f6874;
+  background: #ffffff;
+  border-color: #d2dfe1;
+}
+body.dsp-intelligent .dsp-experience-demo > span {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-experience-demo i {
+  background: #114c5a;
+}
+body.dsp-intelligent .dsp-experience-demo a {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-auth-brand-panel {
+  background: #172b36;
+}
+body.dsp-intelligent .dsp-auth-brand-panel h1 span {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-auth-brand-panel__footer {
+  color: #bfd0d6;
+}
+body.dsp-intelligent .dsp-auth-artwork > img {
+  mix-blend-mode: normal;
+}
+body.dsp-intelligent .dsp-auth-artwork__route {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-auth-intelligence {
+  color: #ffc801;
+  background: #172b36e8;
+  border-color: #597583;
+}
+body.dsp-intelligent .dsp-auth-intelligence :is(strong, small) {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-auth-role-stack > div {
+  background: #21414f;
+  border-color: #365563;
+}
+body.dsp-intelligent .dsp-auth-role-stack strong {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-auth-role-stack span {
+  color: #bfd0d6;
+}
+body.dsp-intelligent .dsp-auth-form-shell .MuiCheckbox-root.Mui-checked {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-route-content-loader i {
+  background: linear-gradient(100deg, #e1eae8 25%, #f8fbfa 45%, #e1eae8 65%);
+  background-size: 250% 100%;
+}
+body.dsp-intelligent .text-primary,
+body.dsp-intelligent .text-defaultColor {
+  color: #114c5a;
+}
+/* Primary fill remains yellow; text-only actions use ocean blue for contrast. */
+body.dsp-intelligent .MuiButton-textPrimary {
+  color: #114c5a;
+}
+body.dsp-intelligent .MuiButton-containedPrimary {
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-admin-button--primary {
+  background: #ffc801;
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-admin-button--secondary {
+  background: #ffffff;
+  color: #114c5a;
+  border-color: #d2dfe1;
+}
+body.dsp-intelligent .dsp-status-pill--success {
+  color: #23765b;
+  background: #e9f5ef;
+}
+
+/* Marketing: light opening and discovery sections, with deliberate blue bands. */
+body.dsp-intelligent .dsp-ai-shell {
+  --ai-bg: #f1f6f4;
+  --ai-panel: #ffffff;
+  --ai-white: #172b36;
+  --ai-muted: #4f6874;
+  --ai-border: #d2dfe1;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-header {
+  background: #f1f6f4ed;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-nav__links a,
+body.dsp-intelligent .dsp-ai-shell .dsp-public-nav__signin {
+  color: #334e5b;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-nav__links a:hover {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-button--primary,
+body.dsp-intelligent .dsp-ai-shell .ai-button--mint {
+  color: #172b36;
+  background: #ffc801;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-button--mint:hover {
+  background: #eab700;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-button--outline {
+  color: #114c5a;
+  background: #ffffff;
+  border-color: #b7cdd3;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-button--dark {
+  color: #ffffff;
+  background: #172b36;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-button--ghost {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-announcement {
+  color: #114c5a;
+  background: #ffffff;
+  border-color: #d2dfe1;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-hero h1 {
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-hero h1 > span:not(.ai-title-star) {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-title-star {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-pulse-dot {
+  background: #ffc801;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-hero-assistant {
+  color: #f1f6f4;
+  background: #114c5aef;
+  border-color: #507b86;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-hero-assistant :is(p, strong) {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-hero-assistant .dsp-open-assistant {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-stage-caption {
+  color: #4f6874;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-stage-caption a {
+  color: #114c5a;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-lesson-photo-label {
+  background: #172b36e8;
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-capabilities {
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-customer-paths-grid > article {
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-feature--assistant {
+  background: #114c5a;
+  color: #f1f6f4;
+  border-color: #114c5a;
+}
+body.dsp-intelligent
+  .dsp-ai-shell
+  .ai-feature--assistant
+  :is(h3, .ai-feature-tag, .ai-feature-index) {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-feature--assistant .ai-feature-copy > p {
+  color: #d0e0e4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-feature--assistant .dsp-open-assistant {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-assistant-demo {
+  background: #ffffff;
+  color: #172b36;
+  border-color: #d2dfe1;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-orb {
+  background: radial-gradient(
+    circle at 35% 28%,
+    #fff6d0,
+    #ffc801 40%,
+    #daa900 70%,
+    #8f7000
+  );
+  box-shadow:
+    inset -10px -10px 18px #172b3620,
+    7px 18px 30px #172b3620;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-orb > svg {
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-roles-section {
+  background: #e6efec;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-role-panel {
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-role-tabs {
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-role-tabs > .is-active {
+  background: #ffc801;
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-trust-strip {
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-reviewer-section {
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-cta {
+  color: #f1f6f4;
+  background: #114c5a;
+  border-color: #114c5a;
+}
+body.dsp-intelligent
+  .dsp-ai-shell
+  .ai-cta
+  :is(.ai-eyebrow, .ai-cta-bottom > p) {
+  color: #d0e0e4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-cta h2 > span,
+body.dsp-intelligent .dsp-ai-shell .ai-cta h2 > svg {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-cta .ai-button--ghost {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-footer {
+  color: #f1f6f4;
+  background: #172b36;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-footer .dsp-brand__wordmark,
+body.dsp-intelligent .dsp-ai-shell .dsp-public-footer__links strong {
+  color: #f1f6f4;
+}
+body.dsp-intelligent
+  .dsp-ai-shell
+  .dsp-public-footer
+  :is(p, a, .ai-footer-note, .dsp-public-footer__bottom) {
+  color: #bfd0d6;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-footer-wordmark {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-public-footer a:hover {
+  color: #ffc801;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-market-hero__visual:after {
+  background: linear-gradient(0deg, #172b36e6, transparent 65%);
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-market-hero__caption {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .dsp-instructor-results__empty-action {
+  color: #172b36 !important;
+  background: #ffc801 !important;
+}
+body.dsp-intelligent
+  .dsp-ai-shell
+  .dsp-instructor-profile-summary__tabs
+  .MuiTab-root.Mui-selected {
+  color: #114c5a !important;
+  background: #d9e8e2;
+}
+body.dsp-intelligent
+  .dsp-ai-shell
+  .dsp-instructor-profile-summary__booking-card
+  .MuiButton-contained {
+  color: #172b36 !important;
+  background: #ffc801 !important;
+}
+body.dsp-intelligent .dsp-ai-shell .leaflet-control-attribution {
+  color: #4f6874;
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-ai-shell .leaflet-control-attribution a {
+  color: #114c5a;
+}
+
+/* One shared chatbot: blue header and launcher, white conversation, yellow send. */
+.dsp-chat-root {
+  color: #172b36;
+}
+.dsp-chat-launcher {
+  background: #172b36;
+  color: #f1f6f4;
+  border-color: #365563;
+}
+.dsp-chat-launcher small {
+  color: #bfd0d6;
+}
+.dsp-chat-launcher > span:first-child,
+.dsp-chat-mark {
+  background: #ffc801;
+  color: #172b36;
+}
+.dsp-chat-header i {
+  background: #ffc801;
+}
+.dsp-chat-welcome-icon {
+  background: #d9e8e2;
+  color: #114c5a;
+}
+.dsp-chat-message--user .dsp-chat-bubble {
+  color: #172b36;
+  background: #fff5c7;
+  border-color: #e8d384;
+}
+.dsp-chat-bubble {
+  background: #f1f6f4;
+  color: #172b36;
+}
+.dsp-chat-bubble a {
+  color: #114c5a;
+}
+.dsp-chat-composer {
+  background: #ffffff;
+}
+.dsp-chat-composer button {
+  background: #ffc801;
+  color: #172b36;
+}
+.dsp-chat-conversation {
+  scrollbar-color: #93acb5 transparent;
+}
+.dsp-chat-error {
+  color: #b63838;
+  background: #fff0ef;
+  border-color: #e6bcb8;
+}
+.dsp-chat-error button {
+  color: #942d2d;
+}
+@media (max-width: 1000px) {
+  body.dsp-intelligent .dsp-ai-shell .dsp-public-nav.is-open {
+    background: #ffffff;
+    border-color: #d2dfe1;
+  }
+}
+
+/* Contrast at the boundaries between light surfaces and branded blue panels. */
+body.dsp-intelligent {
+  --ws-subtle: #566f7a;
+}
+body.dsp-intelligent .dsp-sidebar__identity {
+  background: #21414f !important;
+}
+body.dsp-intelligent .dsp-sidebar__item .MuiListItemText-primary {
+  color: #d7e4e7 !important;
+}
+body.dsp-intelligent
+  .dsp-sidebar__item[aria-current="page"]
+  .MuiListItemText-primary {
+  color: #172b36 !important;
+}
+body.dsp-intelligent .dsp-sidebar__item .MuiListItemIcon-root {
+  color: #adc3cb !important;
+}
+body.dsp-intelligent
+  .dsp-sidebar__item[aria-current="page"]
+  .MuiListItemIcon-root {
+  color: #172b36 !important;
+}
+body.dsp-intelligent .dsp-demo-preview__intro {
+  color: #4f6874;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-cta > h2 {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-milestone {
+  background: #fffffff5;
+  color: #172b36;
+  border-color: #d2dfe1;
+}
+body.dsp-intelligent
+  .dsp-ai-shell
+  .ai-lesson-step-switch
+  button[aria-pressed="true"] {
+  background: #ffc801;
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-hero--lessons .ai-hero-art {
+  mask-image: none;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-stage-caption {
+  color: #f1f6f4;
+}
+body.dsp-intelligent .dsp-ai-shell .ai-stage-caption > :is(span, a) {
+  padding: 4px 7px;
+  border-radius: 4px;
+  color: #f1f6f4;
+  background: #172b36d9;
+}
+body.dsp-intelligent
+  .dsp-auth-form-shell
+  .MuiTextField-root
+  .MuiInputBase-input:-webkit-autofill {
+  -webkit-text-fill-color: #172b36;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+}
+
+body.dsp-intelligent :focus-visible {
+  outline: 2px solid #114c5a;
+  outline-offset: 3px;
+}
+body.dsp-intelligent
+  :is(.dsp-sidebar__content, .dsp-auth-brand-panel, .dsp-experience-hero)
+  :focus-visible {
+  outline-color: #ffc801;
+}
+body.dsp-intelligent
+  .MuiOutlinedInput-root.Mui-focused
+  .MuiOutlinedInput-notchedOutline {
+  border-color: #114c5a !important;
+}
+body.dsp-intelligent .dsp-auth-form-shell .MuiInputBase-root.Mui-focused {
+  border-color: #114c5a;
+}
+body.dsp-intelligent .dsp-sidebar__badge {
+  color: #172b36;
+  background: #ffc801;
+}
+body.dsp-intelligent .dsp-student-overview__next-hero {
+  color: #172b36;
+  background: #ffffff;
+}
+body.dsp-intelligent .dsp-student-overview__status {
+  color: #114c5a;
+  background: #e8f0ef;
+  border-color: #d2dfe1;
+}
+.dsp-chat-root :focus-visible {
+  outline: 2px solid #114c5a;
+  outline-offset: 3px;
+}
+.dsp-chat-header :focus-visible,
+.dsp-chat-launcher:focus-visible {
+  outline-color: #ffc801;
+}
+/* The assistant stylesheet is lazy-loaded; body scope keeps brand accents stable. */
+body.dsp-intelligent .dsp-chat-header i {
+  background: #ffc801;
+}
+body.dsp-intelligent .dsp-chat-composer button:not(:disabled) {
+  background: #ffc801;
+  color: #172b36;
+}
+body.dsp-intelligent .dsp-chat-message--user .dsp-chat-bubble {
+  background: #fff5c7;
+  color: #172b36;
+  border-color: #e8d384;
+}
