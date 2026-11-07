@@ -1,13 +1,13 @@
 # Per-Instructor Commission (Instructor Share %) — How It Works
 
-This document explains the commission logic currently implemented in DSP: a **platform default instructor share (%)** plus an optional **per-instructor override**. It also explains where to configure it in the admin UI and how the split is applied across instant payments, deferred (T‑48) payments, and refunds.
+This document explains the commission logic currently implemented in Drive Pilot: a **platform default instructor share (%)** plus an optional **per-instructor override**. It also explains where to configure it in the admin UI and how the split is applied across instant payments, deferred (T‑48) payments, and refunds.
 
 ---
 
 ## 1) Definitions (important)
 
 - **Instructor share (%)**: the percentage of the lesson price that goes to the instructor.
-- **Admin / Platform share (%)**: the remaining percentage kept by DSP (admin/platform commission).
+- **Admin / Platform share (%)**: the remaining percentage kept by Drive Pilot (admin/platform commission).
 
 For percentage splits:
 

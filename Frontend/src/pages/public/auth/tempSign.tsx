@@ -74,7 +74,7 @@ export default function SignIn() {
         {/* Decorative Circles */}
         <Box
           component="img"
-          alt="DSP Logo"
+          alt="Drive Pilot Logo"
           src="/decorative-circles.png"
           sx={{
             position: "absolute",

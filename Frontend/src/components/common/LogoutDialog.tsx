@@ -37,7 +37,7 @@ export default function LogoutDialog({
       maxWidth="xs"
       TransitionProps={{ onEntered: () => cancelButton.current?.focus() }}
     >
-      <DialogTitle id="logout-dialog-title">Log out of DSP?</DialogTitle>
+      <DialogTitle id="logout-dialog-title">Log out of Drive Pilot?</DialogTitle>
       <DialogContent>
         <DialogContentText id="logout-dialog-description">
           You’ll need to sign in again to access your workspace. Unsaved changes

@@ -79,7 +79,7 @@ export default function StudentLearningTimelinePage() {
       </Typography>
       <Typography variant="h4" sx={{ fontWeight: 750, mb: 1 }}>Learning timeline</Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Follow the real booking and lesson milestones recorded by your instructors and DSP.
+        Follow the real booking and lesson milestones recorded by your instructors and Drive Pilot.
       </Typography>
       <Paper className="dsp-learning-timeline" sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
         {loading && !data ? <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress /></Box> : error ? (

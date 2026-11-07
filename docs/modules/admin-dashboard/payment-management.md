@@ -11,7 +11,7 @@ This module is the admin financial console. It has two parts:
 
 ## Purpose
 
-- Show all DSP financial activity in one place.
+- Show all Drive Pilot financial activity in one place.
 - Filter transactions by party (`platform`, `instructor`, `student`) and type (`payment`, `refund`, `payout`, `transfer_reversal`, `adjustment`).
 - Show platform-level transaction stats.
 - Show lesson slot context for each transaction.

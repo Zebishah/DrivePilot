@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: DSP Developer Docs
+  name: Drive Pilot Developer Docs
   text: Complete project documentation UI
   tagline: Browse admin, student, teacher, payments, and deep module docs in one place.
   actions:

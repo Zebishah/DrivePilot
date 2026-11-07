@@ -1,4 +1,4 @@
-# DSP Marketplace Deployment
+# Drive Pilot Deployment
 
 This guide describes the deployment shape prepared in the
 `portfolio-hardening` branch. Replace angle-bracket placeholders in the
@@ -133,7 +133,7 @@ EMAIL_ENABLED=true
 EMAIL_PROVIDER=elasticemail
 ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
 EMAIL_FROM_ADDRESS=<verified-sender-address>
-EMAIL_FROM_NAME=DSP Marketplace
+EMAIL_FROM_NAME=Drive Pilot
 EMAIL_REPLY_TO=<optional-reply-address>
 EMAIL_MODE=test
 EMAIL_TEST_RECIPIENT=<test-recipient>
@@ -199,7 +199,7 @@ EMAIL_ENABLED=true
 EMAIL_PROVIDER=elasticemail
 ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
 EMAIL_FROM_ADDRESS=<verified-sender-address>
-EMAIL_FROM_NAME=DSP Marketplace
+EMAIL_FROM_NAME=Drive Pilot
 EMAIL_REPLY_TO=<optional-reply-address>
 EMAIL_MODE=test
 EMAIL_TEST_RECIPIENT=<test-recipient>
@@ -220,7 +220,7 @@ the configured shutdown bound.
 
 ## 4. MongoDB Atlas
 
-1. Create a database user with access only to the DSP database.
+1. Create a database user with access only to the Drive Pilot database.
 2. Use the Atlas `mongodb+srv://` URI in `MONGODB_URI`.
 3. Set the database name explicitly in the URI if it is not the default.
 4. Keep TLS enabled; the driver supports the Atlas SRV URI.
@@ -256,7 +256,7 @@ SMTP is not used or reintroduced.
 - `EMAIL_ENABLED=true`
 - `ELASTIC_EMAIL_API_KEY` is stored only in Render and must have the `SendHttp` access level
 - `EMAIL_MODE=test` sends only to `EMAIL_TEST_RECIPIENT`
-- `EMAIL_FROM_ADDRESS` must match an allowed Elastic Email sender. `EMAIL_FROM_NAME` defaults to `DSP Marketplace`.
+- `EMAIL_FROM_ADDRESS` must match an allowed Elastic Email sender. `EMAIL_FROM_NAME` defaults to `Drive Pilot`.
 
 Use an intentionally verified sender before switching to `EMAIL_MODE=production`.
 The worker is the process that delivers the outbox; the API enqueues events.
@@ -453,7 +453,7 @@ After deploying the API change, create an HTTP(s) monitor in UptimeRobot:
 
 | Setting | Value |
 | --- | --- |
-| Friendly name | `DSP Marketplace API` |
+| Friendly name | `Drive Pilot API` |
 | URL | `https://<render-api-service>.onrender.com/` (the backend origin, not the frontend or `/graphql`) |
 | HTTP method | `GET` if configurable; the default `HEAD` also works |
 | Monitoring interval | 5 minutes |
@@ -465,7 +465,7 @@ After deploying the API change, create an HTTP(s) monitor in UptimeRobot:
 The root returns HTTP 200 with:
 
 ```json
-{"success":true,"status":"ok","message":"DSP Marketplace API is running."}
+{"success":true,"status":"ok","message":"Drive Pilot API is running."}
 ```
 
 It sets `Cache-Control: no-store`, requires no sign-in, and does not query

@@ -182,7 +182,7 @@ export default function Navbar({
 
         <Box className="dsp-topbar__context">
           <Typography className="dsp-topbar__crumb">
-            DSP / {user?.role || "Workspace"}
+            Drive Pilot / {user?.role || "Workspace"}
           </Typography>
           <Typography className="dsp-topbar__title">{pageTitle}</Typography>
         </Box>

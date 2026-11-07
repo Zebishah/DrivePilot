@@ -1,4 +1,4 @@
-/** Decorative route connects the real people, lessons, and tools across DSP. */
+/** Decorative route connects the real people, lessons, and tools across Drive Pilot. */
 export default function DrivingRoute({
   className = "",
 }: {

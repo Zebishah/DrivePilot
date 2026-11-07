@@ -53,7 +53,7 @@ export default function Footer() {
           </div>
         )}
         <div className="dsp-public-footer__bottom">
-          <span>© {new Date().getFullYear()} DSP Marketplace</span>
+          <span>© {new Date().getFullYear()} Drive Pilot</span>
           <span>Learn clearly. Teach confidently. Operate simply.</span>
           <span className="dsp-public-footer__legal">
             <Link to="/terms">Terms of Use</Link>

@@ -253,12 +253,12 @@ const faqs = [
     "Prices depend on the instructor and lesson options you choose. Explore instructor profiles and available lessons, then review the price shown in your booking before paying.",
   ],
   [
-    "What is DSP Marketplace?",
-    "DSP is a connected driving-school platform for students, instructors, and admins. Discover instructors, book and pay for lessons, track learning progress, and manage driving-school operations in one place.",
+    "What is Drive Pilot?",
+    "Drive Pilot is a connected driving-school platform for students, instructors, and admins. Discover instructors, book and pay for lessons, track learning progress, and manage driving-school operations in one place.",
   ],
   [
     "How does the AI assistant help?",
-    "The DSP Assistant answers questions about the platform and your authorized dashboard information, such as upcoming lessons, bookings, or payment statuses. It offers read-only help; booking, payment, and account changes happen through the regular platform workflows.",
+    "The Drive Pilot Assistant answers questions about the platform and your authorized dashboard information, such as upcoming lessons, bookings, or payment statuses. It offers read-only help; booking, payment, and account changes happen through the regular platform workflows.",
   ],
   [
     "How do I find and book an instructor?",
@@ -274,7 +274,7 @@ const faqs = [
   ],
   [
     "How are payments handled?",
-    "DSP uses a Stripe-backed payment workflow. Payment and booking statuses are visible in your workspace, with dedicated records for transactions and related activity.",
+    "Drive Pilot uses a Stripe-backed payment workflow. Payment and booking statuses are visible in your workspace, with dedicated records for transactions and related activity.",
   ],
 ];
 
@@ -288,13 +288,13 @@ function WorkspacePreview({ role }: { role: RoleKey }) {
           <i />
           <i />
         </span>
-        <span>DSP / {workspace.name.toLowerCase()} workspace</span>
+        <span>Drive Pilot / {workspace.name.toLowerCase()} workspace</span>
         <span className="ai-preview-label">Illustrative preview</span>
       </div>
       <div className="ai-workspace-body">
         <aside className="ai-workspace-sidebar" aria-label="Preview navigation">
           <span className="ai-workspace-brand">
-            <Route size={20} /> DSP<span>®</span>
+            <Route size={20} /> Drive Pilot<span>®</span>
           </span>
           {workspace.navigation.map((item, index) => {
             const Icon = [
@@ -459,7 +459,7 @@ export default function Home() {
           </h1>
           <p>
             Find a driving instructor. Choose your lesson. Book online. <br />
-            Lessons, payments, feedback, and AI assistance—all in your DSP
+            Lessons, payments, feedback, and AI assistance—all in your Drive Pilot
             account.
           </p>
           <div className="ai-hero-actions">
@@ -539,7 +539,7 @@ export default function Home() {
               <span className="ai-icon-square">
                 <Sparkles size={16} />
               </span>
-              <strong>DSP Assistant</strong>
+              <strong>Drive Pilot Assistant</strong>
               <span className="ai-pulse-dot" />
             </div>
             <p>
@@ -552,7 +552,7 @@ export default function Home() {
               className="dsp-open-assistant"
               onClick={() => openAssistant()}
             >
-              Ask the DSP assistant <ArrowUpRight size={14} />
+              Ask the Drive Pilot assistant <ArrowUpRight size={14} />
             </button>
           </div>
           <div className="ai-stage-caption">
@@ -649,7 +649,7 @@ export default function Home() {
             <div className="ai-assistant-demo">
               <div className="ai-assistant-demo-heading">
                 <span>
-                  <Sparkles size={13} /> DSP ASSISTANT
+                  <Sparkles size={13} /> Drive Pilot ASSISTANT
                 </span>
                 <small>EXAMPLE CONVERSATION</small>
               </div>
@@ -789,7 +789,7 @@ export default function Home() {
             <div
               className="ai-role-tabs"
               role="tablist"
-              aria-label="Explore DSP workspaces"
+              aria-label="Explore Drive Pilot workspaces"
             >
               {(Object.keys(workspaces) as RoleKey[]).map((key) => {
                 const workspace = workspaces[key];
@@ -853,7 +853,7 @@ export default function Home() {
                 {activeRole === "student"
                   ? "Find your instructor"
                   : activeRole === "instructor"
-                    ? "Start teaching with DSP"
+                    ? "Start teaching with Drive Pilot"
                     : "Explore your workspace"}
                 <ArrowUpRight size={16} />
               </Link>
@@ -983,7 +983,7 @@ export default function Home() {
             Compare driving instructors, find an available lesson, and book
             online.
             <br />
-            Teaching instead? Join DSP to manage your driving lessons and
+            Teaching instead? Join Drive Pilot to manage your driving lessons and
             students.
           </p>
           <div>

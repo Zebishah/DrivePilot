@@ -1,7 +1,7 @@
 /** @type {import('vitepress').UserConfig} */
 export default {
-  title: "DSP Developer Docs",
-  description: "Developer-facing documentation for the DSP platform.",
+  title: "Drive Pilot Developer Docs",
+  description: "Developer-facing documentation for the Drive Pilot platform.",
   cleanUrls: true,
   themeConfig: {
     nav: [

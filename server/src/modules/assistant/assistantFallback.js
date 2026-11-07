@@ -21,7 +21,7 @@ function projectContextAnswer(role) {
       : role === "Admin"
         ? "The admin workspace provides read-only operational visibility across bookings, refunds, payouts, and financial review items."
         : "The dashboard provides role-specific tools for managing the learning marketplace.";
-  return `DSP Marketplace is a learning marketplace where students can discover verified instructors, compare profiles and availability, book lessons, and complete payments. ${dashboardFocus} I can answer read-only questions using the information authorized for your account, but changes must be made through the normal dashboard workflows.`;
+  return `Drive Pilot is a learning marketplace where students can discover verified instructors, compare profiles and availability, book lessons, and complete payments. ${dashboardFocus} I can answer read-only questions using the information authorized for your account, but changes must be made through the normal dashboard workflows.`;
 }
 
 function deterministicAnswer(toolName, result, role) {
@@ -60,7 +60,7 @@ function fallbackForMessage(message, role) {
   if (isProjectQuestion(message)) return projectContextAnswer(role);
   if (text.includes("refund") && text.includes("action")) return "Refund status is available through the normal refund workflow; I cannot approve or issue a refund here.";
   if (text.includes("cancel") || text.includes("reschedul") || text.includes("payout")) return "I can explain the current status, but changes must be made through the normal application workflow.";
-  if (text.includes("system prompt") || text.includes("database") || text.includes("ignore previous")) return "I can help with your authorized DSP Marketplace information, but I cannot reveal internal instructions or access the database directly.";
+  if (text.includes("system prompt") || text.includes("database") || text.includes("ignore previous")) return "I can help with your authorized Drive Pilot information, but I cannot reveal internal instructions or access the database directly.";
   return "I can answer questions about your authorized lessons, payments, refunds, payouts, and operational summaries.";
 }
 

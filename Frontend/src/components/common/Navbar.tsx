@@ -23,7 +23,7 @@ export default function Navbar() {
           <BrandLogo
             className="dsp-public-logo"
             to="/"
-            aria-label="DSP Marketplace home"
+            aria-label="Drive Pilot home"
           />
           {isHome && (
             <span className="ai-brand-caption">
@@ -73,7 +73,7 @@ export default function Navbar() {
               className="dsp-public-button dsp-public-button--primary dsp-public-button--small"
               to="/auth/signup"
             >
-              Join DSP <ArrowUpRight size={15} aria-hidden="true" />
+              Join Drive Pilot <ArrowUpRight size={15} aria-hidden="true" />
             </NavLink>
           </div>
         </nav>

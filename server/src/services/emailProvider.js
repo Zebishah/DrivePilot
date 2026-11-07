@@ -35,7 +35,7 @@ function parseEmailAddress(value) {
 function resolveConfiguredFrom(env = process.env) {
   const address = String(env.EMAIL_FROM_ADDRESS || "").trim();
   if (address) {
-    const name = String(env.EMAIL_FROM_NAME || "DSP Marketplace").trim();
+    const name = String(env.EMAIL_FROM_NAME || "Drive Pilot").trim();
     return name ? `${name} <${address}>` : address;
   }
   // Keep deployments using the original single-variable configuration working.

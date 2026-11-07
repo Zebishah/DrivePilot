@@ -1,4 +1,4 @@
-# DSP documentation – structure and how to find module docs
+# Drive Pilot documentation – structure and how to find module docs
 
 This file explains **how docs are organized** so you always know **which module a doc belongs to** and where to find deep (file-by-file, query-by-query) documentation.
 

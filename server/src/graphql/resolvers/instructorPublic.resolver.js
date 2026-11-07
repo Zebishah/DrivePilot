@@ -406,7 +406,7 @@ const instructorResolver = {
         return count + booking.slots.filter(isUpcomingSlot).length;
       }, 0);
 
-      // Total earnings (net, after DSP commission): sum instructorAmount for
+      // Total earnings (net, after Drive Pilot commission): sum instructorAmount for
       // lessons explicitly marked completed or missed.
       // Fallbacks (legacy):
       // - if chargeAmount + dspCommission exist: use (chargeAmount - dspCommission)

@@ -138,7 +138,7 @@ export default function Sidebar({
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >
-        <BrandLogo size="md" to="/" aria-label="DSP Marketplace home" />
+        <BrandLogo size="md" to="/" aria-label="Drive Pilot home" />
       </Box>
 
       <Box className="dsp-sidebar__identity">

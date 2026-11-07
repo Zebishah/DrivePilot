@@ -7,7 +7,7 @@ Authentication, onboarding, the public site, and all three dashboards share the 
 - `Frontend/src/themes/intelligentTokens.ts` defines the Material UI palette and the route matcher.
 - `Frontend/src/themes/intelligentTheme.ts` styles Material UI controls, menus, drawers, dialogs, tables, alerts, and form states.
 - `Frontend/src/themes/ApplicationAppearance.tsx` applies the theme to authentication, onboarding, payment-return, and dashboard routes. It scopes CSS variables on the body for every route so portal content inherits the same palette.
-- `Frontend/src/themes/workspace.css` bridges existing DSP tokens and defines the shared navigation, authentication frame, surfaces, responsive behavior, and integration styles.
+- `Frontend/src/themes/workspace.css` bridges existing Drive Pilot tokens and defines the shared navigation, authentication frame, surfaces, responsive behavior, and integration styles.
 - `Frontend/src/themes/workspace-utilities.css` adapts legacy arbitrary Tailwind colors to semantic tokens.
 
 Existing CSS and inline style colors now resolve through `--ws-*` tokens. Their original values remain as fallbacks for public pages. New dashboard UI should use the shared components, Material UI theme colors, or these semantic variables rather than adding fixed color values.

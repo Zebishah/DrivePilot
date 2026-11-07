@@ -1,6 +1,6 @@
 # Customer-first driving lesson experience
 
-DSP is presented as a driving-school marketplace: learners find instructors and book lessons; instructors manage teaching; admins run marketplace operations. The approved ocean-blue, golden-yellow, and off-white palette remains consistent across marketing, authentication, and all three workspaces.
+Drive Pilot is presented as a driving-school marketplace: learners find instructors and book lessons; instructors manage teaching; admins run marketplace operations. The approved ocean-blue, golden-yellow, and off-white palette remains consistent across marketing, authentication, and all three workspaces.
 
 ## Customer and reviewer journeys
 

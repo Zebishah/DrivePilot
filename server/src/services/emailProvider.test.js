@@ -36,7 +36,7 @@ test("Elastic Email test mode maps the transactional payload and sender", async 
 
   const result = await provider.send({
     to: "real-recipient@example.com",
-    from: "DSP Marketplace <sender@example.com>",
+    from: "Drive Pilot <sender@example.com>",
     replyTo: "Support <support@example.com>",
     subject: "Test",
     html: "<p>Hello</p>",
@@ -49,7 +49,7 @@ test("Elastic Email test mode maps the transactional payload and sender", async 
   assert.equal(calls[0].options.method, "POST");
   assert.equal(calls[0].options.headers["X-ElasticEmail-ApiKey"], "elastic_test_key");
   assert.equal(calls[0].body.Recipients.To[0], "test-owner@example.com");
-  assert.equal(calls[0].body.Content.From, "DSP Marketplace <sender@example.com>");
+  assert.equal(calls[0].body.Content.From, "Drive Pilot <sender@example.com>");
   assert.equal(calls[0].body.Content.ReplyTo, "Support <support@example.com>");
   assert.equal(calls[0].body.Content.Subject, "Test");
   assert.deepEqual(calls[0].body.Options, { TrackOpens: "false", TrackClicks: "false" });
@@ -62,10 +62,10 @@ test("Elastic Email test mode maps the transactional payload and sender", async 
   assert.deepEqual(result.intendedRecipients, ["real-recipient@example.com"]);
 });
 
-test("new sender variables produce a DSP Marketplace display sender", () => {
+test("new sender variables produce a Drive Pilot display sender", () => {
   assert.equal(
-    resolveConfiguredFrom({ EMAIL_FROM_ADDRESS: "verified@example.com", EMAIL_FROM_NAME: "DSP Marketplace" }),
-    "DSP Marketplace <verified@example.com>",
+    resolveConfiguredFrom({ EMAIL_FROM_ADDRESS: "verified@example.com", EMAIL_FROM_NAME: "Drive Pilot" }),
+    "Drive Pilot <verified@example.com>",
   );
   assert.equal(
     resolveConfiguredFrom({ EMAIL_FROM_ADDRESS: "", EMAIL_FROM: "Legacy <legacy@example.com>" }),
@@ -176,8 +176,8 @@ test("malformed successful responses are not marked as delivered", async () => {
 });
 
 test("sender parser supports display names and plain addresses", () => {
-  assert.deepEqual(parseEmailAddress("DSP Marketplace <sender@example.com>"), {
-    displayName: "DSP Marketplace",
+  assert.deepEqual(parseEmailAddress("Drive Pilot <sender@example.com>"), {
+    displayName: "Drive Pilot",
     email: "sender@example.com",
   });
   assert.deepEqual(parseEmailAddress("sender@example.com"), { displayName: "", email: "sender@example.com" });

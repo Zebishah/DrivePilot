@@ -1,4 +1,4 @@
-# DSP Platform — Response to “Stripe Integration Review” (Clarifications + What’s Fixed)
+# Drive Pilot Platform — Response to “Stripe Integration Review” (Clarifications + What’s Fixed)
 
 Hi team,
 
@@ -8,7 +8,7 @@ Thank you for the detailed review. Below is a point-by-point response to each it
 
 ## PART 1 — STRIPE ISSUES
 
-## 1) Instructor revenue display in the DSP dashboard
+## 1) Instructor revenue display in the Drive Pilot dashboard
 
 ### What was happening
 
@@ -16,7 +16,7 @@ The instructor overview was showing **gross** revenue (full amount paid by the s
 
 ### What we changed
 
-We updated the instructor analytics calculation so “Money earned” reflects the **instructor’s net earnings after DSP commission** (i.e., the instructor share), matching the instructor’s transaction history.
+We updated the instructor analytics calculation so “Money earned” reflects the **instructor’s net earnings after Drive Pilot commission** (i.e., the instructor share), matching the instructor’s transaction history.
 
 ### How to validate
 
@@ -31,25 +31,25 @@ We updated the instructor analytics calculation so “Money earned” reflects t
 
 ### Key truth (important)
 
-Stripe does **not** show a separate “DSP commission” transaction type or a dedicated “commission configuration” section for your platform.
+Stripe does **not** show a separate “Drive Pilot commission” transaction type or a dedicated “commission configuration” section for your platform.
 
 In Stripe you will typically see:
 
 - **Payments (gross)**: the full lesson price paid by the student.
-- **Transfers to the instructor (net share)**: the instructor’s portion (after DSP commission) sent to the instructor’s Connect account.
+- **Transfers to the instructor (net share)**: the instructor’s portion (after Drive Pilot commission) sent to the instructor’s Connect account.
 
 The “commission” is the **difference** between the gross amount collected and the amount transferred to the instructor. Stripe does not label the retained difference as “commission”.
 
 ### Where commission is configured (source of truth)
 
-Commission is configured in the **DSP Admin Dashboard**, not in Stripe:
+Commission is configured in the **Drive Pilot Admin Dashboard**, not in Stripe:
 
 - **Admin Dashboard → Payment Management → Commission Management**
   - You can set commission type (percentage or fixed amount) and the commission value.
 
 ### Where to verify commission (recommended)
 
-Use the DSP dashboards:
+Use the Drive Pilot dashboards:
 
 - **Admin Dashboard → Payment Management → Transactions**
   - You can verify platform gross receipts and platform commission entries per booking/slot.
@@ -64,7 +64,7 @@ In Stripe Dashboard (test mode):
 
 - **Payments**: confirm the student payment exists (gross amount).
 - **Connect → Accounts → select the instructor**: confirm the connected account exists and receives funds/transfer activity.
-- If you compare gross Payments vs Transfers to that instructor, the difference is the platform commission retained by DSP.
+- If you compare gross Payments vs Transfers to that instructor, the difference is the platform commission retained by Drive Pilot.
 
 We also created a dedicated guide with a checklist:
 
@@ -76,7 +76,7 @@ We also created a dedicated guide with a checklist:
 
 ### What was happening
 
-Instructors could connect Stripe (onboarding), but there was no option in DSP to open the instructor’s Stripe dashboard.
+Instructors could connect Stripe (onboarding), but there was no option in Drive Pilot to open the instructor’s Stripe dashboard.
 
 ### What we changed
 
@@ -105,7 +105,7 @@ This allows instructors to:
 
 ### What’s expected in Stripe test mode
 
-Stripe test mode should still show activity when you process payments through the DSP app, including:
+Stripe test mode should still show activity when you process payments through the Drive Pilot app, including:
 
 - Payments created by Checkout / PaymentIntents
 - Connected accounts (Express) under Connect
@@ -115,7 +115,7 @@ Stripe test mode should still show activity when you process payments through th
 
 Please verify the following before concluding the system is not connected:
 
-- **Correct Stripe account**: you are logged into the correct Stripe workspace (the platform account used by DSP).
+- **Correct Stripe account**: you are logged into the correct Stripe workspace (the platform account used by Drive Pilot).
 - **Correct mode**: Stripe Dashboard is in **Test mode**, not Live (toggle in Stripe).
 - **Correct API keys in Render**:
   - Backend uses `sk_test_...` in test mode
@@ -129,7 +129,7 @@ Please verify the following before concluding the system is not connected:
 
 1. Make a new booking and complete payment with a test card.
 2. In Stripe Dashboard (Test mode) check **Payments** → the payment should appear immediately.
-3. In DSP Admin Dashboard check **Payment Management → Transactions** → records should appear immediately.
+3. In Drive Pilot Admin Dashboard check **Payment Management → Transactions** → records should appear immediately.
 
 If after this you still see no Stripe activity, it almost always means the environment is pointing to a different Stripe account/keys than the Dashboard you are checking.
 
@@ -151,17 +151,17 @@ This redirection is **not** about creating or configuring a Stripe account. It i
 
 ### What happens during that step
 
-1. DSP creates a **Stripe Checkout Session** for the lesson.
+1. Drive Pilot creates a **Stripe Checkout Session** for the lesson.
 2. The student is redirected to Stripe Checkout to pay.
-3. After payment, Stripe redirects back to DSP (success/cancel URL).
-4. DSP updates booking/payment status based on Stripe’s result.
+3. After payment, Stripe redirects back to Drive Pilot (success/cancel URL).
+4. Drive Pilot updates booking/payment status based on Stripe’s result.
 
 ### Is this part of 3DS authentication?
 
 **Sometimes, yes.**
 
 - If the card/bank requires **3D Secure (SCA)**, Stripe Checkout shows an authentication step during the payment flow.
-- If 3DS is not required, the student pays normally and returns to DSP.
+- If 3DS is not required, the student pays normally and returns to Drive Pilot.
 
 ---
 

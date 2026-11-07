@@ -27,7 +27,7 @@ export function CustomerPaths() {
           </h2>
         </div>
         <p>
-          DSP connects learners with driving instructors—and keeps everything
+          Drive Pilot connects learners with driving instructors—and keeps everything
           around the lesson in one place.
         </p>
       </div>
@@ -153,7 +153,7 @@ export function ReviewerSection() {
           </div>
         ))}
         <details>
-          <summary>For technical reviewers: what’s behind DSP?</summary>
+          <summary>For technical reviewers: what’s behind Drive Pilot?</summary>
           <p>
             React and TypeScript on the frontend, Node.js and GraphQL on the
             backend, Stripe payment workflows, and separate authenticated

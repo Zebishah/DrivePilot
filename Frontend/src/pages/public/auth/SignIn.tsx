@@ -352,7 +352,7 @@ const SignIn: React.FC = () => {
 
           <Box sx={{ textAlign: "center", mt: 2 }}>
             <Typography variant="body2">
-              New to DSP?{" "}
+              New to Drive Pilot?{" "}
               <MuiLink
                 component={Link}
                 to="/auth/signup"
@@ -379,7 +379,7 @@ const SignIn: React.FC = () => {
                   id="dsp-demo-title"
                   className="dsp-demo-preview__title"
                 >
-                  Reviewing DSP? Try the role demos.
+                  Reviewing Drive Pilot? Try the role demos.
                 </Typography>
               </Box>
               <Typography className="dsp-demo-preview__note">

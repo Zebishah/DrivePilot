@@ -1,4 +1,4 @@
-# DSP Platform — Payments, Payouts & Business Rules (Client Handover)
+# Drive Pilot Platform — Payments, Payouts & Business Rules (Client Handover)
 
 This document explains everything you need to know about how payments, payouts, refunds, and lesson status work on the platform. It is written for the client (Switzerland) and covers Stripe sandbox testing, edge cases we handle, and the rules enforced in code.
 

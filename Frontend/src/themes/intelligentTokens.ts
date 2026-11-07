@@ -1,4 +1,4 @@
-/** Approved ocean-blue / golden-yellow palette, shared across every DSP route. */
+/** Approved ocean-blue / golden-yellow palette, shared across every Drive Pilot route. */
 export const intelligentTokens = {
   canvas: "#F1F6F4",
   sidebar: "#172B36",

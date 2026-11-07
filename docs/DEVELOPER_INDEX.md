@@ -1,4 +1,4 @@
-# DSP Project – Developer Documentation Index
+# Drive Pilot Project – Developer Documentation Index
 
 This folder contains documentation so a **new developer** can understand the whole codebase: what each area does, where the code lives, and how frontend and backend interact.
 

@@ -503,7 +503,7 @@ export default function StudentPaymentHistoryPage() {
                   <div className="dsp-payment-detail-modal__details-grid">
                     <PaymentDetail label="Lesson" value={lessonLabel(viewTransaction)} />
                     <PaymentDetail label="Funding source" value="Card" />
-                    <PaymentDetail label="Sent to" value="Driving School Platform (DSP)" />
+                    <PaymentDetail label="Sent to" value="Drive Pilot" />
                     <PaymentDetail label="Amount" value={(viewTransaction.direction === "credit" ? "+" : "-") + " " + formatCHF(viewTransaction.amount)} emphasis={viewTransaction.direction === "credit"} />
                     <PaymentDetail label="Fee" value="CHF 0.00" />
                     <PaymentDetail label="Total amount" value={formatCHF(viewTransaction.amount)} emphasis />

@@ -1,7 +1,7 @@
 /**
  * Stripe Connect lifecycle service for instructors.
  *
- * New accounts use Accounts v2 with the recipient configuration because DSP
+ * New accounts use Accounts v2 with the recipient configuration because Drive Pilot
  * uses indirect destination charges. Existing Accounts v1 continue through
  * the v1 compatibility paths until they are explicitly migrated.
  */
@@ -55,7 +55,7 @@ function buildV2ConnectedAccountParams(email) {
         losses_collector: "application",
       },
     },
-    // DSP uses destination charges without on_behalf_of, so the instructor
+    // Drive Pilot uses destination charges without on_behalf_of, so the instructor
     // is a recipient rather than the merchant of record.
     configuration: {
       recipient: {

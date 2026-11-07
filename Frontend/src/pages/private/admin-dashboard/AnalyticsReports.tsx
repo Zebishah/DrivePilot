@@ -66,7 +66,7 @@ function chartTitle(tab: Tab) {
 function chartDescription(tab: Tab) {
   if (tab === "usage") return "Students with paid lessons and instructors who delivered paid lessons.";
   if (tab === "bookings") return "Paid lessons divided by instructors who delivered a paid lesson in each period.";
-  if (tab === "financial") return "Instructor earnings after DSP commission for paid lessons marked completed.";
+  if (tab === "financial") return "Instructor earnings after Drive Pilot commission for paid lessons marked completed.";
   return "Visitor records compared with student and instructor registrations.";
 }
 

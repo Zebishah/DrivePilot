@@ -50,7 +50,7 @@ test("OTP templates identify and render a six-digit code", () => {
   assert.deepEqual(rendered.tracking, { trackOpens: false, trackClicks: false });
 });
 
-test("all supported HTML templates use the DSP email shell", () => {
+test("all supported HTML templates use the Drive Pilot email shell", () => {
   for (const template of [
     "welcome",
     "verification",
@@ -84,8 +84,8 @@ test("all supported HTML templates use the DSP email shell", () => {
       text: "A message",
       slots: [],
     });
-    assert.match(rendered.html, /DSP Marketplace/);
+    assert.match(rendered.html, /Drive Pilot/);
     assert.match(rendered.html, /Learn with confidence/);
-    assert.match(rendered.html, /automated message from DSP Marketplace/);
+    assert.match(rendered.html, /automated message from Drive Pilot/);
   }
 });

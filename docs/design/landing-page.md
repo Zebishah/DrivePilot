@@ -1,4 +1,4 @@
-# DSP landing page
+# Drive Pilot landing page
 
 The public home route uses the approved ocean-blue, golden-yellow, and off-white visual system, centered oversized typography, a human driving-lesson hero, floating cards, and interactive product previews. See [Approved palette](ocean-palette.md) and [Customer experience](customer-experience.md). Shared colors extend across public pages, authentication, and dashboards; layouts remain in `landing.css` and `marketplace.css`.
 

@@ -16,7 +16,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
   theme = "light",
   to,
   className = "",
-  "aria-label": ariaLabel = "DSP Marketplace",
+  "aria-label": ariaLabel = "Drive Pilot",
 }) => {
   const content = (
     <span className={`dsp-brand dsp-brand--${variant} dsp-brand--${size} dsp-brand--${theme} ${className}`.trim()}>
@@ -26,7 +26,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
         <path d="M15 32V18h13" className="dsp-brand__route dsp-brand__route--secondary" />
         <circle cx="36" cy="13" r="4" className="dsp-brand__waypoint" />
       </svg>
-      {variant === "full" && <span className="dsp-brand__wordmark">DSP</span>}
+      {variant === "full" && <span className="dsp-brand__wordmark">Drive Pilot</span>}
     </span>
   );
 

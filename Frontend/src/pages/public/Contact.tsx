@@ -73,7 +73,7 @@ export default function Contact() {
         <span className="dsp-public-eyebrow">HELP & SUPPORT</span>
         <h1>How can we help?</h1>
         <p>
-          Ask about your account, driving lessons, or using DSP. Send a message
+          Ask about your account, driving lessons, or using Drive Pilot. Send a message
           and our support team will help you with the next step.
         </p>
       </header>
@@ -197,7 +197,7 @@ export default function Contact() {
           <h3>Can’t sign in?</h3>
           <p>Request a password reset to get back into your account.</p>
           <Link to="/auth/forgot-password">Reset your password</Link>
-          <h3>New to DSP?</h3>
+          <h3>New to Drive Pilot?</h3>
           <p>Create an account to book lessons or start teaching.</p>
           <Link to="/auth/signup">Create an account</Link>
         </aside>

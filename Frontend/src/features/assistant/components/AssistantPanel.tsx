@@ -212,7 +212,7 @@ export default function AssistantPanel({
         type="button"
         ref={launcher}
         className={`dsp-chat-launcher ${open ? "is-hidden" : ""}`}
-        aria-label="Open DSP assistant"
+        aria-label="Open Drive Pilot assistant"
         aria-expanded={open}
         aria-controls="dsp-chat-panel"
         onClick={() => setOpen(true)}
@@ -221,7 +221,7 @@ export default function AssistantPanel({
           <Bot size={23} />
         </span>
         <span>
-          Ask DSP<small>Your driving companion</small>
+          Ask Drive Pilot<small>Your driving companion</small>
         </span>
         <ArrowUpRight size={17} />
       </button>
@@ -237,7 +237,7 @@ export default function AssistantPanel({
               <Bot size={24} />
             </span>
             <div>
-              <h2 id="dsp-chat-title">DSP Assistant</h2>
+              <h2 id="dsp-chat-title">Drive Pilot Assistant</h2>
               <p>
                 <i />
                 {publicMode
@@ -286,7 +286,7 @@ export default function AssistantPanel({
                 </h3>
                 <p>
                   {publicMode
-                    ? "Find your instructor, understand booking, or explore what DSP can do for you."
+                    ? "Find your instructor, understand booking, or explore what Drive Pilot can do for you."
                     : "Ask about your lessons, payments, or the information in your workspace."}
                 </p>
                 <div className="dsp-chat-suggestions">
@@ -309,7 +309,7 @@ export default function AssistantPanel({
                 key={index}
               >
                 <span className="dsp-chat-message-label">
-                  {message.role === "user" ? "You" : "DSP Assistant"}
+                  {message.role === "user" ? "You" : "Drive Pilot Assistant"}
                 </span>
                 <div className="dsp-chat-bubble">
                   {message.role === "assistant" ? (
@@ -351,10 +351,10 @@ export default function AssistantPanel({
             {messages.length > 0 && !sending && !error && (
               <div className="dsp-chat-source">
                 {mode === "guide"
-                  ? "Product guide · Based on DSP features"
+                  ? "Product guide · Based on Drive Pilot features"
                   : publicMode
                     ? "Product information · No account access"
-                    : "Answers use your authorized DSP information"}
+                    : "Answers use your authorized Drive Pilot information"}
               </div>
             )}
             <form
@@ -372,7 +372,7 @@ export default function AssistantPanel({
                 aria-label="Assistant message"
                 placeholder={
                   publicMode
-                    ? "Ask about lessons, booking, or DSP…"
+                    ? "Ask about lessons, booking, or Drive Pilot…"
                     : "Ask about your workspace…"
                 }
                 onChange={(event) => setInput(event.target.value)}

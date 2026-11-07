@@ -77,7 +77,7 @@ const RoleSelection: React.FC = () => {
     <AuthLayout>
       <div className="dsp-onboarding-card">
         <span className="dsp-auth-eyebrow">CHOOSE YOUR WORKSPACE</span>
-        <Typography component="h1">How will you use DSP?</Typography>
+        <Typography component="h1">How will you use Drive Pilot?</Typography>
         <Typography className="dsp-onboarding-card__intro">Choose the workspace that matches your next step. You can complete your profile right after.</Typography>
         <div className="dsp-onboarding-roles">
           <RoleCard title="Student" description="Find instructors and book lessons" icon={GraduationCap} selected={selectedRole === "student"} onClick={() => setSelectedRole("student")} />

@@ -31,7 +31,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
             theme="dark"
             size="lg"
             to="/"
-            aria-label="DSP Marketplace home"
+            aria-label="Drive Pilot home"
           />
           <span className="dsp-auth-eyebrow">
             THE DRIVING SCHOOL MARKETPLACE
@@ -66,13 +66,13 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
               </span>
             </div>
           </div>
-          <div className="dsp-auth-role-stack" aria-label="DSP workspace roles">
+          <div className="dsp-auth-role-stack" aria-label="Drive Pilot workspace roles">
             <div>
               <strong>Book driving lessons</strong>
               <span>Find and book instructors</span>
             </div>
             <div>
-              <strong>Teach with DSP</strong>
+              <strong>Teach with Drive Pilot</strong>
               <span>Manage lessons and students</span>
             </div>
             <div>

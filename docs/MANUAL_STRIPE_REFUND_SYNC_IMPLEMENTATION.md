@@ -4,7 +4,7 @@ Date: 2026-05-06
 
 ## Objective
 
-Ensure that when a refund is done manually in Stripe, DSP:
+Ensure that when a refund is done manually in Stripe, Drive Pilot:
 - syncs the refund into platform records
 - updates the correct lesson slot status
 - avoids incorrect slot updates
@@ -22,7 +22,7 @@ Observed webhook payloads (Connect/manual flow) often looked like:
 - `refund.payment_intent` -> `null`
 - `charge.payment_intent` -> `null`
 
-Because DSP originally matched mostly via `paymentIntentId (pi_...)`, mapping either failed or required heuristics. Heuristic mapping could select the wrong slot when multiple slots had similar amounts/times.
+Because Drive Pilot originally matched mostly via `paymentIntentId (pi_...)`, mapping either failed or required heuristics. Heuristic mapping could select the wrong slot when multiple slots had similar amounts/times.
 
 ---
 
@@ -96,11 +96,11 @@ This made root cause visible and helped validate final behavior.
 ## Final Matching Guarantee (for new bookings)
 
 For bookings created/paid after this implementation:
-- DSP stores Stripe identifiers needed for exact correlation
+- Drive Pilot stores Stripe identifiers needed for exact correlation
 - manual refund sync uses exact ID matching first
 - wrong slot mutation due to heuristic guessing is avoided
 
-If Stripe event does not contain resolvable exact identifiers, DSP safely skips slot mutation and records the refund without forcing incorrect status.
+If Stripe event does not contain resolvable exact identifiers, Drive Pilot safely skips slot mutation and records the refund without forcing incorrect status.
 
 ---
 

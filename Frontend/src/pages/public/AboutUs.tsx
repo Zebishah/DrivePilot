@@ -25,7 +25,7 @@ export default function AboutUs() {
     <div className="dsp-about dsp-public-container">
       <section className="dsp-about__hero">
         <div>
-          <span className="dsp-public-eyebrow">ABOUT DSP MARKETPLACE</span>
+          <span className="dsp-public-eyebrow">ABOUT Drive Pilot</span>
           <h1>
             Driving lessons.
             <br />
@@ -33,7 +33,7 @@ export default function AboutUs() {
           </h1>
           <p>
             Learning to drive brings together people, schedules, and small steps
-            forward. DSP helps learners find instructors and keeps the work
+            forward. Drive Pilot helps learners find instructors and keeps the work
             around every lesson organized.
           </p>
           <p>
@@ -48,7 +48,7 @@ export default function AboutUs() {
               Find driving lessons
             </Link>
             <Link className="dsp-public-button" to="/auth/signup">
-              Join DSP
+              Join Drive Pilot
             </Link>
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function AboutUs() {
       </section>
       <section className="dsp-about__support">
         <h2>A little help with your next step</h2>
-        <p>Have a question about your account, a lesson, or how DSP works?</p>
+        <p>Have a question about your account, a lesson, or how Drive Pilot works?</p>
         <Link to="/contact">Contact our support team</Link>
       </section>
     </div>

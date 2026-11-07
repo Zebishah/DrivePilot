@@ -491,7 +491,7 @@ const adminAnalyticsResolvers = {
           averageBookings,
         });
 
-        // Revenue & Earnings: use net instructor earnings (after DSP commission)
+        // Revenue & Earnings: use net instructor earnings (after Drive Pilot commission)
         const totalRevenueNet = deliveredBucketSlots.reduce(
           (sum, s) => sum + (s.instructorAmount || 0),
           0,

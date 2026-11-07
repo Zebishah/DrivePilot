@@ -9,7 +9,7 @@ This implementation covers:
 3. Improving student refund UX with direct list action + dedicated request form.
 4. Making refund justification message mandatory and adding attachment support (PDF/images).
 5. Blocking duplicate refund requests for the same lesson.
-6. Syncing manual Stripe refunds to DSP statuses via webhook events.
+6. Syncing manual Stripe refunds to Drive Pilot statuses via webhook events.
 7. Sending refund completion emails to Admin, Student, and Instructor.
 
 ## Backend Changes
@@ -52,7 +52,7 @@ Behavior now:
 
 ### 3) Stripe manual refund synchronization
 
-Added webhook handling to synchronize manual Stripe refunds to DSP.
+Added webhook handling to synchronize manual Stripe refunds to Drive Pilot.
 
 - Updated `server/src/routes/stripeWebhook.routes.js`:
   - Added handlers for:
@@ -169,5 +169,5 @@ Recipients:
 - Refunded lessons now display consistently as **Refunded** in all required panels.
 - Student refund UX is simplified with a direct list action and dedicated form.
 - Duplicate requests per lesson are blocked by both backend logic and database unique constraint.
-- Manual Stripe refunds are now reflected in DSP booking/slot statuses through webhook synchronization.
+- Manual Stripe refunds are now reflected in Drive Pilot booking/slot statuses through webhook synchronization.
 - Refund completion notifications are sent to all relevant parties.

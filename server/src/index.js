@@ -134,7 +134,7 @@ function initializeApi() {
     return res.status(200).json({
       success: true,
       status: "ok",
-      message: "DSP Marketplace API is running.",
+      message: "Drive Pilot API is running.",
     });
   });
   app.get("/health", (_req, res) => res.status(200).json({ ok: true }));

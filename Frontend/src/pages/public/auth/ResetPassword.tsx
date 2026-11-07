@@ -150,7 +150,7 @@ const ResetPassword: React.FC = () => {
               Create a new password
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Use a new password to keep your DSP account secure.
+              Use a new password to keep your Drive Pilot account secure.
             </Typography>
           </Box>
 

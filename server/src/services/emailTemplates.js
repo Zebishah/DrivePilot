@@ -100,24 +100,24 @@ function shell(title, body, { preheader = "" } = {}) {
           <tr><td style="padding:4px 8px 18px">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
               <td valign="middle" style="width:52px">
-                <div style="width:42px;height:42px;border-radius:13px;background:${COLORS.navy};color:${COLORS.cyan};font-size:18px;font-weight:800;line-height:42px;text-align:center;letter-spacing:-1px">DSP</div>
+                <div style="width:42px;height:42px;border-radius:13px;background:${COLORS.navy};color:${COLORS.cyan};font-size:18px;font-weight:800;line-height:42px;text-align:center;letter-spacing:-1px">DP</div>
               </td>
               <td valign="middle" style="padding-left:10px;color:${COLORS.navy};font-size:16px;font-weight:800;letter-spacing:.1px">
-                DSP Marketplace<br><span style="color:${COLORS.muted};font-size:11px;font-weight:600;letter-spacing:.2px">Learn with confidence</span>
+                Drive Pilot<br><span style="color:${COLORS.muted};font-size:11px;font-weight:600;letter-spacing:.2px">Learn with confidence</span>
               </td>
             </tr></table>
           </td></tr>
           <tr><td style="background:#ffffff;border:1px solid ${COLORS.border};border-radius:14px;box-shadow:0 8px 28px rgba(17,26,53,.06);overflow:hidden">
             <div style="height:5px;background:${COLORS.cyan}"></div>
             <div style="padding:34px 38px 36px">
-              <p style="margin:0 0 10px;color:${COLORS.blue};font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase">DSP Marketplace</p>
+              <p style="margin:0 0 10px;color:${COLORS.blue};font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase">Drive Pilot</p>
               <h1 style="margin:0;color:${COLORS.navy};font-size:27px;line-height:1.25;letter-spacing:-.4px">${escapeHtml(title)}</h1>
               <div style="margin-top:26px;color:${COLORS.ink};font-size:15px;line-height:1.65">${body}</div>
             </div>
           </td></tr>
           <tr><td align="center" style="padding:22px 12px 0;color:${COLORS.muted};font-size:11px;line-height:1.7">
             <p style="margin:0">A smarter way to plan every lesson.</p>
-            <p style="margin:4px 0 0">This is an automated message from DSP Marketplace.</p>
+            <p style="margin:4px 0 0">This is an automated message from Drive Pilot.</p>
           </td></tr>
         </table>
       </td></tr>
@@ -139,11 +139,11 @@ function otpShell(title, body) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f8fb">
       <tr><td align="center" style="padding:28px 12px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
-          <tr><td style="padding:4px 8px 18px;color:${COLORS.navy};font-size:16px;font-weight:800">DSP Marketplace</td></tr>
+          <tr><td style="padding:4px 8px 18px;color:${COLORS.navy};font-size:16px;font-weight:800">Drive Pilot</td></tr>
           <tr><td style="background:#ffffff;border:1px solid ${COLORS.border};border-radius:14px;overflow:hidden">
             <div style="height:4px;background:${COLORS.cyan}"></div>
             <div style="padding:32px 34px 34px">
-              <p style="margin:0 0 10px;color:${COLORS.blue};font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase">DSP Marketplace</p>
+              <p style="margin:0 0 10px;color:${COLORS.blue};font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase">Drive Pilot</p>
               <h1 style="margin:0;color:${COLORS.navy};font-size:26px;line-height:1.25">${escapeHtml(title)}</h1>
               <div style="margin-top:24px;color:${COLORS.ink};font-size:15px;line-height:1.65">${body}</div>
             </div>
@@ -198,12 +198,12 @@ function renderEmailTemplate(template, data = {}) {
   }
   if (template === "otp") {
     const isSignIn = data.type === "two_factor_auth";
-    const title = isSignIn ? "Your DSP Marketplace sign-in code" : "Your DSP Marketplace verification code";
+    const title = isSignIn ? "Your Drive Pilot sign-in code" : "Your Drive Pilot verification code";
     const codeLabel = isSignIn ? "Your sign-in code" : "Your verification code";
     const otp = String(data.otp ?? "");
     return {
       subject: title,
-      text: `DSP Marketplace\n\n${codeLabel}: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, you can safely ignore this email.`,
+      text: `Drive Pilot\n\n${codeLabel}: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, you can safely ignore this email.`,
       html: otpShell(title, `<p style="margin:0 0 16px">${escapeHtml(codeLabel)}:</p><div style="margin:20px 0;background:${COLORS.softBlue};border:1px solid #dbe5ff;border-radius:10px;padding:18px;text-align:center"><p style="margin:0;color:${COLORS.navy};font-size:32px;line-height:1.2;font-weight:800;letter-spacing:9px">${escapeHtml(otp)}</p></div><p style="margin:0;color:${COLORS.muted};font-size:13px">This code expires in 10 minutes. If you did not request this, you can safely ignore this email.</p>`),
       tracking: { trackOpens: false, trackClicks: false },
     };
@@ -211,9 +211,9 @@ function renderEmailTemplate(template, data = {}) {
   if (template === "welcome") {
     const name = data.name || "there";
     return {
-      subject: "Welcome to DSP Marketplace",
+      subject: "Welcome to Drive Pilot",
       text: `Welcome ${name}. Your account is ready to use.`,
-      html: shell("Welcome to DSP Marketplace", `<p style="margin:0 0 16px">Welcome ${escapeHtml(name)} — we’re glad you’re here.</p><p style="margin:0">Your account is ready to use. Find the right instructor, keep your schedule in one place, and make every lesson count.</p>`, { preheader: "Your DSP Marketplace account is ready." }),
+      html: shell("Welcome to Drive Pilot", `<p style="margin:0 0 16px">Welcome ${escapeHtml(name)} — we’re glad you’re here.</p><p style="margin:0">Your account is ready to use. Find the right instructor, keep your schedule in one place, and make every lesson count.</p>`, { preheader: "Your Drive Pilot account is ready." }),
     };
   }
   if (template === "verification") {
@@ -229,7 +229,7 @@ function renderEmailTemplate(template, data = {}) {
     return {
       subject: "Your instructor signup link",
       text: `Complete your instructor signup here: ${link}`,
-      html: shell("Complete your signup", `<p style="margin:0 0 16px">Your instructor invitation is ready. Use the secure link below to finish creating your account.</p><div style="margin-top:24px">${button("Continue signup", link)}</div><p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px">If you were not expecting this invitation, you can ignore this email.</p>`, { preheader: "Your DSP instructor invitation is ready." }),
+      html: shell("Complete your signup", `<p style="margin:0 0 16px">Your instructor invitation is ready. Use the secure link below to finish creating your account.</p><div style="margin-top:24px">${button("Continue signup", link)}</div><p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px">If you were not expecting this invitation, you can ignore this email.</p>`, { preheader: "Your Drive Pilot instructor invitation is ready." }),
     };
   }
   if (template === "password_reset") {
@@ -237,7 +237,7 @@ function renderEmailTemplate(template, data = {}) {
     return {
       subject: "Password reset instructions",
       text: `Reset your password within one hour: ${link}`,
-      html: shell("Reset your password", `<p style="margin:0 0 16px">We received a request to reset your DSP Marketplace password.</p><p style="margin:0">This secure link is valid for one hour.</p><div style="margin-top:24px">${button("Reset password", link)}</div><p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px">If you did not request a reset, no action is needed.</p>`, { preheader: "Your DSP password reset link is ready." }),
+      html: shell("Reset your password", `<p style="margin:0 0 16px">We received a request to reset your Drive Pilot password.</p><p style="margin:0">This secure link is valid for one hour.</p><div style="margin-top:24px">${button("Reset password", link)}</div><p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px">If you did not request a reset, no action is needed.</p>`, { preheader: "Your Drive Pilot password reset link is ready." }),
     };
   }
   if (template === "document_status") {
@@ -254,7 +254,7 @@ function renderEmailTemplate(template, data = {}) {
     return {
       subject: title,
       text: `Your payout of CHF ${data.amount} for the lesson on ${data.lessonDate} has been completed.`,
-      html: shell(title, `<p style="margin:0 0 16px">Your instructor payout has been completed successfully.</p>${infoCard(`<p style="margin:0;color:${COLORS.muted};font-size:12px;text-transform:uppercase;letter-spacing:.6px">Payout amount</p><p style="margin:6px 0 0;color:${COLORS.navy};font-weight:800;font-size:24px">CHF ${escapeHtml(data.amount)}</p><p style="margin:8px 0 0;color:${COLORS.muted};font-size:13px">Lesson date: ${formatDate(data.lessonDate)}</p>`)}`, { preheader: `Your CHF ${data.amount} DSP payout is complete.` }),
+      html: shell(title, `<p style="margin:0 0 16px">Your instructor payout has been completed successfully.</p>${infoCard(`<p style="margin:0;color:${COLORS.muted};font-size:12px;text-transform:uppercase;letter-spacing:.6px">Payout amount</p><p style="margin:6px 0 0;color:${COLORS.navy};font-weight:800;font-size:24px">CHF ${escapeHtml(data.amount)}</p><p style="margin:8px 0 0;color:${COLORS.muted};font-size:13px">Lesson date: ${formatDate(data.lessonDate)}</p>`)}`, { preheader: `Your CHF ${data.amount} Drive Pilot payout is complete.` }),
     };
   }
   if (template === "contact_admin") {
@@ -269,7 +269,7 @@ function renderEmailTemplate(template, data = {}) {
     return {
       subject: "We received your message",
       text: `Thanks ${data.name}. We received your message and will respond soon.`,
-      html: shell("Thanks for contacting us", `<p style="margin:0 0 16px">Thanks ${escapeHtml(data.name)} — your message reached the DSP team.</p><p style="margin:0">We’ll review it and respond as soon as possible.</p>`, { preheader: "The DSP team received your message." }),
+      html: shell("Thanks for contacting us", `<p style="margin:0 0 16px">Thanks ${escapeHtml(data.name)} — your message reached the Drive Pilot team.</p><p style="margin:0">We’ll review it and respond as soon as possible.</p>`, { preheader: "The Drive Pilot team received your message." }),
     };
   }
   if (template === "custom") {

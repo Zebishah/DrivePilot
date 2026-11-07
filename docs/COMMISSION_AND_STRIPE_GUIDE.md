@@ -1,14 +1,14 @@
 # Commission and Stripe: Where It’s Configured and How to Verify
 
-This document explains where DSP commission is configured, how to see commission data in the DSP dashboard, and what appears (and what does not) in the Stripe test environment. It is written for the client and for anyone validating the payment system.
+This document explains where Drive Pilot commission is configured, how to see commission data in the Drive Pilot dashboard, and what appears (and what does not) in the Stripe test environment. It is written for the client and for anyone validating the payment system.
 
 ---
 
 ## 1. Where commission is configured
 
-**Commission is configured only in the DSP platform, not in Stripe.**
+**Commission is configured only in the Drive Pilot platform, not in Stripe.**
 
-- **Location:** **DSP Admin Dashboard → Payment Management → Commission Management** (tab within the Payment Management page).
+- **Location:** **Drive Pilot Admin Dashboard → Payment Management → Commission Management** (tab within the Payment Management page).
 - **What you can set:**
   - **Commission type:** Percentage or fixed amount.
   - **Commission value:** For percentage, the platform’s share (e.g. 40 means the admin gets 40%, the instructor gets 60%). For fixed amount, the platform’s share per lesson in CHF.
@@ -16,14 +16,14 @@ This document explains where DSP commission is configured, how to see commission
 
 **Per-instructor override**
 
-- **Location:** **DSP Admin Dashboard → Instructor Management** → open an instructor (detail modal).
+- **Location:** **Drive Pilot Admin Dashboard → Instructor Management** → open an instructor (detail modal).
 - **Commission override** section: You can set an **Instructor share (%)** for that instructor only (e.g. 60% → instructor gets 60%, admin gets 40%). If you leave it empty or click **“Use platform default”**, that instructor uses the **Default instructor share (%)** from Commission Management instead.
 
 So: if an instructor has a custom commission set, that value is used; otherwise the platform default (Default instructor share or the legacy commission value) applies. The same logic is used for instant payments at checkout, deferred (T-48) charges, and payouts. Commission is **not** configurable per transaction in the Stripe Dashboard; Stripe only sees the full payment and the transfer we send to the instructor’s Connect account.
 
 ---
 
-## 2. How to verify commission in the DSP dashboard
+## 2. How to verify commission in the Drive Pilot dashboard
 
 ### Admin
 
@@ -57,24 +57,24 @@ So in Stripe you will see:
 - **Payments** – The full (gross) amount of each charge.
 - **Connect → Accounts → [Instructor] → Transfers** – The amount we sent to each instructor (their net share).
 
-There is **no** Stripe section labeled “Commission”. The commission is the difference between what we received (Payments) and what we transferred (Transfers), and it is fully visible and manageable in the **DSP Admin Dashboard** (Payment Management → Transactions and Commission Management).
+There is **no** Stripe section labeled “Commission”. The commission is the difference between what we received (Payments) and what we transferred (Transfers), and it is fully visible and manageable in the **Drive Pilot Admin Dashboard** (Payment Management → Transactions and Commission Management).
 
-**In test mode:** The same logic applies. Use test cards and the DSP admin transaction list and Commission Management to verify that changing the commission rate/type in the admin panel correctly affects new payments and that admin/instructor transaction amounts match the configured split.
+**In test mode:** The same logic applies. Use test cards and the Drive Pilot admin transaction list and Commission Management to verify that changing the commission rate/type in the admin panel correctly affects new payments and that admin/instructor transaction amounts match the configured split.
 
 ---
 
 Truth / what to tell the client
-Stripe Dashboard will NOT show a separate “DSP commission” line item. Stripe records:
+Stripe Dashboard will NOT show a separate “Drive Pilot commission” line item. Stripe records:
 
 the full payment (gross) on the platform Stripe account, and
 (if you use Connect transfers) the transfer to the instructor’s connected account. The difference is effectively the platform’s commission, but Stripe does not label it as “commission” or show a dedicated “commission transaction”.
-Where they can actually verify commission is in the DSP Admin Dashboard, not Stripe:
+Where they can actually verify commission is in the Drive Pilot Admin Dashboard, not Stripe:
 
 Admin → Payment Management → Commission Management: shows the configured default commission (rate/type).
 Admin → Payment Management → Transactions: shows platform-side transactions (gross receipt and commission entries) so they can confirm amounts per booking/slot.
 Suggested client answer (copy/paste)
-In Stripe, you won’t see a separate “DSP commission” transaction. Stripe only shows the gross payment and (for Connect) the transfer to the instructor account. Stripe doesn’t label the retained amount as “commission”.
-To verify commission, please use the DSP Admin Dashboard → Payment Management:
+In Stripe, you won’t see a separate “Drive Pilot commission” transaction. Stripe only shows the gross payment and (for Connect) the transfer to the instructor account. Stripe doesn’t label the retained amount as “commission”.
+To verify commission, please use the Drive Pilot Admin Dashboard → Payment Management:
 
 Commission Management shows the configured commission rate/type.
 Transactions shows the platform’s gross receipts and commission amounts per lesson/slot.
@@ -83,14 +83,14 @@ Transactions shows the platform’s gross receipts and commission amounts per le
 
 | What you want to do                                         | Where                                                                                           |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Configure commission** (rate, type, default instructor %) | DSP Admin Dashboard → Payment Management → **Commission Management** tab                        |
-| **Set per-instructor commission override**                  | DSP Admin Dashboard → **Instructor Management** → open instructor → **Commission override**     |
-| **See platform commission and gross receipts**              | DSP Admin Dashboard → Payment Management → **Transactions** (filter by Admin/Platform and type) |
+| **Configure commission** (rate, type, default instructor %) | Drive Pilot Admin Dashboard → Payment Management → **Commission Management** tab                        |
+| **Set per-instructor commission override**                  | Drive Pilot Admin Dashboard → **Instructor Management** → open instructor → **Commission override**     |
+| **See platform commission and gross receipts**              | Drive Pilot Admin Dashboard → Payment Management → **Transactions** (filter by Admin/Platform and type) |
 | **See instructor net earnings**                             | Instructor Dashboard → **Transaction History** (and Payment tab transaction list)               |
 | **See what the student paid**                               | Student Dashboard → **Payment History**                                                         |
 | **See gross payments in Stripe**                            | Stripe Dashboard → **Payments**                                                                 |
 | **See what was sent to instructors**                        | Stripe Dashboard → **Connect → Accounts** → select instructor → **Transfers**                   |
-| **See “commission” in Stripe**                              | Not available; commission = (Payments − Transfers), managed in DSP Admin                        |
+| **See “commission” in Stripe**                              | Not available; commission = (Payments − Transfers), managed in Drive Pilot Admin                        |
 
 ---
 
@@ -104,4 +104,4 @@ Transactions shows the platform’s gross receipts and commission amounts per le
 4. In **Instructor Dashboard → Transaction History**, confirm the instructor sees only their net share (e.g. 60% of the lesson price).
 5. In **Stripe Dashboard**, confirm the Payment appears for the full amount and that a Transfer to the instructor’s Connect account matches the instructor’s net share.
 
-This confirms that commission is configured in the DSP admin panel, applied correctly in the app, and visible in the DSP dashboards; Stripe shows payments and transfers, and the difference is the commission we keep on the platform.
+This confirms that commission is configured in the Drive Pilot admin panel, applied correctly in the app, and visible in the Drive Pilot dashboards; Stripe shows payments and transfers, and the difference is the commission we keep on the platform.

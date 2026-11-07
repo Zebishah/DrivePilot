@@ -17,9 +17,9 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     document.title =
-      "DSP Marketplace — Driving Lessons, Instructors & Learning Management";
+      "Drive Pilot — Driving Lessons, Instructors & Learning Management";
     const description =
-      "Find driving instructors, compare lesson options, and book driving lessons online. Manage payments, learning progress, and teaching with DSP Marketplace.";
+      "Find driving instructors, compare lesson options, and book driving lessons online. Manage payments, learning progress, and teaching with Drive Pilot.";
     let descriptionTag = document.querySelector<HTMLMetaElement>(
       'meta[name="description"]',
     );
