@@ -119,7 +119,9 @@ test("Resend production configuration requires Resend credentials", () => {
   );
   assert.throws(
     () => validateEnvironment({
-      env: productionBase({ EMAIL_PROVIDER: "elasticemail" }),\n    }),\n    /EMAIL_PROVIDER must be resend/,
+      env: productionBase({ EMAIL_PROVIDER: "elasticemail" }),
+    }),
+    /EMAIL_PROVIDER must be resend/,
   );
 });
 
