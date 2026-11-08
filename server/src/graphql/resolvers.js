@@ -20,6 +20,8 @@ const {
   clearResetToken,
   createAuthToken,
   verifyResetToken,
+  encryptResetToken,
+  resetTokenHash,
 } = require("../services/tokenService");
 const {
   generateOTP,
@@ -65,6 +67,7 @@ const createToken = (user) => {
       email: user.email,
       role: user.role,
       isDemo: Boolean(user.isDemo),
+      authVersion: user.authVersion || 0,
     },
     process.env.JWT_SECRET,
     { expiresIn: "1d" },
@@ -885,17 +888,25 @@ instead.`);
           throw new UserInputError("OTP must be exactly 6 digits.");
         }
 
-        const otpEntry = await Otp.findOneAndUpdate({
+        // Count every attempt against the latest active code, including incorrect guesses.
+        const attempt = await Otp.findOneAndUpdate({
           email,
-          otp,
           type,
           status: "unused",
           expiresAt: { $gt: new Date() },
-        }, { $set: { status: "used" } }, { new: true });
+          $or: [{ attempts: { $lt: 5 } }, { attempts: { $exists: false } }],
+        }, { $inc: { attempts: 1 } }, { new: true, sort: { createdAt: -1 } });
 
-        if (!otpEntry) {
+        if (!attempt || attempt.otp !== otp) {
           throw new UserInputError("Invalid or expired OTP.");
         }
+
+        const otpEntry = await Otp.findOneAndUpdate({
+          _id: attempt._id,
+          status: "unused",
+          expiresAt: { $gt: new Date() },
+        }, { $set: { status: "used" } }, { new: true });
+        if (!otpEntry) throw new UserInputError("Invalid or expired OTP.");
 
         const user = await User.findOne({ email });
 
@@ -1397,26 +1408,29 @@ instead.`);
         return genericResponse;
       }
 
-      // Generate reset token
+      // Store an encrypted recovery token for the outbox; only its hash is used for lookup.
+      const cutoff = new Date(Date.now() - 60_000);
       const { resetToken, resetTokenExpiry } = generateResetToken();
+      const updated = await User.findOneAndUpdate({
+        _id: user._id,
+        $or: [
+          { resetTokenSentAt: null },
+          { resetTokenSentAt: { $exists: false } },
+          { resetTokenSentAt: { $lte: cutoff } },
+        ],
+      }, {
+        $set: {
+          resetToken: encryptResetToken(resetToken),
+          resetTokenHash: resetTokenHash(resetToken),
+          resetTokenExpiry: new Date(resetTokenExpiry),
+          resetTokenSentAt: new Date(),
+        },
+      }, { new: true });
+      if (!updated) return genericResponse;
 
-      // Save token to user document
-      await User.findByIdAndUpdate(user.id, {
-        resetToken,
-        resetTokenExpiry,
-      });
-
-      // Create reset URL
-      const frontendBase = (
-        process.env.FRONTEND_URL ||
-        process.env.Frontend_URL ||
-        "http://localhost:5173"
-      ).replace(/\/$/, "");
-      const resetUrl = `${frontendBase}/auth/reset-password/${resetToken}`;
-
-      // Send email using the email service
+      // The outbox resolves the encrypted token only when it sends the message.
       try {
-        await sendTemplateEmail(user.email, "passwordReset", resetUrl);
+        await sendTemplateEmail(user.email, "passwordReset", "queued");
 
         return {
           ...genericResponse,
@@ -1442,21 +1456,31 @@ instead.`);
         // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-        // Update user password and clear reset token
-        await User.findByIdAndUpdate(user.id, {
-          password: hashedPassword,
-        });
-
-        // Clear the reset token
-        await clearResetToken(user.id);
-
-        // Generate new JWT for auto login
-        const authToken = createToken(user);
+        // Atomically claim the one-time token and invalidate all existing JWT versions.
+        const updated = await User.findOneAndUpdate({
+          _id: user._id,
+          $or: [
+            { resetTokenHash: resetTokenHash(token) },
+            { resetToken: token }, // Allow previously issued legacy links.
+          ],
+          resetTokenExpiry: { $gt: new Date() },
+        }, {
+          $set: {
+            password: hashedPassword,
+            resetToken: null,
+            resetTokenHash: null,
+            resetTokenExpiry: null,
+            resetTokenSentAt: null,
+            isUserAuthenticated: false,
+          },
+          $inc: { authVersion: 1 },
+        }, { new: true });
+        if (!updated) throw new UserInputError("Invalid or expired reset token");
 
         return {
           success: true,
-          message: "Password successfully reset",
-          token: authToken,
+          message: "Password successfully reset. Please sign in again.",
+          token: null,
         };
       } catch (error) {
         if (error.errors) {

@@ -4,6 +4,7 @@ const User = require("../models/User").User;
 const Otp = require("../models/User").Otp;
 const SignupToken = require("../models/SignupLink");
 const { emailProvider, resolveConfiguredFrom } = require("./emailProvider");
+const { decryptResetToken } = require("./tokenService");
 const { renderEmailTemplate } = require("./emailTemplates");
 const metrics = require("../utils/metrics");
 const { logger, classifyError } = require("../utils/logger");
@@ -48,7 +49,7 @@ async function resolveReferences(event) {
       throw Object.assign(new Error("Password reset token is missing or expired"), { code: "RESET_TOKEN_EXPIRED", retryable: false });
     }
     const frontendBase = (process.env.FRONTEND_URL || process.env.Frontend_URL || "http://localhost:5173").replace(/\/$/, "");
-    data.resetUrl = `${frontendBase}/auth/reset-password/${encodeURIComponent(user.resetToken)}`;
+    data.resetUrl = `${frontendBase}/auth/reset-password#token=${encodeURIComponent(decryptResetToken(user.resetToken))}`;
   }
   return data;
 }

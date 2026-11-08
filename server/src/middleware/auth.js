@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { User } = require("../models/User");
 
 const authMiddleware = async (req) => {
   const authHeader = req.headers.authorization;
@@ -14,12 +15,14 @@ const authMiddleware = async (req) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const account = await User.findById(decoded.id);
+    if (!account || (account.authVersion || 0) !== (decoded.authVersion || 0)) return { user: null };
     return {
       user: {
-        id: decoded.id,
-        email: decoded.email,
-        role: decoded.role,
-        isDemo: Boolean(decoded.isDemo),
+        id: account.id,
+        email: account.email,
+        role: account.role,
+        isDemo: Boolean(account.isDemo),
       },
     };
   } catch (err) {

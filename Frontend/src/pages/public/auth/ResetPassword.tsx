@@ -40,7 +40,14 @@ const resetPasswordSchema = z
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 const ResetPassword: React.FC = () => {
-  const { token } = useParams<{ token: string }>();
+  const { token: legacyToken } = useParams<{ token: string }>();
+  const [token] = useState(() => {
+    const fragment = new URLSearchParams(window.location.hash.slice(1)).get("token");
+    return fragment || legacyToken || "";
+  });
+  useEffect(() => {
+    if (token) window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [token]);
   const [resetPassword, { loading }] = useMutation(RESET_PASSWORD);
   const [isReset, setIsReset] = useState(false);
   const [error, setError] = useState<string | null>(null);

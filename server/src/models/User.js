@@ -40,6 +40,9 @@ const baseSchema = new mongoose.Schema(
       documentStatus: { type: Boolean, default: true },
     },
     resetToken: { type: String, default: null },
+    resetTokenHash: { type: String, default: null, index: true },
+    resetTokenSentAt: { type: Date, default: null },
+    authVersion: { type: Number, default: 0 },
     resetTokenExpiry: { type: Date, default: null },
   },
   baseOptions,
@@ -51,6 +54,7 @@ const otpSchema = new mongoose.Schema({
   email: { type: String, required: true, lowercase: true, trim: true },
   // OTPs are strings so a valid code can never lose a leading zero.
   otp: { type: String, required: true, match: /^\d{6}$/ },
+  attempts: { type: Number, default: 0 },
   status: {
     type: String,
     enum: ["unused", "used", "expired"],
