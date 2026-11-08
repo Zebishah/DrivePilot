@@ -212,17 +212,20 @@ async function startApplication() {
   // Redis is an optional read cache. In worker mode with CACHE_ENABLED=false,
   // do not even attempt to establish a connection.
   if (redisStatus().configured) connectRedis();
-  logger.info("process_mode", { api: JOB_CONFIG.runApi, worker: JOB_CONFIG.runWorker });
-  if (JOB_CONFIG.runWorker) {
+  logger.info("process_mode", { api: JOB_CONFIG.runApi, worker: JOB_CONFIG.runWorker, emailWorker: JOB_CONFIG.runEmailWorker });
+  if (JOB_CONFIG.runWorker || JOB_CONFIG.runEmailWorker) {
+    const jobs = JOB_CONFIG.runWorker
+      ? workerJobs()
+      : workerJobs().filter((entry) => entry.name === "OutboxEmail");
     schedulerController = createJobScheduler({
-      jobs: workerJobs(),
+      jobs,
       leaseMs: JOB_CONFIG.leaseMs,
       heartbeatMs: JOB_CONFIG.heartbeatMs,
       shutdownTimeoutMs: JOB_CONFIG.shutdownTimeoutMs,
       maxRetryDelayMs: JOB_CONFIG.maxRetryDelayMs,
     });
     schedulerController.start();
-    logger.info("worker_scheduler_initialized");
+    logger.info("worker_scheduler_initialized", { jobNames: jobs.map((job) => job.name) });
   }
   await startApolloServer();
 }

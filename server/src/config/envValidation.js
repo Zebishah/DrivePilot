@@ -42,13 +42,17 @@ function validateEnvironment({ env = process.env } = {}) {
     env.RUN_WORKER,
     booleanValue("CRON_RUNS", env.CRON_RUNS, false),
   );
+  const runEmailWorker = booleanValue("RUN_EMAIL_WORKER", env.RUN_EMAIL_WORKER, false);
+  if (runEmailWorker && runWorker) {
+    throw new Error("RUN_EMAIL_WORKER and RUN_WORKER cannot both be true");
+  }
   const connectWebhookEnabled = booleanValue(
     "STRIPE_CONNECT_WEBHOOK_ENABLED",
     env.STRIPE_CONNECT_WEBHOOK_ENABLED,
     false,
   );
 
-  if (!runApi && !runWorker) {
+  if (!runApi && !runWorker && !runEmailWorker) {
     throw new Error("At least one of RUN_API or RUN_WORKER must be enabled");
   }
 
@@ -80,7 +84,7 @@ function validateEnvironment({ env = process.env } = {}) {
   if (emailProvider !== "resend") {
     throw new Error("EMAIL_PROVIDER must be resend");
   }
-  if (emailEnabled && (runApi || runWorker)) {
+  if (emailEnabled && (runApi || runWorker || runEmailWorker)) {
     required.push("RESEND_API_KEY");
     if (!isPresent(env.EMAIL_FROM_ADDRESS) && !isPresent(env.EMAIL_FROM)) {
       required.push("EMAIL_FROM_ADDRESS");
@@ -149,6 +153,7 @@ function validateEnvironment({ env = process.env } = {}) {
     production,
     runApi,
     runWorker,
+    runEmailWorker,
     connectWebhookEnabled,
     emailEnabled,
     emailProvider,

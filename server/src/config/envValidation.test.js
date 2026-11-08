@@ -22,6 +22,30 @@ test("API validation requires API-only credentials", () => {
   );
 });
 
+test("email-only mode requires Resend credentials and never enables full worker", () => {
+  const base = productionBase({
+    RUN_API: "false",
+    RUN_WORKER: "false",
+    RUN_EMAIL_WORKER: "true",
+    EMAIL_ENABLED: "true",
+    EMAIL_PROVIDER: "resend",
+    EMAIL_MODE: "production",
+    EMAIL_FROM_ADDRESS: "sender@example.com",
+  });
+  assert.throws(
+    () => validateEnvironment({ env: base }),
+    /Missing required environment variable: RESEND_API_KEY/,
+  );
+  const mode = validateEnvironment({ env: { ...base, RESEND_API_KEY: "test-key" } });
+  assert.equal(mode.runApi, false);
+  assert.equal(mode.runWorker, false);
+  assert.equal(mode.runEmailWorker, true);
+  assert.throws(
+    () => validateEnvironment({ env: { ...base, RUN_WORKER: "true" } }),
+    /RUN_EMAIL_WORKER and RUN_WORKER cannot both be true/,
+  );
+});
+
 test("worker validation does not require OAuth, S3, or Gemini credentials", () => {
   const result = validateEnvironment({
     env: productionBase({ RUN_API: "false", RUN_WORKER: "true" }),

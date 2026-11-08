@@ -20,6 +20,10 @@ function booleanValue(name, fallback) {
 const CRON_RUNS = booleanValue("CRON_RUNS", false);
 const RUN_API = booleanValue("RUN_API", true);
 const RUN_WORKER = booleanValue("RUN_WORKER", CRON_RUNS);
+const RUN_EMAIL_WORKER = booleanValue("RUN_EMAIL_WORKER", false);
+if (RUN_EMAIL_WORKER && RUN_WORKER) {
+  throw new Error("RUN_EMAIL_WORKER and RUN_WORKER cannot both be true");
+}
 const STRIPE_CONNECT_WEBHOOK_ENABLED = booleanValue(
   "STRIPE_CONNECT_WEBHOOK_ENABLED",
   false,
@@ -28,6 +32,7 @@ const STRIPE_CONNECT_WEBHOOK_ENABLED = booleanValue(
 const JOB_CONFIG = {
   runApi: RUN_API,
   runWorker: RUN_WORKER,
+  runEmailWorker: RUN_EMAIL_WORKER,
   connectWebhookEnabled: STRIPE_CONNECT_WEBHOOK_ENABLED,
   leaseMs: positiveInteger("JOB_LEASE_MS", 10 * 60 * 1000),
   heartbeatMs: positiveInteger("JOB_HEARTBEAT_MS", 60 * 1000),
