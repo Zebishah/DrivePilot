@@ -150,22 +150,24 @@ export default function Sidebar({
           >
             {initials}
           </Avatar>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography className="dsp-sidebar__greeting">
+          <Box className="dsp-sidebar__profile-copy">
+            <Typography className="dsp-sidebar__greeting" title={userName}>
               {userName}
             </Typography>
-            <span className="dsp-sidebar__role-badge">
-              <span className="dsp-sidebar__status-dot" aria-hidden="true" />
-              {roleLabel}
-            </span>
-            {userIsDemo ? (
-              <span className="dsp-sidebar__demo-badge">Recruiter Demo</span>
-            ) : null}
+            <Typography className="dsp-sidebar__eyebrow">
+              {roleLabel} workspace
+            </Typography>
           </Box>
         </Box>
-        <Typography className="dsp-sidebar__eyebrow">
-          {roleLabel} workspace
-        </Typography>
+        <Box className="dsp-sidebar__profile-meta">
+          <span className="dsp-sidebar__role-badge">
+            <span className="dsp-sidebar__status-dot" aria-hidden="true" />
+            {roleLabel}
+          </span>
+          {userIsDemo ? (
+            <span className="dsp-sidebar__demo-badge">Recruiter Demo</span>
+          ) : null}
+        </Box>
       </Box>
 
       <Box className="dsp-sidebar__nav-scroll">

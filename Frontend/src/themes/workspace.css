@@ -544,7 +544,7 @@ body.dsp-intelligent .dsp-sidebar__demo-badge {
   color: #f1f6f4;
   background: #172b36;
   border-color: #365563;
-  font-size: 8px;
+  font-size: 10px;
 }
 body.dsp-intelligent .dsp-sidebar__status-dot {
   background: #114c5a;
@@ -552,9 +552,7 @@ body.dsp-intelligent .dsp-sidebar__status-dot {
 }
 body.dsp-intelligent .dsp-sidebar__eyebrow {
   color: #bfd0d6 !important;
-  font-family: monospace;
-  font-size: 8px;
-  letter-spacing: 1.2px;
+  font-family: inherit;
 }
 body.dsp-intelligent .dsp-sidebar__group-label {
   margin-top: 22px;
