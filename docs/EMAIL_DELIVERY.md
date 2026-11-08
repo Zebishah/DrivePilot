@@ -1,31 +1,31 @@
-# Email delivery
+# Transactional email delivery
 
-## Current sender setup
+Drive Pilot uses the Resend HTTPS Email API and its existing durable MongoDB outbox. Email verification OTPs, sign-in codes, password resets, invitations and notifications continue through the same queue, retry, and deduplication workflow.
 
-Drive Pilot sends transactional mail through the Elastic Email v4 HTTPS API and a durable MongoDB outbox. The current setup uses a verified personal Gmail address as the Elastic Email sender. The address is configured only in the server-side deployment secret store:
+## Render backend and email worker
 
-```text
-EMAIL_PROVIDER=elasticemail
-ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
-EMAIL_FROM_ADDRESS=<verified-sender-address>
+Configure the following as **server-side environment variables** on Render and on any separately deployed email worker:
+
+```env
+EMAIL_ENABLED=true
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=<your-resend-api-key>
+EMAIL_FROM_ADDRESS=<sender@your-verified-domain>
 EMAIL_FROM_NAME=Drive Pilot
 EMAIL_REPLY_TO=<optional-reply-address>
+EMAIL_MODE=test
+EMAIL_TEST_RECIPIENT=<your-controlled-test-inbox>
+EMAIL_REQUEST_TIMEOUT_MS=10000
 ```
 
-The repository does not claim control of `gmail.com` DNS and does not configure SPF, DKIM, DMARC, or a custom bounce domain for that personal sender. Do not put the real address or API key in source control or frontend variables.
+Do not put `RESEND_API_KEY` into source control or a Vite / Vercel frontend environment. Remove the old `ELASTIC_EMAIL_API_KEY` variable after the Resend deployment is verified.
 
-Until a DSP-owned domain is available, keep the Elastic Email sender verification in place and use `EMAIL_MODE=test` with `EMAIL_TEST_RECIPIENT` for controlled testing. Switch to production recipients only after the provider account and sender are intentionally configured.
+In `EMAIL_MODE=test`, the application sends every outbox message to the designated `EMAIL_TEST_RECIPIENT`, regardless of the intended user. Use test mode when first deploying to avoid sending real OTPs and reminders to users.
 
-`EMAIL_FROM` remains supported for older deployments, but new deployments should use `EMAIL_FROM_ADDRESS` and `EMAIL_FROM_NAME` so the sender name is consistently `Drive Pilot`.
+After verifying the sending domain in the Resend dashboard, testing email delivery, and confirming the sender address is authorized, switch to `EMAIL_MODE=production` to send to actual recipients. Email delivery must not use an unverified Gmail address as the `from` sender. Configure SPF/DKIM records as instructed by Resend for the domain you own.
 
-## OTP messages
+Resend accepts both HTML and plain-text content. The existing OTP templates include the code and expiry without marketing links. The provider is called only from the email delivery worker; the API creates durable outbox events.
 
-Email verification and two-factor sign-in codes are sent through the same outbox and retry/deduplication path as other transactional mail. OTP messages contain only Drive Pilot branding, the six-digit code, its ten-minute expiry, and a security note. They intentionally contain no dashboard links, calls to action, marketing copy, unsubscribe links, or notification-management links.
+The adapter passes the outbox event ID as an `Idempotency-Key` to Resend. Resend deduplicates identical requests for 24 hours. The application retains its outbox, lease, retry and reconciliation logic; delivery cannot be guaranteed exactly once forever, particularly after the provider's idempotency retention expires.
 
-OTP messages include both HTML and plain-text bodies. Elastic Email open and click tracking is disabled per OTP message using the provider's transactional `Options` fields.
-
-The API keeps OTPs one-time and time-limited. Resends have a one-minute per-email/type cooldown in addition to the GraphQL/IP rate limit, and expired OTP records are cleaned up by MongoDB's TTL index. Codes, tokens, API keys, and provider secrets are not written to application logs.
-
-## Future custom-domain setup
-
-When Drive Pilot owns a sending domain, configure the domain in Elastic Email and publish the exact SPF, DKIM, DMARC, and custom bounce-domain records supplied by Elastic Email. Then change `EMAIL_FROM_ADDRESS` to an address on that owned domain, verify a controlled production recipient flow, and document the provider's final authentication state. No custom-domain authentication is assumed until those steps are completed.
+`EMAIL_FROM` remains supported as a legacy fallback only when `EMAIL_FROM_ADDRESS` is empty.

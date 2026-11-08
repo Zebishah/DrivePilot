@@ -1,6 +1,6 @@
 const { logger } = require("../utils/logger");
 
-const ELASTIC_EMAIL_ENDPOINT = "https://api.elasticemail.com/v4/emails/transactional";
+const RESEND_EMAIL_ENDPOINT = "https://api.resend.com/emails";
 
 class EmailProviderError extends Error {
   constructor(message, { code = "EMAIL_PROVIDER_ERROR", status, retryable = true } = {}) {
@@ -38,7 +38,6 @@ function resolveConfiguredFrom(env = process.env) {
     const name = String(env.EMAIL_FROM_NAME || "Drive Pilot").trim();
     return name ? `${name} <${address}>` : address;
   }
-  // Keep deployments using the original single-variable configuration working.
   return String(env.EMAIL_FROM || "").trim();
 }
 
@@ -48,20 +47,20 @@ function normalizeReplyTo(value) {
   return values.map((item) => {
     const parsed = parseEmailAddress(item);
     return parsed.displayName ? `${parsed.displayName} <${parsed.email}>` : parsed.email;
-  }).join(",");
+  });
 }
 
-function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.env } = {}) {
+function createResendEmailProvider({ fetchImpl = global.fetch, env = process.env } = {}) {
   const enabled = boolEnv(env.EMAIL_ENABLED, true);
   const mode = String(env.EMAIL_MODE || "test").trim().toLowerCase();
   const timeoutMs = Math.max(Number(env.EMAIL_REQUEST_TIMEOUT_MS) || 10000, 1000);
 
   return {
     isEnabled: () => enabled,
-    async send({ to, from, subject, html, text, replyTo, tracking }) {
+    async send({ to, from, subject, html, text, replyTo, metadata }) {
       if (!enabled) return { skipped: true, reason: "EMAIL_DISABLED" };
       if (typeof fetchImpl !== "function") {
-        throw new EmailProviderError("Fetch is unavailable for Elastic Email", {
+        throw new EmailProviderError("Fetch is unavailable for Resend", {
           code: "EMAIL_FETCH_UNAVAILABLE",
           retryable: false,
         });
@@ -91,9 +90,10 @@ function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.en
           retryable: false,
         });
       }
-      if (!String(env.ELASTIC_EMAIL_API_KEY || "").trim()) {
-        throw new EmailProviderError("ELASTIC_EMAIL_API_KEY is not configured", {
-          code: "ELASTIC_EMAIL_API_KEY_MISSING",
+      const apiKey = String(env.RESEND_API_KEY || "").trim();
+      if (!apiKey) {
+        throw new EmailProviderError("RESEND_API_KEY is not configured", {
+          code: "RESEND_API_KEY_MISSING",
           retryable: false,
         });
       }
@@ -105,75 +105,67 @@ function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.en
       }
 
       const sender = parseEmailAddress(from);
-      const content = {
-        Body: [
-          { ContentType: "HTML", Charset: "utf-8", Content: String(html) },
-          { ContentType: "PlainText", Charset: "utf-8", Content: String(text) },
-        ],
-        From: sender.displayName ? `${sender.displayName} <${sender.email}>` : sender.email,
-        Subject: String(subject),
+      const payload = {
+        from: sender.displayName ? `${sender.displayName} <${sender.email}>` : sender.email,
+        to: recipients,
+        subject: String(subject),
+        html: String(html),
+        text: String(text),
       };
       const normalizedReplyTo = normalizeReplyTo(replyTo);
-      if (normalizedReplyTo) content.ReplyTo = normalizedReplyTo;
+      if (normalizedReplyTo?.length) payload.reply_to = normalizedReplyTo;
 
-      const options = {};
-      if (tracking && tracking.trackOpens !== undefined) {
-        options.TrackOpens = String(Boolean(tracking.trackOpens));
-      }
-      if (tracking && tracking.trackClicks !== undefined) {
-        options.TrackClicks = String(Boolean(tracking.trackClicks));
-      }
+      const headers = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      // An outbox event ID stays stable across retries; Resend deduplicates for 24 hours.
+      const eventId = String(metadata?.outboxEventId || "").trim();
+      if (eventId) headers["Idempotency-Key"] = `drive-pilot-email/${eventId}`.slice(0, 256);
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetchImpl(ELASTIC_EMAIL_ENDPOINT, {
+        const response = await fetchImpl(RESEND_EMAIL_ENDPOINT, {
           method: "POST",
-          headers: {
-            "X-ElasticEmail-ApiKey": String(env.ELASTIC_EMAIL_API_KEY).trim(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            Recipients: { To: recipients },
-            Content: content,
-            ...(Object.keys(options).length ? { Options: options } : {}),
-          }),
+          headers,
+          body: JSON.stringify(payload),
           signal: controller.signal,
         });
         let body = null;
         try { body = await response.json(); } catch (_) { body = null; }
         if (!response.ok) {
-          const retryable = response.status === 429 || response.status >= 500;
-          throw new EmailProviderError(`Elastic Email request failed with status ${response.status}`, {
-            code: `ELASTICEMAIL_${response.status}`,
+          const retryable = response.status === 429 || response.status >= 500 ||
+            (response.status === 409 && body?.name === "concurrent_idempotent_requests");
+          throw new EmailProviderError(`Resend request failed with status ${response.status}`, {
+            code: `RESEND_${response.status}`,
             status: response.status,
             retryable,
           });
         }
-
-        const providerMessageId = body?.MessageID || body?.TransactionID;
-        if (!providerMessageId) {
-          throw new EmailProviderError("Elastic Email returned an invalid response", {
-            code: "ELASTICEMAIL_RESPONSE_INVALID",
+        const providerMessageId = body?.id;
+        if (typeof providerMessageId !== "string" || !providerMessageId.trim()) {
+          throw new EmailProviderError("Resend returned an invalid response", {
+            code: "RESEND_RESPONSE_INVALID",
             status: response.status,
             retryable: false,
           });
         }
         logger.info("email_sent", {
-          provider: "elasticemail",
+          provider: "resend",
           providerMessageId,
           testMode: mode === "test",
         });
-        return { provider: "elasticemail", providerMessageId, intendedRecipients };
+        return { provider: "resend", providerMessageId, intendedRecipients };
       } catch (error) {
         if (error instanceof EmailProviderError) throw error;
         if (error?.name === "AbortError") {
-          throw new EmailProviderError("Elastic Email request timed out", {
+          throw new EmailProviderError("Resend request timed out", {
             code: "EMAIL_TIMEOUT",
             retryable: true,
           });
         }
-        throw new EmailProviderError("Elastic Email request failed", {
+        throw new EmailProviderError("Resend request failed", {
           code: "EMAIL_NETWORK_ERROR",
           retryable: true,
         });
@@ -185,19 +177,19 @@ function createElasticEmailProvider({ fetchImpl = global.fetch, env = process.en
 }
 
 function createEmailProvider({ fetchImpl = global.fetch, env = process.env } = {}) {
-  const provider = String(env.EMAIL_PROVIDER || "elasticemail").trim().toLowerCase();
-  if (provider !== "elasticemail") {
-    throw new Error(`Unsupported EMAIL_PROVIDER: ${provider || "(empty)"}. Expected elasticemail`);
+  const provider = String(env.EMAIL_PROVIDER || "resend").trim().toLowerCase();
+  if (provider !== "resend") {
+    throw new Error(`Unsupported EMAIL_PROVIDER: ${provider || "(empty)"}. Expected resend`);
   }
-  return createElasticEmailProvider({ fetchImpl, env });
+  return createResendEmailProvider({ fetchImpl, env });
 }
 
 const emailProvider = createEmailProvider();
 
 module.exports = {
-  ELASTIC_EMAIL_ENDPOINT,
+  RESEND_EMAIL_ENDPOINT,
   EmailProviderError,
-  createElasticEmailProvider,
+  createResendEmailProvider,
   createEmailProvider,
   resolveConfiguredFrom,
   parseEmailAddress,

@@ -76,12 +76,12 @@ function validateEnvironment({ env = process.env } = {}) {
   }
 
   const emailEnabled = booleanValue("EMAIL_ENABLED", env.EMAIL_ENABLED, true);
-  const emailProvider = String(env.EMAIL_PROVIDER || "elasticemail").trim().toLowerCase();
-  if (emailProvider !== "elasticemail") {
-    throw new Error("EMAIL_PROVIDER must be elasticemail");
+  const emailProvider = String(env.EMAIL_PROVIDER || "resend").trim().toLowerCase();
+  if (emailProvider !== "resend") {
+    throw new Error("EMAIL_PROVIDER must be resend");
   }
   if (emailEnabled && (runApi || runWorker)) {
-    required.push("ELASTIC_EMAIL_API_KEY");
+    required.push("RESEND_API_KEY");
     if (!isPresent(env.EMAIL_FROM_ADDRESS) && !isPresent(env.EMAIL_FROM)) {
       required.push("EMAIL_FROM_ADDRESS");
     }

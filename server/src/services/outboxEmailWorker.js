@@ -93,7 +93,7 @@ async function markDelivered(event, leaseOwner, result) {
         $set: {
           status: "DELIVERED",
           deliveredAt: new Date(),
-          provider: result.provider || "elasticemail",
+          provider: result.provider || "resend",
           providerMessageId: result.providerMessageId || null,
           leaseOwner: null,
           leaseExpiresAt: null,
@@ -145,7 +145,7 @@ async function deliverEvent(event, { provider = emailProvider } = {}) {
     text: message.text,
     replyTo,
     tracking: message.tracking,
-    metadata: event.metadata,
+    metadata: { ...event.metadata, outboxEventId: event.eventId },
   });
 }
 

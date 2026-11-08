@@ -92,14 +92,14 @@ test("Connect webhook secret is required only for an enabled API Connect ingress
   );
 });
 
-test("Elastic Email production configuration is validated without Resend credentials", () => {
+test("Resend production configuration requires Resend credentials", () => {
   assert.doesNotThrow(() => validateEnvironment({
     env: productionBase({
       RUN_API: "false",
       RUN_WORKER: "true",
       EMAIL_ENABLED: "true",
-      EMAIL_PROVIDER: "elasticemail",
-      ELASTIC_EMAIL_API_KEY: "elastic-test-key",
+      EMAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "resend-test-key",
       EMAIL_FROM: "DSP Marketplace <sender@example.com>",
       EMAIL_MODE: "production",
     }),
@@ -110,29 +110,27 @@ test("Elastic Email production configuration is validated without Resend credent
         RUN_API: "false",
         RUN_WORKER: "true",
         EMAIL_ENABLED: "true",
-        EMAIL_PROVIDER: "elasticemail",
+        EMAIL_PROVIDER: "resend",
         EMAIL_FROM: "DSP Marketplace <sender@example.com>",
         EMAIL_MODE: "production",
       }),
     }),
-    /Missing required environment variable: ELASTIC_EMAIL_API_KEY/,
+    /Missing required environment variable: RESEND_API_KEY/,
   );
   assert.throws(
     () => validateEnvironment({
-      env: productionBase({ EMAIL_PROVIDER: "resend" }),
-    }),
-    /EMAIL_PROVIDER must be elasticemail/,
+      env: productionBase({ EMAIL_PROVIDER: "elasticemail" }),\n    }),\n    /EMAIL_PROVIDER must be resend/,
   );
 });
 
-test("Elastic Email accepts the split sender configuration", () => {
+test("Resend accepts the split sender configuration", () => {
   assert.doesNotThrow(() => validateEnvironment({
     env: productionBase({
       RUN_API: "false",
       RUN_WORKER: "true",
       EMAIL_ENABLED: "true",
-      EMAIL_PROVIDER: "elasticemail",
-      ELASTIC_EMAIL_API_KEY: "elastic-test-key",
+      EMAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "resend-test-key",
       EMAIL_FROM_ADDRESS: "verified@example.com",
       EMAIL_FROM_NAME: "DSP Marketplace",
       EMAIL_MODE: "production",
