@@ -75,6 +75,7 @@ Create a Render **Web Service** from the same repository and branch.
 - Runtime: Node
 - Build command: `corepack enable && pnpm install --frozen-lockfile`
 - Start command: `pnpm run start:api`
+- Optional email-only scheduler on the same instance: `RUN_EMAIL_WORKER=true` with `RUN_WORKER=false` and `CRON_RUNS=false`. This starts only `OutboxEmail`; it does not start payout, charge, webhook, or other scheduled workers. The existing process must be awake to deliver queued email; Render Free instances sleep when idle. For reliable always-on delivery, deploy a separate persistent worker.
 - Health check path: `/health`
 - Readiness path for manual verification: `/ready`
 
@@ -124,6 +125,8 @@ BUCKET_NAME=<private-bucket-name>
 SLOT_TIMEZONE=Europe/Zurich
 RUN_API=true
 RUN_WORKER=false
+RUN_EMAIL_WORKER=true # optional: email-only delivery in this existing Render API
+CRON_RUNS=false
 ```
 
 Required when the corresponding optional integration is enabled:
@@ -164,8 +167,10 @@ CACHE_DEFAULT_TTL_SECONDS=300
 If Redis is unavailable, the current client falls back to MongoDB-backed
 behavior; Redis is not the booking, financial, outbox, or job authority.
 
-The worker tuning variables in `server/.env.example` are optional for the API
-and should be set on the worker. The API must not receive `RUN_WORKER=true`.
+The worker tuning variables in `server/.env.example` are optional for the API.
+Do not set `RUN_WORKER=true` on the API. If no dedicated worker is available, set
+`RUN_EMAIL_WORKER=true` only on the API to process Resend outbox email events
+without enabling financial/background jobs. This does not run on a sleeping instance.
 
 ## 3. Render worker
 
