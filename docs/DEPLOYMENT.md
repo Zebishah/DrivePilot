@@ -13,7 +13,7 @@ The application is intentionally deployed as two Node processes:
 | Worker | Render Background Worker | `server` | `pnpm run start:worker` | No |
 
 The worker is required for durable Stripe inbox processing, reconciliation,
-T-48 charging, payouts, reminders, cleanup, and the Elastic Email outbox. Render's
+T-48 charging, payouts, reminders, cleanup, and the Resend outbox. Render's
 free service types do not include background workers, so a persistent
 worker-capable paid service/plan is required for the complete deployment.
 See [Render background workers](https://render.com/docs/background-workers)
@@ -64,7 +64,7 @@ append `auth/google` and `auth/facebook`. Socket.IO also uses this URL. The
 currently present `VITE_APP_BACKEND_WS_URL` is not read by application code.
 
 Never add `STRIPE_SECRET_KEY`, `JWT_SECRET`, `MONGODB_URI`, `REDIS_URL`,
-`ELASTIC_EMAIL_API_KEY`, `GEMINI_API_KEY`, `AWS_SECRET_ACCESS_KEY`, or
+`RESEND_API_KEY`, `GEMINI_API_KEY`, `AWS_SECRET_ACCESS_KEY`, or
 `GOOGLE_CLIENT_SECRET` to Vercel.
 
 ## 2. Render API web service
@@ -130,8 +130,8 @@ Required when the corresponding optional integration is enabled:
 
 ```text
 EMAIL_ENABLED=true
-EMAIL_PROVIDER=elasticemail
-ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=<resend-api-key>
 EMAIL_FROM_ADDRESS=<verified-sender-address>
 EMAIL_FROM_NAME=Drive Pilot
 EMAIL_REPLY_TO=<optional-reply-address>
@@ -147,7 +147,7 @@ GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
 When `EMAIL_MODE=production`, omit `EMAIL_TEST_RECIPIENT` only after the
-configured Elastic Email sender has been intentionally verified and delivery has
+configured Resend sender has been intentionally verified and delivery has
 been tested. Until then, `EMAIL_MODE=test` routes the provider call to
 `EMAIL_TEST_RECIPIENT` and must not send to arbitrary users.
 
@@ -196,8 +196,8 @@ SLOT_TIMEZONE=Europe/Zurich
 RUN_API=false
 RUN_WORKER=true
 EMAIL_ENABLED=true
-EMAIL_PROVIDER=elasticemail
-ELASTIC_EMAIL_API_KEY=<elastic-email-api-key>
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=<resend-api-key>
 EMAIL_FROM_ADDRESS=<verified-sender-address>
 EMAIL_FROM_NAME=Drive Pilot
 EMAIL_REPLY_TO=<optional-reply-address>
@@ -247,33 +247,26 @@ Safe verification is an opt-in `PING` from a controlled operator shell. Do
 not print the URL or credentials. API startup does not fail when Redis is
 temporarily unavailable.
 
-## 6. Elastic Email
+## 6. Resend email delivery
 
-The application uses the Elastic Email v4 HTTPS API through the durable MongoDB outbox;
-SMTP is not used or reintroduced.
+The backend uses the Resend HTTPS API and the durable MongoDB email outbox.
+SMTP is not used.
 
-- `EMAIL_PROVIDER=elasticemail`
-- `EMAIL_ENABLED=true`
-- `ELASTIC_EMAIL_API_KEY` is stored only in Render and must have the `SendHttp` access level
-- `EMAIL_MODE=test` sends only to `EMAIL_TEST_RECIPIENT`
-- `EMAIL_FROM_ADDRESS` must match an allowed Elastic Email sender. `EMAIL_FROM_NAME` defaults to `Drive Pilot`.
+- Set `EMAIL_PROVIDER=resend` and `EMAIL_ENABLED=true`.
+- Store `RESEND_API_KEY` only in Render / worker backend secrets.
+- `EMAIL_MODE=test` sends all messages to `EMAIL_TEST_RECIPIENT`.
+- Set `EMAIL_FROM_ADDRESS` to an authorized sender on a domain verified in Resend; `EMAIL_FROM_NAME` defaults to `Drive Pilot`.
+- After verifying delivery and the domain, change to `EMAIL_MODE=production` to deliver to real users.
 
-Use an intentionally verified sender before switching to `EMAIL_MODE=production`.
-The worker is the process that delivers the outbox; the API enqueues events.
+### Backend environment placement
 
-### Elastic Email environment placement
+Set the email variables on every process with `EMAIL_ENABLED=true`. The API enqueues events; the running worker delivers them. For a separate worker (for example on Northflank), configure the same Resend key, sender, mode, and test recipient. The API and worker must share the same MongoDB database.
 
-When the API runs on Render and the worker runs on Northflank, configure the
-server-side email variables on both services because startup validation covers
-the process environment:
+- Render API: `RUN_API=true`, `RUN_WORKER=false`, and the Resend env variables if email is enabled.
+- Worker: `RUN_API=false`, `RUN_WORKER=true`, and the same Resend env variables.
+- Vercel: never expose `RESEND_API_KEY`; frontend only receives public `VITE_*` variables.
 
-- Render API: `EMAIL_PROVIDER`, `EMAIL_ENABLED`, `EMAIL_MODE`, `ELASTIC_EMAIL_API_KEY`, `EMAIL_FROM_ADDRESS` (or legacy `EMAIL_FROM`), and `EMAIL_TEST_RECIPIENT` in test mode. Keep `RUN_API=true` and `RUN_WORKER=false`.
-- Northflank worker: the same email variables, with `RUN_API=false` and `RUN_WORKER=true`. This is the only process that calls Elastic Email; it also needs the MongoDB URI and the worker’s normal job configuration.
-- Vercel: never add `ELASTIC_EMAIL_API_KEY` or any other server-side email secret. Vercel receives only the public `VITE_*` frontend variables.
-
-The Render API and Northflank worker must use the same MongoDB database so the
-API’s outbox events are visible to the worker. Do not put SMTP credentials or
-an Elastic Email key in frontend build variables.
+Resend's `Idempotency-Key` is derived from each durable outbox event ID, with a provider deduplication window of 24 hours. Keep the local outbox and retries. See [EMAIL_DELIVERY.md](EMAIL_DELIVERY.md).
 
 ## 7. AWS S3
 
@@ -502,7 +495,7 @@ requests targeting `portfolio-hardening`.
 - Frontend: frozen pnpm install, existing utility tests, strict type-check,
   and production build.
 
-The workflow requires no Stripe, Elastic Email, AWS, Gemini, Google, Redis, or
+The workflow requires no Stripe, Resend, AWS, Gemini, Google, Redis, or
 MongoDB secrets. It does not run real external-provider operations.
 
 The syntax gate intentionally excludes the unreferenced
@@ -544,7 +537,7 @@ with the relevant environment loaded. They are not CI or startup actions.
 - Redis: issue `PING` against the Upstash TLS endpoint, then close the client.
 - S3: use a uniquely prefixed small test object, `PutObject`, `GetObject`, and
   `DeleteObject` only when explicitly authorized.
-- Elastic Email: send exactly one message to `EMAIL_TEST_RECIPIENT` with
+- Resend: send exactly one message to `EMAIL_TEST_RECIPIENT` with
   `EMAIL_MODE=test`.
 - Gemini: issue one bounded prompt using configured timeouts and limits.
 - Stripe: retrieve the test account or another read-only test-mode resource.
@@ -558,7 +551,7 @@ refund, payout, or transfer reversal as a diagnostic.
 1. Confirm the branch and clean worktree.
 2. Create/configure MongoDB Atlas and verify the database user/network policy.
 3. Configure the private S3 bucket, IAM policy, and CORS.
-4. Configure Upstash Redis and Elastic Email test mode.
+4. Configure Upstash Redis and Resend test mode.
 5. Create the Render API service and set API variables.
 6. Deploy the API and verify `/health` and `/ready`.
 7. Create the Render background worker on a worker-capable plan and set the
@@ -583,7 +576,7 @@ refund, payout, or transfer reversal as a diagnostic.
    authorized document screen; confirm the private bucket denies unsigned
    object URLs.
 6. Verify one assistant response and one bounded fallback scenario.
-7. Send one Elastic Email test-mode message to the test recipient.
+7. Send one Resend test-mode message to the test recipient.
 8. Create a Stripe test-mode booking/payment, confirm the webhook receipt,
    and verify the worker processes the durable event.
 9. Confirm worker logs show scheduler initialization and inspect

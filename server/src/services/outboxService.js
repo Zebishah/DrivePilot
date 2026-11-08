@@ -120,7 +120,7 @@ function createOutboxService({ model = OutboxEvent } = {}) {
       aggregateId: aggregateId || dedupeKey,
       dedupeKey,
       payload: { channel: "email", to: recipients, template, data, references },
-      metadata: { ...metadata, provider: "elasticemail" },
+      metadata: { ...metadata, provider: "resend" },
       session,
     });
   }

@@ -64,7 +64,7 @@ test("outbox enqueue is deterministic and deduplicates repeated delivery request
   assert.equal(first._id, second._id);
   assert.equal(fake.records.size, 1);
   assert.deepEqual(first.payload.to, ["student@example.com"]);
-  assert.equal(first.metadata.provider, "elasticemail");
+  assert.equal(first.metadata.provider, "resend");
   assert.equal(first.status, "PENDING");
 });
 
