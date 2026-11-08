@@ -236,8 +236,8 @@ function renderEmailTemplate(template, data = {}) {
     const link = trustedFrontendUrl(data.resetUrl, "/auth/reset-password");
     return {
       subject: "Password reset instructions",
-      text: `Reset your password within one hour: ${link}`,
-      html: shell("Reset your password", `<p style="margin:0 0 16px">We received a request to reset your Drive Pilot password.</p><p style="margin:0">This secure link is valid for one hour.</p><div style="margin-top:24px">${button("Reset password", link)}</div><p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px">If you did not request a reset, no action is needed.</p>`, { preheader: "Your Drive Pilot password reset link is ready." }),
+      text: `Reset your password within 30 minutes: ${link}`,
+      html: shell("Reset your password", `<p style="margin:0 0 16px">We received a request to reset your Drive Pilot password.</p><p style="margin:0">This secure link is valid for 30 minutes.</p><div style="margin-top:24px">${button("Reset password", link)}</div><p style="margin:22px 0 0;color:${COLORS.muted};font-size:13px">If you did not request a reset, no action is needed.</p>`, { preheader: "Your Drive Pilot password reset link is ready." }),
     };
   }
   if (template === "document_status") {

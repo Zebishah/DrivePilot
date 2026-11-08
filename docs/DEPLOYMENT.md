@@ -200,6 +200,7 @@ FRONTEND_URL=https://<vercel-project>.vercel.app
 SLOT_TIMEZONE=Europe/Zurich
 RUN_API=false
 RUN_WORKER=true
+JWT_SECRET=<same-secret-as-api>
 EMAIL_ENABLED=true
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=<resend-api-key>
@@ -210,7 +211,7 @@ EMAIL_MODE=test
 EMAIL_TEST_RECIPIENT=<test-recipient>
 ```
 
-The worker does not need Google OAuth, Facebook OAuth, JWT, S3 credentials,
+The worker needs the same `JWT_SECRET` as the API to decrypt the pending email reset token. It does not need Google OAuth, Facebook OAuth, S3 credentials,
 `STRIPE_WEBHOOK_SECRET`, or Gemini credentials for its current job paths.
 Set `AI_ENABLED=false` on the worker to make that intent explicit. Add Redis
 settings if the optional shared cache is desired. Add the job, webhook

@@ -951,6 +951,14 @@ instead.`);
       try {
         const email = String(input?.email || "").trim().toLowerCase();
         const { type } = input;
+        const owner = await User.findOne({ email }).select("isUserVerified").lean();
+        const eligible = owner && (
+          (type === "email_verification" && !owner.isUserVerified) ||
+          (type === "two_factor_auth" && owner.isUserVerified)
+        );
+        if (!eligible) {
+          return { success: true, message: "If a verification is required, instructions will be sent.", email };
+        }
         const recentOtp = await Otp.findOne({
           email,
           type,
@@ -1430,7 +1438,7 @@ instead.`);
 
       // The outbox resolves the encrypted token only when it sends the message.
       try {
-        await sendTemplateEmail(user.email, "passwordReset", "queued");
+        await sendTemplateEmail(user.email, "passwordReset", resetTokenHash(resetToken));
 
         return {
           ...genericResponse,
