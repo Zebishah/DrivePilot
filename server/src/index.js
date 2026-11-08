@@ -23,6 +23,7 @@ const {
 const { runFinancialReconciliation } = require("./services/financialReconciliationService");
 const JOB_CONFIG = require("./config/jobConfig");
 const { createJobScheduler } = require("./services/jobScheduler");
+const { selectWorkerJobs } = require("./services/selectWorkerJobs");
 const mongoose = require("mongoose");
 const { logger } = require("./utils/logger");
 const { closeRedis, connectRedis, redisStatus } = require("./services/redisClient");
@@ -214,9 +215,7 @@ async function startApplication() {
   if (redisStatus().configured) connectRedis();
   logger.info("process_mode", { api: JOB_CONFIG.runApi, worker: JOB_CONFIG.runWorker, emailWorker: JOB_CONFIG.runEmailWorker });
   if (JOB_CONFIG.runWorker || JOB_CONFIG.runEmailWorker) {
-    const jobs = JOB_CONFIG.runWorker
-      ? workerJobs()
-      : workerJobs().filter((entry) => entry.name === "OutboxEmail");
+    const jobs = selectWorkerJobs(workerJobs(), JOB_CONFIG);
     schedulerController = createJobScheduler({
       jobs,
       leaseMs: JOB_CONFIG.leaseMs,

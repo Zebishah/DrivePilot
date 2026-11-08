@@ -59,8 +59,8 @@ function validateEnvironment({ env = process.env } = {}) {
   const required = ["MONGODB_URI"];
   if (production) required.push("SLOT_TIMEZONE");
 
-  if (runApi || runWorker) {
-    required.push("STRIPE_SECRET_KEY");
+  if (runApi || runWorker) required.push("STRIPE_SECRET_KEY");
+  if (runApi || runWorker || runEmailWorker) {
     if (!hasFrontendUrl(env)) required.push("FRONTEND_URL");
   }
 

@@ -57,7 +57,7 @@ const JOB_CONFIG = {
   outboxEmailBatchSize: positiveInteger("OUTBOX_EMAIL_BATCH_SIZE", 25),
 };
 
-if (!JOB_CONFIG.runApi && !JOB_CONFIG.runWorker) {
+if (!JOB_CONFIG.runApi && !JOB_CONFIG.runWorker && !JOB_CONFIG.runEmailWorker) {
   throw new Error("At least one of RUN_API or RUN_WORKER must be enabled");
 }
 if (JOB_CONFIG.heartbeatMs >= JOB_CONFIG.leaseMs / 2) {
