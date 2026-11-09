@@ -1,3 +1,4 @@
+import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -107,7 +108,7 @@ const ForgotPassword: React.FC = () => {
               sx={{ mt: 3 }}
             >
               {loading
-                ? "Requesting email…"
+                ? <><BrandActionSpinner label="Requesting email" /> Requesting email…</>
                 : secondsRemaining > 0
                   ? `Resend available in ${secondsRemaining}s`
                   : "Resend reset email"}
@@ -187,11 +188,7 @@ const ForgotPassword: React.FC = () => {
               >
                 {loading ? (
                   <>
-                    <CircularProgress
-                      size={20}
-                      color="inherit"
-                      sx={{ mr: 1 }}
-                    />{" "}
+                    <BrandActionSpinner label="Sending reset instructions" />{" "}
                     Sending instructions…
                   </>
                 ) : secondsRemaining > 0 ? (

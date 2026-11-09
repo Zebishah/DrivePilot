@@ -1,3 +1,4 @@
+import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 import React, { useState, useRef } from "react";
 import {
   Box,
@@ -362,7 +363,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
                       sx={{ mt: 2 }}
                       startIcon={
                         verifying && (
-                          <CircularProgress size={20} color="inherit" />
+                          <BrandActionSpinner label="Verifying code" />
                         )
                       }
                     >
@@ -388,7 +389,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
                         }
                       >
                         {resending
-                          ? "Sending…"
+                          ? <><BrandActionSpinner label="Sending verification code" /> Sending…</>
                           : secondsRemaining > 0
                             ? `Resend in ${secondsRemaining}s`
                             : "Resend code"}

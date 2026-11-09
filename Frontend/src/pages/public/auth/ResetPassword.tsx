@@ -1,3 +1,4 @@
+import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 import React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -272,7 +273,7 @@ const ResetPassword: React.FC = () => {
               }}
             >
               {loading ? (
-                <CircularProgress size={24} color="inherit" />
+                <BrandActionSpinner label="Resetting password" />
               ) : (
                 "Reset password"
               )}

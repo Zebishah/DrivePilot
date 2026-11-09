@@ -1,3 +1,4 @@
+import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 // src/pages/Public/SignUp.tsx
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -373,7 +374,7 @@ const SignUp: React.FC = () => {
             }}
           >
             {isSubmitting ? (
-              <CircularProgress size={24} color="inherit" />
+              <BrandActionSpinner label="Creating account" />
             ) : (
               "Create account"
             )}

@@ -1,0 +1,4 @@
+.dsp-brand-action-spinner{display:inline-flex;position:relative;vertical-align:middle;align-items:center;justify-content:center;margin-right:9px;width:24px;height:24px;flex:0 0 24px}
+.dsp-brand-action-spinner__ring{position:absolute;inset:0;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:dsp-brand-spin .9s linear infinite}
+.dsp-brand-action-spinner .dsp-brand{transform:scale(.36);flex-shrink:0;display:inline-flex;width:48px;height:48px;align-items:center;justify-content:center}
+@keyframes dsp-brand-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.dsp-brand-action-spinner__ring{animation-duration:2.5s}}

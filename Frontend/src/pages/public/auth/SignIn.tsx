@@ -1,3 +1,4 @@
+import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 // src/pages/Public/SignIn.tsx
 import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -327,11 +328,7 @@ const SignIn: React.FC = () => {
               },
             }}
           >
-            {loading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              "Sign in"
-            )}
+            {loading ? <><BrandActionSpinner label="Signing in" /> Signing in…</> : "Sign in"}
           </Button>
 
           <Box
