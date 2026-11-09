@@ -18,3 +18,17 @@ export function formatErrorWithReference(message: string, error: unknown): strin
   const reference = getErrorReferenceId(error);
   return reference ? `${message} Reference: ${reference}` : message;
 }
+
+export function formatAuthError(error: unknown, fallback: string): string {
+  const apolloError = error as {
+    graphQLErrors?: Array<{ message?: string; extensions?: { code?: string } }>;
+  } | null;
+  const inputError = apolloError?.graphQLErrors?.find(
+    (item) => item.extensions?.code === "BAD_USER_INPUT",
+  );
+  const message = inputError?.message?.trim();
+  if (message === "Invalid credentials") {
+    return "The email or password is incorrect.";
+  }
+  return formatErrorWithReference(message || fallback, error);
+}

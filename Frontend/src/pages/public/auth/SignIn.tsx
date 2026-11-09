@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 // src/pages/Public/SignIn.tsx
 import React, { useEffect } from "react";
@@ -169,9 +170,7 @@ const SignIn: React.FC = () => {
       });
     } catch (error: unknown) {
       setFormError(
-        error instanceof Error
-          ? error.message
-          : "We couldn’t sign you in. Please try again.",
+        formatAuthError(error, "We couldn’t sign you in. Please try again."),
       );
     }
   };

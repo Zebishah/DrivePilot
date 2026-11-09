@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 // src/pages/Public/SignUp.tsx
 import type React from "react";
@@ -132,9 +133,7 @@ const SignUp: React.FC = () => {
       nav("/auth/verify-email", { state: { email: authData.signUp.user.email } });
     } catch (error: unknown) {
       setFormError(
-        error instanceof Error
-          ? error.message
-          : "We couldn’t create your account. Please try again.",
+        formatAuthError(error, "We couldn’t create your account. Please try again."),
       );
     } finally {
       setIsSubmitting(false);
