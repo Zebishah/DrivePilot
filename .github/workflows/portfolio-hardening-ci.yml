@@ -2,9 +2,9 @@ name: Portfolio hardening CI
 
 on:
   push:
-    branches: [portfolio-hardening]
+    branches: [main, portfolio-hardening, "feat/**", "fix/**", "chore/**"]
   pull_request:
-    branches: [portfolio-hardening]
+    branches: [main, portfolio-hardening, "feat/**", "fix/**", "chore/**"]
 
 permissions:
   contents: read
@@ -36,6 +36,9 @@ jobs:
       - name: Run financial reliability suite
         run: pnpm run test:financial
       - name: Verify GraphQL composition
+        env:
+          STRIPE_SECRET_KEY: sk_test_ci_placeholder_key
+          JWT_SECRET: drive-pilot-ci-test-only-secret-32-characters
         run: node -e "require('./src/config/CombineTypeDefs'); require('./src/config/CombineResolvers'); console.log('graphql composition ok')"
       - name: Check server syntax
         # GetRequiredSlotsLesson.js is an unreferenced ESM orphan in this

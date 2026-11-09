@@ -2,6 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.JWT_SECRET ||= "demo-login-test-secret-at-least-32-characters";
+// Stub provider initialization; this resolver test does not make Stripe API calls.
+process.env.STRIPE_SECRET_KEY ||= "sk_test_demo_login_fixture_000000000000";
 process.env.DEMO_ADMIN_EMAIL = "admin.demo@example.test";
 process.env.DEMO_INSTRUCTOR_EMAIL = "instructor.demo@example.test";
 process.env.DEMO_STUDENT_EMAIL = "student.demo@example.test";
