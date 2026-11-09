@@ -50,7 +50,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   const { email: legacyEmail } = useParams();
   const location = useLocation();
   const routeEmail = (location.state as { email?: unknown } | null)?.email;
-  const email = (typeof routeEmail === "string" && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(routeEmail)
+  const email = (typeof routeEmail === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(routeEmail)
     ? routeEmail : legacyEmail) ?? "";
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
