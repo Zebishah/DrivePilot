@@ -2,9 +2,9 @@ name: Portfolio hardening CI
 
 on:
   push:
-    branches: [portfolio-hardening]
+    branches: [main, portfolio-hardening, "feat/**", "fix/**", "chore/**"]
   pull_request:
-    branches: [portfolio-hardening]
+    branches: [main, portfolio-hardening, "feat/**", "fix/**", "chore/**"]
 
 permissions:
   contents: read
