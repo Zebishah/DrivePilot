@@ -14,7 +14,6 @@ import {
   IconButton,
   InputAdornment,
   Link as MuiLink,
-  CircularProgress,
   FormControlLabel,
   Checkbox,
   InputLabel,

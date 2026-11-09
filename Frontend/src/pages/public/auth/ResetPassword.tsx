@@ -10,7 +10,6 @@ import {
   Button,
   TextField,
   Typography,
-  CircularProgress,
   InputLabel,
   InputAdornment,
   IconButton,
