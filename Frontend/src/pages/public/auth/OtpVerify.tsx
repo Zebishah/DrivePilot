@@ -14,7 +14,7 @@ import {
 import { styled } from "@mui/material/styles";
 import BrandLogo from "../../../components/BrandLogo";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { RESEND_OTP, VERIFY_OTP } from "../../../graphql/mutations/auth";
 import { useAuth } from "../../../context/AuthContext";
@@ -45,9 +45,13 @@ interface OtpVerificationProps {
 
 const OtpVerification: React.FC<OtpVerificationProps> = ({
   title = "Check your email",
-  subtitle = "Verify your email to finish creating your account.",
+  subtitle = "Enter the six-digit code we sent to your email address.",
 }) => {
-  const { email } = useParams();
+  const { email: legacyEmail } = useParams();
+  const location = useLocation();
+  const routeEmail = (location.state as { email?: unknown } | null)?.email;
+  const email = (typeof routeEmail === "string" && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(routeEmail)
+    ? routeEmail : legacyEmail) ?? "";
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>(
     Array(OTP_LENGTH).fill(null),
@@ -113,6 +117,10 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
   const handleVerify = async () => {
     const otpString = otp.join("");
 
+    if (!email) {
+      setError("Your email address is missing. Return to sign in and try again.");
+      return;
+    }
     if (otpString.length !== OTP_LENGTH || !/^\d{6}$/.test(otpString)) {
       setError(`Please enter all ${OTP_LENGTH} digits`);
       return;
@@ -159,7 +167,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
 
   // Keep delivery feedback visible next to the code entry form.
   const handleResendOtp = async () => {
-    if (resending || verifying || secondsRemaining > 0) return;
+    if (!email || resending || verifying || secondsRemaining > 0) return;
     setResendStatus(null);
     try {
       const { data } = await resendOtp({
@@ -248,6 +256,9 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
           >
             <CardContent sx={{ p: 4 }}>
               <Stack spacing={3} alignItems="center">
+                <Typography variant="overline" color="text.secondary" fontWeight={700}>
+                  EMAIL VERIFICATION · STEP 2 OF 2
+                </Typography>
                 <Typography
                   variant="h5"
                   component="h1"
@@ -270,6 +281,9 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
                 {!isVerified && email && (
                   <EmailDeliveryNotice email={email} kind="verification" />
                 )}
+                {!email && <Alert severity="warning" sx={{ width: "100%" }} role="alert">
+                  Verification requires an email address. Return to sign in or sign up to begin.
+                </Alert>}
                 {resendStatus && (
                   <Alert
                     severity={resendStatus.severity}

@@ -87,6 +87,10 @@ const router = createBrowserRouter([
             element: lazyPage(() => import("../pages/public/auth/AuthSucess")),
           },
           {
+            path: "verify-email",
+            element: lazyPage(() => import("../pages/public/auth/OtpVerify")),
+          },
+          {
             path: "verificationPage/:email",
             element: lazyPage(() => import("../pages/public/auth/OtpVerify")),
           },

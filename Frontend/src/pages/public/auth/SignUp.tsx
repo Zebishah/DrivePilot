@@ -129,9 +129,7 @@ const SignUp: React.FC = () => {
           );
         }
       }
-      nav(
-        `/auth/verificationPage/${encodeURIComponent(authData.signUp.user.email)}`,
-      );
+      nav("/auth/verify-email", { state: { email: authData.signUp.user.email } });
     } catch (error: unknown) {
       setFormError(
         error instanceof Error

@@ -122,7 +122,11 @@ const SignIn: React.FC = () => {
         const page = signIn.user.isUserVerified
           ? "twoFactorAuthPage"
           : "verificationPage";
-        navigate(`/auth/${page}/${encodeURIComponent(signIn.user.email)}`);
+        if (page === "verificationPage") {
+          navigate("/auth/verify-email", { state: { email: signIn.user.email } });
+        } else {
+          navigate(`/auth/${page}/${encodeURIComponent(signIn.user.email)}`);
+        }
       }
     },
   });
