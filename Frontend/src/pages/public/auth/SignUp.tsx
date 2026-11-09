@@ -171,8 +171,8 @@ const SignUp: React.FC = () => {
             Create your account
           </Typography>
           <Typography className="dsp-auth-intro" variant="body2">
-            Create a learner or instructor account to book or teach driving
-            lessons.
+            Join Drive Pilot to book driving lessons as a learner or manage your
+            lessons and availability as an instructor.
           </Typography>
         </Box>
         <Box

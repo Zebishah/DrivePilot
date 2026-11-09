@@ -352,14 +352,9 @@ const BookLesson: React.FC = () => {
         window.location.href = url;
         return;
       }
-      setCheckoutError("Could not open checkout. Please try again or contact support.");
-    } catch (err: unknown) {
-      const msg =
-        (err as { graphQLErrors?: Array<{ message?: string }> })?.graphQLErrors?.[0]?.message ||
-        (err as { message?: string })?.message ||
-        "Failed to start checkout. Please try again or contact support.";
-      setCheckoutError(msg);
-      console.error("Resume checkout failed:", err);
+      setCheckoutError("Checkout is unavailable for this booking. Refresh Booked lessons and check its status.");
+    } catch {
+      setCheckoutError("We couldn’t open checkout. Refresh Booked lessons and check the booking status before trying again.");
     } finally {
       setLoadingCheckoutBookingId(null);
     }

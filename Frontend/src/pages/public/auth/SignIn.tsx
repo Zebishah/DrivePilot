@@ -80,11 +80,7 @@ const SignIn: React.FC = () => {
   useEffect(() => {
     const error = searchParams.get("error");
     if (error) {
-      setFormError(
-        error === "auth_failed"
-          ? "We couldn’t complete that sign-in. Please try again."
-          : error,
-      );
+      setFormError("We couldn’t complete that sign-in. Please try again.");
 
       // Remove error param from URL after showing toast
       const newParams = new URLSearchParams(searchParams);
@@ -212,8 +208,8 @@ const SignIn: React.FC = () => {
             Welcome back
           </Typography>
           <Typography className="dsp-auth-intro" variant="body2">
-            Book driving lessons, manage your students, or run your driving
-            school.
+            Sign in to Drive Pilot to book driving lessons or manage your
+            availability, learners, and payouts as an instructor.
           </Typography>
         </Box>
 

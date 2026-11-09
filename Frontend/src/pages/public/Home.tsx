@@ -446,7 +446,7 @@ export default function Home() {
         <div className="ai-hero-copy ai-container">
           <a className="ai-announcement" href="#engineering">
             <span className="ai-pulse-dot" />
-            <span>DRIVING LESSONS. BOOKED AROUND YOU.</span>
+            <span>DRIVING LESSON MARKETPLACE</span>
             <ArrowUpRight size={13} />
           </a>
           <h1 id="hero-title">
@@ -458,9 +458,8 @@ export default function Home() {
             </span>
           </h1>
           <p>
-            Find a driving instructor. Choose your lesson. Book online. <br />
-            Lessons, payments, feedback, and AI assistance—all in your Drive Pilot
-            account.
+            Drive Pilot connects learners with driving instructors. Compare profiles,
+            book and pay online, and follow your progress after each lesson.
           </p>
           <div className="ai-hero-actions">
             <a href="#find-lessons" className="ai-button ai-button--mint">

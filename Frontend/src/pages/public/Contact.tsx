@@ -55,14 +55,11 @@ export default function Contact() {
         reset({ ...values, description: "" });
         window.requestAnimationFrame(() => successRef.current?.focus());
       } else {
-        setError(
-          data?.sendContactEmail?.message ||
-            "We couldn’t send your message. Please try again.",
-        );
+        setError("We couldn’t send your message. Your draft is still here. Please try again.");
       }
     } catch {
       setError(
-        "We couldn’t send your message. Check your connection and try again. Your message is still here.",
+        "We couldn’t send your message. Your draft is still here. Please try again.",
       );
     }
   };
