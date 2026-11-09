@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -61,9 +62,7 @@ const ForgotPassword: React.FC = () => {
       }
     } catch (error: unknown) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "We couldn’t request a reset email. Please try again.",
+        formatAuthError(error, "We couldn’t request a reset email. Please try again."),
       );
     }
   };

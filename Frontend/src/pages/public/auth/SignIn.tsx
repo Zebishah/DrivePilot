@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 // src/pages/Public/SignIn.tsx
 import React, { useEffect } from "react";
@@ -80,11 +81,7 @@ const SignIn: React.FC = () => {
   useEffect(() => {
     const error = searchParams.get("error");
     if (error) {
-      setFormError(
-        error === "auth_failed"
-          ? "We couldn’t complete that sign-in. Please try again."
-          : error,
-      );
+      setFormError("We couldn’t complete that sign-in. Please try again.");
 
       // Remove error param from URL after showing toast
       const newParams = new URLSearchParams(searchParams);
@@ -173,9 +170,7 @@ const SignIn: React.FC = () => {
       });
     } catch (error: unknown) {
       setFormError(
-        error instanceof Error
-          ? error.message
-          : "We couldn’t sign you in. Please try again.",
+        formatAuthError(error, "We couldn’t sign you in. Please try again."),
       );
     }
   };
@@ -212,8 +207,8 @@ const SignIn: React.FC = () => {
             Welcome back
           </Typography>
           <Typography className="dsp-auth-intro" variant="body2">
-            Book driving lessons, manage your students, or run your driving
-            school.
+            Sign in to Drive Pilot to book driving lessons or manage your
+            availability, learners, and payouts as an instructor.
           </Typography>
         </Box>
 

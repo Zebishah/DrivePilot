@@ -32,7 +32,7 @@ const experiences: Record<
   }
 > = {
   Student: {
-    label: "YOUR DRIVING LESSONS",
+    label: "DRIVE PILOT · LEARNER WORKSPACE",
     title: "Learn to drive.\nStart with the right instructor.",
     description:
       "Find a driving instructor, book a lesson that fits your schedule, and keep your payments, messages, and learning progress together.",
@@ -62,7 +62,7 @@ const experiences: Record<
     ],
   },
   Instructor: {
-    label: "YOUR DRIVING INSTRUCTOR BUSINESS",
+    label: "DRIVE PILOT · INSTRUCTOR WORKSPACE",
     title: "More time teaching.\nOne place to run your lessons.",
     description:
       "Help learners get on the road. Manage your lesson availability, students, bookings, feedback, and payment activity from your instructor account.",
@@ -92,7 +92,7 @@ const experiences: Record<
     ],
   },
   Admin: {
-    label: "DRIVING SCHOOL MARKETPLACE OPERATIONS",
+    label: "DRIVE PILOT · MARKETPLACE OPERATIONS",
     title: "Behind every driving lesson,\na well-run marketplace.",
     description:
       "Review instructor documents, oversee learner bookings, and keep payment and refund activity in view. Help the people behind each lesson stay connected.",

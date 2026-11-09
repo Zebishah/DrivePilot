@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 import React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -87,9 +88,7 @@ const ResetPassword: React.FC = () => {
       }
     } catch (error: unknown) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "We couldn’t reset your password. Please try again.",
+        formatAuthError(error, "We couldn’t reset your password. Please try again."),
       );
     }
   };

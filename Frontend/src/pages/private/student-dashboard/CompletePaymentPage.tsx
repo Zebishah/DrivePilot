@@ -103,9 +103,7 @@ export const CompletePaymentPage: React.FC = () => {
               return null;
             }
           }
-          throw secretErr instanceof Error
-            ? secretErr
-            : new Error(message || "Could not start payment.");
+          throw new Error("We couldn’t open payment for this lesson. Check its status in Booked lessons and try again.");
         }
         if (cancelled) return;
         const clientSecret = data?.getT48ClientSecret;
@@ -128,9 +126,8 @@ export const CompletePaymentPage: React.FC = () => {
           try {
             const result = await stripe.retrievePaymentIntent(clientSecret);
             existing = result?.paymentIntent ?? null;
-          } catch (retrieveErr) {
-            const msg = retrieveErr instanceof Error ? retrieveErr.message : String(retrieveErr);
-            throw new Error(`Could not load payment: ${msg}. Check that your Stripe key matches the server.`);
+          } catch {
+            throw new Error("We couldn’t check your payment. Review its status in Booked lessons before trying again.");
           }
           if (cancelled) return null;
           if (!existing) {
@@ -149,7 +146,11 @@ export const CompletePaymentPage: React.FC = () => {
             const opts = returnUrl ? { return_url: returnUrl } : undefined;
             const { error, paymentIntent: confirmed } = await stripe.confirmCardPayment(clientSecret, opts as { return_url?: string });
             if (cancelled) return null;
-            if (error) throw error;
+            if (error) {
+              throw new Error(error.type === "card_error"
+                ? "Your card payment couldn’t be completed. Review your payment method in Booked lessons and try again."
+                : "We couldn’t verify the payment. Check its status in Booked lessons before trying again.");
+            }
             if (confirmed) paymentIntent = confirmed;
             if (paymentIntent?.status === "requires_action" && paymentIntent?.next_action?.redirect_to_url?.url) {
               window.location.href = paymentIntent.next_action.redirect_to_url.url;
@@ -219,9 +220,8 @@ export const CompletePaymentPage: React.FC = () => {
               Complete payment
             </Typography>
             <Typography color="text.secondary">
-              No booking or slot specified. Please open the link from your
-              email or go to your dashboard and click &quot;Complete payment&quot; on a
-              pending lesson.
+              This payment link is incomplete. Open Booked lessons and choose
+              &quot;Complete payment&quot; on the pending lesson.
             </Typography>
             <Button
               variant="contained"
@@ -293,7 +293,7 @@ export const CompletePaymentPage: React.FC = () => {
           {status === "success" && (
             <>
               <Alert severity="success" sx={{ mb: 2 }}>
-                Payment completed successfully. Your lesson is confirmed.
+                Payment received. Check Booked lessons for your latest booking status.
               </Alert>
               <Button
                 variant="contained"

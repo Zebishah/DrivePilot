@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import BrandActionSpinner from "../../../components/loaders/BrandActionSpinner";
 import React, { useState, useRef } from "react";
 import {
@@ -154,14 +155,10 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
           navigate(`/onboarding/role-selection`);
         }
       } else {
-        setError("Invalid OTP. Please try again.");
+        setError("That code is invalid or expired. Check the code and try again.");
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Verification failed. Please try again.";
-      setError(errorMessage);
+      setError(formatAuthError(err, "We couldn’t verify the code. Please try again."));
     }
   };
 
@@ -193,10 +190,7 @@ const OtpVerification: React.FC<OtpVerificationProps> = ({
     } catch (err) {
       setResendStatus({
         severity: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Failed to resend code. Please try again.",
+        message: formatAuthError(err, "We couldn’t send a new code. Please try again."),
       });
     }
   };

@@ -1,3 +1,4 @@
+import { formatAuthError } from "../../../utils/errorReference";
 import React, { useState, useRef } from "react";
 import {
   Box,
@@ -133,47 +134,28 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
         },
       });
 
-      if (data && data.verifyUser) {
-        login(data.verifyUser);
-        toast.success(
-          "OTP verified successfully!Sign Up Successful .Please Select Role",
-        );
+      const result = data?.verifyUser;
+      if (!result?.success) {
+        setError("That code is invalid or expired. Check the code and try again.");
+        return;
+      }
 
-        if (data.verifyUser.success) {
-          if (data.verifyUser?.user?.isProfileComplete) {
-            login(data.verifyUser);
-
-            if (data.verifyUser?.user?.role === "Student")
-              navigate("/student-dashboard/overview");
-            else if (data.verifyUser?.user?.role === "Instructor")
-              navigate("/teacher-dashboard/overview");
-            else if (data.verifyUser?.user?.role === "Admin")
-              navigate("/admin-dashboard/overview");
-            toast.success("Login Successfully");
-          } else {
-            toast.error("Profile not complete. Please complete your profile.");
-
-            const userRole = data.verifyUser?.user?.role.toLowerCase();
-            if (userRole === "userbase") {
-              navigate("/onboarding/role-selection");
-            } else if (userRole === "student") {
-              navigate("/onboarding/student-profile");
-            } else if (userRole === "instructor") {
-              navigate("/onboarding/instructor-profile");
-            }
-          }
-        }
+      login(result);
+      const role = result.user?.role;
+      if (result.user?.isProfileComplete) {
+        toast.success("Signed in successfully.");
+        if (role === "Student") navigate("/student-dashboard/overview");
+        else if (role === "Instructor") navigate("/teacher-dashboard/overview");
+        else if (role === "Admin") navigate("/admin-dashboard/overview");
       } else {
-        setError("Invalid OTP. Please try again.");
-        toast.error("Invalid OTP. Please try again.");
+        toast.success("Signed in. Finish setting up your profile to continue.");
+        const onboardingRole = role?.toLowerCase();
+        if (onboardingRole === "userbase") navigate("/onboarding/role-selection");
+        else if (onboardingRole === "student") navigate("/onboarding/student-profile");
+        else if (onboardingRole === "instructor") navigate("/onboarding/instructor-profile");
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Verification failed. Please try again.";
-      setError(errorMessage);
-      toast.error(errorMessage);
+      setError(formatAuthError(err, "We couldn’t verify the code. Please try again."));
     }
   };
 
@@ -205,10 +187,7 @@ const TwoFactorAuth: React.FC<TwoFactorAuthProps> = ({
     } catch (err) {
       setResendStatus({
         severity: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Failed to resend code. Please try again.",
+        message: formatAuthError(err, "We couldn’t send a new code. Please try again."),
       });
     }
   };
