@@ -2,6 +2,8 @@
 
 **A driving lesson marketplace connecting students, instructors, and administrators.**
 
+**[Live demo](https://drive-pilot-topaz.vercel.app/)** · [Portfolio](https://zohaib-haider-portfolio.vercel.app/)
+
 Drive Pilot brings instructor discovery, lesson availability, bookings, payments, progress tracking, and communication into connected role-based workspaces. Students find and book instructors; instructors manage teaching and earnings; administrators oversee marketplace operations.
 
 ## Product capabilities
@@ -23,7 +25,7 @@ Drive Pilot brings instructor discovery, lesson availability, bookings, payments
 | Interface | Tailwind CSS, MUI, Ant Design, Framer Motion, ApexCharts |
 | Backend | Node.js, Express, Apollo Server, GraphQL, Zod |
 | Data and messaging | MongoDB, Mongoose, Redis, Socket.IO |
-| Integrations | Stripe / Stripe Connect, AWS S3, Google/Facebook OAuth, Elastic Email |
+| Integrations | Stripe / Stripe Connect, AWS S3, Google/Facebook OAuth, Resend email delivery |
 | Verification | Node.js test runner, TypeScript, ESLint |
 
 ## Architecture
