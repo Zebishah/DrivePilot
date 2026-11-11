@@ -3,3 +3,27 @@ node_modules/
 
 # Docs build output (VitePress)
 docs/.vitepress/dist/
+
+# Local credentials and environment settings (examples are safe to commit)
+.env
+.env.*
+!.env.example
+!.env*.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env*.example
+
+# Local private key files and credential exports
+*.pem
+*.p12
+*.pfx
+*.private.key
+*.credentials.json
+
+# Build artifacts, coverage and local logs
+**/dist/
+**/build/
+**/coverage/
+*.log
+.DS_Store
