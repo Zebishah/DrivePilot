@@ -29,8 +29,10 @@ const COOKIE_USER_KEY = "user_dsp";
 const COOKIE_EXPIRES = 1; // days
 const PUBLIC_OPERATIONS = ["SignIn", "SignUp", "ForgotPassword", "ResetPassword", "VerifyUserOtp", "ResendOtp", "LoginDemo", "SendContactEmail"];
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL;
-const ENCRYPTION_KEY =
-  import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secure";
+const ENCRYPTION_KEY = import.meta.env.VITE_APP_ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY) {
+  throw new Error("VITE_APP_ENCRYPTION_KEY must be configured for the frontend build.");
+}
 
 const CURRENT_USER_QUERY = gql`
   query CurrentUser {
