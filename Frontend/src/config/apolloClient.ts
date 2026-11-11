@@ -7,8 +7,10 @@ import { getErrorReferenceId } from "../utils/errorReference";
 
 // ✅ ENV
 const BACKEND_URL = import.meta.env.VITE_APP_BACKEND_URL; // http://localhost:3000/graphql
-const ENCRYPTION_KEY =
-  import.meta.env.VITE_APP_ENCRYPTION_KEY || "your-fallback-key-secret";
+const ENCRYPTION_KEY = import.meta.env.VITE_APP_ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY) {
+  throw new Error("VITE_APP_ENCRYPTION_KEY must be configured for the frontend build.");
+}
 
 // 🔓 Decrypt token utility
 const decrypt = (encryptedData: string) => {
